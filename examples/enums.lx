@@ -1,0 +1,10 @@
+// Enum declaration
+enum Status {
+    Pending,
+    Active,
+    Completed
+}
+
+// Using enums
+let currentStatus = Status.Active;
+

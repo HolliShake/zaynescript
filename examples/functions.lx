@@ -1,0 +1,13 @@
+// Function declaration
+fn Add(x, y) {
+    return x + y;
+}
+
+fn Multiply(a, b) {
+    return a * b;
+}
+
+// Function calls
+let result1 = Add(5, 3);
+let result2 = Multiply(4, 7);
+

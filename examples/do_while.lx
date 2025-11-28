@@ -1,0 +1,7 @@
+// Do-while loop
+let counter = 0;
+
+do {
+    counter = counter + 1;
+} while (counter < 5);
+

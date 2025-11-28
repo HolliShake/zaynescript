@@ -1,0 +1,3 @@
+// Different number formats
+0xff + 0b1010 + 0o755 + 42 + 3.14 + 2.5e10
+

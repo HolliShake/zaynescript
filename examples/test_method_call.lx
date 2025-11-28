@@ -1,0 +1,3 @@
+// Test method call
+let p = Point;
+p.Initialize(3, 4);

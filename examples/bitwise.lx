@@ -1,0 +1,3 @@
+// Bitwise operations
+(x & 0xff) | (y << 8)
+
