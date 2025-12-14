@@ -1,3 +1,0 @@
-// Complex expression with multiple operators and indexing
-arr[i + 1] * 2 + dict["value"] - offset
-

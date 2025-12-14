@@ -1,0 +1,23 @@
+
+
+#define KEY_CLASS    "class"
+#define KEY_STRUCT   "struct"
+#define KEY_ENUM     "enum"
+#define KEY_CONST    "const"
+#define KEY_VAR      "var"
+#define KEY_LET      "let"
+#define KEY_ASYNC    "async"
+#define KEY_FN       "fn"
+#define KEY_IF       "if"
+#define KEY_ELSE     "else"
+#define KEY_WHILE    "while"
+#define KEY_FOR      "for"
+#define KEY_RETURN   "return"
+#define KEY_BREAK    "break"
+#define KEY_CONTINUE "continue"
+#define KEY_NULL     "null"
+#define KEY_TRUE     "true"
+#define KEY_FALSE    "false"
+#define KEY_NEW      "new"
+#define KEY_AWAIT    "await"
+
