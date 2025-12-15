@@ -1,4 +1,7 @@
 #include "./global.h"
+#include "./parser.h"
+#include "./value.h"
+#include "./function.h"
 
 #ifndef INTERPRETER_H
 #define INTERPRETER_H

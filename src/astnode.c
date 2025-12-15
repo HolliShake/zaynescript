@@ -65,8 +65,11 @@ Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, Position position) {
     return ast;
 }
 
-Ast* AstProgram(Ast* children, Position position) {
+Ast* AstProgram(Ast* body, Position position) {
+    // We will going to consider the program as a function with no parameters and no function name
     Ast* ast = InitAst(AST_PROGRAM, position);
-    ast->A   = children;
+    ast->A   = NULL;
+    ast->B   = NULL;
+    ast->C   = body;
     return ast;
 }

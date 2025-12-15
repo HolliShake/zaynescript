@@ -4,15 +4,6 @@
 #define VALUE_H
 
 /**
- * @brief Creates a new value of the specified type
- * 
- * @param interpreter Pointer to the interpreter instance
- * @param type The type of value to create
- * @return Pointer to newly allocated Value structure
- */
-Value* CreateValue(Interpreter* interpreter, ValueType type);
-
-/**
  * @brief Creates a new 32-bit integer value
  * 
  * @param interpreter Pointer to the interpreter instance
@@ -46,7 +37,7 @@ Value* NewStrValue(Interpreter* interpreter, String value);
  * @param value The boolean value to store
  * @return Pointer to newly allocated Value structure containing the boolean
  */
-Value* NewBoolValue(Interpreter* interpreter, bool value);
+Value* NewBoolValue(Interpreter* interpreter, int value);
 
 /**
  * @brief Creates a new null value
@@ -55,5 +46,13 @@ Value* NewBoolValue(Interpreter* interpreter, bool value);
  * @return Pointer to newly allocated Value structure representing null
  */
 Value* NewNullValue(Interpreter* interpreter);
+
+/**
+ * @brief Converts a value to a string representation
+ * 
+ * @param value Pointer to the Value to convert
+ * @return String representation of the value
+ */
+String ValueToString(Value* value);
 
 #endif

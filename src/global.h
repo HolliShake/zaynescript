@@ -16,6 +16,8 @@
 #include <malloc.h>
 #endif
 
+#define GC_THRESHOLD 1000
+
 /**
  * @typedef String
  * @brief Type alias for C-style null-terminated character strings
@@ -260,7 +262,19 @@ typedef struct value_struct {
     Value* False;
     Value* Null;
     Value* GcRoot;
+    int    Allocated;
 } Interpreter;
+
+/**
+ * @typedef NativeFunction
+ * @brief Function pointer type for native functions
+ * 
+ * @param interpreter Pointer to the interpreter instance
+ * @param argc Number of arguments passed to the function
+ * @param arguments Array of pointers to the arguments passed to the function
+ * @return Pointer to the result of the function
+ */
+typedef Value* (*NativeFunction)(Interpreter* interpreter, int argc, Value** arguments);
 
 /**
  * @struct user_function_struct
