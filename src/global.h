@@ -16,18 +16,31 @@
 #include <malloc.h>
 #endif
 
-// String: Type alias for C-style null-terminated character strings
+/**
+ * @typedef String
+ * @brief Type alias for C-style null-terminated character strings
+ */
 typedef char* String;
 
-// Rune: Represents a Unicode code point (UTF-32 character)
+/**
+ * @typedef Rune
+ * @brief Represents a Unicode code point (UTF-32 character)
+ */
 typedef int Rune;
 
-// Position: Tracks the location of a token in source code
-// Fields:
-//   lineStart - Starting line number (1-indexed)
-//   lineEnded - Ending line number (1-indexed)
-//   colmStart - Starting column number (1-indexed)
-//   colmEnded - Ending column number (1-indexed)
+/**
+ * @struct position_struct
+ * @brief Tracks the location of a token in source code
+ * 
+ * @var position_struct::lineStart
+ * Starting line number (1-indexed)
+ * @var position_struct::lineEnded
+ * Ending line number (1-indexed)
+ * @var position_struct::colmStart
+ * Starting column number (1-indexed)
+ * @var position_struct::colmEnded
+ * Ending column number (1-indexed)
+ */
 typedef struct position_struct {
     int lineStart;
     int lineEnded;
@@ -35,15 +48,25 @@ typedef struct position_struct {
     int colmEnded;
 } Position;
 
-// TokenType: Enumeration of all possible token types in the language
-// Values:
-//   TK_KEY - Keyword token (e.g., if, while, fn)
-//   TK_SYM - Symbol/operator token (e.g., +, ==, &&)
-//   TK_IDN - Identifier token (variable/function names)
-//   TK_INT - Integer literal token
-//   TK_NUM - Floating-point number literal token
-//   TK_STR - String literal token
-//   TK_EOF - End-of-file marker
+/**
+ * @enum token_type_enum
+ * @brief Enumeration of all possible token types in the language
+ * 
+ * @var token_type_enum::TK_KEY
+ * Keyword token (e.g., if, while, fn)
+ * @var token_type_enum::TK_SYM
+ * Symbol/operator token (e.g., +, ==, &&)
+ * @var token_type_enum::TK_IDN
+ * Identifier token (variable/function names)
+ * @var token_type_enum::TK_INT
+ * Integer literal token
+ * @var token_type_enum::TK_NUM
+ * Floating-point number literal token
+ * @var token_type_enum::TK_STR
+ * String literal token
+ * @var token_type_enum::TK_EOF
+ * End-of-file marker
+ */
 typedef enum token_type_enum {
     TK_KEY,
     TK_SYM,
@@ -54,48 +77,68 @@ typedef enum token_type_enum {
     TK_EOF,
 } TokenType;
 
-// Token: Represents a single lexical token from source code
-// Fields:
-//   Type     - The type of token (keyword, symbol, identifier, etc.)
-//   Value    - String representation of the token's value
-//   Position - Source code location information for the token
+/**
+ * @struct token_struct
+ * @brief Represents a single lexical token from source code
+ * 
+ * @var token_struct::Type
+ * The type of token (keyword, symbol, identifier, etc.)
+ * @var token_struct::Value
+ * String representation of the token's value
+ * @var token_struct::Position
+ * Source code location information for the token
+ */
 typedef struct token_struct {
     TokenType Type;
     char*     Value;
     Position  Position;
 } Token;
 
-// Tokenizer: State machine for lexical analysis of source code
-// Fields:
-//   Path - File path of the source being tokenized
-//   Data - Array of Unicode runes representing the source code
-//   Line - Current line number (1-indexed)
-//   Colm - Current column number (1-indexed)
-//   Indx - Current index in the Data array
-typedef struct tokenizer_struct {
+/**
+ * @struct lexer_struct
+ * @brief State machine for lexical analysis of source code
+ * 
+ * @var lexer_struct::Path
+ * File path of the source being tokenized
+ * @var lexer_struct::Data
+ * Array of Unicode runes representing the source code
+ * @var lexer_struct::Line
+ * Current line number (1-indexed)
+ * @var lexer_struct::Colm
+ * Current column number (1-indexed)
+ * @var lexer_struct::Indx
+ * Current index in the Data array
+ */
+typedef struct lexer_struct {
     String Path;
     Rune*  Data;
     int    Line;
     int    Colm;
     int    Indx;
-} Tokenizer;
+} Lexer;
 
-// Parser: State machine for syntactic analysis of tokenized source code
-// Fields:
-//   Tokenizer - Pointer to the tokenizer providing the token stream
-//   Next      - The next token to be processed (lookahead token)
+/**
+ * @struct parser_struct
+ * @brief State machine for syntactic analysis of tokenized source code
+ * 
+ * @var parser_struct::Lexer
+ * Pointer to the lexer providing the token stream
+ * @var parser_struct::Next
+ * The next token to be processed (lookahead token)
+ */
 typedef struct parser_struct {
-    Tokenizer* Tokenizer;
+    Lexer* Lexer;
     Token      Next;
 } Parser;
 
+/**
+ * @enum ast_type_enum
+ * @brief Enumeration of all possible AST node types
+ */
 typedef enum ast_type_enum {
     AST_PROGRAM,
     AST_EXPR,
-    AST_STMT,
-    AST_DECL,
-    AST_TYPE,
-    AST_FUNC,
+    AST_FUNCTION,
     AST_CLASS,
     // 
     AST_NAME,
@@ -108,17 +151,44 @@ typedef enum ast_type_enum {
     AST_MUL,
     AST_DIV,
     AST_MOD,
+    AST_ADD,
+    AST_SUB,
+    AST_LSHFT,
+    AST_RSHFT,
+    AST_LT,
+    AST_LTE,
+    AST_GT,
+    AST_GTE,
+    AST_EQ,
+    AST_NE,
+    AST_AND,
+    AST_OR,
+    AST_XOR,
+    AST_LAND,
+    AST_LOR
 } AstType;
 
-// Ast: Abstract Syntax Tree node representing parsed source code structure
-// Fields:
-//   Type     - The type of AST node (program, expression, statement, etc.)
-//   Position - Source code location information for this node
-//   Value    - String value associated with this node (e.g., identifier name, literal value)
-//   A        - First child node pointer (usage varies by node type)
-//   B        - Second child node pointer (usage varies by node type)
-//   C        - Third child node pointer (usage varies by node type)
-//   D        - Fourth child node pointer (usage varies by node type)
+/**
+ * @struct ast_struct
+ * @brief Abstract Syntax Tree node representing parsed source code structure
+ * 
+ * @var ast_struct::Type
+ * The type of AST node (program, expression, statement, etc.)
+ * @var ast_struct::Position
+ * Source code location information for this node
+ * @var ast_struct::Value
+ * String value associated with this node (e.g., identifier name, literal value)
+ * @var ast_struct::A
+ * First child node pointer (usage varies by node type)
+ * @var ast_struct::B
+ * Second child node pointer (usage varies by node type)
+ * @var ast_struct::C
+ * Third child node pointer (usage varies by node type)
+ * @var ast_struct::D
+ * Fourth child node pointer (usage varies by node type)
+ * @var ast_struct::Next
+ * Pointer to next AST node in a linked list
+ */
 typedef struct ast_struct Ast;
 typedef struct ast_struct {
     AstType  Type;
@@ -131,41 +201,157 @@ typedef struct ast_struct {
     Ast*     Next;
 } Ast;
 
-// Allocate: Wrapper macro for memory allocation with file/line tracking
-// Usage: ptr = Allocate(size_in_bytes)
-// Returns: Pointer to allocated memory, or NULL on failure
+/**
+ * @enum value_type_enum
+ * @brief Enumeration of all possible value types in the interpreter
+ */
+typedef enum value_type_enum {
+    VT_INT,
+    VT_NUM,
+    VT_STR,
+    VT_BOOL,
+    VT_NULL,
+    VT_ARRAY,
+    VT_OBJECT,
+    VT_CLASS,
+    VT_USER_FUNCTION,
+    VT_NATV_FUNCTION
+} ValueType;
+
+/**
+ * @struct value_struct
+ * @brief Runtime value structure for the interpreter
+ * 
+ * @var value_struct::Type
+ * The type of value (integer, number, string, boolean, null, user function, native function, class)
+ * @var value_struct::Value
+ * Union holding the actual value data
+ * @var value_struct::Next
+ * Pointer to next Value in garbage collector's linked list
+ * @var value_struct::Marked
+ * Garbage collection mark flag (0 = unmarked, non-zero = marked)
+ */
+typedef struct value_struct Value;
+typedef struct value_struct {
+    ValueType  Type;
+    union value_union {
+        int    I32;    /**< 32-bit integer value */
+        double Num;    /**< Double-precision floating point number */
+        void*  Opaque; /**< Pointer to heap-allocated data (String, Function, Class, etc.) */
+    } Value;
+    // GC
+    Value* Next;
+    int    Marked;
+} Value;
+
+/**
+ * @struct interpreter_struct
+ * @brief Main interpreter state structure
+ * 
+ * @var interpreter_struct::True
+ * Pointer to the singleton boolean true value
+ * @var interpreter_struct::False
+ * Pointer to the singleton boolean false value
+ * @var interpreter_struct::Null
+ * Pointer to the singleton null value
+ */
+ typedef struct interpreter_struct {
+    Value* True;
+    Value* False;
+    Value* Null;
+    Value* GcRoot;
+} Interpreter;
+
+/**
+ * @struct user_function_struct
+ * @brief Represents a user-defined function in the interpreter
+ * 
+ * @var user_function_struct::Path
+ * File path of the source code for the function
+ * @var user_function_struct::Data
+ * Array of Unicode runes representing the source code for the function
+ * @var user_function_struct::Function
+ * Pointer to the AST node representing the function definition
+ * @var user_function_struct::Argc
+ * Number of arguments the function takes
+ */
+typedef struct user_function_struct {
+    String Path;
+    Rune*  Data;
+    Ast*   Function;
+    int    Argc;
+} UserFunction;
+
+/**
+ * @def Allocate
+ * @brief Wrapper macro for memory allocation with file/line tracking
+ * 
+ * @param size Number of bytes to allocate
+ * @return Pointer to allocated memory, or NULL on failure
+ */
 #define Allocate(size) _Allocate(__FILE__, __LINE__, size)
 
-// _Allocate: Internal allocation function called by Allocate macro
-// Parameters:
-//   file - Source file name where allocation was requested
-//   line - Line number where allocation was requested
-//   size - Number of bytes to allocate
-// Returns: Pointer to allocated memory, or NULL on failure
+/**
+ * @brief Internal allocation function called by Allocate macro
+ * 
+ * @param file Source file name where allocation was requested
+ * @param line Line number where allocation was requested
+ * @param size Number of bytes to allocate
+ * @return Pointer to allocated memory, or NULL on failure
+ */
 void* _Allocate(String file, int line, size_t size);
 
-// StringToRunes: Converts a C string to an array of Unicode runes
-// Parameters:
-//   str - Null-terminated C string to convert
-// Returns: Dynamically allocated array of Rune values, or NULL on failure
+/**
+ * @brief Converts a C string to an array of Unicode runes
+ * 
+ * @param str Null-terminated C string to convert
+ * @return Dynamically allocated array of Rune values, or NULL on failure
+ */
 Rune* StringToRunes(String str);
 
-// GetErrorLine: Generates a formatted error message with source code context
-// Parameters:
-//   path     - File path where the error occurred
-//   runes    - Array of Unicode runes representing the entire source file
-//   position - Position information (line and column) of the error
-//   message  - Error message to display
-// Returns: Dynamically allocated formatted error string with line numbers and context
+/**
+ * @brief Coerces a value to a 32-bit integer
+ * 
+ * @param value Pointer to the Value to coerce
+ * @return The value converted to a 32-bit integer
+ */
+int CoerceToI32(Value* value);
+
+/**
+ * @brief Coerces a value to a 64-bit integer
+ * 
+ * @param value Pointer to the Value to coerce
+ * @return The value converted to a 64-bit integer (long)
+ */
+long CoerceToI64(Value* value);
+
+/**
+ * @brief Coerces a value to a double-precision floating point number
+ * 
+ * @param value Pointer to the Value to coerce
+ * @return The value converted to a double
+ */
+double CoerceToNum(Value* value);
+
+/**
+ * @brief Generates a formatted error message with source code context
+ * 
+ * @param path File path where the error occurred
+ * @param runes Array of Unicode runes representing the entire source file
+ * @param position Position information (line and column) of the error
+ * @param message Error message to display
+ * @return Dynamically allocated formatted error string with line numbers and context
+ */
 String GetErrorLine(String path, Rune* runes, Position position, String message);
 
-// ThrowError: Throws an error with formatted message and source code context
-// Parameters:
-//   path     - File path where the error occurred
-//   runes    - Array of Unicode runes representing the entire source file
-//   position - Position information (line and column) of the error
-//   message  - Error message to display
-// Returns: void
+/**
+ * @brief Throws an error with formatted message and source code context
+ * 
+ * @param path File path where the error occurred
+ * @param runes Array of Unicode runes representing the entire source file
+ * @param position Position information (line and column) of the error
+ * @param message Error message to display
+ */
 void ThrowError(String path, Rune* runes, Position position, String message);
 
 #endif

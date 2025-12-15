@@ -33,6 +33,39 @@ Rune* StringToRunes(String str) {
     return runes;
 }
 
+int CoerceToI32(Value* value) {
+    switch (value->Type) {
+        case VT_INT:
+            return value->Value.I32;
+        case VT_NUM:
+            return (int) value->Value.Num;
+        default:
+            return 0;
+    }
+}
+
+long CoerceToI64(Value* value) {
+    switch (value->Type) {
+        case VT_INT:
+            return (long) value->Value.I32;
+        case VT_NUM:
+            return (long) value->Value.Num;
+        default:
+            return 0;
+    }
+}
+
+double CoerceToNum(Value* value) {
+    switch (value->Type) {
+        case VT_INT:
+            return (double) value->Value.I32;
+        case VT_NUM:
+            return (double) value->Value.Num;
+        default:
+            return 0.0;
+    }
+}
+
 String GetErrorLine(String path, Rune* runes, Position position, String message) {
     if (runes == NULL) {
         return NULL;

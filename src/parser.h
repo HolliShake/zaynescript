@@ -1,29 +1,33 @@
-#include "./ast.h"
+#include "./astnode.h"
 #include "./global.h"
 #include "./keyword.h"
 #include "./position.h"
-#include "./tokenizer.h"
-
+#include "./lexer.h"
 
 #ifndef PARSER_H
 #define PARSER_H
 
-// CreateParser: Initializes a new parser instance with the given tokenizer
-// Parameters:
-//   tokenizer - Pointer to the tokenizer that will provide the token stream
-// Returns: Pointer to newly allocated Parser structure
-Parser* CreateParser(Tokenizer* tokenizer);
+/**
+ * @brief Initializes a new parser instance with the given lexer
+ * 
+ * @param lexer Pointer to the lexer that will provide the token stream
+ * @return Parser* Pointer to newly allocated Parser structure
+ */
+Parser* CreateParser(Lexer* lexer);
 
-// Parse: Parses the token stream and constructs an Abstract Syntax Tree
-// Parameters:
-//   parser - Pointer to the parser instance to use for parsing
-// Returns: Pointer to the root Ast node representing the parsed program
+/**
+ * @brief Parses the token stream and constructs an Abstract Syntax Tree
+ * 
+ * @param parser Pointer to the parser instance to use for parsing
+ * @return Ast* Pointer to the root Ast node representing the parsed program
+ */
 Ast* Parse(Parser* parser);
 
-// FreeParser: Frees all memory associated with a parser instance
-// Parameters:
-//   parser - Pointer to the parser instance to be freed
-// Returns: void
+/**
+ * @brief Frees all memory associated with a parser instance
+ * 
+ * @param parser Pointer to the parser instance to be freed
+ */
 void FreeParser(Parser* parser);
 
 

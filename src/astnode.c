@@ -1,4 +1,4 @@
-#include "./ast.h"
+#include "./astnode.h"
 
 
 static Ast* InitAst(AstType type, Position position) {
@@ -54,6 +54,14 @@ Ast* AstBinary(AstType type, Ast* lhs, Ast* rhs, Position position) {
     Ast* ast = InitAst(type, position);
     ast->A = lhs;
     ast->B = rhs;
+    return ast;
+}
+
+Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, Position position) {
+    Ast* ast = InitAst(AST_FUNCTION, position);
+    ast->A   = fnName;
+    ast->B   = parameters;
+    ast->C   = body;
     return ast;
 }
 
