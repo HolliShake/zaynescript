@@ -454,11 +454,29 @@ static Ast* _Function(Parser* parser) {
     );
 }
 
+static Ast* _ExpressionStatement(Parser* parser) {
+    Position start  = parser->Next.Position, ended = start;
+    Ast* expression = _Expression(parser);
+    if (expression == NULL) {
+        while (CHECKTV(";")) {
+            ended = parser->Next.Position;
+            ACCEPTV_FREE(";");
+        }
+    } else {
+        ended = parser->Next.Position;
+        ACCEPTV_FREE(";");
+    }
+    return AstExpressionStatement(
+        expression, 
+        MergePositions(start, ended)
+    );
+}
+
 static Ast* _Statement(Parser* parser) {
     if (CHECKTV(KEY_FN)) {
         return _Function(parser);
     }
-    return _Expression(parser);
+    return _ExpressionStatement(parser);
 }
 
 static Ast* _ListOfStatements(Parser* parser) {

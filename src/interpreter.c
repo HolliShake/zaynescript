@@ -10,12 +10,18 @@ Interpreter* CreateInterpreter() {
     return interpreter;
 }
 
+static Value* _Eval(Interpreter* interpreter, Ast* expr) {
+
+}
+
 static void _Visit(
     Interpreter* interpreter, 
     UserFunction* userFunction, 
     Ast* node
 ) {
-
+    if (node->Type == AST_EXPRESSION_STATEMENT) {
+        _Eval(interpreter, node->A);
+    }
 }
 
 static void _CallFunction(

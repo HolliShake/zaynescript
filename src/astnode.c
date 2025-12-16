@@ -57,6 +57,12 @@ Ast* AstBinary(AstType type, Ast* lhs, Ast* rhs, Position position) {
     return ast;
 }
 
+Ast* AstExpressionStatement(Ast* expression, Position position) {
+    Ast* ast = InitAst(AST_EXPRESSION_STATEMENT, position);
+    ast->A = expression;
+    return ast;
+}
+
 Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, Position position) {
     Ast* ast = InitAst(AST_FUNCTION, position);
     ast->A   = fnName;

@@ -142,6 +142,7 @@ typedef enum ast_type_enum {
     AST_EXPR,
     AST_FUNCTION,
     AST_CLASS,
+    AST_EXPRESSION_STATEMENT,
     // 
     AST_NAME,
     AST_INTEGER,
@@ -257,24 +258,13 @@ typedef struct value_struct {
  * @var interpreter_struct::Null
  * Pointer to the singleton null value
  */
- typedef struct interpreter_struct {
+typedef struct interpreter_struct {
     Value* True;
     Value* False;
     Value* Null;
     Value* GcRoot;
     int    Allocated;
 } Interpreter;
-
-/**
- * @typedef NativeFunction
- * @brief Function pointer type for native functions
- * 
- * @param interpreter Pointer to the interpreter instance
- * @param argc Number of arguments passed to the function
- * @param arguments Array of pointers to the arguments passed to the function
- * @return Pointer to the result of the function
- */
-typedef Value* (*NativeFunction)(Interpreter* interpreter, int argc, Value** arguments);
 
 /**
  * @struct user_function_struct
@@ -295,6 +285,63 @@ typedef struct user_function_struct {
     Ast*   Function;
     int    Argc;
 } UserFunction;
+
+/**
+ * @brief Forward declaration of HashNode structure
+ */
+typedef struct hashnode_struct HashNode;
+
+/**
+ * @brief Node structure for hash map entries
+ * @brief Represents a single key-value pair in the hash map with chaining support
+ * Represents a single key-value pair in the hash map with chaining support
+ * for collision resolution.
+ */
+typedef struct hashnode_struct {
+    String    Key;
+    void*     Val;
+    HashNode* Next;
+ } HashNode;
+
+ /**
+  * @brief Forward declaration of ExceptionHandler structure
+  */
+typedef struct exception_handler_struct ExceptionHandler;
+
+/**
+ * @typedef ExceptionCallback
+ * @brief Function pointer type for exception callbacks
+ * 
+ * @param exception Pointer to the exception value
+ */
+typedef void (*ExceptionCallback)(Value* exception);
+
+/**
+ * @struct exception_handler_struct
+ * @brief Represents an exception handler in the interpreter
+ * @brief Represents an exception handler in the interpreter
+ * @var exception_handler_struct::Catched
+ * Flag indicating if an exception has been caught
+ * @var exception_handler_struct::Exception
+ * Pointer to the exception value
+ */
+typedef struct exception_handler_struct {
+    ExceptionHandler* Parent;
+    int               Catched;
+    Value*            Exception;
+    ExceptionCallback Callback;
+} ExceptionHandler;
+
+/**
+ * @typedef NativeFunction
+ * @brief Function pointer type for native functions
+ * 
+ * @param interpreter Pointer to the interpreter instance
+ * @param argc Number of arguments passed to the function
+ * @param arguments Array of pointers to the arguments passed to the function
+ * @return Pointer to the result of the function
+ */
+typedef Value* (*NativeFunction)(Interpreter* interpreter, int argc, Value** arguments);
 
 /**
  * @def Allocate

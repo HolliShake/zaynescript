@@ -36,8 +36,8 @@ static void _Rehash(HashMap* hashmap) {
     
     // Initialize new buckets
     for (size_t i = 0; i < hashmap->size; i++) {
-        hashmap->buckets[i].Key = NULL;
-        hashmap->buckets[i].Val = NULL;
+        hashmap->buckets[i].Key  = NULL;
+        hashmap->buckets[i].Val  = NULL;
         hashmap->buckets[i].Next = NULL;
     }
     

@@ -68,6 +68,15 @@ Ast* AstNull(Position position);
 Ast* AstBinary(AstType type, Ast* lhs, Ast* rhs, Position position);
 
 /**
+ * AstExpressionStatement - Creates an AST node representing an expression statement
+ * @expression: Pointer to the expression AST node
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_EXPRESSION_STATEMENT node
+ */
+Ast* AstExpressionStatement(Ast* expression, Position position);
+
+/**
  * AstFunction - Creates an AST node representing a function definition
  * @fnName: Pointer to AST node containing the function name
  * @parameters: Pointer to AST node containing the function parameters

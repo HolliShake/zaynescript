@@ -4,23 +4,6 @@
 #define HASHMAP_H
 
 /**
- * @brief Forward declaration of HashNode structure
- */
-typedef struct hashnode_struct HashNode;
-
-/**
- * @brief Node structure for hash map entries
- * 
- * Represents a single key-value pair in the hash map with chaining support
- * for collision resolution.
- */
-typedef struct hashnode_struct {
-    String    Key;  /**< Key string for the hash map entry */
-    void*     Val;  /**< Pointer to the value associated with the key */
-    HashNode* Next; /**< Pointer to the next node in case of collision */
-} HashNode;
-
-/**
  * @brief Hash map structure for key-value storage
  * 
  * Implements a hash table with separate chaining for collision resolution.
