@@ -10,22 +10,31 @@ Interpreter* CreateInterpreter() {
     return interpreter;
 }
 
-static Value* _Eval(Interpreter* interpreter, Ast* expr) {
+static Value* _Eval(Interpreter* interpreter, ExceptionHandler* exceptionHandler, Ast* expr) {
 
 }
 
 static void _Visit(
     Interpreter* interpreter, 
+    ExceptionHandler* exceptionHandler,
     UserFunction* userFunction, 
     Ast* node
 ) {
     if (node->Type == AST_EXPRESSION_STATEMENT) {
-        _Eval(interpreter, node->A);
+        _Eval(interpreter, exceptionHandler, node->A);
+    } else {
+        ThrowError(
+            userFunction->Path,
+            userFunction->Data,
+            node->Position,
+            "unexpected AST node type"
+        );
     }
 }
 
-static void _CallFunction(
+static void _DoCallFunction(
     Interpreter* interpreter, 
+    ExceptionHandler* exceptionHandler,
     UserFunction* userFunction, 
     int argc, 
     Value** arguments
@@ -51,12 +60,12 @@ static void _CallFunction(
         );
     } else {
         for (int i = 0; i < argc; i++) {
-            arguments[i] = arguments[i];
+            Value* arg = arguments[i];
         }
     }
 
     while (body != NULL) {
-        _Visit(interpreter, userFunction, body);
+        _Visit(interpreter, exceptionHandler, userFunction, body);
         body = body->Next;
     }
 }
@@ -68,5 +77,6 @@ void Interpret(Interpreter* interpreter, Parser* parser) {
         parser->Lexer->Data,
         program, 0 // 0 arguments
     );
-    _CallFunction(interpreter, userFunction, 0, NULL);
+    ExceptionHandler* exceptionHandler = NewExceptionHandler();
+    _DoCallFunction(interpreter, exceptionHandler, userFunction, 0, NULL);
 }
