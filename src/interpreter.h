@@ -1,5 +1,8 @@
+#include "./environment.h"
 #include "./function.h"
+#include "./gc.h"
 #include "./global.h"
+#include "./operation.h"
 #include "./parser.h"
 #include "./value.h"
 
@@ -17,7 +20,8 @@ Interpreter* CreateInterpreter();
  * @brief Executes the parsed program using the given interpreter
  * 
  * @param interpreter Pointer to the interpreter instance
+ * @param ufValue Pointer to the Value containing the UserFunction to execute
  */
-void Interpret(Interpreter* interpreter);
+void Interpret(Interpreter* interpreter, Value* ufValue/*UserFunction*/);
 
 #endif

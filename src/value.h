@@ -51,6 +51,24 @@ Value* NewBoolValue(Interpreter* interpreter, int value);
 Value* NewNullValue(Interpreter* interpreter);
 
 /**
+ * @brief Creates a new user function value
+ * 
+ * @param interpreter Pointer to the interpreter instance
+ * @param userFunction Pointer to the UserFunction structure to wrap
+ * @return Pointer to newly allocated Value structure containing the user function
+ */
+ Value* NewUserFunctionValue(Interpreter* interpreter, UserFunction* userFunction);
+
+/**
+ * @brief Creates a new environment value
+ * 
+ * @param interpreter Pointer to the interpreter instance
+ * @param environment Pointer to the Environment structure to wrap
+ * @return Pointer to newly allocated Value structure containing the environment
+ */
+Value* NewEnvironmentValue(Interpreter* interpreter, Environment* environment);
+
+/**
  * @brief Converts a value to a string representation
  * 
  * @param value Pointer to the Value to convert
@@ -59,43 +77,51 @@ Value* NewNullValue(Interpreter* interpreter);
 String ValueToString(Value* value);
 
 /**
+ * @brief Converts a value to a boolean representation
+ * 
+ * @param value Pointer to the Value to convert
+ * @return Boolean representation of the value
+ */
+bool ValueToBool(Value* value);
+
+/**
  * @brief Checks if a value is an integer type
  * 
  * @param value Pointer to the Value to check
- * @return Non-zero if the value is an integer, 0 otherwise
+ * @return true if the value is an integer, false otherwise
  */
-int ValueIsInt(Value* value);
+bool ValueIsInt(Value* value);
 
 /**
  * @brief Checks if a value is a numeric (double) type
  * 
  * @param value Pointer to the Value to check
- * @return Non-zero if the value is a number, 0 otherwise
+ * @return true if the value is a number, false otherwise
  */
-int ValueIsNum(Value* value);
+bool ValueIsNum(Value* value);
 
 /**
  * @brief Checks if a value is a string type
  * 
  * @param value Pointer to the Value to check
- * @return Non-zero if the value is a string, 0 otherwise
+ * @return true if the value is a string, false otherwise
  */
-int ValueIsStr(Value* value);
+bool ValueIsStr(Value* value);
 
 /**
  * @brief Checks if a value is a boolean type
  * 
  * @param value Pointer to the Value to check
- * @return Non-zero if the value is a boolean, 0 otherwise
+ * @return true if the value is a boolean, false otherwise
  */
-int ValueIsBool(Value* value);
+bool ValueIsBool(Value* value);
 
 /**
  * @brief Checks if a value is null
  * 
  * @param value Pointer to the Value to check
- * @return Non-zero if the value is null, 0 otherwise
+ * @return true if the value is null, false otherwise
  */
-int ValueIsNull(Value* value);
+bool ValueIsNull(Value* value);
 
 #endif

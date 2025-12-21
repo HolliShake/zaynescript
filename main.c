@@ -44,7 +44,9 @@ int main() {
     Parser* parser = CreateParser(lexer);
 
     Compiler* compiler = CreateCompiler(interpreter, parser);
-    Compile(compiler);
+    Value* compiled = Compile(compiler);
+
+    Interpret(interpreter, compiled);
 
 
     FreeLexer(lexer);

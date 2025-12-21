@@ -41,7 +41,7 @@ Ast* AstString(String value, Position position) {
 
 Ast* AstBool(bool value, Position position) {
     Ast* ast = InitAst(AST_BOOL, position);
-    ast->Value = value ? "true" : "false";
+    ast->Value = AllocateString(value ? "true" : "false");
     return ast;
 }
 
@@ -50,10 +50,37 @@ Ast* AstNull(Position position) {
     return ast;
 }
 
+Ast* AstMember(Ast* object, Ast* member, Position position) {
+    Ast* ast = InitAst(AST_MEMBER, position);
+    ast->A = object;
+    ast->B = member;
+    return ast;
+}
+
+Ast* AstIndex(Ast* object, Ast* index, Position position) {
+    Ast* ast = InitAst(AST_INDEX, position);
+    ast->A = object;
+    ast->B = index;
+    return ast;
+}
+
+Ast* AstCall(Ast* object, Ast* arguments, Position position) {
+    Ast* ast = InitAst(AST_CALL, position);
+    ast->A = object;
+    ast->B = arguments;
+    return ast;
+}
+
 Ast* AstBinary(AstType type, Ast* lhs, Ast* rhs, Position position) {
     Ast* ast = InitAst(type, position);
     ast->A = lhs;
     ast->B = rhs;
+    return ast;
+}
+
+Ast* AstReturn(Ast* expression, Position position) {
+    Ast* ast = InitAst(AST_RETURN, position);
+    ast->A = expression;
     return ast;
 }
 
@@ -71,8 +98,41 @@ Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, Position position) {
     return ast;
 }
 
+Ast* AstIf(Ast* condition, Ast* thenBranch, Ast* elseBranch, Position position) {
+    Ast* ast = InitAst(AST_IF, position);
+    ast->A = condition;
+    ast->B = thenBranch;
+    ast->C = elseBranch;
+    return ast;
+}
+
 Ast* AstProgram(Ast* body, Position position) {
     Ast* ast = InitAst(AST_PROGRAM, position);
     ast->A   = body;
     return ast;
+}
+
+void FreeAst(Ast* ast) {
+    if (ast == NULL) {
+        return;
+    }
+    if (ast->A != NULL) {
+        FreeAst(ast->A);
+    }
+    if (ast->B != NULL) {
+        FreeAst(ast->B);
+    }
+    if (ast->C != NULL) {
+        FreeAst(ast->C);
+    }
+    if (ast->D != NULL) {
+        FreeAst(ast->D);
+    }
+    if (ast->Next != NULL) {
+        FreeAst(ast->Next);
+    }
+    if (ast->Value != NULL) {
+        free(ast->Value);
+    }
+    free(ast);
 }

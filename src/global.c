@@ -111,8 +111,8 @@ String GetErrorLine(String path, Rune* runes, Position position, String message)
     }
     
     // Calculate the range of lines to display (0-based internally)
-    int startLine = (position.lineStart - PADDING > 1) ? position.lineStart - PADDING : 1;
-    int endLine = (position.lineStart + PADDING < lineCount) ? position.lineStart + PADDING : lineCount;
+    int startLine = (position.LineStart - PADDING > 1) ? position.LineStart - PADDING : 1;
+    int endLine = (position.LineStart + PADDING < lineCount) ? position.LineStart + PADDING : lineCount;
     
     // Build the error message string
     size_t bufferSize = 4096;
@@ -122,7 +122,7 @@ String GetErrorLine(String path, Rune* runes, Position position, String message)
     // Add error header
     currentPos += snprintf(result + currentPos, bufferSize - currentPos,
                           "Error in [%s:%d:%d] %s\n\n",
-                          path, position.lineStart, position.colmStart, message);
+                          path, position.LineStart, position.ColmStart, message);
     
     // Display each line in the range
     for (int line = startLine; line <= endLine; line++) {
@@ -170,14 +170,14 @@ String GetErrorLine(String path, Rune* runes, Position position, String message)
                               "%4d | %s\n", line, lineBuffer);
         
         // Add error highlighting if this is the error line
-        if (line == position.lineStart) {
+        if (line == position.LineStart) {
             // Add error indicator line
             currentPos += snprintf(result + currentPos, bufferSize - currentPos,
                                   "%4s | ", "");
             
             // Convert to 0-based indexing
-            int colStart = position.colmStart - 1;
-            int colEnd = position.colmEnded - 1;
+            int colStart = position.ColmStart - 1;
+            int colEnd = position.ColmEnded - 1;
             
             // Bounds checking
             if (colStart < 0) colStart = 0;

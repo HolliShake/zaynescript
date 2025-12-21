@@ -168,4 +168,13 @@ int DoOr(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
  */
 int DoXor(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
 
+
+/**
+ * Loads a function from the interpreter's functions array.
+ * @param interp The interpreter instance
+ * @param offset The offset of the function in the functions array
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ */
+void DoLoadFunction(Interpreter* interp, int offset, Value** out);
+
 #endif

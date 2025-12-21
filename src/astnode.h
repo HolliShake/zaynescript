@@ -57,6 +57,36 @@ Ast* AstBool(bool value, Position position);
 Ast* AstNull(Position position);
 
 /**
+ * AstMember - Creates an AST node representing a member access
+ * @object: Pointer to the object AST node
+ * @member: Pointer to the member AST node
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_MEMBER node
+ */
+Ast* AstMember(Ast* object, Ast* member, Position position);
+
+/**
+ * AstIndex - Creates an AST node representing an index access
+ * @object: Pointer to the object AST node
+ * @index: Pointer to the index AST node
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_INDEX node
+ */
+Ast* AstIndex(Ast* object, Ast* index, Position position);
+
+/**
+ * AstCall - Creates an AST node representing a function call
+ * @object: Pointer to the object AST node
+ * @arguments: Pointer to the arguments AST node
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_CALL node
+ */
+Ast* AstCall(Ast* object, Ast* arguments, Position position);
+
+/**
  * AstBinary - Creates an AST node representing a binary operation
  * @type: The type of binary operation (e.g., addition, multiplication)
  * @lhs: Pointer to the left-hand side operand AST node
@@ -66,6 +96,15 @@ Ast* AstNull(Position position);
  * Return: Pointer to newly allocated AST_BINARY node
  */
 Ast* AstBinary(AstType type, Ast* lhs, Ast* rhs, Position position);
+
+/**
+ * AstReturn - Creates an AST node representing a return statement
+ * @expression: Pointer to the expression AST node
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_RETURN node
+ */
+Ast* AstReturn(Ast* expression, Position position);
 
 /**
  * AstExpressionStatement - Creates an AST node representing an expression statement
@@ -88,6 +127,17 @@ Ast* AstExpressionStatement(Ast* expression, Position position);
 Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, Position position);
 
 /**
+ * AstIf - Creates an AST node representing an if statement
+ * @condition: Pointer to the condition AST node
+ * @thenBranch: Pointer to the then branch AST node
+ * @elseBranch: Pointer to the else branch AST node
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_IF node
+ */
+Ast* AstIf(Ast* condition, Ast* thenBranch, Ast* elseBranch, Position position);
+
+/**
  * AstProgram - Creates an AST node representing the root program node
  * @children: Pointer to child AST nodes (statements/declarations)
  * @position: Source code location information
@@ -95,5 +145,11 @@ Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, Position position);
  * Return: Pointer to newly allocated AST_PROGRAM node
  */
 Ast* AstProgram(Ast* children, Position position);
+
+/**
+ * FreeAst - Frees an AST node and all its children
+ * @ast: Pointer to the AST node to free
+ */
+void FreeAst(Ast* ast);
 
 #endif

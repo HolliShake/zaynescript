@@ -78,7 +78,7 @@ static Token TokenizeIdentifier(Lexer* lexer) {
         Advance(lexer);
     }
     
-    pos.colmEnded = lexer->Colm;
+    pos.ColmEnded = lexer->Colm;
     char* value = RunesToString(lexer->Data, start, lexer->Indx);
     
     // Check for keywords
@@ -112,7 +112,7 @@ static Token TokenizeNumber(Lexer* lexer) {
         Advance(lexer);
     }
     
-    pos.colmEnded = lexer->Colm;
+    pos.ColmEnded = lexer->Colm;
     char* value = RunesToString(lexer->Data, start, lexer->Indx);
     
     return MakeToken(hasDecimal ? TK_NUM : TK_INT, value, pos);
@@ -143,8 +143,8 @@ static Token TokenizeString(Lexer* lexer) {
         Advance(lexer); // Skip closing quote
     }
     
-    pos.lineEnded = lexer->Line;
-    pos.colmEnded = lexer->Colm;
+    pos.LineEnded = lexer->Line;
+    pos.ColmEnded = lexer->Colm;
     
     return MakeToken(TK_STR, value, pos);
 }
@@ -190,7 +190,7 @@ static Token TokenizeSymbol(Lexer* lexer) {
         Advance(lexer);
     }
     
-    pos.colmEnded = lexer->Colm;
+    pos.ColmEnded = lexer->Colm;
     char* value = RunesToString(lexer->Data, start, lexer->Indx);
     
     return MakeToken(TK_SYM, value, pos);

@@ -19,26 +19,26 @@ static void _Rehash(HashMap* hashmap) {
         return;
     }
     
-    size_t oldSize = hashmap->size;
-    HashNode* oldBuckets = hashmap->buckets;
+    size_t oldSize = hashmap->Size;
+    HashNode* oldBuckets = hashmap->Buckets;
     
     // Double the size
-    hashmap->size = oldSize * 2;
-    hashmap->count = 0;
-    hashmap->buckets = Allocate(sizeof(HashNode) * hashmap->size);
+    hashmap->Size = oldSize * 2;
+    hashmap->Count = 0;
+    hashmap->Buckets = Allocate(sizeof(HashNode) * hashmap->Size);
     
-    if (hashmap->buckets == NULL) {
+    if (hashmap->Buckets == NULL) {
         // Allocation failed, restore old state
-        hashmap->size = oldSize;
-        hashmap->buckets = oldBuckets;
+        hashmap->Size = oldSize;
+        hashmap->Buckets = oldBuckets;
         return;
     }
     
     // Initialize new buckets
-    for (size_t i = 0; i < hashmap->size; i++) {
-        hashmap->buckets[i].Key  = NULL;
-        hashmap->buckets[i].Val  = NULL;
-        hashmap->buckets[i].Next = NULL;
+    for (size_t i = 0; i < hashmap->Size; i++) {
+        hashmap->Buckets[i].Key  = NULL;
+        hashmap->Buckets[i].Val  = NULL;
+        hashmap->Buckets[i].Next = NULL;
     }
     
     // Rehash all existing entries
@@ -70,19 +70,19 @@ HashMap* CreateHashMap(size_t size) {
         return NULL;
     }
     
-    hashmap->size = size;
-    hashmap->count = 0;
-    hashmap->buckets = Allocate(sizeof(HashNode) * size);
+    hashmap->Size = size;
+    hashmap->Count = 0;
+    hashmap->Buckets = Allocate(sizeof(HashNode) * size);
     
-    if (hashmap->buckets == NULL) {
+    if (hashmap->Buckets == NULL) {
         free(hashmap);
         return NULL;
     }
     
     for (size_t i = 0; i < size; i++) {
-        hashmap->buckets[i].Key  = NULL;
-        hashmap->buckets[i].Val  = NULL;
-        hashmap->buckets[i].Next = NULL;
+        hashmap->Buckets[i].Key  = NULL;
+        hashmap->Buckets[i].Val  = NULL;
+        hashmap->Buckets[i].Next = NULL;
     }
     
     return hashmap;
@@ -94,19 +94,19 @@ void HashMapSet(HashMap* hashmap, String key, void* value) {
     }
     
     // Check load factor and rehash if necessary
-    double loadFactor = (double)hashmap->count / (double)hashmap->size;
+    double loadFactor = (double)hashmap->Count / (double)hashmap->Size;
     if (loadFactor >= LOAD_FACTOR_THRESHOLD) {
         _Rehash(hashmap);
     }
     
-    size_t index = _Hash(key, hashmap->size);
-    HashNode* node = &hashmap->buckets[index];
+    size_t index = _Hash(key, hashmap->Size);
+    HashNode* node = &hashmap->Buckets[index];
     
     // If bucket is empty, use it directly
     if (node->Key == NULL) {
         node->Key = key;
         node->Val = value;
-        hashmap->count++;
+        hashmap->Count++;
         return;
     }
     
@@ -133,7 +133,7 @@ void HashMapSet(HashMap* hashmap, String key, void* value) {
     newNode->Val = value;
     newNode->Next = NULL;
     current->Next = newNode;
-    hashmap->count++;
+    hashmap->Count++;
 }
 
 void* HashMapGet(HashMap* hashmap, String key) {
@@ -141,8 +141,8 @@ void* HashMapGet(HashMap* hashmap, String key) {
         return NULL;
     }
     
-    size_t index = _Hash(key, hashmap->size);
-    HashNode* node = &hashmap->buckets[index];
+    size_t index = _Hash(key, hashmap->Size);
+    HashNode* node = &hashmap->Buckets[index];
     
     while (node != NULL && node->Key != NULL) {
         if (strcmp(node->Key, key) == 0) {

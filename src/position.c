@@ -3,10 +3,10 @@
 
 Position PositionFromLineAndColm(int line, int colm) {
     Position position = {
-        .lineStart = line,
-        .lineEnded = line,
-        .colmStart = colm,
-        .colmEnded = colm
+        .LineStart = line,
+        .LineEnded = line,
+        .ColmStart = colm,
+        .ColmEnded = colm
     };
     return position;
 }
@@ -14,9 +14,9 @@ Position PositionFromLineAndColm(int line, int colm) {
 
 Position MergePositions(Position a, Position b) {
     Position position;
-    position.lineStart = a.lineStart < b.lineStart ? a.lineStart : b.lineStart;
-    position.lineEnded = a.lineEnded > b.lineEnded ? a.lineEnded : b.lineEnded;
-    position.colmStart = a.colmStart < b.colmStart ? a.colmStart : b.colmStart;
-    position.colmEnded = a.colmEnded > b.colmEnded ? a.colmEnded : b.colmEnded;
+    position.LineStart = a.LineStart < b.LineStart ? a.LineStart : b.LineStart;
+    position.LineEnded = a.LineEnded > b.LineEnded ? a.LineEnded : b.LineEnded;
+    position.ColmStart = a.ColmStart < b.ColmStart ? a.ColmStart : b.ColmStart;
+    position.ColmEnded = a.ColmEnded > b.ColmEnded ? a.ColmEnded : b.ColmEnded;
     return position;
 }

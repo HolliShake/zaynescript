@@ -2,6 +2,7 @@
 #include "./operation.h"
 #include "./parser.h"
 #include "./value.h"
+#include "./scope.h"
 
 #ifndef COMPILER_H
 #define COMPILER_H
@@ -15,7 +16,15 @@
  */
 Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
 
-// Compile
-void Compile(Compiler* compiler);
+/**
+ * @brief Compiles the parsed AST into bytecode
+ * 
+ * Takes the abstract syntax tree from the parser and compiles it into
+ * bytecode instructions that can be executed by the interpreter.
+ * 
+ * @param compiler Pointer to the compiler instance containing the parser and interpreter
+ * @return Pointer to a Value containing the compiled UserFunction, or NULL on compilation failure
+ */
+Value* Compile(Compiler* compiler);
 
 #endif

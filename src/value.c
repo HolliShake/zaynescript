@@ -2,8 +2,10 @@
 
 
 static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
-    Value* v = Allocate(sizeof(Value));
-    v->Type = type;
+    Value* v  = Allocate(sizeof(Value));
+    v->Type   = type;
+    v->Marked = 0;
+    v->Next   = NULL;
     // GC
     if (interpreter->Allocated >= GC_THRESHOLD) {
         GarbageCollect(interpreter);
@@ -41,6 +43,18 @@ Value* NewBoolValue(Interpreter* interpreter, int value) {
 Value* NewNullValue(Interpreter* interpreter) {
     Value* v = _CreateValue(interpreter, VT_NULL);
     v->Value.Opaque = NULL;
+    return v;
+}
+
+Value* NewUserFunctionValue(Interpreter* interpreter, UserFunction* userFunction) {
+    Value* v = _CreateValue(interpreter, VT_USER_FUNCTION);
+    v->Value.Opaque = userFunction;
+    return v;
+}
+
+Value* NewEnvironmentValue(Interpreter* interpreter, Environment* environment) {
+    Value* v = _CreateValue(interpreter, VT_ENVIRONMENT);
+    v->Value.Opaque = environment;
     return v;
 }
 
@@ -102,26 +116,50 @@ String ValueToString(Value* value) {
             return value->Value.I32 ? "true" : "false";
         case VT_NULL:
             return "null";
+        case VT_USER_FUNCTION:
+            return "function";
+        case VT_ENVIRONMENT:
+            return "environment";
+        case VT_OBJECT:
+            return "object";
+        case VT_CLASS:
+            return "class";
     }
     return "unknown";
 }
 
-int ValueIsInt(Value* value) {
+bool ValueToBool(Value* value) {
+    switch (value->Type) {
+        case VT_INT:
+            return value->Value.I32 != 0;
+        case VT_NUM:
+            return value->Value.Num != 0.0;
+        case VT_STR:
+            return strlen(value->Value.Opaque) > 0;
+        case VT_BOOL:
+            return value->Value.I32 != 0;
+        case VT_NULL:
+            return false;
+    }
+    return false;
+}
+
+bool ValueIsInt(Value* value) {
     return value->Type == VT_INT;
 }
 
-int ValueIsNum(Value* value) {
+bool ValueIsNum(Value* value) {
     return value->Type == VT_NUM || value->Type == VT_INT;
 }
 
-int ValueIsStr(Value* value) {
+bool ValueIsStr(Value* value) {
     return value->Type == VT_STR;
 }
 
-int ValueIsBool(Value* value) {
+bool ValueIsBool(Value* value) {
     return value->Type == VT_BOOL;
 }
 
-int ValueIsNull(Value* value) {
+bool ValueIsNull(Value* value) {
     return value->Type == VT_NULL;
 }

@@ -12,4 +12,12 @@
  */
 UserFunction* CreateUserFunction(String name, int argc);
 
+/**
+ * @brief Emits a local variable to the user function
+ * 
+ * @param userFunction Pointer to the user function to emit the local variable to
+ * @return The offset of the local variable
+ */
+int UserFunctionEmitLocal(UserFunction* userFunction);
+
 #endif

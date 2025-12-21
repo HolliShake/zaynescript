@@ -47,13 +47,13 @@ int DoMul(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
             : NewNumValue(interp, resultNum);
     }
 
-    if (result != NULL && out != NULL) {
+    if (result == NULL) {
+        return FLG_INVALID_OPERATION;
+    }
+    
+    if (out != NULL) {
         *out = result;
         return offset;
-    } else if (result == NULL && out == NULL) {
-        return FLG_INVALID_OPERATION;
-    } else if (result == NULL) {
-        return FLG_NOTFOUND;
     }
 
     if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
@@ -92,13 +92,13 @@ int DoDiv(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
             : NewNumValue(interp, resultNum);
     }
 
-    if (result != NULL && out != NULL) {
+    if (result == NULL) {
+        return FLG_INVALID_OPERATION;
+    }
+    
+    if (out != NULL) {
         *out = result;
         return offset;
-    } else if (result == NULL && out == NULL) {
-        return FLG_INVALID_OPERATION;
-    } else if (result == NULL) {
-        return FLG_NOTFOUND;
     }
 
     if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
@@ -137,13 +137,13 @@ int DoMod(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
             : NewNumValue(interp, resultNum);
     }
 
-    if (result != NULL && out != NULL) {
+    if (result == NULL) {
+        return FLG_INVALID_OPERATION;
+    }
+    
+    if (out != NULL) {
         *out = result;
         return offset;
-    } else if (result == NULL && out == NULL) {
-        return FLG_INVALID_OPERATION;
-    } else if (result == NULL) {
-        return FLG_NOTFOUND;
     }
 
     if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
@@ -185,13 +185,13 @@ int DoAdd(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = NewStrValue(interp, resultStr);
     }
 
-    if (result != NULL && out != NULL) {
+    if (result == NULL) {
+        return FLG_INVALID_OPERATION;
+    }
+    
+    if (out != NULL) {
         *out = result;
         return offset;
-    } else if (result == NULL && out == NULL) {
-        return FLG_INVALID_OPERATION;
-    } else if (result == NULL) {
-        return FLG_NOTFOUND;
     }
 
     if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
@@ -225,13 +225,13 @@ int DoSub(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
             : NewNumValue(interp, resultNum);
     }
 
-    if (result != NULL && out != NULL) {
+    if (result == NULL) {
+        return FLG_INVALID_OPERATION;
+    }
+    
+    if (out != NULL) {
         *out = result;
         return offset;
-    } else if (result == NULL && out == NULL) {
-        return FLG_INVALID_OPERATION;
-    } else if (result == NULL) {
-        return FLG_NOTFOUND;
     }
 
     if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
@@ -260,13 +260,13 @@ int DoLShift(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
             : NewNumValue(interp, resultNum);
     }
 
-    if (result != NULL && out != NULL) {
+    if (result == NULL) {
+        return FLG_INVALID_OPERATION;
+    }
+    
+    if (out != NULL) {
         *out = result;
         return offset;
-    } else if (result == NULL && out == NULL) {
-        return FLG_INVALID_OPERATION;
-    } else if (result == NULL) {
-        return FLG_NOTFOUND;
     }
 
     if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
@@ -295,13 +295,13 @@ int DoRShift(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
             : NewNumValue(interp, resultNum);
     }
 
-    if (result != NULL && out != NULL) {
+    if (result == NULL) {
+        return FLG_INVALID_OPERATION;
+    }
+    
+    if (out != NULL) {
         *out = result;
         return offset;
-    } else if (result == NULL && out == NULL) {
-        return FLG_INVALID_OPERATION;
-    } else if (result == NULL) {
-        return FLG_NOTFOUND;
     }
 
     if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
@@ -328,13 +328,13 @@ int DoLT(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = comparison ? interp->True : interp->False;
     }
 
-    if (result != NULL && out != NULL) {
+    if (result == NULL) {
+        return FLG_INVALID_OPERATION;
+    }
+    
+    if (out != NULL) {
         *out = result;
         return offset;
-    } else if (result == NULL && out == NULL) {
-        return FLG_INVALID_OPERATION;
-    } else if (result == NULL) {
-        return FLG_NOTFOUND;
     }
 
     if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
@@ -361,13 +361,13 @@ int DoLTE(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = comparison ? interp->True : interp->False;
     }
 
-    if (result != NULL && out != NULL) {
+    if (result == NULL) {
+        return FLG_INVALID_OPERATION;
+    }
+    
+    if (out != NULL) {
         *out = result;
         return offset;
-    } else if (result == NULL && out == NULL) {
-        return FLG_INVALID_OPERATION;
-    } else if (result == NULL) {
-        return FLG_NOTFOUND;
     }
 
     if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
@@ -394,13 +394,13 @@ int DoGT(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = comparison ? interp->True : interp->False;
     }
 
-    if (result != NULL && out != NULL) {
+    if (result == NULL) {
+        return FLG_INVALID_OPERATION;
+    }
+    
+    if (out != NULL) {
         *out = result;
         return offset;
-    } else if (result == NULL && out == NULL) {
-        return FLG_INVALID_OPERATION;
-    } else if (result == NULL) {
-        return FLG_NOTFOUND;
     }
 
     if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
@@ -427,13 +427,13 @@ int DoGTE(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = comparison ? interp->True : interp->False;
     }
 
-    if (result != NULL && out != NULL) {
+    if (result == NULL) {
+        return FLG_INVALID_OPERATION;
+    }
+    
+    if (out != NULL) {
         *out = result;
         return offset;
-    } else if (result == NULL && out == NULL) {
-        return FLG_INVALID_OPERATION;
-    } else if (result == NULL) {
-        return FLG_NOTFOUND;
     }
 
     if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
@@ -491,13 +491,13 @@ int DoEQ(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = interp->False;
     }
 
-    if (result != NULL && out != NULL) {
+    if (result == NULL) {
+        return FLG_INVALID_OPERATION;
+    }
+    
+    if (out != NULL) {
         *out = result;
         return offset;
-    } else if (result == NULL && out == NULL) {
-        return FLG_INVALID_OPERATION;
-    } else if (result == NULL) {
-        return FLG_NOTFOUND;
     }
 
     if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
@@ -555,13 +555,13 @@ int DoNE(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = interp->True;
     }
 
-    if (result != NULL && out != NULL) {
+    if (result == NULL) {
+        return FLG_INVALID_OPERATION;
+    }
+    
+    if (out != NULL) {
         *out = result;
         return offset;
-    } else if (result == NULL && out == NULL) {
-        return FLG_INVALID_OPERATION;
-    } else if (result == NULL) {
-        return FLG_NOTFOUND;
     }
 
     if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
@@ -589,13 +589,13 @@ int DoAnd(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = NewIntValue(interp, resultValue);
     }
 
-    if (result != NULL && out != NULL) {
+    if (result == NULL) {
+        return FLG_INVALID_OPERATION;
+    }
+    
+    if (out != NULL) {
         *out = result;
         return offset;
-    } else if (result == NULL && out == NULL) {
-        return FLG_INVALID_OPERATION;
-    } else if (result == NULL) {
-        return FLG_NOTFOUND;
     }
 
     if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
@@ -623,13 +623,13 @@ int DoOr(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = NewIntValue(interp, resultValue);
     }
 
-    if (result != NULL && out != NULL) {
+    if (result == NULL) {
+        return FLG_INVALID_OPERATION;
+    }
+    
+    if (out != NULL) {
         *out = result;
         return offset;
-    } else if (result == NULL && out == NULL) {
-        return FLG_INVALID_OPERATION;
-    } else if (result == NULL) {
-        return FLG_NOTFOUND;
     }
 
     if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
@@ -657,13 +657,13 @@ int DoXor(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = NewIntValue(interp, resultValue);
     }
 
-    if (result != NULL && out != NULL) {
+    if (result == NULL) {
+        return FLG_INVALID_OPERATION;
+    }
+    
+    if (out != NULL) {
         *out = result;
         return offset;
-    } else if (result == NULL && out == NULL) {
-        return FLG_INVALID_OPERATION;
-    } else if (result == NULL) {
-        return FLG_NOTFOUND;
     }
 
     if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
@@ -679,6 +679,12 @@ int DoXor(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
     );
 
     return offset;
+}
+
+void DoLoadFunction(Interpreter* interp, int offset, Value** out) {
+    if (out != NULL) {
+        *out = interp->Functions[offset];
+    }
 }
 
 #undef PushArray

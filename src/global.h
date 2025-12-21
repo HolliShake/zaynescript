@@ -18,7 +18,7 @@
 #include <malloc.h>
 #endif
 
-#define GC_THRESHOLD 10
+#define GC_THRESHOLD 1000
 
 /**
  * @typedef String
@@ -36,20 +36,20 @@ typedef int Rune;
  * @struct position_struct
  * @brief Tracks the location of a token in source code
  * 
- * @var position_struct::lineStart
+ * @var position_struct::LineStart
  * Starting line number (1-indexed)
- * @var position_struct::lineEnded
+ * @var position_struct::LineEnded
  * Ending line number (1-indexed)
- * @var position_struct::colmStart
+ * @var position_struct::ColmStart
  * Starting column number (1-indexed)
- * @var position_struct::colmEnded
+ * @var position_struct::ColmEnded
  * Ending column number (1-indexed)
  */
 typedef struct position_struct {
-    int lineStart;
-    int lineEnded;
-    int colmStart;
-    int colmEnded;
+    int LineStart;
+    int LineEnded;
+    int ColmStart;
+    int ColmEnded;
 } Position;
 
 /**
@@ -142,9 +142,11 @@ typedef struct parser_struct {
 typedef enum ast_type_enum {
     AST_PROGRAM,
     AST_EXPR,
+    AST_RETURN,
     AST_FUNCTION,
     AST_CLASS,
     AST_EXPRESSION_STATEMENT,
+    AST_IF,
     // 
     AST_NAME,
     AST_INT,
@@ -152,6 +154,9 @@ typedef enum ast_type_enum {
     AST_STR,
     AST_BOOL,
     AST_NULL,
+    AST_MEMBER,
+    AST_INDEX,
+    AST_CALL,
     // 
     AST_MUL,
     AST_DIV,
@@ -211,7 +216,38 @@ typedef struct ast_struct {
  * @brief Enumeration of all possible opcode types
  */
 typedef enum opcode_enum {
-    #include "./opcode.h"
+    OP_LOAD_NAME,
+    OP_LOAD_LOCAL,
+    OP_LOAD_CONST, // with 4 bytes arg
+    OP_LOAD_BOOL,  // with 4 bytes arg
+    OP_LOAD_NULL,
+    OP_LOAD_FUNCTION,
+    OP_CALL,
+    OP_MUL,
+    OP_DIV,
+    OP_MOD,
+    OP_ADD,
+    OP_SUB,
+    OP_LSHFT,
+    OP_RSHFT,
+    OP_LT,
+    OP_LTE,
+    OP_GT,
+    OP_GTE,
+    OP_EQ,
+    OP_NE,
+    OP_AND,
+    OP_OR,
+    OP_XOR,
+    OP_STORE_NAME,
+    OP_STORE_LOCAL,
+    OP_POPTOP,
+    OP_JUMP_IF_FALSE_OR_POP,
+    OP_JUMP_IF_TRUE_OR_POP,
+    OP_POP_JUMP_IF_FALSE,
+    OP_POP_JUMP_IF_TRUE,
+    OP_JUMP,
+    OP_RETURN
 } OpcodeEnum;
 
 /**
@@ -232,6 +268,7 @@ typedef struct user_function_struct {
     uint8_t* Codes;
     int      CodeC;
     int      Argc;
+    int      LocalC;
 } UserFunction;
 
 /**
@@ -248,7 +285,8 @@ typedef enum value_type_enum {
     VT_OBJECT,
     VT_CLASS,
     VT_USER_FUNCTION,
-    VT_NATV_FUNCTION
+    VT_NATV_FUNCTION,
+    VT_ENVIRONMENT,
 } ValueType;
 
 /**
@@ -300,9 +338,9 @@ typedef struct hashnode_struct {
  * Implements a hash table with separate chaining for collision resolution.
  */
 typedef struct hashmap_struct {
-    size_t    size;    /**< Total number of buckets in the hash map */
-    size_t    count;   /**< Current number of entries in the hash map */
-    HashNode* buckets; /**< Array of hash node buckets */
+    size_t    Size;    /**< Total number of buckets in the hash map */
+    size_t    Count;   /**< Current number of entries in the hash map */
+    HashNode* Buckets; /**< Array of hash node buckets */
 } HashMap;
 
 /**
@@ -335,6 +373,10 @@ typedef struct hashmap_struct {
     int      Allocated;
     Value**  Constants;
     int      ConstantC;
+    Value**  Functions;
+    int      FunctionC;
+    Value*   Stack[1500];
+    int      StackC;
 } Interpreter;
 
 /**
@@ -350,6 +392,85 @@ typedef struct compiler_struct {
     Interpreter* Interpreter;
     Parser*      Parser;
 } Compiler;
+
+/**
+ * @struct symbol_struct
+ * @brief Represents a symbol in the compiler
+ * 
+ * @var symbol_struct::IsGlobal
+ * Whether the symbol is global
+ * @var symbol_struct::IsLocalToFn
+ * Whether the symbol is local to a function
+ * @var symbol_struct::Offset
+ * The offset of the symbol in the function's local variables
+ */
+typedef struct symbol_struct {
+    bool   IsGlobal;
+    bool   IsLocalToFn;
+    int    Offset;
+} Symbol;
+
+/**
+ * @enum scope_type_enum
+ * @brief Enumeration of all possible scope types
+ */
+typedef enum scope_type_enum {
+    SCOPE_GLOBAL,
+    SCOPE_FUNCTION,
+    SCOPE_BLOCK,
+    SCOPE_LOOP,
+} ScopeType;
+
+/**
+ * @struct scope_struct
+ * @brief Represents a scope in the compiler
+ * 
+ * @var scope_struct::Parent
+ * The parent scope
+ * @var scope_struct::Symbols
+ * The symbols in the scope
+ */
+typedef struct scope_struct Scope;
+typedef struct scope_struct {
+    ScopeType Type;
+    Scope*    Parent;
+    HashMap*  Symbols;
+    HashMap*  Captures;
+    // FN
+    bool      Returned;
+} Scope;
+
+/**
+ * @struct envcell_struct
+ * @brief Represents a cell in the environment
+ * 
+ * @var envcell_struct::Value
+ * The value in the cell
+ */
+typedef struct envcell_struct {
+    Value* Value;
+} EnvCell;
+
+/**
+ * @struct environment_struct
+ * @brief Represents an environment in the interpreter
+ * 
+ * An environment is a runtime structure that holds local variables for a function
+ * or block scope. Environments form a chain through their Parent pointers, allowing
+ * for lexical scoping and variable lookup in outer scopes.
+ * 
+ * @var environment_struct::Parent
+ * Pointer to the parent environment in the scope chain. NULL for the global environment.
+ * @var environment_struct::Locals
+ * Array of pointers to Value objects representing local variables in this environment.
+ * The array is indexed by the variable's offset within the scope.
+ */
+typedef struct environment_struct Environment;
+typedef struct environment_struct {
+    Environment* Parent;
+    EnvCell**    Locals;
+    int          LocalC;
+} Environment;
 
 /**
  * @typedef NativeFunction
