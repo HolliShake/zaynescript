@@ -237,5 +237,36 @@ int DoLShift(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
     return offset;
 }
 
+int DoRShift(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+    Value* result = NULL;
+    int offset    = GetOffset();
+
+    if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
+        long resultNum = CoerceToI64(lhs) >> CoerceToI64(rhs);
+        result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
+            ? NewIntValue(interp, (int) resultNum)
+            : NewNumValue(interp, resultNum);
+    }
+
+    if (result != NULL && out != NULL) {
+        *out = result;
+        return offset;
+    } else if (result == NULL && out == NULL) {
+        return FLG_INVALID_OPERATION;
+    } else if (result == NULL) {
+        return FLG_NOTFOUND;
+    }
+
+    PushArray(
+        Value*,
+        interp->Constants, 
+        interp->ConstantC, 
+        result, 
+        NULL
+    );
+
+    return offset;
+}
+
 #undef PushArray
 #undef GetOffset

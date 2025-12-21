@@ -1,6 +1,7 @@
+#include "./function.h"
+#include "./gc.h"
 #include "./global.h"
 #include "./hashmap.h"
-#include "./function.h"
 
 #ifndef VALUE_H
 #define VALUE_H

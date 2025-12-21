@@ -68,4 +68,14 @@ int DoSub(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
  */
 int DoLShift(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
 
+/**
+ * Performs right shift operation on two values.
+ * @param interp The interpreter instance
+ * @param lhs Left-hand side value
+ * @param rhs Right-hand side value
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ * @return Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
+ */
+int DoRShift(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
+
 #endif

@@ -134,11 +134,18 @@ String GetErrorLine(String path, Rune* runes, Position position, String message)
             lineEndIdx--;
         }
         
+        // Find the actual end of the line (scan until newline or null)
+        int actualLineEnd = lineStartIdx;
+        while (runes[actualLineEnd] != '\n' && runes[actualLineEnd] != 0) {
+            actualLineEnd++;
+        }
+        actualLineEnd--; // Back up to last character before newline/null
+        
         // Convert runes to string for this line
         char lineBuffer[MAX_LINE_WIDTH];
         int bufferIdx = 0;
         
-        for (int i = lineStartIdx; i <= lineEndIdx && runes[i] != '\n' && runes[i] != 0; i++) {
+        for (int i = lineStartIdx; i <= actualLineEnd && runes[i] != '\n' && runes[i] != 0; i++) {
             unsigned char utf8Buffer[5];
             int utf8Size = utf_encode_char(runes[i], utf8Buffer);
             

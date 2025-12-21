@@ -18,7 +18,7 @@
 #include <malloc.h>
 #endif
 
-#define GC_THRESHOLD 1000
+#define GC_THRESHOLD 10
 
 /**
  * @typedef String

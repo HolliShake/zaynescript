@@ -5,6 +5,9 @@ static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
     Value* v = Allocate(sizeof(Value));
     v->Type = type;
     // GC
+    if (interpreter->Allocated >= GC_THRESHOLD) {
+        GarbageCollect(interpreter);
+    }
     interpreter->Allocated++;
     v->Next = interpreter->GcRoot;
     interpreter->GcRoot = v;

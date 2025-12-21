@@ -341,6 +341,28 @@ static Value* _Expression(Compiler* compiler, UserFunction* uf, Ast* node) {
             _Emit(compiler, uf, OP_LSHFT);
             break;
         }
+        case AST_RSHFT: {
+            if (_IsAstConstant(compiler, node)) {
+                lhs = _Expression(compiler, uf, node->A);
+                rhs = _Expression(compiler, uf, node->B);
+                int offset = DoRShift(compiler->Interpreter, lhs, rhs, NULL);
+                if (offset == FLG_INVALID_OPERATION) {
+                    ThrowError(
+                        compiler->Parser->Lexer->Path, 
+                        compiler->Parser->Lexer->Data, 
+                        node->Position, 
+                        "invalid operation"
+                    );
+                }
+                val = _GetConstantValue(compiler, offset);
+                break;
+            }
+
+            lhs = _Expression(compiler, uf, node->A);
+            rhs = _Expression(compiler, uf, node->B);
+            _Emit(compiler, uf, OP_RSHFT);
+            break;
+        }
         default: {
             ThrowError(
                 compiler->Parser->Lexer->Path, 
