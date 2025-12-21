@@ -1,7 +1,8 @@
+#include "src/compiler.h"
 #include "src/global.h"
+#include "src/interpreter.h"
 #include "src/lexer.h"
 #include "src/parser.h"
-#include "src/interpreter.h"
 
 
 String ReadFile(String path) {
@@ -33,12 +34,18 @@ String ReadFile(String path) {
 int main() {
     printf("=== LanguageX - Allocator Demo ===\n\n");
 
+    Interpreter* interpreter = CreateInterpreter();
+
     String path = "./test.lang";
     Rune* data = StringToRunes(ReadFile(path));
+
+
     Lexer* lexer = CreateLexer("test.txt", data);
     Parser* parser = CreateParser(lexer);
-    Interpreter* interpreter = CreateInterpreter();
-    Interpret(interpreter, parser);
+
+    Compiler* compiler = CreateCompiler(interpreter, parser);
+    Compile(compiler);
+
 
     FreeLexer(lexer);
     FreeParser(parser);

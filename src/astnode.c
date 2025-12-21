@@ -22,19 +22,19 @@ Ast* AstName(String name, Position position) {
 
 
 Ast* AstInteger(String value, Position position) {
-    Ast* ast = InitAst(AST_INTEGER, position);
+    Ast* ast = InitAst(AST_INT, position);
     ast->Value = value;
     return ast;
 }
 
 Ast* AstNumber(String value, Position position) {
-    Ast* ast = InitAst(AST_NUMBER, position);
+    Ast* ast = InitAst(AST_NUM, position);
     ast->Value = value;
     return ast;
 }
 
 Ast* AstString(String value, Position position) {
-    Ast* ast = InitAst(AST_STRING, position);
+    Ast* ast = InitAst(AST_STR, position);
     ast->Value = value;
     return ast;
 }
@@ -72,10 +72,7 @@ Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, Position position) {
 }
 
 Ast* AstProgram(Ast* body, Position position) {
-    // We will going to consider the program as a function with no parameters and no function name
     Ast* ast = InitAst(AST_PROGRAM, position);
-    ast->A   = NULL;
-    ast->B   = NULL;
-    ast->C   = body;
+    ast->A   = body;
     return ast;
 }

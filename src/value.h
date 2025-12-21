@@ -1,4 +1,6 @@
 #include "./global.h"
+#include "./hashmap.h"
+#include "./function.h"
 
 #ifndef VALUE_H
 #define VALUE_H
@@ -10,7 +12,7 @@
  * @param value The integer value to store
  * @return Pointer to newly allocated Value structure containing the integer
  */
-Value* NewI32Value(Interpreter* interpreter, int value);
+Value* NewIntValue(Interpreter* interpreter, int value);
 
 /**
  * @brief Creates a new double-precision floating point number value
@@ -54,5 +56,45 @@ Value* NewNullValue(Interpreter* interpreter);
  * @return String representation of the value
  */
 String ValueToString(Value* value);
+
+/**
+ * @brief Checks if a value is an integer type
+ * 
+ * @param value Pointer to the Value to check
+ * @return Non-zero if the value is an integer, 0 otherwise
+ */
+int ValueIsInt(Value* value);
+
+/**
+ * @brief Checks if a value is a numeric (double) type
+ * 
+ * @param value Pointer to the Value to check
+ * @return Non-zero if the value is a number, 0 otherwise
+ */
+int ValueIsNum(Value* value);
+
+/**
+ * @brief Checks if a value is a string type
+ * 
+ * @param value Pointer to the Value to check
+ * @return Non-zero if the value is a string, 0 otherwise
+ */
+int ValueIsStr(Value* value);
+
+/**
+ * @brief Checks if a value is a boolean type
+ * 
+ * @param value Pointer to the Value to check
+ * @return Non-zero if the value is a boolean, 0 otherwise
+ */
+int ValueIsBool(Value* value);
+
+/**
+ * @brief Checks if a value is null
+ * 
+ * @param value Pointer to the Value to check
+ * @return Non-zero if the value is null, 0 otherwise
+ */
+int ValueIsNull(Value* value);
 
 #endif

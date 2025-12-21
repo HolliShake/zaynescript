@@ -395,7 +395,12 @@ static Ast* _ListOfExpressions(Parser* parser) {
             ACCEPTV_FREE(",");
             expression = _Expression(parser);
             if (expression == NULL) {
-                break;
+                ThrowError(
+                    parser->Lexer->Path, 
+                    parser->Lexer->Data, 
+                    tail->Position, 
+                    "expected expression after comma"
+                );
             }
             tail->Next = expression;
             tail = expression;
@@ -462,6 +467,7 @@ static Ast* _ExpressionStatement(Parser* parser) {
             ended = parser->Next.Position;
             ACCEPTV_FREE(";");
         }
+        return NULL;
     } else {
         ended = parser->Next.Position;
         ACCEPTV_FREE(";");
@@ -483,16 +489,16 @@ static Ast* _ListOfStatements(Parser* parser) {
     Ast* head = NULL;
     Ast* tail = NULL;
     
-    Ast* statement = _Statement(parser);
-    if (statement != NULL) {
-        head = statement;
-        tail = statement;
+    while (CHECKTT(TK_EOF) == false) {
+        Ast* statement = _Statement(parser);
+        if (statement == NULL) {
+            break;
+        }
         
-        while (CHECKTT(TK_EOF) == false) {
-            statement = _Statement(parser);
-            if (statement == NULL) {
-                break;
-            }
+        if (head == NULL) {
+            head = statement;
+            tail = statement;
+        } else {
             tail->Next = statement;
             tail = statement;
         }

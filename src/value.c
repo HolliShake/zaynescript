@@ -11,7 +11,7 @@ static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
     return v;
 }
 
-Value* NewI32Value(Interpreter* interpreter, int value) {
+Value* NewIntValue(Interpreter* interpreter, int value) {
     Value* v = _CreateValue(interpreter, VT_INT);
     v->Value.I32 = value;
     return v;
@@ -38,6 +38,15 @@ Value* NewBoolValue(Interpreter* interpreter, int value) {
 Value* NewNullValue(Interpreter* interpreter) {
     Value* v = _CreateValue(interpreter, VT_NULL);
     v->Value.Opaque = NULL;
+    return v;
+}
+
+Value* NewObjectValue(Interpreter* interpreter, String zKey[], Value* zVal[], int elementCount) {
+    Value* v = _CreateValue(interpreter, VT_OBJECT);
+    v->Value.Opaque = CreateHashMap(elementCount);
+    for (int i = 0; i < elementCount; i++) {
+        HashMapSet((HashMap*) v->Value.Opaque, zKey[i], zVal[i]);
+    }
     return v;
 }
 
@@ -81,4 +90,24 @@ String ValueToString(Value* value) {
             return "null";
     }
     return "unknown";
+}
+
+int ValueIsInt(Value* value) {
+    return value->Type == VT_INT;
+}
+
+int ValueIsNum(Value* value) {
+    return value->Type == VT_NUM || value->Type == VT_INT;
+}
+
+int ValueIsStr(Value* value) {
+    return value->Type == VT_STR;
+}
+
+int ValueIsBool(Value* value) {
+    return value->Type == VT_BOOL;
+}
+
+int ValueIsNull(Value* value) {
+    return value->Type == VT_NULL;
 }

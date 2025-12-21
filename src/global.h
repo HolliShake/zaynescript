@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
+#include <limits.h>
 
 // Platform-specific includes for aligned allocation
 #if defined(_WIN32)
@@ -130,7 +132,7 @@ typedef struct lexer_struct {
  */
 typedef struct parser_struct {
     Lexer* Lexer;
-    Token      Next;
+    Token  Next;
 } Parser;
 
 /**
@@ -145,9 +147,9 @@ typedef enum ast_type_enum {
     AST_EXPRESSION_STATEMENT,
     // 
     AST_NAME,
-    AST_INTEGER,
-    AST_NUMBER,
-    AST_STRING,
+    AST_INT,
+    AST_NUM,
+    AST_STR,
     AST_BOOL,
     AST_NULL,
     // 
@@ -205,6 +207,34 @@ typedef struct ast_struct {
 } Ast;
 
 /**
+ * @enum opcode_enum
+ * @brief Enumeration of all possible opcode types
+ */
+typedef enum opcode_enum {
+    #include "./opcode.h"
+} OpcodeEnum;
+
+/**
+ * @struct user_function_struct
+ * @brief Represents a user-defined function in the interpreter
+ * 
+ * @var user_function_struct::Name
+ * Optional name of the function (nullable)
+ * @var user_function_struct::Codes
+ * Array of bytecode instructions representing the compiled function
+ * @var user_function_struct::CodeC
+ * Number of bytecode instructions in the Codes array
+ * @var user_function_struct::Argc
+ * Number of arguments the function accepts
+ */
+typedef struct user_function_struct {
+    String   Name; // Nullable
+    uint8_t* Codes;
+    int      CodeC;
+    int      Argc;
+} UserFunction;
+
+/**
  * @enum value_type_enum
  * @brief Enumeration of all possible value types in the interpreter
  */
@@ -248,45 +278,6 @@ typedef struct value_struct {
 } Value;
 
 /**
- * @struct interpreter_struct
- * @brief Main interpreter state structure
- * 
- * @var interpreter_struct::True
- * Pointer to the singleton boolean true value
- * @var interpreter_struct::False
- * Pointer to the singleton boolean false value
- * @var interpreter_struct::Null
- * Pointer to the singleton null value
- */
-typedef struct interpreter_struct {
-    Value* True;
-    Value* False;
-    Value* Null;
-    Value* GcRoot;
-    int    Allocated;
-} Interpreter;
-
-/**
- * @struct user_function_struct
- * @brief Represents a user-defined function in the interpreter
- * 
- * @var user_function_struct::Path
- * File path of the source code for the function
- * @var user_function_struct::Data
- * Array of Unicode runes representing the source code for the function
- * @var user_function_struct::Function
- * Pointer to the AST node representing the function definition
- * @var user_function_struct::Argc
- * Number of arguments the function takes
- */
-typedef struct user_function_struct {
-    String Path;
-    Rune*  Data;
-    Ast*   Function;
-    int    Argc;
-} UserFunction;
-
-/**
  * @brief Forward declaration of HashNode structure
  */
 typedef struct hashnode_struct HashNode;
@@ -304,33 +295,61 @@ typedef struct hashnode_struct {
  } HashNode;
 
  /**
-  * @brief Forward declaration of ExceptionHandler structure
-  */
-typedef struct exception_handler_struct ExceptionHandler;
-
-/**
- * @typedef ExceptionCallback
- * @brief Function pointer type for exception callbacks
+ * @brief Hash map structure for key-value storage
  * 
- * @param exception Pointer to the exception value
+ * Implements a hash table with separate chaining for collision resolution.
  */
-typedef void (*ExceptionCallback)(Value* exception);
+typedef struct hashmap_struct {
+    size_t    size;    /**< Total number of buckets in the hash map */
+    size_t    count;   /**< Current number of entries in the hash map */
+    HashNode* buckets; /**< Array of hash node buckets */
+} HashMap;
 
 /**
- * @struct exception_handler_struct
- * @brief Represents an exception handler in the interpreter
- * @brief Represents an exception handler in the interpreter
- * @var exception_handler_struct::Catched
- * Flag indicating if an exception has been caught
- * @var exception_handler_struct::Exception
- * Pointer to the exception value
+ * @struct interpreter_struct
+ * @brief Main interpreter state structure
+ * 
+ * Holds the runtime state of the interpreter including singleton values,
+ * garbage collection root, and constant pool.
+ * 
+ * @var interpreter_struct::True
+ * Pointer to the singleton boolean true value
+ * @var interpreter_struct::False
+ * Pointer to the singleton boolean false value
+ * @var interpreter_struct::Null
+ * Pointer to the singleton null value
+ * @var interpreter_struct::GcRoot
+ * Root pointer for the garbage collector's linked list of values
+ * @var interpreter_struct::Allocated
+ * Total number of bytes allocated by the interpreter
+ * @var interpreter_struct::Constants
+ * Array of pointers to constant values used by the bytecode
+ * @var interpreter_struct::ConstantC
+ * Number of constants in the Constants array
  */
-typedef struct exception_handler_struct {
-    ExceptionHandler* Parent;
-    int               Catched;
-    Value*            Exception;
-    ExceptionCallback Callback;
-} ExceptionHandler;
+ typedef struct interpreter_struct {
+    Value*   True;
+    Value*   False;
+    Value*   Null;
+    Value*   GcRoot;
+    int      Allocated;
+    Value**  Constants;
+    int      ConstantC;
+} Interpreter;
+
+/**
+ * @struct compiler_struct
+ * @brief Compiler state structure
+ * 
+ * @var compiler_struct::Interpreter
+ * Pointer to the interpreter instance
+ * @var compiler_struct::Parser
+ * Pointer to the parser instance
+ */
+typedef struct compiler_struct {
+    Interpreter* Interpreter;
+    Parser*      Parser;
+} Compiler;
 
 /**
  * @typedef NativeFunction
@@ -353,6 +372,16 @@ typedef Value* (*NativeFunction)(Interpreter* interpreter, int argc, Value** arg
 #define Allocate(size) _Allocate(__FILE__, __LINE__, size)
 
 /**
+ * @def Reallocate
+ * @brief Wrapper macro for memory reallocation with file/line tracking
+ * 
+ * @param ptr Pointer to the memory to reallocate
+ * @param size Number of bytes to reallocate
+ * @return Pointer to reallocated memory, or NULL on failure
+ */
+#define Reallocate(ptr, size) _Reallocate(__FILE__, __LINE__, ptr, size)
+
+/**
  * @brief Internal allocation function called by Allocate macro
  * 
  * @param file Source file name where allocation was requested
@@ -361,6 +390,26 @@ typedef Value* (*NativeFunction)(Interpreter* interpreter, int argc, Value** arg
  * @return Pointer to allocated memory, or NULL on failure
  */
 void* _Allocate(String file, int line, size_t size);
+
+/**
+ * @brief Internal reallocation function called by Reallocate macro
+ * 
+ * @param file Source file name where reallocation was requested
+ * @param line Line number where reallocation was requested
+ * @param ptr Pointer to the memory to reallocate
+ * @param size Number of bytes to reallocate
+ * @return Pointer to reallocated memory, or NULL on failure
+ */
+void* _Reallocate(String file, int line, void* ptr, size_t size);
+
+/**
+ * @def AllocateString
+ * @brief Wrapper macro for allocating a string with file/line tracking
+ * 
+ * @param str String to allocate
+ * @return Pointer to allocated string, or NULL on failure
+ */
+String AllocateString(String str);
 
 /**
  * @brief Converts a C string to an array of Unicode runes

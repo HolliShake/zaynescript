@@ -17,7 +17,7 @@ Ast* AstName(String name, Position position);
  * @value: String representation of the integer value
  * @position: Source code location information
  *
- * Return: Pointer to newly allocated AST_INTEGER node
+ * Return: Pointer to newly allocated AST_INT node
  */
 Ast* AstInteger(String value, Position position);
 
@@ -26,7 +26,7 @@ Ast* AstInteger(String value, Position position);
  * @value: String representation of the number value
  * @position: Source code location information
  *
- * Return: Pointer to newly allocated AST_NUMBER node
+ * Return: Pointer to newly allocated AST_NUM node
  */
 Ast* AstNumber(String value, Position position);
 
@@ -35,7 +35,7 @@ Ast* AstNumber(String value, Position position);
  * @value: String content of the literal
  * @position: Source code location information
  *
- * Return: Pointer to newly allocated AST_STRING node
+ * Return: Pointer to newly allocated AST_STR node
  */
 Ast* AstString(String value, Position position);
 

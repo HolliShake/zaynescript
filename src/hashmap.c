@@ -60,7 +60,7 @@ static void _Rehash(HashMap* hashmap) {
     free(oldBuckets);
 }
 
-HashMap* NewHashMap(size_t size) {
+HashMap* CreateHashMap(size_t size) {
     if (size == 0) {
         return NULL;
     }
@@ -80,10 +80,11 @@ HashMap* NewHashMap(size_t size) {
     }
     
     for (size_t i = 0; i < size; i++) {
-        hashmap->buckets[i].Key = NULL;
-        hashmap->buckets[i].Val = NULL;
+        hashmap->buckets[i].Key  = NULL;
+        hashmap->buckets[i].Val  = NULL;
         hashmap->buckets[i].Next = NULL;
     }
+    
     return hashmap;
 }
 

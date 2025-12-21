@@ -1,0 +1,71 @@
+#include "./global.h"
+#include "./value.h"
+
+#ifndef OPERATION_H
+#define OPERATION_H
+
+#define FLG_NOTFOUND -1
+#define FLG_ZERO_DIV -2
+#define FLG_INVALID_OPERATION -3
+
+/**
+ * Performs multiplication operation on two values.
+ * @param interp The interpreter instance
+ * @param lhs Left-hand side value
+ * @param rhs Right-hand side value
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ * @return Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
+ */
+int DoMul(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
+
+/**
+ * Performs division operation on two values.
+ * @param interp The interpreter instance
+ * @param lhs Left-hand side value
+ * @param rhs Right-hand side value
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ * @return Offset in constants array, or error flag (FLG_ZERO_DIV, FLG_INVALID_OPERATION, FLG_NOTFOUND)
+ */
+int DoDiv(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
+
+/**
+ * Performs modulo operation on two values.
+ * @param interp The interpreter instance
+ * @param lhs Left-hand side value
+ * @param rhs Right-hand side value
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ * @return Offset in constants array, or error flag (FLG_ZERO_DIV, FLG_INVALID_OPERATION, FLG_NOTFOUND)
+ */
+int DoMod(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
+
+/**
+ * Performs addition operation on two values.
+ * @param interp The interpreter instance
+ * @param lhs Left-hand side value
+ * @param rhs Right-hand side value
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ * @return Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
+ */
+int DoAdd(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
+
+/**
+ * Performs subtraction operation on two values.
+ * @param interp The interpreter instance
+ * @param lhs Left-hand side value
+ * @param rhs Right-hand side value
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ * @return Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
+ */
+int DoSub(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
+
+/**
+ * Performs left shift operation on two values.
+ * @param interp The interpreter instance
+ * @param lhs Left-hand side value
+ * @param rhs Right-hand side value
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ * @return Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
+ */
+int DoLShift(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
+
+#endif

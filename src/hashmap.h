@@ -4,23 +4,12 @@
 #define HASHMAP_H
 
 /**
- * @brief Hash map structure for key-value storage
- * 
- * Implements a hash table with separate chaining for collision resolution.
- */
-typedef struct hashmap_struct {
-    size_t    size;    /**< Total number of buckets in the hash map */
-    size_t    count;   /**< Current number of entries in the hash map */
-    HashNode* buckets; /**< Array of hash node buckets */
-} HashMap;
-
-/**
  * @brief Creates and initializes a new hash map
  * 
  * @param size Number of buckets to allocate for the hash map
  * @return Pointer to newly allocated HashMap structure, or NULL on failure
  */
-HashMap* NewHashMap(size_t size);
+HashMap* CreateHashMap(size_t size);
 
 /**
  * @brief Sets a key-value pair in the hash map

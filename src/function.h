@@ -6,12 +6,10 @@
 /**
  * @brief Creates a new user function
  * 
- * @param path The path to the file containing the function
- * @param data The data of the function
- * @param function The function AST
+ * @param name The name of the function
  * @param argc The number of arguments the function takes
- * @return The new user function
+ * @return Pointer to the newly created UserFunction structure
  */
-UserFunction* NewUserFunction(String path, Rune* data, Ast* function, int argc);
+UserFunction* CreateUserFunction(String name, int argc);
 
 #endif
