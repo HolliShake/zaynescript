@@ -62,7 +62,18 @@ String ValueToString(Value* value) {
             return buffer;
         case VT_NUM:
             buffer = Allocate(64);
-            snprintf(buffer, 64, "%f", value->Value.Num);
+            // Check if the number can be represented as an integer
+            double num = value->Value.Num;
+            if (floor(num) == num && num >= INT_MIN && num <= INT_MAX) {
+                // It's a whole number that fits in an int
+                snprintf(buffer, 64, "%d", (int)num);
+            } else if (floor(num) == num && num >= LONG_MIN && num <= LONG_MAX) {
+                // It's a whole number that fits in a long
+                snprintf(buffer, 64, "%ld", (long)num);
+            } else {
+                // It's a fractional number, use %g to avoid trailing zeros
+                snprintf(buffer, 64, "%g", num);
+            }
             return buffer;
         case VT_STR: {
             Rune* runes = (Rune*) value->Value.Opaque;

@@ -363,6 +363,132 @@ static Value* _Expression(Compiler* compiler, UserFunction* uf, Ast* node) {
             _Emit(compiler, uf, OP_RSHFT);
             break;
         }
+        case AST_LT: {
+            if (_IsAstConstant(compiler, node)) {
+                lhs = _Expression(compiler, uf, node->A);
+                rhs = _Expression(compiler, uf, node->B);
+                int offset = DoLT(compiler->Interpreter, lhs, rhs, NULL);
+                if (offset == FLG_INVALID_OPERATION) {
+                    ThrowError(compiler->Parser->Lexer->Path, compiler->Parser->Lexer->Data, node->Position, "invalid operation");
+                }
+            }
+            lhs = _Expression(compiler, uf, node->A);
+            rhs = _Expression(compiler, uf, node->B);
+            _Emit(compiler, uf, OP_LT);
+            break;
+        }
+        case AST_LTE: {
+            if (_IsAstConstant(compiler, node)) {
+                lhs = _Expression(compiler, uf, node->A);
+                rhs = _Expression(compiler, uf, node->B);
+                int offset = DoLTE(compiler->Interpreter, lhs, rhs, NULL);
+                if (offset == FLG_INVALID_OPERATION) {
+                    ThrowError(compiler->Parser->Lexer->Path, compiler->Parser->Lexer->Data, node->Position, "invalid operation");
+                }
+            }
+            lhs = _Expression(compiler, uf, node->A);
+            rhs = _Expression(compiler, uf, node->B);
+            _Emit(compiler, uf, OP_LTE);
+            break;
+        }
+        case AST_GT: {
+            if (_IsAstConstant(compiler, node)) {
+                lhs = _Expression(compiler, uf, node->A);
+                rhs = _Expression(compiler, uf, node->B);
+                int offset = DoGT(compiler->Interpreter, lhs, rhs, NULL);
+                if (offset == FLG_INVALID_OPERATION) {
+                    ThrowError(compiler->Parser->Lexer->Path, compiler->Parser->Lexer->Data, node->Position, "invalid operation");
+                }
+            }
+            lhs = _Expression(compiler, uf, node->A);
+            rhs = _Expression(compiler, uf, node->B);
+            _Emit(compiler, uf, OP_GT);
+            break;
+        }
+        case AST_GTE: {
+            if (_IsAstConstant(compiler, node)) {
+                lhs = _Expression(compiler, uf, node->A);
+                rhs = _Expression(compiler, uf, node->B);
+                int offset = DoGTE(compiler->Interpreter, lhs, rhs, NULL);
+                if (offset == FLG_INVALID_OPERATION) {
+                    ThrowError(compiler->Parser->Lexer->Path, compiler->Parser->Lexer->Data, node->Position, "invalid operation");
+                }
+            }
+            lhs = _Expression(compiler, uf, node->A);
+            rhs = _Expression(compiler, uf, node->B);
+            _Emit(compiler, uf, OP_GTE);
+            break;
+        }
+        case AST_EQ: {
+            if (_IsAstConstant(compiler, node)) {
+                lhs = _Expression(compiler, uf, node->A);
+                rhs = _Expression(compiler, uf, node->B);
+                int offset = DoEQ(compiler->Interpreter, lhs, rhs, NULL);
+                if (offset == FLG_INVALID_OPERATION) {
+                    ThrowError(compiler->Parser->Lexer->Path, compiler->Parser->Lexer->Data, node->Position, "invalid operation");
+                }
+            }
+            lhs = _Expression(compiler, uf, node->A);
+            rhs = _Expression(compiler, uf, node->B);
+            _Emit(compiler, uf, OP_EQ);
+            break;
+        }
+        case AST_NE: {
+            if (_IsAstConstant(compiler, node)) {
+                lhs = _Expression(compiler, uf, node->A);
+                rhs = _Expression(compiler, uf, node->B);
+                int offset = DoNE(compiler->Interpreter, lhs, rhs, NULL);
+                if (offset == FLG_INVALID_OPERATION) {
+                    ThrowError(compiler->Parser->Lexer->Path, compiler->Parser->Lexer->Data, node->Position, "invalid operation");
+                }
+            }
+            lhs = _Expression(compiler, uf, node->A);
+            rhs = _Expression(compiler, uf, node->B);
+            _Emit(compiler, uf, OP_NE);
+            break;
+        }
+        case AST_AND: {
+            if (_IsAstConstant(compiler, node)) {
+                lhs = _Expression(compiler, uf, node->A);
+                rhs = _Expression(compiler, uf, node->B);
+                int offset = DoAnd(compiler->Interpreter, lhs, rhs, NULL);
+                if (offset == FLG_INVALID_OPERATION) {
+                    ThrowError(compiler->Parser->Lexer->Path, compiler->Parser->Lexer->Data, node->Position, "invalid operation");
+                }
+            }
+            lhs = _Expression(compiler, uf, node->A);
+            rhs = _Expression(compiler, uf, node->B);
+            _Emit(compiler, uf, OP_AND);
+            break;
+        }
+        case AST_OR: {
+            if (_IsAstConstant(compiler, node)) {
+                lhs = _Expression(compiler, uf, node->A);
+                rhs = _Expression(compiler, uf, node->B);
+                int offset = DoOr(compiler->Interpreter, lhs, rhs, NULL);
+                if (offset == FLG_INVALID_OPERATION) {
+                    ThrowError(compiler->Parser->Lexer->Path, compiler->Parser->Lexer->Data, node->Position, "invalid operation");
+                }
+            }
+            lhs = _Expression(compiler, uf, node->A);
+            rhs = _Expression(compiler, uf, node->B);
+            _Emit(compiler, uf, OP_OR);
+            break;
+        }
+        case AST_XOR: {
+            if (_IsAstConstant(compiler, node)) {
+                lhs = _Expression(compiler, uf, node->A);
+                rhs = _Expression(compiler, uf, node->B);
+                int offset = DoXor(compiler->Interpreter, lhs, rhs, NULL);
+                if (offset == FLG_INVALID_OPERATION) {
+                    ThrowError(compiler->Parser->Lexer->Path, compiler->Parser->Lexer->Data, node->Position, "invalid operation");
+                }
+            }
+            lhs = _Expression(compiler, uf, node->A);
+            rhs = _Expression(compiler, uf, node->B);
+            _Emit(compiler, uf, OP_XOR);
+            break;
+        }
         default: {
             ThrowError(
                 compiler->Parser->Lexer->Path, 

@@ -78,4 +78,94 @@ int DoLShift(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
  */
 int DoRShift(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
 
+/**
+ * Performs less than operation on two values.
+ * @param interp The interpreter instance
+ * @param lhs Left-hand side value
+ * @param rhs Right-hand side value
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ * @return Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
+ */
+int DoLT(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
+
+/**
+ * Performs less than or equal to operation on two values.
+ * @param interp The interpreter instance
+ * @param lhs Left-hand side value
+ * @param rhs Right-hand side value
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ * @return Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
+ */
+int DoLTE(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
+
+/**
+ * Performs greater than operation on two values.
+ * @param interp The interpreter instance
+ * @param lhs Left-hand side value
+ * @param rhs Right-hand side value
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ * @return Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
+ */
+int DoGT(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
+
+/**
+ * Performs greater than or equal to operation on two values.
+ * @param interp The interpreter instance
+ * @param lhs Left-hand side value
+ * @param rhs Right-hand side value
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ * @return Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
+ */
+int DoGTE(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
+
+/**
+ * Performs equal to operation on two values.
+ * @param interp The interpreter instance
+ * @param lhs Left-hand side value
+ * @param rhs Right-hand side value
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ * @return Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
+ */
+int DoEQ(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
+
+/**
+ * Performs not equal to operation on two values.
+ * @param interp The interpreter instance
+ * @param lhs Left-hand side value
+ * @param rhs Right-hand side value
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ * @return Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
+ */
+int DoNE(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
+
+/**
+ * Performs bitwise AND operation on two values.
+ * @param interp The interpreter instance
+ * @param lhs Left-hand side value
+ * @param rhs Right-hand side value
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ * @return Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
+ */
+int DoAnd(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
+
+/**
+ * Performs bitwise OR operation on two values.
+ * @param interp The interpreter instance
+ * @param lhs Left-hand side value
+ * @param rhs Right-hand side value
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ * @return Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
+ */
+int DoOr(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
+
+/**
+ * Performs bitwise XOR operation on two values.
+ * @param interp The interpreter instance
+ * @param lhs Left-hand side value
+ * @param rhs Right-hand side value
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ * @return Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
+ */
+int DoXor(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
+
 #endif
