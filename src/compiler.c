@@ -674,6 +674,40 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             _JumpToLabel(compiler, uf, jumpOffset);
             break;
         }
+        case AST_ASSIGN: {
+            rhs = _Expression(compiler, uf, scope, node->B);
+            _Emit(compiler, uf, OP_DUPTOP);
+            switch (node->A->Type) {
+                case AST_NAME: {
+                    if (!ScopeHasName(scope, node->A->Value)) {
+                        ThrowError(
+                            compiler->Parser->Lexer->Path, 
+                            compiler->Parser->Lexer->Data, 
+                            node->A->Position, 
+                            "variable not found"
+                        );
+                    }
+                    bool isOwnedLocally = ScopeIsLocalToFn(scope, node->Value);
+                    Symbol* symbol = ScopeGetSymbol(scope, node->A->Value, true);
+                    _EmitArg(
+                        compiler, 
+                        uf, 
+                        isOwnedLocally ? OP_STORE_LOCAL : OP_STORE_NAME,
+                        symbol->Offset
+                    );
+                    break;
+                }
+                default: {
+                    ThrowError(
+                        compiler->Parser->Lexer->Path, 
+                        compiler->Parser->Lexer->Data, 
+                        node->Position, 
+                        "invalid left operand"
+                    );
+                }
+            }
+            break;
+        }
         default: {
             ThrowError(
                 compiler->Parser->Lexer->Path, 
@@ -706,7 +740,7 @@ static void _FunctionDeclaration(Compiler* compiler, UserFunction* uf, Scope* sc
 
     // Assume its already forwarded
     Symbol* symbol = ScopeGetSymbol(scope, fnName->Value, false);
-    
+
     if (symbol == NULL) {
         ThrowError(
             compiler->Parser->Lexer->Path, 

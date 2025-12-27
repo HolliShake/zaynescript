@@ -456,8 +456,45 @@ static Ast* _Logical(Parser* parser) {
     return lhs;
 }
 
+static Ast* _Assignment(Parser* parser) {
+    String op = NULL;
+    Ast* lhs  = _Logical(parser), *rhs = NULL;
+    
+    if (lhs == NULL) {
+        return NULL;
+    }
+
+    while (CHECKTV("=")) {
+        // =
+        op = parser->Next.Value;
+        ACCEPTT(TK_SYM);
+
+        rhs = _Logical(parser);
+        
+        if (rhs == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                lhs->Position, 
+                "missing right operand"
+            );
+        }
+
+        lhs = AstBinary(
+            AST_ASSIGN,
+            lhs, 
+            rhs, 
+            MergePositions(lhs->Position, rhs->Position)
+        );
+
+        free(op);
+    }
+
+    return lhs;
+}
+
 static Ast* _Expression(Parser* parser) {
-    return _Logical(parser);
+    return _Assignment(parser);
 }
 
 static Ast* _ListOfExpressions(Parser* parser) {

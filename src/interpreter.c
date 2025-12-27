@@ -182,6 +182,10 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 Forward(4);
                 break;
             }
+            case OP_DUPTOP: {
+                Push(Peek());
+                break;
+            }
             case OP_POPTOP: {
                 Value* val = Popp();
                 printf("POPPED: %s\n", ValueToString(val));

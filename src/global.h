@@ -179,7 +179,8 @@ typedef enum ast_type_enum {
     AST_OR,
     AST_XOR,
     AST_LAND,
-    AST_LOR
+    AST_LOR,
+    AST_ASSIGN
 } AstType;
 
 /**
@@ -245,6 +246,7 @@ typedef enum opcode_enum {
     OP_XOR,
     OP_STORE_NAME,
     OP_STORE_LOCAL,
+    OP_DUPTOP,
     OP_POPTOP,
     OP_JUMP_IF_FALSE_OR_POP,
     OP_JUMP_IF_TRUE_OR_POP,

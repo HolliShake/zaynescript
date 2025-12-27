@@ -17,6 +17,8 @@ fn fact(n) {
     }
 }
 
+x = 100;
 
 fact(5);
 GetX(9);
+x;

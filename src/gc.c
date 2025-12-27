@@ -27,7 +27,7 @@ static void _Free(Value* value) {
             Environment* env = (Environment*) value->Value.Opaque;
             if (env != NULL) {
                 for (int i = 0; i < env->LocalC; i++) {
-                    _Free(env->Locals[i]);
+                    if (env->Locals[i] != NULL) free(env->Locals[i]);
                 }
                 free(env);
                 value->Value.Opaque = NULL;
