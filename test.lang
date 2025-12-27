@@ -1,5 +1,6 @@
 
 
+
 var x = 2, y = x;
 
 fn fact(n) {
@@ -11,8 +12,9 @@ fn fact(n) {
 }
 
 fn GetX(y) {
+    const g = 2;
     let yy = x + y;
-    return yy + fact(5);
+    return  yy + fact(5);
 }
 
 fact(5);

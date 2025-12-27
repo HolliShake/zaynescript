@@ -804,7 +804,12 @@ static void _LetDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope
     }
     Ast* declarations = node->A;
     while (declarations != NULL) {
-        _Expression(compiler, uf, scope, declarations->B);
+        if (declarations->B != NULL) {
+            _Expression(compiler, uf, scope, declarations->B);
+        } else {
+            _Emit(compiler, uf, OP_LOAD_NULL);
+        }
+        
         int offset = UserFunctionEmitLocal(uf);
         _EmitArg(compiler, uf, OP_STORE_LOCAL, offset);
 
@@ -818,6 +823,32 @@ static void _LetDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope
         }
 
         ScopeSetSymbol(scope, declarations->Value, false, true, false,offset);
+        declarations = declarations->Next;
+    }
+}
+
+static void _ConstDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
+    Ast* declarations = node->A;
+    while (declarations != NULL) {
+        if (declarations->B != NULL) {
+            _Expression(compiler, uf, scope, declarations->B);
+        } else {
+            _Emit(compiler, uf, OP_LOAD_NULL);
+        }
+
+        int offset = UserFunctionEmitLocal(uf);
+        _EmitArg(compiler, uf, OP_STORE_LOCAL, offset);
+
+        if (ScopeHasLocal(scope, declarations->Value)) {
+            ThrowError(
+                compiler->Parser->Lexer->Path, 
+                compiler->Parser->Lexer->Data, 
+                declarations->Position, 
+                "duplicate variable name"
+            );
+        }
+
+        ScopeSetSymbol(scope, declarations->Value, ScopeIs(scope, SCOPE_GLOBAL), ScopeGetFirst(scope, SCOPE_FUNCTION) != NULL, true, offset);
         declarations = declarations->Next;
     }
 }
@@ -880,6 +911,9 @@ static void _Statement(Compiler* compiler, UserFunction* userFunction, Scope* sc
             break;
         case AST_LET_DECLARATION:
             _LetDeclarationStatement(compiler, userFunction, scope, node);
+            break;
+        case AST_CONST_DECLARATION:
+            _ConstDeclarationStatement(compiler, userFunction, scope, node);
             break;
         case AST_IF:
             _IfStatement(compiler, userFunction, scope, node);
