@@ -51,6 +51,7 @@ int main() {
 
     FreeLexer(lexer);
     FreeParser(parser);
+    FreeInterpreter(interpreter);
     printf("Done!\n");
     return 0;
 }

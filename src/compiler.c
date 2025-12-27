@@ -1,4 +1,6 @@
 #include "./compiler.h"
+#include "global.h"
+#include <stdio.h>
 
 #define PushArray(type, array, count, val, defaultValue) do { \
     (array)[(count)] = val; \
@@ -168,21 +170,21 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 );
             }
             
-            int offset = 0;
+            bool isOwnedLocally = ScopeIsLocalToFn(scope, node->Value);
 
-            if (!ScopeIsLocalToFn(scope, node->Value)) {
-                // Capture the variable
-            }
+            // if (!isOwnedLocally) {
+            //     // Capture the variable
+            //     printf("CAPTURE: %s\n", node->Value);
+            // }
 
             Symbol* symbol = ScopeGetSymbol(scope, node->Value, true);
 
             _EmitArg(
                 compiler, 
                 uf, 
-                ScopeIsLocalToFn(scope, node->Value) || !symbol->IsGlobal ? OP_LOAD_LOCAL : OP_LOAD_NAME,
+                isOwnedLocally ? OP_LOAD_LOCAL : OP_LOAD_NAME,
                 symbol->Offset
             );
-
             break;
         }
         case AST_INT: {
@@ -713,7 +715,7 @@ static void _FunctionDeclaration(Compiler* compiler, UserFunction* uf, Scope* sc
         );
     }
 
-    ScopeSetSymbol(scope, fnName->Value, true, true, nameOffset);
+    ScopeSetSymbol(scope, fnName->Value, true, true, false, nameOffset);
 
     UserFunction* fn = CreateUserFunction(fnName->Value, 0);
 
@@ -730,7 +732,7 @@ static void _FunctionDeclaration(Compiler* compiler, UserFunction* uf, Scope* sc
 
         int offset = UserFunctionEmitLocal(fn);
 
-        ScopeSetSymbol(fnScope, params->Value, false, true, offset);
+        ScopeSetSymbol(fnScope, params->Value, false, true, false, offset);
 
         _EmitArg(compiler, fn, OP_STORE_LOCAL, offset);
         paramc++;
@@ -744,10 +746,8 @@ static void _FunctionDeclaration(Compiler* compiler, UserFunction* uf, Scope* sc
         body = body->Next;
     }
 
-    if (!fnScope->Returned) {
-        _Emit(compiler, fn, OP_LOAD_NULL);
-        _Emit(compiler, fn, OP_RETURN);
-    }
+    _Emit(compiler, fn, OP_LOAD_NULL);
+    _Emit(compiler, fn, OP_RETURN);
 
     // Create the function
     Value* fnValue = NewUserFunctionValue(compiler->Interpreter, fn);
@@ -755,6 +755,71 @@ static void _FunctionDeclaration(Compiler* compiler, UserFunction* uf, Scope* sc
 
     _EmitArg(compiler, uf, OP_LOAD_FUNCTION, funcOffset);
     _EmitArg(compiler, uf, OP_STORE_NAME, nameOffset);
+}
+
+static void _VarDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
+    if (!ScopeIs(scope, SCOPE_GLOBAL)) {
+        ThrowError(
+            compiler->Parser->Lexer->Path, 
+            compiler->Parser->Lexer->Data, 
+            node->Position, 
+            "variables can only be declared at the global scope"
+        );
+    }
+    Ast* declarations = node->A;
+    while (declarations != NULL) {
+        if (declarations->B != NULL) {
+            _Expression(compiler, uf, scope, declarations->B);
+        } else {
+            _Emit(compiler, uf, OP_LOAD_NULL);
+        }
+
+        int offset = UserFunctionEmitLocal(uf);
+
+        _EmitArg(compiler, uf, OP_STORE_LOCAL, offset);
+
+        if (ScopeHasLocal(scope, declarations->Value)) {
+            ThrowError(
+                compiler->Parser->Lexer->Path, 
+                compiler->Parser->Lexer->Data, 
+                declarations->Position, 
+                "duplicate variable name"
+            );
+        }
+
+        ScopeSetSymbol(scope, declarations->Value, true, true, false, offset);
+
+        declarations = declarations->Next;
+    }
+}
+
+static void _LetDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
+    if (!(ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_BLOCK))) {
+        ThrowError(
+            compiler->Parser->Lexer->Path, 
+            compiler->Parser->Lexer->Data, 
+            node->Position, 
+            "let declarations can only be used inside a function or a block"
+        );
+    }
+    Ast* declarations = node->A;
+    while (declarations != NULL) {
+        _Expression(compiler, uf, scope, declarations->B);
+        int offset = UserFunctionEmitLocal(uf);
+        _EmitArg(compiler, uf, OP_STORE_LOCAL, offset);
+
+        if (ScopeHasLocal(scope, declarations->Value)) {
+            ThrowError(
+                compiler->Parser->Lexer->Path, 
+                compiler->Parser->Lexer->Data, 
+                declarations->Position, 
+                "duplicate variable name"
+            );
+        }
+
+        ScopeSetSymbol(scope, declarations->Value, false, true, false,offset);
+        declarations = declarations->Next;
+    }
 }
 
 static void _IfStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
@@ -770,6 +835,15 @@ static void _IfStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
         _Statement(compiler, uf, scope, elseBranch);
     }
     _JumpToLabel(compiler, uf, jumpEndIfOffset);
+}
+
+static void _BlockStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
+    Scope* block = CreateScope(SCOPE_BLOCK, scope);
+    Ast* current = node->A;
+    while (current != NULL) {
+        _Statement(compiler, uf, block, current);
+        current = current->Next;
+    }
 }
 
 static void _ReturnStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
@@ -801,8 +875,17 @@ static void _Statement(Compiler* compiler, UserFunction* userFunction, Scope* sc
         case AST_FUNCTION:
             _FunctionDeclaration(compiler, userFunction, scope, node);
             break;
+        case AST_VAR_DECLARATION:
+            _VarDeclarationStatement(compiler, userFunction, scope, node);
+            break;
+        case AST_LET_DECLARATION:
+            _LetDeclarationStatement(compiler, userFunction, scope, node);
+            break;
         case AST_IF:
             _IfStatement(compiler, userFunction, scope, node);
+            break;
+        case AST_BLOCK:
+            _BlockStatement(compiler, userFunction, scope, node);
             break;
         case AST_RETURN:
             _ReturnStatement(compiler, userFunction, scope, node);

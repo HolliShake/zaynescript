@@ -1,4 +1,5 @@
 #include "./interpreter.h"
+#include "global.h"
 
 Interpreter* CreateInterpreter() {
     Interpreter* interpreter    = Allocate(sizeof(Interpreter));
@@ -28,23 +29,36 @@ Interpreter* CreateInterpreter() {
     printf("\n"); \
 } while (0)
 
-#define SetLocal(envObj, offset, value) (((Environment*)envObj->Value.Opaque)->Locals[offset] = value)
-#define GetName(envObj, offset) (((Environment*)envObj->Value.Opaque)->Parent->Locals[offset])
-#define GetLocal(envObj, offset) (((Environment*)envObj->Value.Opaque)->Locals[offset])
+#define SetVar(envObj, offset, value) EnvironmentSetLocal((Environment*)envObj->Value.Opaque, offset, value)
+#define GetVar(envObj, offset) EnvironmentGetLocal((Environment*)envObj->Value.Opaque, offset)->Value
+#define ValueToUFn(value) ((UserFunction*) value->Value.Opaque)
 
 static int _ReadOffset(uint8_t* codes, int alignStart) {
     int offset = 0;
     offset |= codes[alignStart + 0] << 24;
     offset |= codes[alignStart + 1] << 16;
-    offset |= codes[alignStart + 2] << 8;
-    offset |= codes[alignStart + 3] << 0;
+    offset |= codes[alignStart + 2] <<  8;
+    offset |= codes[alignStart + 3] <<  0;
     return offset;
 }
 
-static void _Run(Interpreter* interpreter, UserFunction* uf, Value* envObj) {
-    int ip = 0;
-    uint8_t opcode;
-    Value* lhs = NULL, *rhs = NULL, *res;
+static String _ReadString(uint8_t* codes, int alignStart) {
+    String str = (String)(codes + alignStart);
+    int length = strlen(str);
+    String new = Allocate(length + 1);
+    memcpy(new, str, length + 1);
+    return new;
+}
+
+static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* envObj) {
+    UserFunction* uf = ValueToUFn(fnValue);
+    uint8_t opcode   = 0;
+    Value* lhs       = NULL;
+    Value* rhs       = NULL;
+    Value* res       = NULL;
+    int ip           = 0;
+    int offset       = 0;
+    int argc         = 0;
 
     #define Forward(size) (ip += size)
     #define JmpFrwd(addr) (ip  = addr)
@@ -55,25 +69,25 @@ static void _Run(Interpreter* interpreter, UserFunction* uf, Value* envObj) {
         opcode = uf->Codes[ip++];
         switch (opcode) {
             case OP_LOAD_NAME: {
-                int offset = _ReadOffset(uf->Codes, ip);
-                Push(GetName(envObj, offset));
+                offset = _ReadOffset(uf->Codes, ip);
+                Push(GetVar(rootEnvObj, offset));
                 Forward(4);
                 break;
             }
             case OP_LOAD_LOCAL: {
-                int offset = _ReadOffset(uf->Codes, ip);
-                Push(GetLocal(envObj, offset));
+                offset = _ReadOffset(uf->Codes, ip);
+                Push(GetVar(envObj, offset));
                 Forward(4);
                 break;
             }
             case OP_LOAD_CONST: {
-                int offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadOffset(uf->Codes, ip);
                 Push(interpreter->Constants[offset]);
                 Forward(4);
                 break;
             }
             case OP_LOAD_BOOL: {
-                int offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadOffset(uf->Codes, ip);
                 Push(offset == 0 ? interpreter->False : interpreter->True);
                 Forward(4);
                 break;
@@ -83,28 +97,40 @@ static void _Run(Interpreter* interpreter, UserFunction* uf, Value* envObj) {
                 break;
             }
             case OP_LOAD_FUNCTION: {
-                int offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadOffset(uf->Codes, ip);
                 DoLoadFunction(interpreter, offset, &res);
                 Push(res);
                 Forward(4);
                 break;
             }
             case OP_CALL: {
-                int argc = _ReadOffset(uf->Codes, ip);
+                argc = _ReadOffset(uf->Codes, ip);
                 Forward(4);
 
                 // Call
-                Value* function = Popp();
-                UserFunction* fn = (UserFunction*) function->Value.Opaque;
-                Environment* parentEnv = (Environment*) envObj->Value.Opaque;
-                Environment* env = CreateEnvironment(parentEnv, fn->LocalC);
+                Value* function        = Popp();
+                UserFunction* uf       = ValueToUFn(function);
+                Environment* parentEnv = (Environment*) rootEnvObj->Value.Opaque;
+                Environment* env       = CreateEnvironment(uf->LocalC);
 
-                if (argc != fn->Argc) {
-                    printf("Expected %d arguments, got %d\n", fn->Argc, argc);
+                if (argc != uf->Argc) {
+                    printf("Expected %d arguments, got %d\n", uf->Argc, argc);
                     exit(EXIT_FAILURE);
                 }
 
-                _Run(interpreter, fn, NewEnvironmentValue(interpreter, env));
+                _Run(interpreter, function, rootEnvObj, NewEnvironmentValue(interpreter, env));
+                break;
+            }
+            case OP_MUL: {
+                rhs = Popp();
+                lhs = Popp();
+                res = NULL;
+                int result = DoMul(interpreter, lhs, rhs, &res);
+                if (result == FLG_INVALID_OPERATION) {
+                    printf("Invalid operation for %s * %s\n", ValueToString(lhs), ValueToString(rhs));
+                    exit(EXIT_FAILURE);
+                }
+                Push(res);
                 break;
             }
             case OP_ADD: {
@@ -119,15 +145,39 @@ static void _Run(Interpreter* interpreter, UserFunction* uf, Value* envObj) {
                 Push(res);
                 break;
             }
+            case OP_SUB: {
+                rhs = Popp();
+                lhs = Popp();
+                res = NULL;
+                int result = DoSub(interpreter, lhs, rhs, &res);
+                if (result == FLG_INVALID_OPERATION) {
+                    printf("Invalid operation\n");
+                    exit(EXIT_FAILURE);
+                }
+                Push(res);
+                break;
+            }
+            case OP_LTE: {
+                rhs = Popp();
+                lhs = Popp();
+                res = NULL;
+                int result = DoLTE(interpreter, lhs, rhs, &res);
+                if (result == FLG_INVALID_OPERATION) {
+                    printf("Invalid operation\n");
+                    exit(EXIT_FAILURE);
+                }
+                Push(res);
+                break;
+            }
             case OP_STORE_NAME: {
-                int offset = _ReadOffset(uf->Codes, ip);
-                SetLocal(envObj, offset, Popp());
+                offset = _ReadOffset(uf->Codes, ip);
+                SetVar(rootEnvObj, offset, Popp());
                 Forward(4);
                 break;
             }
             case OP_STORE_LOCAL: {
-                int offset = _ReadOffset(uf->Codes, ip);
-                SetLocal(envObj, offset, Popp());
+                offset = _ReadOffset(uf->Codes, ip);
+                SetVar(envObj, offset, Popp());
                 Forward(4);
                 break;
             }
@@ -137,7 +187,7 @@ static void _Run(Interpreter* interpreter, UserFunction* uf, Value* envObj) {
                 break;
             }
             case OP_JUMP_IF_FALSE_OR_POP: {
-                int offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadOffset(uf->Codes, ip);
                 if (!ValueToBool(Peek())) {
                     JmpFrwd(offset);
                 } else {
@@ -147,7 +197,7 @@ static void _Run(Interpreter* interpreter, UserFunction* uf, Value* envObj) {
                 break;
             }
             case OP_JUMP_IF_TRUE_OR_POP: {
-                int offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadOffset(uf->Codes, ip);
                 if (ValueToBool(Peek())) {
                     JmpFrwd(offset);
                 } else {
@@ -157,8 +207,8 @@ static void _Run(Interpreter* interpreter, UserFunction* uf, Value* envObj) {
                 break;
             }
             case OP_POP_JUMP_IF_FALSE: {
-                int offset = _ReadOffset(uf->Codes, ip);
-                Value* val = Peek();
+                offset = _ReadOffset(uf->Codes, ip);
+                Value* val = Popp();
                 if (!ValueToBool(val)) {
                     JmpFrwd(offset);
                 } else {
@@ -167,7 +217,7 @@ static void _Run(Interpreter* interpreter, UserFunction* uf, Value* envObj) {
                 break;
             }
             case OP_JUMP: {
-                int offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadOffset(uf->Codes, ip);
                 JmpFrwd(offset);
                 break;
             }
@@ -183,13 +233,20 @@ static void _Run(Interpreter* interpreter, UserFunction* uf, Value* envObj) {
     }
 }
 
-void _RunProgram(Interpreter* interpreter, Value* ufValue) {
-    UserFunction* uf = (UserFunction*) ufValue->Value.Opaque;
-    Environment* env = CreateEnvironment(NULL, uf->LocalC);
-    _Run(interpreter, uf, NewEnvironmentValue(interpreter, env));
+void _RunProgram(Interpreter* interpreter, Value* fnValue) {
+    UserFunction* uf = ValueToUFn(fnValue);
+    Environment* env = CreateEnvironment(uf->LocalC);
+    Value* envObj    = NewEnvironmentValue(interpreter, env);
+    _Run(interpreter, fnValue, envObj, envObj);
     ForceGarbageCollect(interpreter);
 }
 
-void Interpret(Interpreter* interpreter, Value* ufValue /*UserFunction*/) {
-    _RunProgram(interpreter, ufValue);
+void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/) {
+    _RunProgram(interpreter, fnValue);
+}
+
+void FreeInterpreter(Interpreter* interpreter) {
+    free(interpreter->Constants);
+    free(interpreter->Functions);
+    free(interpreter);
 }

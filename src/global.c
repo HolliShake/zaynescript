@@ -10,6 +10,15 @@ void* _Allocate(String file, int line, size_t size) {
     return ptr;
 }
 
+void* _Callocate(String file, int line, size_t count, size_t size) {
+    void* ptr = calloc(count, size);
+    if (ptr == NULL) {
+        fprintf(stderr, "[%s:%d] Failed to allocate memory with Callocate!!!\n", file, line);
+        exit(EXIT_FAILURE);
+    }
+    return ptr;
+}
+
 void* _Reallocate(String file, int line, void* ptr, size_t size) {
     void* newPtr = realloc(ptr, size);
     if (newPtr == NULL) {

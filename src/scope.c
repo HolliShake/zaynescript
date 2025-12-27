@@ -1,9 +1,11 @@
 #include "./scope.h"
+#include "global.h"
 
-Symbol* CreateSymbol(String name, bool isGlobal, bool isLocalToFn, int offset) {
+Symbol* CreateSymbol(String name, bool isGlobal, bool isLocalToFn, bool isConstant, int offset) {
     Symbol* symbol       = Allocate(sizeof(Symbol));
     symbol->IsGlobal     = isGlobal;
     symbol->IsLocalToFn  = isLocalToFn;
+    symbol->IsConstant   = isConstant;
     symbol->Offset       = offset;
     return symbol;
 }
@@ -52,6 +54,29 @@ bool ScopeHasName(Scope* scope, String name) {
     return false;
 }
 
+bool ScopeIsLocalToGlobal(Scope *scope, String name) {
+    Scope* current = scope;
+    while (current != NULL) {
+        if (HashMapContains(current->Symbols, name)) {
+            // Found the symbol, now check if we're inside a function scope
+            Scope* check = current;
+            while (check != NULL) {
+                if (check->Type == SCOPE_GLOBAL) {
+                    return true;
+                }
+                check = check->Parent;
+            }
+            return false;
+        }
+        if (current->Type == SCOPE_GLOBAL) {
+            // We've reached a function boundary without finding the symbol
+            return false;
+        }
+        current = current->Parent;
+    }
+    return false;
+}
+
 bool ScopeIsLocalToFn(Scope* scope, String name) {
     Scope* current = scope;
     while (current != NULL) {
@@ -75,9 +100,9 @@ bool ScopeIsLocalToFn(Scope* scope, String name) {
     return false;
 }
 
-void ScopeSetSymbol(Scope* scope, String name, bool isGlobal, bool isLocalToFn, int offset) {
+void ScopeSetSymbol(Scope* scope, String name, bool isGlobal, bool isLocalToFn, bool isConstant, int offset) {
     String key = AllocateString(name);
-    Symbol* symbol = CreateSymbol(key, isGlobal, isLocalToFn, offset);
+    Symbol* symbol = CreateSymbol(key, isGlobal, isLocalToFn, isConstant, offset);
     HashMapSet(scope->Symbols, key, symbol);
 }
 

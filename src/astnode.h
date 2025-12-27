@@ -127,6 +127,16 @@ Ast* AstExpressionStatement(Ast* expression, Position position);
 Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, Position position);
 
 /**
+ * AstVarDeclaration - Creates an AST node representing a variable declaration
+ * @type: The type of the variable declaration
+ * @declarations: Pointer to AST node containing the variable declarations
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_VAR_DECLARATION node
+ */
+Ast* AstVarDeclaration(AstType type, Ast* declarations, Position position);
+
+/**
  * AstIf - Creates an AST node representing an if statement
  * @condition: Pointer to the condition AST node
  * @thenBranch: Pointer to the then branch AST node
@@ -136,6 +146,15 @@ Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, Position position);
  * Return: Pointer to newly allocated AST_IF node
  */
 Ast* AstIf(Ast* condition, Ast* thenBranch, Ast* elseBranch, Position position);
+
+/**
+ * AstBlock - Creates an AST node representing a block statement
+ * @statements: Pointer to child AST nodes (statements)
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_BLOCK node
+ */
+Ast* AstBlock(Ast* statements, Position position);
 
 /**
  * AstProgram - Creates an AST node representing the root program node

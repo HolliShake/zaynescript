@@ -38,7 +38,6 @@ void Mark(Value* value) {
         case VT_ENVIRONMENT: {
             Environment* env = (Environment*) value->Value.Opaque;
             if (env != NULL) {
-                Mark(env->Parent);
                 for (int i = 0; i < env->LocalC; i++) {
                     Mark(env->Locals[i]);
                 }
@@ -76,9 +75,11 @@ static void _MarkStack(Interpreter* interpreter) {
 
 static void _Sweep(Interpreter* interpreter) {
     Value** current = &interpreter->GcRoot;
+    int freed = 0;
     while (*current != NULL) {
         Value* value = *current;
         if (!value->Marked) {
+            freed++;
             Value* unreached = value;
             *current = unreached->Next;
             _Free(unreached);
@@ -97,8 +98,7 @@ void GarbageCollect(Interpreter* interpreter) {
     _MarkFunctions(interpreter);
     _MarkStack(interpreter);
     _Sweep(interpreter);
-    int reset = interpreter->Allocated - GC_THRESHOLD;
-    interpreter->Allocated = reset >= 0 ? reset : 0;
+    interpreter->Allocated = 0;
 }
 
 void ForceGarbageCollect(Interpreter* interpreter) {

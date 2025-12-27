@@ -98,11 +98,23 @@ Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, Position position) {
     return ast;
 }
 
+Ast* AstVarDeclaration(AstType type, Ast* declarations, Position position) {
+    Ast* ast = InitAst(type, position);
+    ast->A   = declarations;
+    return ast;
+}
+
 Ast* AstIf(Ast* condition, Ast* thenBranch, Ast* elseBranch, Position position) {
     Ast* ast = InitAst(AST_IF, position);
     ast->A = condition;
     ast->B = thenBranch;
     ast->C = elseBranch;
+    return ast;
+}
+
+Ast* AstBlock(Ast* statements, Position position) {
+    Ast* ast = InitAst(AST_BLOCK, position);
+    ast->A = statements;
     return ast;
 }
 

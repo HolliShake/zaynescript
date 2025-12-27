@@ -539,6 +539,93 @@ static Ast* _Function(Parser* parser) {
     );
 }
 
+static Ast* _DeclarationList(Parser* parser);
+
+static Ast* _VarStatement(Parser* parser) {
+    Position start = parser->Next.Position, ended = start;
+    ACCEPTV_FREE(KEY_VAR);
+    Ast* declarations = _DeclarationList(parser);
+    ended = parser->Next.Position;
+    ACCEPTV_FREE(";");
+    return AstVarDeclaration(
+        AST_VAR_DECLARATION,
+        declarations,
+        MergePositions(start, ended)
+    );
+}
+
+static Ast* _ConstStatement(Parser* parser) {
+    Position start = parser->Next.Position, ended = start;
+    ACCEPTV_FREE(KEY_CONST);
+    Ast* declarations = _DeclarationList(parser);
+    ended = parser->Next.Position;
+    ACCEPTV_FREE(";");
+    return AstVarDeclaration(
+        AST_CONST_DECLARATION,
+        declarations,
+        MergePositions(start, ended)
+    );
+}
+
+static Ast* _LetStatement(Parser* parser) {
+    Position start = parser->Next.Position, ended = start;
+    ACCEPTV_FREE(KEY_LET);
+    Ast* declarations = _DeclarationList(parser);
+    ended = parser->Next.Position;
+    ACCEPTV_FREE(";");
+    return AstVarDeclaration(
+        AST_LET_DECLARATION,
+        declarations,
+        MergePositions(start, ended)
+    );
+}
+
+static Ast* _DeclarationList(Parser* parser) {
+    Ast* head = NULL;
+    Ast* tail = NULL;
+    
+    do {
+        Ast* dec = _Terminal(parser);
+        if (dec == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                parser->Next.Position, 
+                "expected a declaration"
+            );
+        }
+
+        if (CHECKTV("=")) {
+            ACCEPTV_FREE("=");
+            Ast* value = _Expression(parser);
+            if (value == NULL) {
+                ThrowError(
+                    parser->Lexer->Path, 
+                    parser->Lexer->Data, 
+                    dec->Position, 
+                    "expected an expression"
+                );
+            }
+            dec->B = value;
+        }
+
+        if (head == NULL) {
+            head = dec;
+            tail = dec;
+        } else {
+            tail->Next = dec;
+            tail = dec;
+        }
+
+        if (!CHECKTV(",")) {
+            break;
+        }
+        ACCEPTV_FREE(",");
+    } while (1);
+    
+    return head;
+}
+
 static Ast* _IfStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
     Ast* condition = NULL, *thenBranch = NULL, *elseBranch = NULL;
@@ -597,6 +684,19 @@ static Ast* _ReturnStatement(Parser* parser) {
     );
 }
 
+static Ast* _BlockStatement(Parser* parser) {
+    Position start = parser->Next.Position, ended = start;
+    Ast* statements = NULL;
+    ACCEPTV_FREE("{");
+    statements = _ListOfStatements(parser);
+    ended = parser->Next.Position;
+    ACCEPTV_FREE("}");
+    return AstBlock(
+        statements, 
+        MergePositions(start, ended)
+    );
+}
+
 static Ast* _ExpressionStatement(Parser* parser) {
     Position start  = parser->Next.Position, ended = start;
     Ast* expression = _Expression(parser);
@@ -619,10 +719,18 @@ static Ast* _ExpressionStatement(Parser* parser) {
 static Ast* _Statement(Parser* parser) {
     if (CHECKTV(KEY_FN)) {
         return _Function(parser);
+    } else if (CHECKTV(KEY_VAR)) {
+        return _VarStatement(parser);
+    } else if (CHECKTV(KEY_CONST)) {
+        return _ConstStatement(parser);
+    } else if (CHECKTV(KEY_LET)) {
+        return _LetStatement(parser);
     } else if (CHECKTV(KEY_IF)) {
         return _IfStatement(parser);
     } else if (CHECKTV(KEY_RETURN)) {
         return _ReturnStatement(parser);
+    } else if (CHECKTV("{")) {
+        return _BlockStatement(parser);
     }
     return _ExpressionStatement(parser);
 }

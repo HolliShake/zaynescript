@@ -20,8 +20,15 @@ Interpreter* CreateInterpreter();
  * @brief Executes the parsed program using the given interpreter
  * 
  * @param interpreter Pointer to the interpreter instance
- * @param ufValue Pointer to the Value containing the UserFunction to execute
+ * @param fnValue Pointer to the Value containing the UserFunction to execute
  */
-void Interpret(Interpreter* interpreter, Value* ufValue/*UserFunction*/);
+void Interpret(Interpreter* interpreter, Value* fnValue/*UserFunction*/);
+
+/**
+ * @brief Frees the interpreter and all associated memory
+ * 
+ * @param interpreter Pointer to the interpreter instance to free
+ */
+void FreeInterpreter(Interpreter* interpreter);
 
 #endif

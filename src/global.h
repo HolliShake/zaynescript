@@ -18,7 +18,7 @@
 #include <malloc.h>
 #endif
 
-#define GC_THRESHOLD 1000
+#define GC_THRESHOLD 50
 
 /**
  * @typedef String
@@ -144,9 +144,13 @@ typedef enum ast_type_enum {
     AST_EXPR,
     AST_RETURN,
     AST_FUNCTION,
+    AST_VAR_DECLARATION,
+    AST_CONST_DECLARATION,
+    AST_LET_DECLARATION,
     AST_CLASS,
     AST_EXPRESSION_STATEMENT,
     AST_IF,
+    AST_BLOCK,
     // 
     AST_NAME,
     AST_INT,
@@ -407,6 +411,7 @@ typedef struct compiler_struct {
 typedef struct symbol_struct {
     bool   IsGlobal;
     bool   IsLocalToFn;
+    bool   IsConstant;
     int    Offset;
 } Symbol;
 
@@ -448,7 +453,7 @@ typedef struct scope_struct {
  * The value in the cell
  */
 typedef struct envcell_struct {
-    Value* Value;
+    Value* Value;  
 } EnvCell;
 
 /**
@@ -465,9 +470,7 @@ typedef struct envcell_struct {
  * Array of pointers to Value objects representing local variables in this environment.
  * The array is indexed by the variable's offset within the scope.
  */
-typedef struct environment_struct Environment;
 typedef struct environment_struct {
-    Environment* Parent;
     EnvCell**    Locals;
     int          LocalC;
 } Environment;
@@ -493,6 +496,16 @@ typedef Value* (*NativeFunction)(Interpreter* interpreter, int argc, Value** arg
 #define Allocate(size) _Allocate(__FILE__, __LINE__, size)
 
 /**
+ * @def Callocate
+ * @brief Wrapper macro for memory allocation with zero-initialization and file/line tracking
+ * 
+ * @param count Number of elements to allocate
+ * @param size Size of each element in bytes
+ * @return Pointer to allocated memory, or NULL on failure
+ */
+#define Callocate(count, size) _Callocate(__FILE__, __LINE__, count, size)
+
+/**
  * @def Reallocate
  * @brief Wrapper macro for memory reallocation with file/line tracking
  * 
@@ -511,6 +524,17 @@ typedef Value* (*NativeFunction)(Interpreter* interpreter, int argc, Value** arg
  * @return Pointer to allocated memory, or NULL on failure
  */
 void* _Allocate(String file, int line, size_t size);
+
+/**
+ * @brief Internal allocation function with zero-initialization called by Callocate macro
+ * 
+ * @param file Source file name where allocation was requested
+ * @param line Line number where allocation was requested
+ * @param count Number of elements to allocate
+ * @param size Size of each element in bytes
+ * @return Pointer to allocated memory, or NULL on failure
+ */
+void* _Callocate(String file, int line, size_t count, size_t size);
 
 /**
  * @brief Internal reallocation function called by Reallocate macro

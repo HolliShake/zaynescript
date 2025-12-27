@@ -3,6 +3,15 @@
 #ifndef ENVIRONMENT_H
 #define ENVIRONMENT_H
 
+
+/**
+ * @brief Creates a new environment cell
+ * 
+ * @param value The value to store in the environment cell
+ * @return Pointer to the newly created EnvCell structure
+ */
+EnvCell* CreateEnvCell(Value* value);
+
 /**
  * @brief Creates a new environment
  * 
@@ -10,7 +19,7 @@
  * @param localC The number of local variables in the environment
  * @return Pointer to the newly created Environment structure
  */
-Environment* CreateEnvironment(Environment* parent, int localC);
+Environment* CreateEnvironment(int localC);
 
 
 /**
@@ -28,8 +37,8 @@ void EnvironmentSetLocal(Environment* environment, int offset, Value* value);
  * 
  * @param environment The environment to get the local variable from
  * @param offset The offset of the local variable
- * @return The value of the local variable
+ * @return The environment cell containing the value of the local variable
  */
-Value* EnvironmentGetLocal(Environment* environment, int offset);
+EnvCell* EnvironmentGetLocal(Environment* environment, int offset);
 
 #endif

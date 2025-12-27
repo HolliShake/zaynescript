@@ -11,10 +11,11 @@
  * @param name The name of the symbol
  * @param isGlobal Whether the symbol is global
  * @param isLocalToFn Whether the symbol is local to a function
+ * @param isConstant Whether the symbol is constant
  * @param offset The offset of the symbol in the function's local variables
  * @return Pointer to the newly created Symbol structure
  */
-Symbol* CreateSymbol(String name, bool isGlobal, bool isLocalToFn, int offset);
+Symbol* CreateSymbol(String name, bool isGlobal, bool isLocalToFn, bool isConstant, int offset);
 
 /**
  * @brief Creates a new scope
@@ -62,6 +63,15 @@ bool ScopeHasLocal(Scope* scope, String name);
 bool ScopeHasName(Scope* scope, String name);
 
 /**
+ * @brief Checks if a scope is local to the global scope
+ * 
+ * @param scope Pointer to the scope to check
+ * @param name The name of the variable to check for
+ * @return true if the scope is local to the global scope, false otherwise
+ */
+bool ScopeIsLocalToGlobal(Scope *scope, String name);
+
+/**
  * @brief Checks if a scope is local to a function
  * 
  * @param scope Pointer to the scope to check
@@ -77,9 +87,10 @@ bool ScopeIsLocalToFn(Scope* scope, String name);
  * @param name The name of the symbol
  * @param isGlobal Whether the symbol is global
  * @param isLocalToFn Whether the symbol is local to a function
+ * @param isConstant Whether the symbol is constant
  * @param offset The offset of the symbol in the function's local variables
  */
-void ScopeSetSymbol(Scope* scope, String name, bool isGlobal, bool isLocalToFn, int offset);
+void ScopeSetSymbol(Scope* scope, String name, bool isGlobal, bool isLocalToFn, bool isConstant, int offset);
 
 /**
  * @brief Gets a symbol from a scope

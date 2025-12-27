@@ -1,23 +1,29 @@
 #include "./environment.h"
 
 
-Environment* CreateEnvironment(Environment* parent, int localC) {
+EnvCell* CreateEnvCell(Value* value) {
+    EnvCell* envCell = Allocate(sizeof(EnvCell));
+    envCell->Value   = value;
+    return envCell;
+}
+
+Environment* CreateEnvironment(int localC) {
     Environment* environment = Allocate(sizeof(Environment));
-    environment->Parent      = parent;
-    environment->Locals      = Allocate(sizeof(Value*) * (localC + 1));
+    environment->Locals      = Callocate(localC, sizeof(EnvCell));
     environment->LocalC      = localC;
-    // Initialize all locals to NULL
-    for (int i = 0; i < localC; i++) {
-        environment->Locals[i] = NULL;
-    }
-    environment->Locals[localC] = NULL;
     return environment;
 }
 
 void EnvironmentSetLocal(Environment* environment, int offset, Value* value) {
-    environment->Locals[offset] = value;
+    if (environment->Locals[offset] == NULL) {
+        environment->Locals[offset] = CreateEnvCell(NULL);
+    }
+    environment->Locals[offset]->Value = value;
 }
 
-Value* EnvironmentGetLocal(Environment* environment, int offset) {
+EnvCell* EnvironmentGetLocal(Environment* environment, int offset) {
+    if (environment->Locals[offset] == NULL) {
+        return NULL;
+    }
     return environment->Locals[offset];
 }
