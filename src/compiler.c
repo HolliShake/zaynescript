@@ -704,18 +704,19 @@ static void _FunctionDeclaration(Compiler* compiler, UserFunction* uf, Scope* sc
     Ast* params = node->B;
     Ast* body   = node->C;
 
-    int nameOffset = UserFunctionEmitLocal(uf);
-
-    if (ScopeHasLocal(scope, fnName->Value)) {
+    // Assume its already forwarded
+    Symbol* symbol = ScopeGetSymbol(scope, fnName->Value, false);
+    
+    if (symbol == NULL) {
         ThrowError(
             compiler->Parser->Lexer->Path, 
             compiler->Parser->Lexer->Data, 
             fnName->Position, 
-            "duplicate function name"
+            "function not found"
         );
     }
 
-    ScopeSetSymbol(scope, fnName->Value, true, true, false, nameOffset);
+    int nameOffset = symbol->Offset;
 
     UserFunction* fn = CreateUserFunction(fnName->Value, 0);
 
@@ -901,6 +902,19 @@ static void _ExpressionStatement(Compiler* compiler, UserFunction* uf, Scope* sc
     _Emit(compiler, uf, OP_POPTOP);
 }
 
+static void _ForwardFunctions(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
+    while (node != NULL) {
+        switch (node->Type) {
+            case AST_FUNCTION: {
+                Ast* fnName = node->A;
+                ScopeSetSymbol(scope, fnName->Value, true, true, false, UserFunctionEmitLocal(uf));
+                break;
+            }
+        }
+        node = node->Next;
+    }
+}
+
 static void _Statement(Compiler* compiler, UserFunction* userFunction, Scope* scope, Ast* node) {\
     switch (node->Type) {
         case AST_FUNCTION:
@@ -943,6 +957,7 @@ static Value* _Program(Compiler* compiler, Ast* node) {
     UserFunction* uf = CreateUserFunction(AllocateString("main"), 0);
 
     Ast* current = node->A;
+    _ForwardFunctions(compiler, uf, scope, current);
     while (current != NULL) {
         _Statement(compiler, uf, scope, current);
         current = current->Next;

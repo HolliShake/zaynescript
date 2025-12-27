@@ -3,6 +3,12 @@
 
 var x = 2, y = x;
 
+fn GetX(y) {
+    const g = 2;
+    let yy = x + y;
+    return  yy + fact(5);
+}
+
 fn fact(n) {
     if (n <= 1) {
         return n;
@@ -11,11 +17,6 @@ fn fact(n) {
     }
 }
 
-fn GetX(y) {
-    const g = 2;
-    let yy = x + y;
-    return  yy + fact(5);
-}
 
 fact(5);
 GetX(9);

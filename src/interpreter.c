@@ -63,6 +63,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
     #define Forward(size) (ip += size)
     #define JmpFrwd(addr) (ip  = addr)
 
+    Mark(rootEnvObj);
     Mark(envObj);
 
     while (ip < uf->CodeC) {
