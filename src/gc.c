@@ -32,7 +32,6 @@ static void _Free(Value* value) {
                 free(env);
                 value->Value.Opaque = NULL;
             }
-            printf("FREEING ENVIRONMENT\n");
             break;
         }
         default:
@@ -103,7 +102,7 @@ static void _Sweep(Interpreter* interpreter) {
             current = &value->Next;
         }
     }
-    printf("FREED: %d\n", freed);
+    // printf("FREED: %d\n", freed);
 }
 
 void GarbageCollect(Interpreter* interpreter) {

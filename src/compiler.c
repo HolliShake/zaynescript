@@ -803,6 +803,7 @@ static void _FunctionDeclaration(Compiler* compiler, UserFunction* uf, Scope* sc
 
     _EmitArg(compiler, uf, OP_LOAD_FUNCTION, funcOffset);
     _EmitArg(compiler, uf, OP_STORE_NAME, nameOffset);
+    FreeScope(fnScope);
 }
 
 static void _VarDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
@@ -901,30 +902,92 @@ static void _ConstDeclarationStatement(Compiler* compiler, UserFunction* uf, Sco
     }
 }
 
+static void _InitializerConditionMutator(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
+    Ast* lhs = node->A, *rhs = node->B;
+    if (node->Type == AST_SHORT_ASSIGN) {
+        _Expression(compiler, uf, scope, rhs);
+        if (ScopeHasLocal(scope, lhs->Value)) {
+            ThrowError(
+                compiler->Parser->Lexer->Path, 
+                compiler->Parser->Lexer->Data, 
+                lhs->Position, 
+                "variable not found"
+            );
+        }
+        int offset = UserFunctionEmitLocal(uf);
+        ScopeSetSymbol(scope, lhs->Value, false, true, false, offset);
+        _EmitArg(compiler, uf, OP_STORE_LOCAL, offset);
+        return;
+    }
+    _Expression(compiler, uf, scope, node);
+}
+
 static void _IfStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
-    Ast* condition  = node->A;
-    Ast* thenBranch = node->B;
-    Ast* elseBranch = node->C;
-    _Expression(compiler, uf, scope, condition);
+    Scope* useScope  = scope;
+    Ast* initializer = node->A, *condition = NULL;
+    if (initializer->Next != NULL) {
+        condition = initializer->Next;
+    }
+    Ast* thenBranch  = node->B;
+    Ast* elseBranch  = node->C;
+
+    if (initializer != NULL && condition != NULL) {
+        if (initializer->Type == AST_SHORT_ASSIGN) {
+            useScope = CreateScope(SCOPE_BLOCK, scope);
+        }
+        _InitializerConditionMutator(compiler, uf, useScope, initializer);
+        _Expression(compiler, uf, useScope, condition);
+    } else if (initializer != NULL) {
+        // use initializer as condition
+        _InitializerConditionMutator(compiler, uf, useScope, initializer);
+    } else {
+        _Expression(compiler, uf, useScope, condition);
+    }
     int jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
-    _Statement(compiler, uf, scope, thenBranch);
+    _Statement(compiler, uf, useScope, thenBranch);
     int jumpEndIfOffset = _EmitJumpTo(compiler, uf, OP_JUMP);
     _JumpToLabel(compiler, uf, jumpOffset);
     if (elseBranch != NULL) {
+        // else branch is always in the outside scope
         _Statement(compiler, uf, scope, elseBranch);
     }
     _JumpToLabel(compiler, uf, jumpEndIfOffset);
+    if (useScope != scope) {
+        FreeScope(useScope);
+    }
 }
 
 static void _WhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
-    Ast* condition  = node->A;
+    Scope* loopScope = CreateScope(SCOPE_LOOP, scope);
+    Ast* initializer = node->A, *condition = NULL, *mutator = NULL;
+    if (initializer->Next != NULL) {
+        condition = initializer->Next;
+        if (condition->Next != NULL) {
+            mutator = condition->Next;
+        }
+    }
     Ast* thenBranch = node->B;
     int whileStart  = uf->CodeC;
-    _Expression(compiler, uf, scope, condition);
+
+    if (initializer != NULL) {
+        // use initializer as condition
+        _InitializerConditionMutator(compiler, uf, loopScope, initializer);
+    }
+
+    if (condition != NULL) {
+        whileStart = uf->CodeC;
+        _Expression(compiler, uf, loopScope, condition);
+    }
+
     int jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
-    _Statement(compiler, uf, scope, thenBranch);
+    _Statement(compiler, uf, loopScope, thenBranch);
+    if (mutator != NULL) {
+        _Expression(compiler, uf, loopScope, mutator);
+        _Emit(compiler, uf, OP_POPTOP);
+    }
     _JumpToAbsoluteLabel(compiler, uf, _EmitJumpTo(compiler, uf, OP_ABSOLUTE_JUMP), whileStart);
     _JumpToLabel(compiler, uf, jumpOffset);
+    FreeScope(loopScope);
 }
 
 static void _DoWhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
@@ -1040,6 +1103,8 @@ static Value* _Program(Compiler* compiler, Ast* node) {
 
     _Emit(compiler, uf, OP_LOAD_NULL);
     _Emit(compiler, uf, OP_RETURN);
+
+    FreeScope(scope);
 
     return NewUserFunctionValue(compiler->Interpreter, uf);
 }

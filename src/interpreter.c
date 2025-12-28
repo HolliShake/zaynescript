@@ -192,6 +192,30 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 Push(res);
                 break;
             }
+            case OP_LSHFT: {
+                rhs = Popp();
+                lhs = Popp();
+                res = NULL;
+                int result = DoLShift(interpreter, lhs, rhs, &res);
+                if (result == FLG_INVALID_OPERATION) {
+                    printf("Invalid operation\n");
+                    exit(EXIT_FAILURE);
+                }
+                Push(res);
+                break;
+            }
+            case OP_RSHFT: {
+                rhs = Popp();
+                lhs = Popp();
+                res = NULL;
+                int result = DoRShift(interpreter, lhs, rhs, &res);
+                if (result == FLG_INVALID_OPERATION) {
+                    printf("Invalid operation\n");
+                    exit(EXIT_FAILURE);
+                }
+                Push(res);
+                break;
+            }
             case OP_LT: {
                 rhs = Popp();
                 lhs = Popp();

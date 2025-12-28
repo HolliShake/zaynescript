@@ -169,6 +169,7 @@ static Token TokenizeSymbol(Lexer* lexer) {
     }
     // Check for two-character operators
     else if ((current == '=' && next == '=') ||
+             (current == ':' && next == '=') ||
              (current == '!' && next == '=') ||
              (current == '<' && next == '=') ||
              (current == '>' && next == '=') ||

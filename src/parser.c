@@ -578,6 +578,52 @@ static Ast* _Function(Parser* parser) {
 
 static Ast* _DeclarationList(Parser* parser);
 
+static Ast* _InitializerConditionMutator(Parser* parser) {
+    String op = NULL;
+    Ast* lhs  = _Expression(parser), *rhs = NULL;
+    
+    if (lhs == NULL) {
+        return NULL;
+    }
+
+    while (CHECKTV(":=")) {
+        if (lhs->Type != AST_NAME) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                lhs->Position, 
+                "expected an identifier or name"
+            );
+        }
+
+        // =
+        op = parser->Next.Value;
+        ACCEPTT(TK_SYM);
+
+        rhs = _Expression(parser);
+        
+        if (rhs == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                lhs->Position, 
+                "missing right operand"
+            );
+        }
+
+        lhs = AstBinary(
+            AST_SHORT_ASSIGN,
+            lhs, 
+            rhs, 
+            MergePositions(lhs->Position, rhs->Position)
+        );
+
+        free(op);
+    }
+
+    return lhs;
+}
+
 static Ast* _VarStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
     ACCEPTV_FREE(KEY_VAR);
@@ -623,12 +669,22 @@ static Ast* _DeclarationList(Parser* parser) {
     
     do {
         Ast* dec = _Terminal(parser);
+
         if (dec == NULL) {
             ThrowError(
                 parser->Lexer->Path, 
                 parser->Lexer->Data, 
                 parser->Next.Position, 
                 "expected a declaration"
+            );
+        }
+
+        if (dec->Type != AST_NAME) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                dec->Position, 
+                "expected an identifier or name"
             );
         }
 
@@ -665,17 +721,29 @@ static Ast* _DeclarationList(Parser* parser) {
 
 static Ast* _IfStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
-    Ast* condition = NULL, *thenBranch = NULL, *elseBranch = NULL;
+    Ast* initializerCondition = NULL, *thenBranch = NULL, *elseBranch = NULL;
     ACCEPTV_FREE(KEY_IF);
     ACCEPTV_FREE("(");
-    condition = _Expression(parser);
-    if (condition == NULL) {
+    initializerCondition = _InitializerConditionMutator(parser);
+    if (initializerCondition == NULL) {
         ThrowError(
             parser->Lexer->Path, 
             parser->Lexer->Data, 
             start, 
             "expected a condition"
         );
+    }
+    if (CHECKTV(";")) {
+        ACCEPTV_FREE(";");
+        initializerCondition->Next = _Expression(parser);
+        if (initializerCondition->Next == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                parser->Next.Position, 
+                "expected a condition"
+            );
+        }
     }
     ACCEPTV_FREE(")");
     thenBranch = _Statement(parser);
@@ -702,7 +770,7 @@ static Ast* _IfStatement(Parser* parser) {
     }
     
     return AstIf(
-        condition, 
+        initializerCondition,
         thenBranch, 
         elseBranch, 
         MergePositions(start, ended)
@@ -711,17 +779,45 @@ static Ast* _IfStatement(Parser* parser) {
 
 static Ast* _WhileStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
-    Ast* condition = NULL, *body = NULL;
+    Ast* initializerConditionMutator = NULL, *body = NULL;
     ACCEPTV_FREE(KEY_WHILE);
     ACCEPTV_FREE("(");
-    condition = _Expression(parser);
-    if (condition == NULL) {
+    initializerConditionMutator = _InitializerConditionMutator(parser);
+    if (initializerConditionMutator == NULL) {
         ThrowError(
             parser->Lexer->Path, 
             parser->Lexer->Data, 
             start, 
             "expected a condition"
         );
+    }
+
+    if (CHECKTV(";")) {
+        // Condition?
+        ACCEPTV_FREE(";");
+        initializerConditionMutator->Next = _Expression(parser);
+        if (initializerConditionMutator->Next == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                parser->Next.Position, 
+                "expected a condition"
+            );
+        }
+
+        if (CHECKTV(";")) {
+            // Mutator?
+            ACCEPTV_FREE(";");
+            initializerConditionMutator->Next->Next = _Expression(parser);
+            if (initializerConditionMutator->Next->Next == NULL) {
+                ThrowError(
+                    parser->Lexer->Path, 
+                    parser->Lexer->Data, 
+                    parser->Next.Position, 
+                    "expected a mutator"
+                );
+            }
+        }
     }
     ACCEPTV_FREE(")");
     body = _Statement(parser);
@@ -735,7 +831,7 @@ static Ast* _WhileStatement(Parser* parser) {
     }
     ended = body->Position;
     return AstWhile(
-        condition, 
+        initializerConditionMutator, 
         body, 
         MergePositions(start, ended)
     );

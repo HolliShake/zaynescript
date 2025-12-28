@@ -182,7 +182,8 @@ typedef enum ast_type_enum {
     AST_XOR,
     AST_LAND,
     AST_LOR,
-    AST_ASSIGN
+    AST_ASSIGN,
+    AST_SHORT_ASSIGN
 } AstType;
 
 /**
@@ -568,6 +569,15 @@ String AllocateString(String str);
  * @return Dynamically allocated array of Rune values, or NULL on failure
  */
 Rune* StringToRunes(String str);
+
+/**
+ * @brief Checks if a string starts with a given prefix
+ * 
+ * @param str String to check
+ * @param prefix Prefix to check for
+ * @return true if the string starts with the prefix, false otherwise
+ */
+bool StringStartsWith(String str, String prefix);
 
 /**
  * @brief Coerces a value to a 32-bit integer

@@ -56,6 +56,13 @@ Rune* StringToRunes(String str) {
     return runes;
 }
 
+bool StringStartsWith(String str, String prefix) {
+    if (str == NULL || prefix == NULL) {
+        return false;
+    }
+    return strncmp(str, prefix, strlen(prefix)) == 0;
+}
+
 int CoerceToI32(Value* value) {
     switch (value->Type) {
         case VT_INT:
