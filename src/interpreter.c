@@ -1,5 +1,4 @@
 #include "./interpreter.h"
-#include "global.h"
 
 Interpreter* CreateInterpreter() {
     Interpreter* interpreter    = Allocate(sizeof(Interpreter));
@@ -59,6 +58,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
     int ip           = 0;
     int offset       = 0;
     int argc         = 0;
+    String str       = NULL;
 
     #define Forward(size) (ip += size)
     #define JmpFrwd(addr) (ip  = addr)
@@ -73,6 +73,15 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
         }
 
         switch (opcode) {
+            case OP_IMPORT_CORE: {
+                str = _ReadString(uf->Codes, ip);
+                DoImportCore(interpreter, str, &res);
+                Push(res);
+                Forward(strlen(str) + 1);
+                free(str);
+                str = NULL;
+                break;
+            }
             case OP_LOAD_NAME: {
                 offset = _ReadOffset(uf->Codes, ip);
                 Push(GetVar(rootEnvObj, offset));
@@ -108,15 +117,56 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 Forward(4);
                 break;
             }
+            case OP_PLUCK_ATTRIBUTE: {
+                str = _ReadString(uf->Codes, ip);
+                Value* object = Peek();
+                
+                HashMap* map = (HashMap*) object->Value.Opaque;
+
+                if (!HashMapContains(map, str)) {
+                    printf("Object does not have attribute '%s'\n", str);
+                    exit(EXIT_FAILURE);
+                }
+                res = HashMapGet(map, str);
+
+                Push(res);
+                Forward(strlen(str) + 1);
+                free(str);
+                str = NULL;
+                break;
+            }
             case OP_CALL: {
                 argc = _ReadOffset(uf->Codes, ip);
                 Forward(4);
 
+                Value* function = Popp();
+
+                if (function == NULL) {
+                    printf("Attempted to call a null value\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                if (ValueIsNativeFunction(function)) {
+                    NativeFunction nf = (NativeFunction) function->Value.Opaque;
+                    Value** args = Allocate(sizeof(Value*) * argc);
+                    for (int i = argc - 1; i >= 0; i--) {
+                        args[i] = Popp();
+                    }
+                    Value* nativeResult = nf(interpreter, argc, args);
+
+                    Push(nativeResult);
+                    break;
+                }
+
                 // Call
-                Value* function        = Popp();
                 UserFunction* uf       = ValueToUFn(function);
                 Environment* parentEnv = (Environment*) rootEnvObj->Value.Opaque;
                 Environment* env       = CreateEnvironment(uf->LocalC);
+
+                if (!ValueIsCallable(function)) {
+                    printf("Attempted to call a non-callable value: %s\n", ValueToString(function));
+                    exit(EXIT_FAILURE);
+                }
 
                 if (argc != uf->Argc) {
                     printf("Expected %d arguments, got %d\n", uf->Argc, argc);
@@ -282,7 +332,6 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             }
             case OP_POPTOP: {
                 Value* val = Popp();
-                printf("POPPED: %s\n", ValueToString(val));
                 break;
             }
             case OP_JUMP_IF_FALSE_OR_POP: {

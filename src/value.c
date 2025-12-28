@@ -48,18 +48,21 @@ Value* NewUserFunctionValue(Interpreter* interpreter, UserFunction* userFunction
     return v;
 }
 
+Value* NewNativeFunctionValue(Interpreter* interpreter, NativeFunction* nativeFunction) {
+    Value* v = _CreateValue(interpreter, VT_NATV_FUNCTION);
+    v->Value.Opaque = nativeFunction;
+    return v;
+}
+
 Value* NewEnvironmentValue(Interpreter* interpreter, Environment* environment) {
     Value* v = _CreateValue(interpreter, VT_ENVIRONMENT);
     v->Value.Opaque = environment;
     return v;
 }
 
-Value* NewObjectValue(Interpreter* interpreter, String zKey[], Value* zVal[], int elementCount) {
+Value* NewObjectValue(Interpreter* interpreter) {
     Value* v = _CreateValue(interpreter, VT_OBJECT);
-    v->Value.Opaque = CreateHashMap(elementCount);
-    for (int i = 0; i < elementCount; i++) {
-        HashMapSet((HashMap*) v->Value.Opaque, zKey[i], zVal[i]);
-    }
+    v->Value.Opaque = CreateHashMap(16);
     return v;
 }
 
@@ -158,4 +161,16 @@ bool ValueIsBool(Value* value) {
 
 bool ValueIsNull(Value* value) {
     return value->Type == VT_NULL;
+}
+
+bool ValueIsUserFunction(Value* value) {
+    return value->Type == VT_USER_FUNCTION;
+}
+
+bool ValueIsNativeFunction(Value* value) {
+    return value->Type == VT_NATV_FUNCTION;
+}
+
+bool ValueIsCallable(Value* value) {
+    return ValueIsUserFunction(value) || ValueIsNativeFunction(value);
 }

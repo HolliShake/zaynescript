@@ -31,6 +31,16 @@ static int _GetConstantOffset(Interpreter* interp, Value* value) {
     return FLG_NOTFOUND;
 }
 
+int DoImportCore(Interpreter* interp, String moduleName, Value** out) {
+    if (strcmp(moduleName, "io") == 0) {
+        *out = LoadCoreIo(interp);
+        return 0;
+    }
+    printf("Unknown core module: %s\n", moduleName);
+    exit(EXIT_FAILURE);
+    return FLG_NOTFOUND;
+}
+
 int DoMul(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
     Value* result = NULL;
     int offset    = GetOffset();
@@ -175,14 +185,20 @@ int DoAdd(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
     } else if (ValueIsStr(lhs) && ValueIsStr(rhs)) {
-        char*  lhsStr = (char*) lhs->Value.Opaque;
-        char*  rhsStr = (char*) rhs->Value.Opaque;
+        Rune* lhsRunes = (Rune*) lhs->Value.Opaque;
+        Rune* rhsRunes = (Rune*) rhs->Value.Opaque;
+        String lhsStr = RunesStrToString(lhsRunes);
+        String rhsStr = RunesStrToString(rhsRunes);
         size_t lhsLen = strlen(lhsStr);
         size_t rhsLen = strlen(rhsStr);
         String resultStr = Allocate(lhsLen + rhsLen + 1);
         memcpy(resultStr, lhsStr, lhsLen);
-        memcpy(resultStr + lhsLen, rhsStr, rhsLen + 1);
+        memcpy(resultStr + lhsLen, rhsStr, rhsLen);
+        resultStr[lhsLen + rhsLen] = '\0';
         result = NewStrValue(interp, resultStr);
+        free(lhsStr);
+        free(rhsStr);
+        free(resultStr);
     }
 
     if (result == NULL) {

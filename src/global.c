@@ -56,6 +56,40 @@ Rune* StringToRunes(String str) {
     return runes;
 }
 
+String RunesStrToString(Rune* runes) {
+    if (runes == NULL) {
+        return NULL;
+    }
+    
+    // Count the number of runes
+    size_t runeCount = 0;
+    while (runes[runeCount] != 0) {
+        runeCount++;
+    }
+    
+    // Calculate total size needed for UTF-8 encoded string
+    size_t totalSize = 0;
+    for (size_t i = 0; i < runeCount; i++) {
+        totalSize += utf_size_of_codepoint(runes[i]);
+    }
+    
+    // Allocate string buffer
+    String str = Allocate(totalSize + 1);
+    
+    // Convert each rune to UTF-8 and append to string
+    size_t offset = 0;
+    for (size_t i = 0; i < runeCount; i++) {
+        char* runeStr = utf_rune_to_string(runes[i]);
+        size_t runeLen = strlen(runeStr);
+        memcpy(str + offset, runeStr, runeLen);
+        offset += runeLen;
+        free(runeStr);
+    }
+    
+    str[totalSize] = '\0';
+    return str;
+}
+
 bool StringStartsWith(String str, String prefix) {
     if (str == NULL || prefix == NULL) {
         return false;

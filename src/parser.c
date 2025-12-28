@@ -576,6 +576,57 @@ static Ast* _Function(Parser* parser) {
     );
 }
 
+static Ast* _ImportStatement(Parser* parser) {
+    Position start = parser->Next.Position, ended = start;
+    ACCEPTV_FREE(KEY_IMPORT);
+    ACCEPTV_FREE("{");
+    Ast* current = _ListOfExpressions(parser), *imports = current;
+    if (current == NULL) {
+        ThrowError(
+            parser->Lexer->Path, 
+            parser->Lexer->Data, 
+            start, 
+            "expected a list of imports"
+        );
+    }
+    while (current != NULL) {
+        if (current->Type != AST_NAME) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                current->Position, 
+                "expected an identifier or name"
+            );
+        }
+        current = current->Next;
+    }
+    ACCEPTV_FREE("}");
+    ACCEPTV_FREE(KEY_FROM);
+    Ast* moduleName = _Terminal(parser);
+    if (moduleName == NULL) {
+        ThrowError(
+            parser->Lexer->Path, 
+            parser->Lexer->Data, 
+            start, 
+            "expected a module name"
+        );
+    }
+    if (moduleName->Type != AST_STR) {
+        ThrowError(
+            parser->Lexer->Path, 
+            parser->Lexer->Data, 
+            moduleName->Position, 
+            "expected a string or path"
+        );
+    }
+    ACCEPTV_FREE(";");
+    return AstImport(
+        imports,
+        moduleName, 
+        MergePositions(start, ended)
+    );
+}
+
 static Ast* _DeclarationList(Parser* parser);
 
 static Ast* _InitializerConditionMutator(Parser* parser) {
@@ -917,6 +968,8 @@ static Ast* _ExpressionStatement(Parser* parser) {
 static Ast* _Statement(Parser* parser) {
     if (CHECKTV(KEY_FN)) {
         return _Function(parser);
+    } else if (CHECKTV(KEY_IMPORT)) {
+        return _ImportStatement(parser);
     } else if (CHECKTV(KEY_VAR)) {
         return _VarStatement(parser);
     } else if (CHECKTV(KEY_CONST)) {

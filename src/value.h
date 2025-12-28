@@ -56,7 +56,16 @@ Value* NewNullValue(Interpreter* interpreter);
  * @param userFunction Pointer to the UserFunction structure to wrap
  * @return Pointer to newly allocated Value structure containing the user function
  */
- Value* NewUserFunctionValue(Interpreter* interpreter, UserFunction* userFunction);
+Value* NewUserFunctionValue(Interpreter* interpreter, UserFunction* userFunction);
+
+/**
+ * @brief Creates a new native function value
+ * 
+ * @param interpreter Pointer to the interpreter instance
+ * @param nativeFunction Pointer to the NativeFunction structure to wrap
+ * @return Pointer to newly allocated Value structure containing the native function
+ */
+Value* NewNativeFunctionValue(Interpreter* interpreter, NativeFunction* nativeFunction);
 
 /**
  * @brief Creates a new environment value
@@ -66,6 +75,14 @@ Value* NewNullValue(Interpreter* interpreter);
  * @return Pointer to newly allocated Value structure containing the environment
  */
 Value* NewEnvironmentValue(Interpreter* interpreter, Environment* environment);
+
+ /**
+  * @brief Creates a new object value
+  * 
+  * @param interpreter Pointer to the interpreter instance
+  * @return Pointer to newly allocated Value structure containing the object
+  */
+Value* NewObjectValue(Interpreter* interpreter);
 
 /**
  * @brief Converts a value to a string representation
@@ -122,5 +139,29 @@ bool ValueIsBool(Value* value);
  * @return true if the value is null, false otherwise
  */
 bool ValueIsNull(Value* value);
+
+/**
+ * @brief Checks if a value is a user function
+ * 
+ * @param value Pointer to the Value to check
+ * @return true if the value is a user function, false otherwise
+ */
+bool ValueIsUserFunction(Value* value);
+
+/**
+ * @brief Checks if a value is a native function
+ * 
+ * @param value Pointer to the Value to check
+ * @return true if the value is a native function, false otherwise
+ */
+bool ValueIsNativeFunction(Value* value);
+
+/**
+ * @brief Checks if a value is callable
+ * 
+ * @param value Pointer to the Value to check
+ * @return true if the value is callable, false otherwise
+ */
+bool ValueIsCallable(Value* value);
 
 #endif

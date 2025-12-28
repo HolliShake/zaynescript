@@ -20,6 +20,8 @@
 
 #define GC_THRESHOLD 1000
 
+#define VARARG -1
+
 /**
  * @typedef String
  * @brief Type alias for C-style null-terminated character strings
@@ -144,6 +146,7 @@ typedef enum ast_type_enum {
     AST_EXPR,
     AST_RETURN,
     AST_FUNCTION,
+    AST_IMPORT,
     AST_VAR_DECLARATION,
     AST_CONST_DECLARATION,
     AST_LET_DECLARATION,
@@ -224,12 +227,14 @@ typedef struct ast_struct {
  * @brief Enumeration of all possible opcode types
  */
 typedef enum opcode_enum {
+    OP_IMPORT_CORE,
     OP_LOAD_NAME,
     OP_LOAD_LOCAL,
     OP_LOAD_CONST, // with 4 bytes arg
     OP_LOAD_BOOL,  // with 4 bytes arg
     OP_LOAD_NULL,
     OP_LOAD_FUNCTION,
+    OP_PLUCK_ATTRIBUTE,
     OP_CALL,
     OP_MUL,
     OP_DIV,
@@ -493,6 +498,30 @@ typedef struct environment_struct {
 typedef Value* (*NativeFunction)(Interpreter* interpreter, int argc, Value** arguments);
 
 /**
+ * @struct module_function_struct
+ * @brief Represents a function or value exported by a module
+ * 
+ * This structure is used to define module exports, which can be either native C functions
+ * or pre-computed values. The structure allows modules to expose their functionality to
+ * the interpreter.
+ * 
+ * @var module_function_struct::Name
+ * The name of the exported function or value as it will appear in the module
+ * @var module_function_struct::Argc
+ * Number of arguments the function expects (only relevant for native functions)
+ * @var module_function_struct::CFunction
+ * Pointer to the native C function implementation (NULL if this is a value export)
+ * @var module_function_struct::Value
+ * Pointer to a pre-computed Value (NULL if this is a function export)
+ */
+typedef struct module_function_struct {
+    const String    Name;
+    int             Argc;
+    NativeFunction* CFunction; // If NativeFunction
+    Value*          Value;     // If value
+} ModuleFunction;
+
+/**
  * @def Allocate
  * @brief Wrapper macro for memory allocation with file/line tracking
  * 
@@ -569,6 +598,14 @@ String AllocateString(String str);
  * @return Dynamically allocated array of Rune values, or NULL on failure
  */
 Rune* StringToRunes(String str);
+
+/**
+ * @brief Converts an array of Unicode runes to a C string
+ * 
+ * @param runes Array of Unicode runes to convert
+ * @return Dynamically allocated C string, or NULL on failure
+ */
+String RunesStrToString(Rune* runes);
 
 /**
  * @brief Checks if a string starts with a given prefix

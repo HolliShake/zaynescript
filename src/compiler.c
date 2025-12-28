@@ -1,6 +1,4 @@
 #include "./compiler.h"
-#include "global.h"
-#include <stdio.h>
 
 #define PushArray(type, array, count, val, defaultValue) do { \
     (array)[(count)] = val; \
@@ -130,6 +128,15 @@ static void _EmitConst(Compiler* compiler, UserFunction* uf, OpcodeEnum opcode, 
     uf->Codes[uf->CodeC++] = b2;
     uf->Codes[uf->CodeC++] = b3;
     uf->Codes[uf->CodeC++] = b4;
+}
+
+static void _EmitString(Compiler* compiler, UserFunction* uf, OpcodeEnum opcode, String str) {
+    int length = strlen(str);
+    _Emit(compiler, uf, opcode);
+    for (int i = 0; i < length; i++) {
+        _Emit(compiler, uf, (OpcodeEnum) str[i]);
+    }
+    _Emit(compiler, uf, (OpcodeEnum) '\0');
 }
 
 static void _EmitArg(Compiler* compiler, UserFunction* uf, OpcodeEnum opcode, int index) {
@@ -806,6 +813,52 @@ static void _FunctionDeclaration(Compiler* compiler, UserFunction* uf, Scope* sc
     FreeScope(fnScope);
 }
 
+static void _ImportStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
+    if (!ScopeIs(scope, SCOPE_GLOBAL)) {
+        ThrowError(
+            compiler->Parser->Lexer->Path, 
+            compiler->Parser->Lexer->Data, 
+            node->Position, 
+            "imports can only be declared at the global scope"
+        );
+    }
+
+    Ast* imports    = node->A;
+    Ast* moduleName = node->B;
+
+    if (StringStartsWith(moduleName->Value, "core:")) {
+        _EmitString(compiler, uf, OP_IMPORT_CORE, moduleName->Value + 5);
+    } else {
+        ThrowError(
+            compiler->Parser->Lexer->Path, 
+            compiler->Parser->Lexer->Data, 
+            moduleName->Position, 
+            "invalid module name"
+        );
+    }
+
+    while (imports != NULL) {
+        String attributeName = imports->Value;
+
+        _EmitString(compiler, uf, OP_PLUCK_ATTRIBUTE, attributeName);
+
+        if (ScopeHasLocal(scope, attributeName)) {
+            ThrowError(
+                compiler->Parser->Lexer->Path, 
+                compiler->Parser->Lexer->Data, 
+                imports->Position, 
+                "duplicate import name"
+            );
+        }
+
+        int offset = UserFunctionEmitLocal(uf);
+        _EmitArg(compiler, uf, OP_STORE_NAME, offset);
+        ScopeSetSymbol(scope, attributeName, true, true, false, offset);
+
+        imports = imports->Next;
+    }
+}
+
 static void _VarDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
     if (!ScopeIs(scope, SCOPE_GLOBAL)) {
         ThrowError(
@@ -1051,6 +1104,9 @@ static void _Statement(Compiler* compiler, UserFunction* userFunction, Scope* sc
     switch (node->Type) {
         case AST_FUNCTION:
             _FunctionDeclaration(compiler, userFunction, scope, node);
+            break;
+        case AST_IMPORT:
+            _ImportStatement(compiler, userFunction, scope, node);
             break;
         case AST_VAR_DECLARATION:
             _VarDeclarationStatement(compiler, userFunction, scope, node);

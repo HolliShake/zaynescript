@@ -1,13 +1,3 @@
-import { print } from "core:io";
+import { print, scan } from "core:io";
 
-var x = 2, y = x;
-
-while (x < 10) {
-   x = x + 1;
-}
-
-if (x = x; x >= 2) {
-    "yes";
-} else {
-    "no!";
-}
+print("Hello", 123, scan("message:> ") + " " + "World");

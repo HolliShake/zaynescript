@@ -127,6 +127,16 @@ Ast* AstExpressionStatement(Ast* expression, Position position);
 Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, Position position);
 
 /**
+ * AstImport - Creates an AST node representing an import statement
+ * @imports: Pointer to AST node containing the list of imports
+ * @moduleName: Pointer to AST node containing the module name
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_IMPORT node
+ */
+Ast* AstImport(Ast* imports, Ast* moduleName, Position position);
+
+/**
  * AstVarDeclaration - Creates an AST node representing a variable declaration
  * @type: The type of the variable declaration
  * @declarations: Pointer to AST node containing the variable declarations

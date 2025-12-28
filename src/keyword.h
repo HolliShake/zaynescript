@@ -3,6 +3,8 @@
 #define KEY_CLASS    "class"
 #define KEY_STRUCT   "struct"
 #define KEY_ENUM     "enum"
+#define KEY_IMPORT   "import"
+#define KEY_FROM     "from"
 #define KEY_CONST    "const"
 #define KEY_VAR      "var"
 #define KEY_LET      "let"

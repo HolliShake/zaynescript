@@ -1,4 +1,5 @@
 #include "./global.h"
+#include "./io.h"
 #include "./value.h"
 
 #ifndef OPERATION_H
@@ -7,6 +8,16 @@
 #define FLG_NOTFOUND -1
 #define FLG_ZERO_DIV -2
 #define FLG_INVALID_OPERATION -3
+
+/**
+ * @brief Performs import core operation
+ * 
+ * @param interp The interpreter instance
+ * @param moduleName The name of the module to import
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ * @return Offset in constants array, or error flag (FLG_NOTFOUND)
+ */
+int DoImportCore(Interpreter* interp, String moduleName, Value** out);
 
 /**
  * Performs multiplication operation on two values.

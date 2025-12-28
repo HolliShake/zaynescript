@@ -15,32 +15,32 @@ static Ast* InitAst(AstType type, Position position) {
 }
 
 Ast* AstName(String name, Position position) {
-    Ast* ast = InitAst(AST_NAME, position);
+    Ast* ast   = InitAst(AST_NAME, position);
     ast->Value = name;
     return ast;
 }
 
 
 Ast* AstInteger(String value, Position position) {
-    Ast* ast = InitAst(AST_INT, position);
+    Ast* ast   = InitAst(AST_INT, position);
     ast->Value = value;
     return ast;
 }
 
 Ast* AstNumber(String value, Position position) {
-    Ast* ast = InitAst(AST_NUM, position);
+    Ast* ast   = InitAst(AST_NUM, position);
     ast->Value = value;
     return ast;
 }
 
 Ast* AstString(String value, Position position) {
-    Ast* ast = InitAst(AST_STR, position);
+    Ast* ast   = InitAst(AST_STR, position);
     ast->Value = value;
     return ast;
 }
 
 Ast* AstBool(bool value, Position position) {
-    Ast* ast = InitAst(AST_BOOL, position);
+    Ast* ast   = InitAst(AST_BOOL, position);
     ast->Value = AllocateString(value ? "true" : "false");
     return ast;
 }
@@ -52,29 +52,29 @@ Ast* AstNull(Position position) {
 
 Ast* AstMember(Ast* object, Ast* member, Position position) {
     Ast* ast = InitAst(AST_MEMBER, position);
-    ast->A = object;
-    ast->B = member;
+    ast->A   = object;
+    ast->B   = member;
     return ast;
 }
 
 Ast* AstIndex(Ast* object, Ast* index, Position position) {
     Ast* ast = InitAst(AST_INDEX, position);
-    ast->A = object;
-    ast->B = index;
+    ast->A   = object;
+    ast->B   = index;
     return ast;
 }
 
 Ast* AstCall(Ast* object, Ast* arguments, Position position) {
     Ast* ast = InitAst(AST_CALL, position);
-    ast->A = object;
-    ast->B = arguments;
+    ast->A   = object;
+    ast->B   = arguments;
     return ast;
 }
 
 Ast* AstBinary(AstType type, Ast* lhs, Ast* rhs, Position position) {
     Ast* ast = InitAst(type, position);
-    ast->A = lhs;
-    ast->B = rhs;
+    ast->A   = lhs;
+    ast->B   = rhs;
     return ast;
 }
 
@@ -86,7 +86,7 @@ Ast* AstReturn(Ast* expression, Position position) {
 
 Ast* AstExpressionStatement(Ast* expression, Position position) {
     Ast* ast = InitAst(AST_EXPRESSION_STATEMENT, position);
-    ast->A = expression;
+    ast->A   = expression;
     return ast;
 }
 
@@ -95,6 +95,13 @@ Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, Position position) {
     ast->A   = fnName;
     ast->B   = parameters;
     ast->C   = body;
+    return ast;
+}
+
+Ast* AstImport(Ast* imports, Ast* moduleName, Position position) {
+    Ast* ast = InitAst(AST_IMPORT, position);
+    ast->A   = imports;
+    ast->B   = moduleName;
     return ast;
 }
 
