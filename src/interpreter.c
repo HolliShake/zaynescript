@@ -138,6 +138,36 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 Push(res);
                 break;
             }
+            case OP_DIV: {
+                rhs = Popp();
+                lhs = Popp();
+                res = NULL;
+                int result = DoDiv(interpreter, lhs, rhs, &res);
+                if (result == FLG_ZERO_DIV) {
+                    printf("Division by zero\n");
+                    exit(EXIT_FAILURE);
+                } else if (result == FLG_INVALID_OPERATION) {
+                    printf("Invalid operation\n");
+                    exit(EXIT_FAILURE);
+                }
+                Push(res);
+                break;
+            }
+            case OP_MOD: {
+                rhs = Popp();
+                lhs = Popp();
+                res = NULL;
+                int result = DoMod(interpreter, lhs, rhs, &res);
+                if (result == FLG_ZERO_DIV) {
+                    printf("Modulo by zero\n");
+                    exit(EXIT_FAILURE);
+                } else if (result == FLG_INVALID_OPERATION) {
+                    printf("Invalid operation\n");
+                    exit(EXIT_FAILURE);
+                }
+                Push(res);
+                break;
+            }
             case OP_ADD: {
                 rhs = Popp();
                 lhs = Popp();
