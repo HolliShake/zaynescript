@@ -155,6 +155,19 @@ static void _JumpToLabel(Compiler* compiler, UserFunction* uf, int sourceOffset)
     uf->Codes[sourceOffset + 4] = b4;
 }
 
+static void _JumpToAbsoluteLabel(Compiler* compiler, UserFunction* uf, int sourceOffset, int targetOffset) {
+    uint8_t b1, b2, b3, b4;
+    int offset = targetOffset;
+    b1 = (offset >> 24) & 0xFF;
+    b2 = (offset >> 16) & 0xFF;
+    b3 = (offset >>  8) & 0xFF;
+    b4 = (offset >>  0) & 0xFF;
+    uf->Codes[sourceOffset + 1] = b1;
+    uf->Codes[sourceOffset + 2] = b2;
+    uf->Codes[sourceOffset + 3] = b3;
+    uf->Codes[sourceOffset + 4] = b4;
+}
+
 #define _Expression(compiler, uf, scope, node) _ExpressionMain(compiler, uf, scope, node, false)
 
 static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node, bool evalOnly) {
@@ -903,6 +916,28 @@ static void _IfStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
     _JumpToLabel(compiler, uf, jumpEndIfOffset);
 }
 
+static void _WhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
+    Ast* condition  = node->A;
+    Ast* thenBranch = node->B;
+    int whileStart  = uf->CodeC;
+    _Expression(compiler, uf, scope, condition);
+    int jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
+    _Statement(compiler, uf, scope, thenBranch);
+    _JumpToAbsoluteLabel(compiler, uf, _EmitJumpTo(compiler, uf, OP_ABSOLUTE_JUMP), whileStart);
+    _JumpToLabel(compiler, uf, jumpOffset);
+}
+
+static void _DoWhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
+    Ast* condition  = node->A;
+    Ast* thenBranch = node->B;
+    int doStart     = uf->CodeC;
+    _Statement(compiler, uf, scope, thenBranch);
+    _Expression(compiler, uf, scope, condition);
+    int jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
+    _JumpToAbsoluteLabel(compiler, uf, _EmitJumpTo(compiler, uf, OP_ABSOLUTE_JUMP), doStart);
+    _JumpToLabel(compiler, uf, jumpOffset);
+}
+
 static void _BlockStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
     Scope* block = CreateScope(SCOPE_BLOCK, scope);
     Ast* current = node->A;
@@ -965,6 +1000,12 @@ static void _Statement(Compiler* compiler, UserFunction* userFunction, Scope* sc
             break;
         case AST_IF:
             _IfStatement(compiler, userFunction, scope, node);
+            break;
+        case AST_WHILE:
+            _WhileStatement(compiler, userFunction, scope, node);
+            break;
+        case AST_DO_WHILE:
+            _DoWhileStatement(compiler, userFunction, scope, node);
             break;
         case AST_BLOCK:
             _BlockStatement(compiler, userFunction, scope, node);

@@ -106,9 +106,23 @@ Ast* AstVarDeclaration(AstType type, Ast* declarations, Position position) {
 
 Ast* AstIf(Ast* condition, Ast* thenBranch, Ast* elseBranch, Position position) {
     Ast* ast = InitAst(AST_IF, position);
-    ast->A = condition;
-    ast->B = thenBranch;
-    ast->C = elseBranch;
+    ast->A   = condition;
+    ast->B   = thenBranch;
+    ast->C   = elseBranch;
+    return ast;
+}
+
+Ast* AstWhile(Ast* condition, Ast* body, Position position) {
+    Ast* ast = InitAst(AST_WHILE, position);
+    ast->A   = condition;
+    ast->B   = body;
+    return ast;
+}
+
+Ast* AstDoWhile(Ast* condition, Ast* body, Position position) {
+    Ast* ast = InitAst(AST_DO_WHILE, position);
+    ast->A   = condition;
+    ast->B   = body;
     return ast;
 }
 

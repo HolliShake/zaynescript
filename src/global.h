@@ -18,7 +18,7 @@
 #include <malloc.h>
 #endif
 
-#define GC_THRESHOLD 10
+#define GC_THRESHOLD 1000
 
 /**
  * @typedef String
@@ -150,6 +150,8 @@ typedef enum ast_type_enum {
     AST_CLASS,
     AST_EXPRESSION_STATEMENT,
     AST_IF,
+    AST_WHILE,
+    AST_DO_WHILE,
     AST_BLOCK,
     // 
     AST_NAME,
@@ -253,6 +255,7 @@ typedef enum opcode_enum {
     OP_POP_JUMP_IF_FALSE,
     OP_POP_JUMP_IF_TRUE,
     OP_JUMP,
+    OP_ABSOLUTE_JUMP,
     OP_RETURN
 } OpcodeEnum;
 

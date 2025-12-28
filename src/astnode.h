@@ -148,6 +148,26 @@ Ast* AstVarDeclaration(AstType type, Ast* declarations, Position position);
 Ast* AstIf(Ast* condition, Ast* thenBranch, Ast* elseBranch, Position position);
 
 /**
+ * AstWhile - Creates an AST node representing a while statement
+ * @condition: Pointer to the condition AST node
+ * @body: Pointer to the body AST node
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_WHILE node
+ */
+Ast* AstWhile(Ast* condition, Ast* body, Position position);
+
+/**
+ * AstDoWhile - Creates an AST node representing a do while statement
+ * @condition: Pointer to the condition AST node
+ * @body: Pointer to the body AST node
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_DO_WHILE node
+ */
+Ast* AstDoWhile(Ast* condition, Ast* body, Position position);
+
+/**
  * AstBlock - Creates an AST node representing a block statement
  * @statements: Pointer to child AST nodes (statements)
  * @position: Source code location information

@@ -32,6 +32,7 @@ static void _Free(Value* value) {
                 free(env);
                 value->Value.Opaque = NULL;
             }
+            printf("FREEING ENVIRONMENT\n");
             break;
         }
         default:
@@ -50,9 +51,12 @@ void Mark(Value* value) {
             Environment* env = (Environment*) value->Value.Opaque;
             if (env != NULL) {
                 for (int i = 0; i < env->LocalC; i++) {
-                    Mark(env->Locals[i]);
+                    if(env->Locals[i] != NULL && env->Locals[i]->Value != NULL) {
+                        Mark(env->Locals[i]->Value);
+                    }
                 }
             }
+            break;
         }
     }
 }
@@ -99,6 +103,7 @@ static void _Sweep(Interpreter* interpreter) {
             current = &value->Next;
         }
     }
+    printf("FREED: %d\n", freed);
 }
 
 void GarbageCollect(Interpreter* interpreter) {

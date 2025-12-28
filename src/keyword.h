@@ -11,6 +11,7 @@
 #define KEY_IF       "if"
 #define KEY_ELSE     "else"
 #define KEY_WHILE    "while"
+#define KEY_DO       "do"
 #define KEY_FOR      "for"
 #define KEY_RETURN   "return"
 #define KEY_BREAK    "break"

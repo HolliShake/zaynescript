@@ -709,6 +709,71 @@ static Ast* _IfStatement(Parser* parser) {
     );
 }
 
+static Ast* _WhileStatement(Parser* parser) {
+    Position start = parser->Next.Position, ended = start;
+    Ast* condition = NULL, *body = NULL;
+    ACCEPTV_FREE(KEY_WHILE);
+    ACCEPTV_FREE("(");
+    condition = _Expression(parser);
+    if (condition == NULL) {
+        ThrowError(
+            parser->Lexer->Path, 
+            parser->Lexer->Data, 
+            start, 
+            "expected a condition"
+        );
+    }
+    ACCEPTV_FREE(")");
+    body = _Statement(parser);
+    if (body == NULL) {
+        ThrowError(
+            parser->Lexer->Path, 
+            parser->Lexer->Data, 
+            start, 
+            "expected a body"
+        );
+    }
+    ended = body->Position;
+    return AstWhile(
+        condition, 
+        body, 
+        MergePositions(start, ended)
+    );
+}
+
+static Ast* _DoWhileStatement(Parser* parser) {
+    Position start = parser->Next.Position, ended = start;
+    Ast* body = NULL, *condition = NULL;
+    ACCEPTV_FREE(KEY_DO);
+    body = _Statement(parser);
+    if (body == NULL) {
+        ThrowError(
+            parser->Lexer->Path, 
+            parser->Lexer->Data, 
+            start, 
+            "expected a body"
+        );
+    }
+    ACCEPTV_FREE("while");
+    ACCEPTV_FREE("(");
+    condition = _Expression(parser);
+    if (condition == NULL) {
+        ThrowError(
+            parser->Lexer->Path, 
+            parser->Lexer->Data, 
+            start, 
+            "expected a condition"
+        );
+    }
+    ended = parser->Next.Position;
+    ACCEPTV_FREE(")");
+    return AstDoWhile(
+        condition, 
+        body, 
+        MergePositions(start, ended)
+    );
+}
+
 static Ast* _ReturnStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
     ACCEPTV_FREE(KEY_RETURN);
@@ -764,6 +829,10 @@ static Ast* _Statement(Parser* parser) {
         return _LetStatement(parser);
     } else if (CHECKTV(KEY_IF)) {
         return _IfStatement(parser);
+    } else if (CHECKTV(KEY_WHILE)) {
+        return _WhileStatement(parser);
+    } else if (CHECKTV(KEY_DO)) {
+        return _DoWhileStatement(parser);
     } else if (CHECKTV(KEY_RETURN)) {
         return _ReturnStatement(parser);
     } else if (CHECKTV("{")) {

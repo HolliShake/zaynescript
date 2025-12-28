@@ -1,5 +1,4 @@
 #include "./function.h"
-#include "./gc.h"
 #include "./global.h"
 #include "./hashmap.h"
 

@@ -63,11 +63,15 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
     #define Forward(size) (ip += size)
     #define JmpFrwd(addr) (ip  = addr)
 
-    Mark(rootEnvObj);
-    Mark(envObj);
-
     while (ip < uf->CodeC) {
         opcode = uf->Codes[ip++];
+
+        if (interpreter->Allocated >= GC_THRESHOLD) {
+            Mark(rootEnvObj);
+            Mark(envObj);
+            GarbageCollect(interpreter);
+        }
+
         switch (opcode) {
             case OP_LOAD_NAME: {
                 offset = _ReadOffset(uf->Codes, ip);
@@ -158,11 +162,47 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 Push(res);
                 break;
             }
+            case OP_LT: {
+                rhs = Popp();
+                lhs = Popp();
+                res = NULL;
+                int result = DoLT(interpreter, lhs, rhs, &res);
+                if (result == FLG_INVALID_OPERATION) {
+                    printf("Invalid operation\n");
+                    exit(EXIT_FAILURE);
+                }
+                Push(res);
+                break;
+            }
             case OP_LTE: {
                 rhs = Popp();
                 lhs = Popp();
                 res = NULL;
                 int result = DoLTE(interpreter, lhs, rhs, &res);
+                if (result == FLG_INVALID_OPERATION) {
+                    printf("Invalid operation\n");
+                    exit(EXIT_FAILURE);
+                }
+                Push(res);
+                break;
+            }
+            case OP_GT: {
+                rhs = Popp();
+                lhs = Popp();
+                res = NULL;
+                int result = DoGT(interpreter, lhs, rhs, &res);
+                if (result == FLG_INVALID_OPERATION) {
+                    printf("Invalid operation\n");
+                    exit(EXIT_FAILURE);
+                }
+                Push(res);
+                break;
+            }
+            case OP_GTE: {
+                rhs = Popp();
+                lhs = Popp();
+                res = NULL;
+                int result = DoGTE(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
                     printf("Invalid operation\n");
                     exit(EXIT_FAILURE);
@@ -222,6 +262,11 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_JUMP: {
+                offset = _ReadOffset(uf->Codes, ip);
+                JmpFrwd(offset);
+                break;
+            }
+            case OP_ABSOLUTE_JUMP: {
                 offset = _ReadOffset(uf->Codes, ip);
                 JmpFrwd(offset);
                 break;
