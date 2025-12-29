@@ -36,4 +36,10 @@ const g = false;
 
 println(g && true);
 
-println(fact(parseNum(scan("Fact> "))));
+println(
+    fact(
+        parseNum(
+            scan("Fact> ")
+        )
+    )
+);

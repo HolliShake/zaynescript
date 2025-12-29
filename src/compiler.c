@@ -710,6 +710,14 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     }
                     bool isOwnedLocally = ScopeIsLocalToFn(scope, node->A->Value);
                     Symbol* symbol = ScopeGetSymbol(scope, node->A->Value, true);
+                    if (symbol->IsConstant) {
+                        ThrowError(
+                            compiler->Parser->Lexer->Path, 
+                            compiler->Parser->Lexer->Data, 
+                            node->A->Position, 
+                            "cannot assign to constant"
+                        );
+                    }
                     _EmitArg(
                         compiler, 
                         uf, 
