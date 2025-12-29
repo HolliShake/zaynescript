@@ -828,6 +828,38 @@ static Ast* _IfStatement(Parser* parser) {
     );
 }
 
+static Ast* _ForStatement(Parser* parser) {
+    Position start = parser->Next.Position, ended = start;
+    Ast* initializerConditionMutator = NULL, *body = NULL;
+    ACCEPTV_FREE(KEY_FOR);
+    ACCEPTV_FREE("(");
+    initializerConditionMutator = _InitializerConditionMutator(parser);
+    ACCEPTV_FREE(";");
+    if (initializerConditionMutator != NULL) {
+        initializerConditionMutator->Next = _Expression(parser);
+    }
+    ACCEPTV_FREE(";");
+    if (initializerConditionMutator != NULL && initializerConditionMutator->Next != NULL) {
+        initializerConditionMutator->Next->Next = _Expression(parser);
+    }
+    ACCEPTV_FREE(")");
+    body = _Statement(parser);
+    if (body == NULL) {
+        ThrowError(
+            parser->Lexer->Path, 
+            parser->Lexer->Data, 
+            start, 
+            "expected a body"
+        );
+    }
+    ended = body->Position;
+    return AstFor(
+        initializerConditionMutator,
+        body, 
+        MergePositions(start, ended)
+    );
+}
+
 static Ast* _WhileStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
     Ast* initializerConditionMutator = NULL, *body = NULL;
@@ -978,6 +1010,8 @@ static Ast* _Statement(Parser* parser) {
         return _LetStatement(parser);
     } else if (CHECKTV(KEY_IF)) {
         return _IfStatement(parser);
+    } else if (CHECKTV(KEY_FOR)) {
+        return _ForStatement(parser);
     } else if (CHECKTV(KEY_WHILE)) {
         return _WhileStatement(parser);
     } else if (CHECKTV(KEY_DO)) {

@@ -158,6 +158,16 @@ Ast* AstVarDeclaration(AstType type, Ast* declarations, Position position);
 Ast* AstIf(Ast* condition, Ast* thenBranch, Ast* elseBranch, Position position);
 
 /**
+ * AstFor - Creates an AST node representing a for statement
+ * @initializerConditionMutator: Pointer to the initializer, condition, and mutator AST node
+ * @body: Pointer to the body AST node
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_FOR node
+ */
+Ast* AstFor(Ast* initializerConditionMutator, Ast* body, Position position);
+
+/**
  * AstWhile - Creates an AST node representing a while statement
  * @condition: Pointer to the condition AST node
  * @body: Pointer to the body AST node

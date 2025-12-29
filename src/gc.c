@@ -19,6 +19,20 @@ static void _Free(Value* value) {
             if (value->Value.Opaque != NULL) {
                 // Note: deeply freeing HashMap keys/values would require more logic
                 // For now, we just free the HashMap struct itself
+                HashMap* hashMap = (HashMap*) value->Value.Opaque;
+                if (hashMap != NULL) {
+                    // Buckets
+                    for (size_t i = 0; i < hashMap->Size; i++) {
+                        HashNode* node = &hashMap->Buckets[i];
+                        while (node != NULL) {
+                            HashNode* next = node->Next;
+                            free(node->Key);
+                            free(node);
+                            node = next;
+                        }
+                    }
+                    free(hashMap->Buckets);
+                }
                 free(value->Value.Opaque);
                 value->Value.Opaque = NULL;
             }
@@ -46,6 +60,19 @@ void Mark(Value* value) {
     }
     value->Marked = 1;
     switch (value->Type) {
+        case VT_OBJECT: {
+            HashMap* hashMap = (HashMap*) value->Value.Opaque;
+            if (hashMap != NULL) {
+                for (size_t i = 0; i < hashMap->Size; i++) {
+                    HashNode* node = &hashMap->Buckets[i];
+                    while (node != NULL) {
+                        Mark(node->Val);
+                        node = node->Next;
+                    }
+                }
+            }
+            break;
+        }
         case VT_ENVIRONMENT: {
             Environment* env = (Environment*) value->Value.Opaque;
             if (env != NULL) {

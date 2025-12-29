@@ -1010,6 +1010,42 @@ static void _IfStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
     }
 }
 
+static void _ForStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
+    Scope* loopScope = CreateScope(SCOPE_LOOP, scope);
+    Ast* initializer = node->A, *condition = NULL, *mutator = NULL;
+    if (initializer != NULL && initializer->Next != NULL) {
+        condition = initializer->Next;
+        if (condition != NULL && condition->Next != NULL) {
+            mutator = condition->Next;
+        }
+    }
+    Ast* thenBranch = node->B;
+    int forStart    = uf->CodeC;
+
+    if (initializer != NULL) {
+        // use initializer as condition
+        _InitializerConditionMutator(compiler, uf, loopScope, initializer);
+    }
+
+    int jumpOffset = -1;
+    if (condition != NULL) {
+        forStart = uf->CodeC;
+        _Expression(compiler, uf, loopScope, condition);
+        jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
+    }
+
+    forStart = uf->CodeC;
+
+    _Statement(compiler, uf, loopScope, thenBranch);
+    if (mutator != NULL) {
+        _Expression(compiler, uf, loopScope, mutator);
+        _Emit(compiler, uf, OP_POPTOP);
+    }
+    _JumpToAbsoluteLabel(compiler, uf, _EmitJumpTo(compiler, uf, OP_ABSOLUTE_JUMP), forStart);
+    if (jumpOffset != -1) _JumpToLabel(compiler, uf, jumpOffset);
+    FreeScope(loopScope);
+}
+
 static void _WhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
     Scope* loopScope = CreateScope(SCOPE_LOOP, scope);
     Ast* initializer = node->A, *condition = NULL, *mutator = NULL;
@@ -1119,6 +1155,9 @@ static void _Statement(Compiler* compiler, UserFunction* userFunction, Scope* sc
             break;
         case AST_IF:
             _IfStatement(compiler, userFunction, scope, node);
+            break;
+        case AST_FOR:
+            _ForStatement(compiler, userFunction, scope, node);
             break;
         case AST_WHILE:
             _WhileStatement(compiler, userFunction, scope, node);

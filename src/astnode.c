@@ -119,6 +119,13 @@ Ast* AstIf(Ast* condition, Ast* thenBranch, Ast* elseBranch, Position position) 
     return ast;
 }
 
+Ast* AstFor(Ast* initializerConditionMutator, Ast* body, Position position) {
+    Ast* ast = InitAst(AST_FOR, position);
+    ast->A   = initializerConditionMutator;
+    ast->B   = body;
+    return ast;
+}
+
 Ast* AstWhile(Ast* condition, Ast* body, Position position) {
     Ast* ast = InitAst(AST_WHILE, position);
     ast->A   = condition;

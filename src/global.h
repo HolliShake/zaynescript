@@ -153,6 +153,7 @@ typedef enum ast_type_enum {
     AST_CLASS,
     AST_EXPRESSION_STATEMENT,
     AST_IF,
+    AST_FOR,
     AST_WHILE,
     AST_DO_WHILE,
     AST_BLOCK,
