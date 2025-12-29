@@ -4,7 +4,7 @@ cls
 
 if exist main.exe del main.exe
 
-clang -w -fno-diagnostics-show-note-include-stack -o main main.c src/*.c utf/*.c utf/utf8proc/*.c -lm -g
+gcc -g -O3 -Wno-pointer-sign main.c src/*.c utf/*.c utf/utf8proc/*.c -o main.exe -lm -ldl -lpthread
 chcp 65001 >nul
 .\main.exe
 pause

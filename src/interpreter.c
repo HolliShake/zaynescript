@@ -1,4 +1,5 @@
 #include "./interpreter.h"
+#include "global.h"
 
 Interpreter* CreateInterpreter() {
     Interpreter* interpreter    = Allocate(sizeof(Interpreter));
@@ -191,8 +192,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoMul(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                    printf("Invalid operation for %s * %s\n", ValueToString(lhs), ValueToString(rhs));
-                    exit(EXIT_FAILURE);
+                    panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -203,11 +203,9 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoDiv(interpreter, lhs, rhs, &res);
                 if (result == FLG_ZERO_DIV) {
-                    printf("Division by zero\n");
-                    exit(EXIT_FAILURE);
+                    panic("invalid operation");
                 } else if (result == FLG_INVALID_OPERATION) {
-                    printf("Invalid operation\n");
-                    exit(EXIT_FAILURE);
+                    panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -218,11 +216,9 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoMod(interpreter, lhs, rhs, &res);
                 if (result == FLG_ZERO_DIV) {
-                    printf("Modulo by zero\n");
-                    exit(EXIT_FAILURE);
+                    panic("invalid operation");
                 } else if (result == FLG_INVALID_OPERATION) {
-                    printf("Invalid operation\n");
-                    exit(EXIT_FAILURE);
+                    panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -233,8 +229,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoAdd(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                    printf("Invalid operation\n");
-                    exit(EXIT_FAILURE);
+                    panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -245,8 +240,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoSub(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                    printf("Invalid operation\n");
-                    exit(EXIT_FAILURE);
+                    panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -257,8 +251,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoLShift(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                    printf("Invalid operation\n");
-                    exit(EXIT_FAILURE);
+                    panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -269,8 +262,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoRShift(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                    printf("Invalid operation\n");
-                    exit(EXIT_FAILURE);
+                    panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -281,8 +273,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoLT(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                    printf("Invalid operation\n");
-                    exit(EXIT_FAILURE);
+                   panic("invalid operation %s and %s", ValueToString(lhs), ValueToString(rhs));
                 }
                 Push(res);
                 break;
@@ -293,8 +284,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoLTE(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                    printf("Invalid operation\n");
-                    exit(EXIT_FAILURE);
+                    panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -305,8 +295,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoGT(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                    printf("Invalid operation\n");
-                    exit(EXIT_FAILURE);
+                    panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -317,8 +306,29 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoGTE(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                    printf("Invalid operation\n");
-                    exit(EXIT_FAILURE);
+                    panic("invalid operation");
+                }
+                Push(res);
+                break;
+            }
+            case OP_EQ: {
+                rhs = Popp();
+                lhs = Popp();
+                res = NULL;
+                int result = DoEQ(interpreter, lhs, rhs, &res);
+                if (result == FLG_INVALID_OPERATION) {
+                    panic("invalid operation");
+                }
+                Push(res);
+                break;
+            }
+            case OP_NE: {
+                rhs = Popp();
+                lhs = Popp();
+                res = NULL;
+                int result = DoNE(interpreter, lhs, rhs, &res);
+                if (result == FLG_INVALID_OPERATION) {
+                    panic("invalid operation");
                 }
                 Push(res);
                 break;

@@ -13,8 +13,13 @@ fn a() {
 }
 
 fn b() {
-    while (xx := 0; xx < x) {
-        xx = xx + 1;
+    for (xx := 0; xx < x; xx = xx + 1) {
+        if (xx == 3) {
+            continue;
+        }
+        if (xx == 5) {
+            break;
+        }
         println("|>>", xx);
     }
     println("Done", io);
@@ -22,3 +27,13 @@ fn b() {
 
 a();
 
+fn fact(n) {
+    if (n <= 1) return 1;
+    return n * fact(n - 1);
+}
+
+const g = false;
+
+println(g && true);
+
+println(fact(parseNum(scan("Fact> "))));

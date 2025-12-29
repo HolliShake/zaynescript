@@ -98,6 +98,22 @@ Ast* AstCall(Ast* object, Ast* arguments, Position position);
 Ast* AstBinary(AstType type, Ast* lhs, Ast* rhs, Position position);
 
 /**
+ * AstContinue - Creates an AST node representing a continue statement
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_CONTINUE node
+ */
+Ast* AstContinue(Position position);
+
+/**
+ * AstBreak - Creates an AST node representing a break statement
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_BREAK node
+ */
+Ast* AstBreak(Position position);
+
+/**
  * AstReturn - Creates an AST node representing a return statement
  * @expression: Pointer to the expression AST node
  * @position: Source code location information

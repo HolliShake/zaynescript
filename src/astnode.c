@@ -78,6 +78,16 @@ Ast* AstBinary(AstType type, Ast* lhs, Ast* rhs, Position position) {
     return ast;
 }
 
+Ast* AstContinue(Position position) {
+    Ast* ast = InitAst(AST_CONTINUE, position);
+    return ast;
+}
+
+Ast* AstBreak(Position position) {
+    Ast* ast = InitAst(AST_BREAK, position);
+    return ast;
+}
+
 Ast* AstReturn(Ast* expression, Position position) {
     Ast* ast = InitAst(AST_RETURN, position);
     ast->A = expression;

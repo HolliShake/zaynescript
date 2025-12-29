@@ -953,6 +953,26 @@ static Ast* _DoWhileStatement(Parser* parser) {
     );
 }
 
+static Ast* _ContinueStatement(Parser* parser) {
+    Position start = parser->Next.Position, ended = start;
+    ACCEPTV_FREE(KEY_CONTINUE);
+    ended = parser->Next.Position;
+    ACCEPTV_FREE(";");
+    return AstContinue(
+        MergePositions(start, ended)
+    );
+}
+
+static Ast* _BreakStatement(Parser* parser) {
+    Position start = parser->Next.Position, ended = start;
+    ACCEPTV_FREE(KEY_BREAK);
+    ended = parser->Next.Position;
+    ACCEPTV_FREE(";");
+    return AstBreak(
+        MergePositions(start, ended)
+    );
+}
+
 static Ast* _ReturnStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
     ACCEPTV_FREE(KEY_RETURN);
@@ -1016,6 +1036,10 @@ static Ast* _Statement(Parser* parser) {
         return _WhileStatement(parser);
     } else if (CHECKTV(KEY_DO)) {
         return _DoWhileStatement(parser);
+    } else if (CHECKTV(KEY_CONTINUE)) {
+        return _ContinueStatement(parser);
+    } else if (CHECKTV(KEY_BREAK)) {
+        return _BreakStatement(parser);
     } else if (CHECKTV(KEY_RETURN)) {
         return _ReturnStatement(parser);
     } else if (CHECKTV("{")) {

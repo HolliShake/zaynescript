@@ -125,8 +125,9 @@ String ValueToString(Value* value) {
             return AllocateString("class");
         case VT_NATV_FUNCTION:
             return AllocateString("native function(){...}");
+        default:
+            return AllocateString("unknown");
     }
-    return AllocateString("unknown");
 }
 
 bool ValueToBool(Value* value) {
@@ -141,9 +142,10 @@ bool ValueToBool(Value* value) {
             return !!(value->Value.I32);
         case VT_NULL:
             return false;
+        default:
+            printf("ValueToBool: Unknown value type: %d\n", value->Type);
+            return false;
     }
-    printf("ValueToBool: Unknown value type: %d\n", value->Type);
-    return false;
 }
 
 bool ValueIsInt(Value* value) {

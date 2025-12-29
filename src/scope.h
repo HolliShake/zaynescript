@@ -27,6 +27,22 @@ Symbol* CreateSymbol(String name, bool isGlobal, bool isLocalToFn, bool isConsta
 Scope* CreateScope(ScopeType type, Scope* parent);
 
 /**
+ * @brief Adds a continue jump offset to the nearest loop scope
+ * 
+ * @param scope Pointer to the current scope
+ * @param offset The offset of the continue jump
+ */
+void ScopeAddContinueJump(Scope* scope, int offset);
+
+/**
+ * @brief Adds a break jump offset to the nearest loop scope
+ * 
+ * @param scope Pointer to the current scope
+ * @param offset The offset of the break jump
+ */
+void ScopeAddBreakJump(Scope* scope, int offset);
+
+/**
  * @brief Checks if a scope is of a given type
  * 
  * @param scope Pointer to the scope to check

@@ -23,6 +23,20 @@
 #define VARARG -1
 
 /**
+ * @def panic
+ * @brief Prints an error message and terminates the program
+ * 
+ * @param message Format string for the error message (printf-style)
+ * @param ... Optional format arguments (variadic)
+ */
+#define panic(message, ...) do { \
+    fprintf(stderr, "[%s:%d] Panic:: ", __FILE__, __LINE__); \
+    fprintf(stderr, message, ##__VA_ARGS__); \
+    fprintf(stderr, "\n"); \
+    exit(EXIT_FAILURE); \
+} while(0)
+
+/**
  * @typedef String
  * @brief Type alias for C-style null-terminated character strings
  */
@@ -144,6 +158,8 @@ typedef struct parser_struct {
 typedef enum ast_type_enum {
     AST_PROGRAM,
     AST_EXPR,
+    AST_CONTINUE,
+    AST_BREAK,
     AST_RETURN,
     AST_FUNCTION,
     AST_IMPORT,
@@ -455,6 +471,11 @@ typedef struct scope_struct {
     HashMap*  Captures;
     // FN
     bool      Returned;
+    // Loop
+    int*      ContinueJumps;
+    int       ContinueJumpC;
+    int*      BreakJumps;
+    int       BreakJumpC;
 } Scope;
 
 /**

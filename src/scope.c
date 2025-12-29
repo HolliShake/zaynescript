@@ -1,5 +1,4 @@
 #include "./scope.h"
-#include "global.h"
 
 Symbol* CreateSymbol(String name, bool isGlobal, bool isLocalToFn, bool isConstant, int offset) {
     Symbol* symbol       = Allocate(sizeof(Symbol));
@@ -11,13 +10,39 @@ Symbol* CreateSymbol(String name, bool isGlobal, bool isLocalToFn, bool isConsta
 }
 
 Scope* CreateScope(ScopeType type, Scope* parent) {
-    Scope* scope    = Allocate(sizeof(Scope));
-    scope->Type     = type;
-    scope->Parent   = parent;
-    scope->Symbols  = CreateHashMap(16);
-    scope->Captures = CreateHashMap(16);
-    scope->Returned = false;
+    Scope* scope         = Allocate(sizeof(Scope));
+    scope->Type          = type;
+    scope->Parent        = parent;
+    scope->Symbols       = CreateHashMap(16);
+    scope->Captures      = CreateHashMap(16);
+    scope->Returned      = false;
+    scope->ContinueJumps = Allocate(1);
+    scope->ContinueJumpC = 0;
+    scope->BreakJumps    = Allocate(1);
+    scope->BreakJumpC    = 0;
     return scope;
+}
+
+void ScopeAddContinueJump(Scope* scope, int offset) {
+    Scope* LoopScope = ScopeGetFirst(scope, SCOPE_LOOP);
+    if (LoopScope == NULL) {
+        printf("LoopNotFound!");
+        exit(EXIT_FAILURE);
+        return;
+    }
+    LoopScope->ContinueJumps[LoopScope->ContinueJumpC++] = offset;
+    LoopScope->ContinueJumps = Reallocate(LoopScope->ContinueJumps, sizeof(int) * (LoopScope->ContinueJumpC + 1));
+}
+
+void ScopeAddBreakJump(Scope* scope, int offset) {
+    Scope* LoopScope = ScopeGetFirst(scope, SCOPE_LOOP);
+    if (LoopScope == NULL) {
+        printf("LoopNotFound!");
+        exit(EXIT_FAILURE);
+        return;
+    }
+    LoopScope->BreakJumps[LoopScope->BreakJumpC++] = offset;
+    LoopScope->BreakJumps = Reallocate(LoopScope->BreakJumps, sizeof(int) * (LoopScope->BreakJumpC + 1));
 }
 
 bool ScopeIs(Scope* scope, ScopeType type) {

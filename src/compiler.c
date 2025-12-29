@@ -1,4 +1,5 @@
 #include "./compiler.h"
+#include "global.h"
 
 #define PushArray(type, array, count, val, defaultValue) do { \
     (array)[(count)] = val; \
@@ -1057,11 +1058,28 @@ static void _ForStatement(Compiler* compiler, UserFunction* uf, Scope* scope, As
     }
 
     _Statement(compiler, uf, loopScope, thenBranch);
+
     if (mutator != NULL) {
+        // continues, but execute mutator first
+        for (int i = 0; i < loopScope->ContinueJumpC; i++) {
+            _JumpToLabel(compiler, uf, loopScope->ContinueJumps[i]);
+        }
         _Expression(compiler, uf, loopScope, mutator);
         _Emit(compiler, uf, OP_POPTOP);
+    } else {
+        // continues to jump to forStart if has no mutator
+        for (int i = 0; i < loopScope->ContinueJumpC; i++) {
+            _JumpToAbsoluteLabel(compiler, uf, loopScope->ContinueJumps[i], forStart);
+        }
     }
+
     _JumpToAbsoluteLabel(compiler, uf, _EmitJumpTo(compiler, uf, OP_ABSOLUTE_JUMP), forStart);
+
+    // breaks
+    for (int i = 0; i < loopScope->BreakJumpC; i++) {
+        _JumpToLabel(compiler, uf, loopScope->BreakJumps[i]);
+    }
+
     if (jumpOffset != -1) _JumpToLabel(compiler, uf, jumpOffset);
     FreeScope(loopScope);
 }
@@ -1090,23 +1108,43 @@ static void _WhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope, 
 
     int jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
     _Statement(compiler, uf, loopScope, thenBranch);
+
     if (mutator != NULL) {
+        // continues, but execute mutator first
+        for (int i = 0; i < loopScope->ContinueJumpC; i++) {
+            _JumpToLabel(compiler, uf, loopScope->ContinueJumps[i]);
+        }
         _Expression(compiler, uf, loopScope, mutator);
         _Emit(compiler, uf, OP_POPTOP);
+    } else {
+        // continues to jump to whileStart if has no mutator
+        for (int i = 0; i < loopScope->ContinueJumpC; i++) {
+            _JumpToAbsoluteLabel(compiler, uf, loopScope->ContinueJumps[i], whileStart);
+        }
     }
+
     _JumpToAbsoluteLabel(compiler, uf, _EmitJumpTo(compiler, uf, OP_ABSOLUTE_JUMP), whileStart);
     _JumpToLabel(compiler, uf, jumpOffset);
     FreeScope(loopScope);
 }
 
 static void _DoWhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
+    Scope* loopScope = CreateScope(SCOPE_LOOP, scope);
     Ast* condition  = node->A;
     Ast* thenBranch = node->B;
     int doStart     = uf->CodeC;
-    _Statement(compiler, uf, scope, thenBranch);
+    _Statement(compiler, uf, loopScope, thenBranch);
     _Expression(compiler, uf, scope, condition);
     int jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
     _JumpToAbsoluteLabel(compiler, uf, _EmitJumpTo(compiler, uf, OP_ABSOLUTE_JUMP), doStart);
+    // breaks
+    for (int i = 0; i < loopScope->BreakJumpC; i++) {
+        _JumpToLabel(compiler, uf, loopScope->BreakJumps[i]);
+    }
+    // continues
+    for (int i = 0; i < loopScope->ContinueJumpC; i++) {
+        _JumpToAbsoluteLabel(compiler, uf, loopScope->ContinueJumps[i], doStart);
+    }
     _JumpToLabel(compiler, uf, jumpOffset);
 }
 
@@ -1117,6 +1155,32 @@ static void _BlockStatement(Compiler* compiler, UserFunction* uf, Scope* scope, 
         _Statement(compiler, uf, block, current);
         current = current->Next;
     }
+}
+
+static void _ContinueStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
+    if (!ScopeInside(scope, SCOPE_LOOP)) {
+        ThrowError(
+            compiler->Parser->Lexer->Path, 
+            compiler->Parser->Lexer->Data, 
+            node->Position, 
+            "continue statement can only be used inside a loop"
+        );
+    }
+    int offset = _EmitJumpTo(compiler, uf, OP_JUMP);
+    ScopeAddContinueJump(scope, offset);
+}
+
+static void _BreakStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
+    if (!ScopeInside(scope, SCOPE_LOOP)) {
+        ThrowError(
+            compiler->Parser->Lexer->Path, 
+            compiler->Parser->Lexer->Data, 
+            node->Position, 
+            "break statement can only be used inside a loop"
+        );
+    }
+    int offset = _EmitJumpTo(compiler, uf, OP_JUMP);
+    ScopeAddBreakJump(scope, offset);
 }
 
 static void _ReturnStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
@@ -1151,6 +1215,8 @@ static void _ForwardFunctions(Compiler* compiler, UserFunction* uf, Scope* scope
                 ScopeSetSymbol(scope, fnName->Value, true, true, false, UserFunctionEmitLocal(uf));
                 break;
             }
+            default:
+            break;
         }
         node = node->Next;
     }
@@ -1187,6 +1253,12 @@ static void _Statement(Compiler* compiler, UserFunction* userFunction, Scope* sc
             break;
         case AST_BLOCK:
             _BlockStatement(compiler, userFunction, scope, node);
+            break;
+        case AST_CONTINUE:
+            _ContinueStatement(compiler, userFunction, scope, node);
+            break;
+        case AST_BREAK:
+            _BreakStatement(compiler, userFunction, scope, node);
             break;
         case AST_RETURN:
             _ReturnStatement(compiler, userFunction, scope, node);

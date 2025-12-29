@@ -96,6 +96,8 @@ void Mark(Value* value) {
             }
             break;
         }
+        default:
+            break;
     }
 }
 
