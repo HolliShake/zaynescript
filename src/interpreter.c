@@ -28,6 +28,16 @@ Interpreter* CreateInterpreter() {
     printf("\n"); \
 } while (0)
 
+
+#define DumpStack() do { \
+    printf("Stack [%d items]: [ ", interpreter->StackC); \
+    for (int i = 0; i < interpreter->StackC; i++) { \
+        if (i > 0) printf(", "); \
+        printf("%s", ValueToString(interpreter->Stack[i])); \
+    } \
+    printf(" ]\n"); \
+} while (0)
+
 #define SetVar(envObj, offset, value) EnvironmentSetLocal((Environment*)envObj->Value.Opaque, offset, value)
 #define GetVar(envObj, offset) EnvironmentGetLocal((Environment*)envObj->Value.Opaque, offset)->Value
 #define ValueToUFn(value) ((UserFunction*) value->Value.Opaque)
@@ -159,9 +169,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 }
 
                 // Call
-                UserFunction* uf       = ValueToUFn(function);
-                Environment* parentEnv = (Environment*) rootEnvObj->Value.Opaque;
-                Environment* env       = CreateEnvironment(uf->LocalC);
+                UserFunction* uf = ValueToUFn(function);
+                Environment* env = CreateEnvironment(envObj, uf->LocalC);
 
                 if (!ValueIsCallable(function)) {
                     printf("Attempted to call a non-callable value: %s\n", ValueToString(function));
@@ -336,7 +345,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             }
             case OP_JUMP_IF_FALSE_OR_POP: {
                 offset = _ReadOffset(uf->Codes, ip);
-                if (!ValueToBool(Peek())) {
+                res    = Peek();
+                if (!ValueToBool(res)) {
                     JmpFrwd(offset);
                 } else {
                     Popp();
@@ -346,7 +356,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             }
             case OP_JUMP_IF_TRUE_OR_POP: {
                 offset = _ReadOffset(uf->Codes, ip);
-                if (ValueToBool(Peek())) {
+                res    = Peek();
+                if (ValueToBool(res)) {
                     JmpFrwd(offset);
                 } else {
                     Popp();
@@ -356,8 +367,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             }
             case OP_POP_JUMP_IF_FALSE: {
                 offset = _ReadOffset(uf->Codes, ip);
-                Value* val = Popp();
-                if (!ValueToBool(val)) {
+                res    = Popp();
+                if (ValueToBool(res) == false) {
                     JmpFrwd(offset);
                 } else {
                     Forward(4);
@@ -388,7 +399,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
 
 void _RunProgram(Interpreter* interpreter, Value* fnValue) {
     UserFunction* uf = ValueToUFn(fnValue);
-    Environment* env = CreateEnvironment(uf->LocalC);
+    Environment* env = CreateEnvironment(NULL, uf->LocalC);
     Value* envObj    = NewEnvironmentValue(interpreter, env);
     _Run(interpreter, fnValue, envObj, envObj);
     ForceGarbageCollect(interpreter);

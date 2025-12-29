@@ -1,12 +1,24 @@
-import { print, scan } from "core:io";
+import { println, scan, parseNum } from "core:io";
 
-const x = scan("input> ");
+const x = parseNum(scan("input> "));
 
-print("Hello", 123, x);
+println("Hello", 123, x);
 
 var counter = 0;
 
-for (;;) {
-    print(">>", counter, x);
-    counter = counter + 1;
+fn a() {
+    let x = 2;
+    b();
+    println(x);
 }
+
+fn b() {
+    while (xx := 0; xx < x) {
+        xx = xx + 1;
+        println("|>>", xx);
+    }
+    println("Done", io);
+}
+
+a();
+

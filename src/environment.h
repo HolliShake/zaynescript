@@ -15,11 +15,11 @@ EnvCell* CreateEnvCell(Value* value);
 /**
  * @brief Creates a new environment
  * 
- * @param parent The parent environment
+ * @param parent The parent value
  * @param localC The number of local variables in the environment
  * @return Pointer to the newly created Environment structure
  */
-Environment* CreateEnvironment(int localC);
+Environment* CreateEnvironment(Value* parent, int localC);
 
 
 /**

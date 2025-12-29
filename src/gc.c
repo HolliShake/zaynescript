@@ -24,11 +24,21 @@ static void _Free(Value* value) {
                     // Buckets
                     for (size_t i = 0; i < hashMap->Size; i++) {
                         HashNode* node = &hashMap->Buckets[i];
-                        while (node != NULL) {
-                            HashNode* next = node->Next;
+                        // First node is in the array, only free key
+                        if (node->Key != NULL) {
                             free(node->Key);
-                            free(node);
-                            node = next;
+                            node->Key = NULL;
+                        }
+
+                        // Subsequent nodes are malloc'd
+                        HashNode* current = node->Next;
+                        while (current != NULL) {
+                            HashNode* next = current->Next;
+                            if (current->Key != NULL) {
+                                free(current->Key);
+                            }
+                            free(current);
+                            current = next;
                         }
                     }
                     free(hashMap->Buckets);
@@ -40,6 +50,7 @@ static void _Free(Value* value) {
         case VT_ENVIRONMENT: {
             Environment* env = (Environment*) value->Value.Opaque;
             if (env != NULL) {
+                env->Parent = NULL;
                 for (int i = 0; i < env->LocalC; i++) {
                     if (env->Locals[i] != NULL) free(env->Locals[i]);
                 }
@@ -76,6 +87,7 @@ void Mark(Value* value) {
         case VT_ENVIRONMENT: {
             Environment* env = (Environment*) value->Value.Opaque;
             if (env != NULL) {
+                Mark(env->Parent);
                 for (int i = 0; i < env->LocalC; i++) {
                     if(env->Locals[i] != NULL && env->Locals[i]->Value != NULL) {
                         Mark(env->Locals[i]->Value);

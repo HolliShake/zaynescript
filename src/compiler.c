@@ -707,7 +707,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                             "variable not found"
                         );
                     }
-                    bool isOwnedLocally = ScopeIsLocalToFn(scope, node->Value);
+                    bool isOwnedLocally = ScopeIsLocalToFn(scope, node->A->Value);
                     Symbol* symbol = ScopeGetSymbol(scope, node->A->Value, true);
                     _EmitArg(
                         compiler, 
@@ -826,8 +826,32 @@ static void _ImportStatement(Compiler* compiler, UserFunction* uf, Scope* scope,
     Ast* imports    = node->A;
     Ast* moduleName = node->B;
 
+    // Validate, should not contain spaces, dots, or special characters
+    if (strpbrk(moduleName->Value, " ./><=!@#$%^&*()_+-=[]{}|\\;'\"`~") != NULL) {
+        ThrowError(
+            compiler->Parser->Lexer->Path, 
+            compiler->Parser->Lexer->Data, 
+            moduleName->Position, 
+            "invalid module name, should not contain spaces, dots, or special characters"
+        );
+    }
+
     if (StringStartsWith(moduleName->Value, "core:")) {
         _EmitString(compiler, uf, OP_IMPORT_CORE, moduleName->Value + 5);
+        _Emit(compiler, uf, OP_DUPTOP);
+
+        if (ScopeHasLocal(scope, moduleName->Value + 5)) {
+            ThrowError(
+                compiler->Parser->Lexer->Path, 
+                compiler->Parser->Lexer->Data, 
+                moduleName->Position, 
+                "duplicate import name"
+            );
+        }
+
+        int offset = UserFunctionEmitLocal(uf);
+        ScopeSetSymbol(scope, moduleName->Value + 5, true, true, true, offset);
+        _EmitArg(compiler, uf, OP_STORE_NAME, offset);
     } else {
         ThrowError(
             compiler->Parser->Lexer->Path, 
@@ -878,7 +902,7 @@ static void _VarDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope
 
         int offset = UserFunctionEmitLocal(uf);
 
-        _EmitArg(compiler, uf, OP_STORE_LOCAL, offset);
+        _EmitArg(compiler, uf, OP_STORE_NAME, offset);
 
         if (ScopeHasLocal(scope, declarations->Value)) {
             ThrowError(
@@ -939,7 +963,7 @@ static void _ConstDeclarationStatement(Compiler* compiler, UserFunction* uf, Sco
         }
 
         int offset = UserFunctionEmitLocal(uf);
-        _EmitArg(compiler, uf, OP_STORE_LOCAL, offset);
+        _EmitArg(compiler, uf, ScopeIs(scope, SCOPE_GLOBAL) ? OP_STORE_NAME : OP_STORE_LOCAL, offset);
 
         if (ScopeHasLocal(scope, declarations->Value)) {
             ThrowError(
@@ -1020,21 +1044,17 @@ static void _ForStatement(Compiler* compiler, UserFunction* uf, Scope* scope, As
         }
     }
     Ast* thenBranch = node->B;
-    int forStart    = uf->CodeC;
 
     if (initializer != NULL) {
-        // use initializer as condition
         _InitializerConditionMutator(compiler, uf, loopScope, initializer);
     }
 
+    int forStart   = uf->CodeC;
     int jumpOffset = -1;
     if (condition != NULL) {
-        forStart = uf->CodeC;
         _Expression(compiler, uf, loopScope, condition);
         jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
     }
-
-    forStart = uf->CodeC;
 
     _Statement(compiler, uf, loopScope, thenBranch);
     if (mutator != NULL) {
@@ -1059,7 +1079,7 @@ static void _WhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope, 
     int whileStart  = uf->CodeC;
 
     if (initializer != NULL) {
-        // use initializer as condition
+        // use initializer as condition | condition only while statement
         _InitializerConditionMutator(compiler, uf, loopScope, initializer);
     }
 

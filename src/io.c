@@ -36,7 +36,7 @@ static Value* _IoGenericPrint(Interpreter* interpeter, int argc, Value** argumen
         }
     }
     
-    printf("%s\n", buffer);
+    printf("%s%s", buffer, newline ? "\n" : "");
     free(buffer);
     return interpeter->Null;
 }
@@ -96,13 +96,31 @@ static Value* _IoScan(Interpreter* interpreter, int argc, Value** arguments) {
     return result;
 }
 
+static Value* _IoParseNum(Interpreter* interpreter, int argc, Value** arguments) {
+    if (argc != 1) {
+        return NewIntValue(interpreter, 0);
+    }
+    String str = ValueToString(arguments[0]);
+    char* endptr;
+    double num = strtod(str, &endptr);
+    free(str);
+    
+    // Check if the number can be represented as an integer
+    if (num == (int)num) {
+        return NewIntValue(interpreter, (int)num);
+    }
+    return NewNumValue(interpreter, num);
+}
+
 static ModuleFunction _IoModuleFunctions[] = {
     // print
-    { .Name = "print",   .Argc = VARARG, .CFunction = &_IoPrint,   .Value = NULL },
+    { .Name = "print",   .Argc = VARARG, .CFunction = &_IoPrint,    .Value = NULL },
     // println
-    { .Name = "println", .Argc = VARARG, .CFunction = &_IoPrintln, .Value = NULL },
+    { .Name = "println", .Argc = VARARG, .CFunction = &_IoPrintln,  .Value = NULL },
     // scan
-    { .Name = "scan",    .Argc =      1, .CFunction = &_IoScan,    .Value = NULL },
+    { .Name = "scan",    .Argc =      1, .CFunction = &_IoScan,     .Value = NULL },
+    // parse num
+    { .Name = "parseNum", .Argc =     1, .CFunction = &_IoParseNum, .Value = NULL },
     // end of module functions
     { .Name = NULL }
 };

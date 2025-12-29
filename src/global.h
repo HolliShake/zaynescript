@@ -476,13 +476,14 @@ typedef struct envcell_struct {
  * or block scope. Environments form a chain through their Parent pointers, allowing
  * for lexical scoping and variable lookup in outer scopes.
  * 
- * @var environment_struct::Parent
+ * @var value_struct::Parent
  * Pointer to the parent environment in the scope chain. NULL for the global environment.
  * @var environment_struct::Locals
  * Array of pointers to Value objects representing local variables in this environment.
  * The array is indexed by the variable's offset within the scope.
  */
 typedef struct environment_struct {
+    Value*       Parent;
     EnvCell**    Locals;
     int          LocalC;
 } Environment;

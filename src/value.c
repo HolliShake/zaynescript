@@ -112,19 +112,21 @@ String ValueToString(Value* value) {
             return buffer;
         }
         case VT_BOOL:
-            return value->Value.I32 ? "true" : "false";
+            return AllocateString(value->Value.I32 ? "true" : "false");
         case VT_NULL:
-            return "null";
+            return AllocateString("null");
         case VT_USER_FUNCTION:
-            return "function";
+            return AllocateString("function");
         case VT_ENVIRONMENT:
-            return "environment";
+            return AllocateString("environment");
         case VT_OBJECT:
-            return "object";
+            return HashMapToString((HashMap*) value->Value.Opaque);
         case VT_CLASS:
-            return "class";
+            return AllocateString("class");
+        case VT_NATV_FUNCTION:
+            return AllocateString("native function(){...}");
     }
-    return "unknown";
+    return AllocateString("unknown");
 }
 
 bool ValueToBool(Value* value) {
@@ -136,10 +138,11 @@ bool ValueToBool(Value* value) {
         case VT_STR:
             return strlen(value->Value.Opaque) > 0;
         case VT_BOOL:
-            return value->Value.I32 != 0;
+            return !!(value->Value.I32);
         case VT_NULL:
             return false;
     }
+    printf("ValueToBool: Unknown value type: %d\n", value->Type);
     return false;
 }
 

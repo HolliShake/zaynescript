@@ -41,4 +41,12 @@ void* HashMapGet(HashMap* hashmap, String key);
  */
 int HashMapContains(HashMap* hashmap, String key);
 
+/**
+ * @brief Converts the hash map to a string representation
+ * 
+ * @param hashmap Pointer to the hash map
+ * @return String representation of the hash map
+ */
+String HashMapToString(HashMap* hashmap);
+
 #endif

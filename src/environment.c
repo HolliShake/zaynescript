@@ -7,8 +7,9 @@ EnvCell* CreateEnvCell(Value* value) {
     return envCell;
 }
 
-Environment* CreateEnvironment(int localC) {
+Environment* CreateEnvironment(Value* parent, int localC) {
     Environment* environment = Allocate(sizeof(Environment));
+    environment->Parent      = parent;
     environment->Locals      = Callocate(localC, sizeof(EnvCell));
     environment->LocalC      = localC;
     return environment;

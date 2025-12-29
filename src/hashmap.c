@@ -160,3 +160,47 @@ int HashMapContains(HashMap* hashmap, String key) {
     }
     return HashMapGet(hashmap, key) != NULL;
 }
+
+extern String ValueToString(Value* value);
+
+String HashMapToString(HashMap* hashmap) {
+    if (hashmap == NULL) {
+        return NULL;
+    }
+    
+    // Calculate approximate size needed for string representation
+    size_t bufferSize = 100; // Initial size for "{ ... }"
+    for (size_t i = 0; i < hashmap->Size; i++) {
+        HashNode* node = &hashmap->Buckets[i];
+        while (node != NULL && node->Key != NULL) {
+            bufferSize += strlen(node->Key) + 50; // Key + formatting
+            node = node->Next;
+        }
+    }
+    
+    String result = Allocate(bufferSize);
+    if (result == NULL) {
+        return NULL;
+    }
+    
+    strcpy(result, "{ ");
+    bool first = true;
+    
+    for (size_t i = 0; i < hashmap->Size; i++) {
+        HashNode* node = &hashmap->Buckets[i];
+        while (node != NULL && node->Key != NULL) {
+            if (!first) {
+                strcat(result, ", ");
+            }
+            strcat(result, "\"");
+            strcat(result, node->Key);
+            strcat(result, "\": ");
+            strcat(result, ValueToString(node->Val));
+            first = false;
+            node = node->Next;
+        }
+    }
+    
+    strcat(result, " }");
+    return result;
+}
