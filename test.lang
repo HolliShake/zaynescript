@@ -51,12 +51,13 @@ const msg = "Hello";
 try {
     try {
         2 + msg;
+        println("Exec??");
     } catch (err) {
         println("inside >>", err);
     }
-    true + "asdasd";
+    println("Exec??");
 } catch (e) {
     println("error >>", e);
 }
 
- true + "asdasd";
+true + "asdasd";

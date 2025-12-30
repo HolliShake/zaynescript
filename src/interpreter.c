@@ -261,13 +261,12 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 lhs = Popp();
                 res = NULL;
                 int result = DoAdd(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) {
+                if (result == FLG_INVALID_OPERATION) 
                     HandleError(
                         "invalid operation (+) for type %s and %s", 
                         ValueTypeOf(lhs), 
                         ValueTypeOf(rhs)
                     );
-                }
                 Push(res);
                 break;
             }
