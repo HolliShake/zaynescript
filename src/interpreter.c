@@ -113,6 +113,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
         opcode = uf->Codes[ip++];
 
         if (interpreter->Allocated >= GC_THRESHOLD) {
+            Mark(fnValue);
             Mark(rootEnvObj);
             Mark(envObj);
             GarbageCollect(interpreter);
@@ -161,6 +162,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             case OP_LOAD_FUNCTION: {
                 offset = _ReadOffset(uf->Codes, ip);
                 DoLoadFunction(interpreter, offset, &res);
+                ValueToUFn(res)->ParentEnv = rootEnvObj;
                 Push(res);
                 Forward(4);
                 break;
@@ -216,7 +218,12 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                     Panic("Expected %d arguments, got %d\n", uf->Argc, argc);
                 }
 
-                _Run(interpreter, function, rootEnvObj, NewEnvironmentValue(interpreter, env));
+                _Run(
+                    interpreter, 
+                    function, 
+                    uf->ParentEnv != NULL ? uf->ParentEnv : rootEnvObj, 
+                    NewEnvironmentValue(interpreter, env)
+                );
                 break;
             }
             case OP_MUL: {

@@ -2,6 +2,7 @@
 
 UserFunction* CreateUserFunction(String name, int argc) {
     UserFunction* userFunction = Allocate(sizeof(UserFunction));
+    userFunction->ParentEnv    = NULL;
     userFunction->Name         = name;
     userFunction->Codes        = Allocate(sizeof(uint8_t) * 1);
     userFunction->Codes[0]     = 255;

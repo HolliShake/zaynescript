@@ -18,7 +18,7 @@
 #include <malloc.h>
 #endif
 
-#define GC_THRESHOLD 1000
+#define GC_THRESHOLD 10
 
 #define VARARG -1
 
@@ -288,27 +288,6 @@ typedef enum opcode_enum {
 } OpcodeEnum;
 
 /**
- * @struct user_function_struct
- * @brief Represents a user-defined function in the interpreter
- * 
- * @var user_function_struct::Name
- * Optional name of the function (nullable)
- * @var user_function_struct::Codes
- * Array of bytecode instructions representing the compiled function
- * @var user_function_struct::CodeC
- * Number of bytecode instructions in the Codes array
- * @var user_function_struct::Argc
- * Number of arguments the function accepts
- */
-typedef struct user_function_struct {
-    String   Name; // Nullable
-    uint8_t* Codes;
-    int      CodeC;
-    int      Argc;
-    int      LocalC;
-} UserFunction;
-
-/**
  * @enum value_type_enum
  * @brief Enumeration of all possible value types in the interpreter
  */
@@ -352,6 +331,28 @@ typedef struct value_struct {
     Value* Next;
     int    Marked;
 } Value;
+
+/**
+ * @struct user_function_struct
+ * @brief Represents a user-defined function in the interpreter
+ * 
+ * @var user_function_struct::Name
+ * Optional name of the function (nullable)
+ * @var user_function_struct::Codes
+ * Array of bytecode instructions representing the compiled function
+ * @var user_function_struct::CodeC
+ * Number of bytecode instructions in the Codes array
+ * @var user_function_struct::Argc
+ * Number of arguments the function accepts
+ */
+typedef struct user_function_struct {
+    Value*   ParentEnv;
+    String   Name; // Nullable
+    uint8_t* Codes;
+    int      CodeC;
+    int      Argc;
+    int      LocalC;
+} UserFunction;
 
 /**
  * @brief Forward declaration of HashNode structure

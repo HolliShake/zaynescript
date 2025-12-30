@@ -59,6 +59,19 @@ static void _Free(Value* value) {
             }
             break;
         }
+        case VT_USER_FUNCTION: {
+            // printf("Freeing user function\n");
+            UserFunction* uf = (UserFunction*) value->Value.Opaque;
+            if (uf != NULL) {
+                if (uf->Codes != NULL) {
+                    free(uf->Codes);
+                    uf->Codes = NULL;
+                }
+                free(uf);
+                value->Value.Opaque = NULL;
+            }
+            break;
+        }
         default:
             break;
     }
@@ -93,6 +106,13 @@ void Mark(Value* value) {
                         Mark(env->Locals[i]->Value);
                     }
                 }
+            }
+            break;
+        }
+        case VT_USER_FUNCTION: {
+            UserFunction* uf = (UserFunction*) value->Value.Opaque;
+            if (uf != NULL) {
+                Mark(uf->ParentEnv);
             }
             break;
         }

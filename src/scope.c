@@ -16,9 +16,9 @@ Scope* CreateScope(ScopeType type, Scope* parent) {
     scope->Symbols       = CreateHashMap(16);
     scope->Captures      = CreateHashMap(16);
     scope->Returned      = false;
-    scope->ContinueJumps = Allocate(1);
+    scope->ContinueJumps = Allocate(sizeof(int) * 1);
     scope->ContinueJumpC = 0;
-    scope->BreakJumps    = Allocate(1);
+    scope->BreakJumps    = Allocate(sizeof(int) * 1);
     scope->BreakJumpC    = 0;
     return scope;
 }
