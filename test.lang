@@ -34,7 +34,7 @@ fn fact(n) {
     return n * fact(n - 1);
 }
 
-const g = false;
+const g = false, h = g;
 
 println(g && true);
 
@@ -45,3 +45,18 @@ println(
         )
     )
 );
+
+const msg = "Hello";
+
+try {
+    try {
+        2 + msg;
+    } catch (err) {
+        println("inside >>", err);
+    }
+    true + "asdasd";
+} catch (e) {
+    println("error >>", e);
+}
+
+ true + "asdasd";

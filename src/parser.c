@@ -953,6 +953,86 @@ static Ast* _DoWhileStatement(Parser* parser) {
     );
 }
 
+static Ast* _TryCatchStatement(Parser* parser) {
+    Position start = parser->Next.Position, ended = start;
+    Ast* tryBlock = NULL, *catchBlock = NULL, *errorName = NULL;
+    ACCEPTV_FREE(KEY_TRY);
+    tryBlock = _Statement(parser);
+    if (tryBlock == NULL) {
+        ThrowError(
+            parser->Lexer->Path, 
+            parser->Lexer->Data, 
+            start, 
+            "expected a try block"
+        );
+    }
+    if (tryBlock->Type != AST_BLOCK) {
+        ThrowError(
+            parser->Lexer->Path, 
+            parser->Lexer->Data, 
+            tryBlock->Position, 
+            "expected a block statement"
+        );
+    }
+    ACCEPTV_FREE(KEY_CATCH);
+    ACCEPTV_FREE("(");
+    errorName = _Terminal(parser);
+    if (errorName == NULL) {
+        ThrowError(
+            parser->Lexer->Path, 
+            parser->Lexer->Data, 
+            start, 
+            "expected an error name"
+        );
+    }
+    if (errorName->Type != AST_NAME) {
+        ThrowError(
+            parser->Lexer->Path, 
+            parser->Lexer->Data, 
+            errorName->Position, 
+            "expected an identifier or name"
+        );
+    }
+    ACCEPTV_FREE(")");
+    catchBlock = _Statement(parser);
+    if (catchBlock == NULL) {
+        ThrowError(
+            parser->Lexer->Path, 
+            parser->Lexer->Data, 
+            start, 
+            "expected a catch block"
+        );
+    }
+    if (catchBlock->Type != AST_BLOCK) {
+        ThrowError(
+            parser->Lexer->Path, 
+            parser->Lexer->Data, 
+            tryBlock->Position, 
+            "expected a block statement"
+        );
+    }
+    ended = parser->Next.Position;
+    return AstTryCatch(
+        tryBlock,
+        errorName,
+        catchBlock,
+        MergePositions(start, ended)
+    );
+}
+
+static Ast* _BlockStatement(Parser* parser) {
+    Position start = parser->Next.Position, ended = start;
+    Ast* statements = NULL;
+    ACCEPTV_FREE("{");
+    statements = _ListOfStatements(parser);
+    ended = parser->Next.Position;
+    ACCEPTV_FREE("}");
+    return AstBlock(
+        statements, 
+        MergePositions(start, ended)
+    );
+}
+
 static Ast* _ContinueStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
     ACCEPTV_FREE(KEY_CONTINUE);
@@ -981,19 +1061,6 @@ static Ast* _ReturnStatement(Parser* parser) {
     ACCEPTV_FREE(";");
     return AstReturn(
         expression, 
-        MergePositions(start, ended)
-    );
-}
-
-static Ast* _BlockStatement(Parser* parser) {
-    Position start = parser->Next.Position, ended = start;
-    Ast* statements = NULL;
-    ACCEPTV_FREE("{");
-    statements = _ListOfStatements(parser);
-    ended = parser->Next.Position;
-    ACCEPTV_FREE("}");
-    return AstBlock(
-        statements, 
         MergePositions(start, ended)
     );
 }
@@ -1036,7 +1103,9 @@ static Ast* _Statement(Parser* parser) {
         return _WhileStatement(parser);
     } else if (CHECKTV(KEY_DO)) {
         return _DoWhileStatement(parser);
-    } else if (CHECKTV(KEY_CONTINUE)) {
+    } else if (CHECKTV(KEY_TRY)) {
+        return _TryCatchStatement(parser);
+    }else if (CHECKTV(KEY_CONTINUE)) {
         return _ContinueStatement(parser);
     } else if (CHECKTV(KEY_BREAK)) {
         return _BreakStatement(parser);

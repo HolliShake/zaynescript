@@ -1,26 +1,33 @@
 #include "./interpreter.h"
-#include "global.h"
 
 Interpreter* CreateInterpreter() {
-    Interpreter* interpreter    = Allocate(sizeof(Interpreter));
-    interpreter->Allocated      = 0;
-    interpreter->GcRoot         = NULL;
-    interpreter->True           = NewBoolValue(interpreter, 1);
-    interpreter->False          = NewBoolValue(interpreter, 0);
-    interpreter->Null           = NewNullValue(interpreter);
-    interpreter->Constants      = Allocate(sizeof(Value*));
-    interpreter->ConstantC      = 0;
-    interpreter->Constants[0]   = NULL;
-    interpreter->Functions      = Allocate(sizeof(Value*));
-    interpreter->FunctionC      = 0;
-    interpreter->Functions[0]   = NULL;
-    interpreter->StackC         = 0;
+    Interpreter* interpreter                = Allocate(sizeof(Interpreter));
+    interpreter->Allocated                  = 0;
+    interpreter->GcRoot                     = NULL;
+    interpreter->True                       = NewBoolValue(interpreter, 1);
+    interpreter->False                      = NewBoolValue(interpreter, 0);
+    interpreter->Null                       = NewNullValue(interpreter);
+    interpreter->Constants                  = Allocate(sizeof(Value*));
+    interpreter->ConstantC                  = 0;
+    interpreter->Constants[0]               = NULL;
+    interpreter->Functions                  = Allocate(sizeof(Value*));
+    interpreter->FunctionC                  = 0;
+    interpreter->Functions[0]               = NULL;
+    // interpreter->Stacks[STACK_SIZE];
+    interpreter->StackC                     = 0;
+    // interpreter->ExceptionHandlerStacks[STACK_SIZE];
+    interpreter->ExceptionHandlerStackC     = 0;
     return interpreter;
 }
 
-#define Push(value) (interpreter->Stack[interpreter->StackC++] = value)
-#define Popp() (interpreter->Stack[--interpreter->StackC])
-#define Peek() (interpreter->Stack[interpreter->StackC  - 1])
+#define Push(value) (interpreter->Stacks[interpreter->StackC++] = value)
+#define Popp() (interpreter->Stacks[--interpreter->StackC])
+#define Peek() (interpreter->Stacks[interpreter->StackC  - 1])
+
+#define PushEH(addr) (interpreter->ExceptionHandlerStacks[interpreter->ExceptionHandlerStackC++] = addr)
+#define PoppEH() (interpreter->ExceptionHandlerStacks[--interpreter->ExceptionHandlerStackC])
+#define PeekEH() (interpreter->ExceptionHandlerStacks[interpreter->ExceptionHandlerStackC - 1])
+
 #define DumpFrame() do { \
     printf("Stack: "); \
     for (int i = 0; i < uf->CodeC; i++) { \
@@ -28,6 +35,8 @@ Interpreter* CreateInterpreter() {
     } \
     printf("\n"); \
 } while (0)
+
+
 
 
 #define DumpStack() do { \
@@ -60,15 +69,41 @@ static String _ReadString(uint8_t* codes, int alignStart) {
     return new;
 }
 
+#define InterpreterPanic(message, ...) do { \
+    fprintf(stderr, "[%s:%d]::Panic: ", __FILE__, __LINE__); \
+    fprintf(stderr, "%s", (char*) message); \
+    fprintf(stderr, "\n"); \
+    ForceGarbageCollect(interpreter); \
+    FreeInterpreter(interpreter); \
+    exit(EXIT_FAILURE); \
+} while(0)
+
+#define HandleError(messageFormat, ...) { \
+    int size = snprintf(NULL, 0, (char*) messageFormat, ##__VA_ARGS__) + 1; \
+    String message = (String) Allocate(size); \
+    snprintf(message, size, (char*) messageFormat, ##__VA_ARGS__); \
+    if (catched) { \
+        JmpFrwd(PeekEH()); \
+        PoppEH(); \
+        Push(NewErrorValue(interpreter, message)); \
+        free(message); \
+        break; \
+    } \
+    InterpreterPanic(message); \
+    free(message); \
+    continue; } \
+
 static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* envObj) {
     UserFunction* uf = ValueToUFn(fnValue);
     uint8_t opcode   = 0;
     Value* lhs       = NULL;
     Value* rhs       = NULL;
     Value* res       = NULL;
+    Value* err       = NULL;
     int ip           = 0;
     int offset       = 0;
     int argc         = 0;
+    bool catched     = false;
     String str       = NULL;
 
     #define Forward(size) (ip += size)
@@ -82,6 +117,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             Mark(envObj);
             GarbageCollect(interpreter);
         }
+
+        catched = interpreter->ExceptionHandlerStackC != 0;
 
         switch (opcode) {
             case OP_IMPORT_CORE: {
@@ -135,8 +172,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 HashMap* map = (HashMap*) object->Value.Opaque;
 
                 if (!HashMapContains(map, str)) {
-                    printf("Object does not have attribute '%s'\n", str);
-                    exit(EXIT_FAILURE);
+                    Panic("Object does not have attribute '%s'\n", str);
                 }
                 res = HashMapGet(map, str);
 
@@ -153,8 +189,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 Value* function = Popp();
 
                 if (function == NULL) {
-                    printf("Attempted to call a null value\n");
-                    exit(EXIT_FAILURE);
+                    Panic("Attempted to call a null value");
                 }
 
                 if (ValueIsNativeFunction(function)) {
@@ -174,13 +209,11 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 Environment* env = CreateEnvironment(envObj, uf->LocalC);
 
                 if (!ValueIsCallable(function)) {
-                    printf("Attempted to call a non-callable value: %s\n", ValueToString(function));
-                    exit(EXIT_FAILURE);
+                    Panic("Attempted to call a non-callable value: %s\n", ValueToString(function));
                 }
 
                 if (argc != uf->Argc) {
-                    printf("Expected %d arguments, got %d\n", uf->Argc, argc);
-                    exit(EXIT_FAILURE);
+                    Panic("Expected %d arguments, got %d\n", uf->Argc, argc);
                 }
 
                 _Run(interpreter, function, rootEnvObj, NewEnvironmentValue(interpreter, env));
@@ -192,7 +225,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoMul(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                    panic("invalid operation");
+                    Panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -203,9 +236,9 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoDiv(interpreter, lhs, rhs, &res);
                 if (result == FLG_ZERO_DIV) {
-                    panic("invalid operation");
+                    Panic("invalid operation");
                 } else if (result == FLG_INVALID_OPERATION) {
-                    panic("invalid operation");
+                    Panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -216,9 +249,9 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoMod(interpreter, lhs, rhs, &res);
                 if (result == FLG_ZERO_DIV) {
-                    panic("invalid operation");
+                    Panic("invalid operation");
                 } else if (result == FLG_INVALID_OPERATION) {
-                    panic("invalid operation");
+                    Panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -229,7 +262,11 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoAdd(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                    panic("invalid operation");
+                    HandleError(
+                        "invalid operation (+) for type %s and %s", 
+                        ValueTypeOf(lhs), 
+                        ValueTypeOf(rhs)
+                    );
                 }
                 Push(res);
                 break;
@@ -240,7 +277,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoSub(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                    panic("invalid operation");
+                    Panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -251,7 +288,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoLShift(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                    panic("invalid operation");
+                    Panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -262,7 +299,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoRShift(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                    panic("invalid operation");
+                    Panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -273,7 +310,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoLT(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                   panic("invalid operation %s and %s", ValueToString(lhs), ValueToString(rhs));
+                   Panic("invalid operation %s and %s", ValueToString(lhs), ValueToString(rhs));
                 }
                 Push(res);
                 break;
@@ -284,7 +321,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoLTE(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                    panic("invalid operation");
+                    Panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -295,7 +332,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoGT(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                    panic("invalid operation");
+                    Panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -306,7 +343,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoGTE(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                    panic("invalid operation");
+                    Panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -317,7 +354,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoEQ(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                    panic("invalid operation");
+                    Panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -328,7 +365,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = NULL;
                 int result = DoNE(interpreter, lhs, rhs, &res);
                 if (result == FLG_INVALID_OPERATION) {
-                    panic("invalid operation");
+                    Panic("invalid operation");
                 }
                 Push(res);
                 break;
@@ -351,6 +388,16 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             }
             case OP_POPTOP: {
                 Value* val = Popp();
+                break;
+            }
+            case OP_SETUP_TRY: {
+                offset = _ReadOffset(uf->Codes, ip);
+                PushEH(offset);
+                Forward(4);
+                break;
+            }
+            case OP_POP_TRY: {
+                PoppEH();
                 break;
             }
             case OP_JUMP_IF_FALSE_OR_POP: {
@@ -399,9 +446,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 return;
             }
             default: {
-                printf("Unknown opcode: %d %d\n", opcode, OP_LOAD_NAME);
-                exit(EXIT_FAILURE);
-                break;
+                Panic("Unknown opcode: %d %d\n", opcode, OP_LOAD_NAME);
+                return;
             }
         }
     }

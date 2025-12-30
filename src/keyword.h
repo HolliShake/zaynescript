@@ -15,6 +15,8 @@
 #define KEY_WHILE    "while"
 #define KEY_DO       "do"
 #define KEY_FOR      "for"
+#define KEY_TRY      "try"
+#define KEY_CATCH    "catch"
 #define KEY_RETURN   "return"
 #define KEY_BREAK    "break"
 #define KEY_CONTINUE "continue"

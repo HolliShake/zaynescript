@@ -204,6 +204,17 @@ Ast* AstWhile(Ast* condition, Ast* body, Position position);
 Ast* AstDoWhile(Ast* condition, Ast* body, Position position);
 
 /**
+ * AstTryCatch - Creates an AST node representing a try-catch statement
+ * @tryBlock: Pointer to the try block AST node
+ * @errorName: Pointer to the error name AST node
+ * @catchBlock: Pointer to the catch block AST node
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_TRY_CATCH node
+ */
+Ast* AstTryCatch(Ast* tryBlock, Ast* errorName,  Ast* catchBlock, Position position);
+
+/**
  * AstBlock - Creates an AST node representing a block statement
  * @statements: Pointer to child AST nodes (statements)
  * @position: Source code location information

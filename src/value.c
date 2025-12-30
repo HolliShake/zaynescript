@@ -1,4 +1,5 @@
 #include "./value.h"
+#include "global.h"
 
 
 static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
@@ -9,6 +10,12 @@ static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
     interpreter->Allocated++;
     v->Next = interpreter->GcRoot;
     interpreter->GcRoot = v;
+    return v;
+}
+
+Value* NewErrorValue(Interpreter* interpreter, String message) {
+    Value* v = _CreateValue(interpreter, VT_ERROR);
+    v->Value.Opaque = StringToRunes(message);
     return v;
 }
 
@@ -88,6 +95,7 @@ String ValueToString(Value* value) {
                 snprintf(buffer, 64, "%g", num);
             }
             return buffer;
+        case VT_ERROR:
         case VT_STR: {
             Rune* runes = (Rune*) value->Value.Opaque;
             // Convert runes back to UTF-8 string
@@ -130,8 +138,39 @@ String ValueToString(Value* value) {
     }
 }
 
+String ValueTypeOf(Value* value) {
+    switch (value->Type) {
+        case VT_ERROR:
+            return "error";
+        case VT_INT:
+            return "int";
+        case VT_NUM:
+            return "num";
+        case VT_STR:
+            return "str";
+        case VT_BOOL:
+            return "bool";
+        case VT_NULL:
+            return "null";
+        case VT_USER_FUNCTION:
+            return "function";
+        case VT_NATV_FUNCTION:
+            return "native function";
+        case VT_ENVIRONMENT:
+            return "environment";
+        case VT_OBJECT:
+            return "object";
+        case VT_CLASS:
+            return "class";
+        default:
+            return "unknown";
+    }
+}
+
 bool ValueToBool(Value* value) {
     switch (value->Type) {
+        case VT_ERROR:
+            return false;
         case VT_INT:
             return value->Value.I32 != 0;
         case VT_NUM:

@@ -1,5 +1,6 @@
 #include "./compiler.h"
 #include "global.h"
+#include <_mingw_mac.h>
 
 #define PushArray(type, array, count, val, defaultValue) do { \
     (array)[(count)] = val; \
@@ -1156,6 +1157,38 @@ static void _DoWhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope
     _JumpToLabel(compiler, uf, jumpOffset);
 }
 
+static void _TryCatch(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
+    Ast* tryBlock   = node->A;
+    Ast* catchParam = node->B;
+    Ast* catchBlock = node->C;
+    int targetOffset = -1, skipCatchOffset = -1;
+    // Try begin
+    targetOffset = _EmitJumpTo(compiler, uf, OP_SETUP_TRY);
+    Scope* tryScope = CreateScope(SCOPE_TRY_BLOCK, scope);
+    while (tryBlock != NULL) {
+        _Statement(compiler, uf, tryScope, tryBlock);
+        tryBlock = tryBlock->Next;
+    }
+    _Emit(compiler, uf, OP_POP_TRY);
+    FreeScope(tryScope);
+    // Try end
+    skipCatchOffset = _EmitJumpTo(compiler, uf, OP_JUMP);
+    // Catch begin, Jump here if encounters an error
+    _JumpToLabel(compiler, uf, targetOffset);
+    Scope* catchScope = CreateScope(SCOPE_BLOCK, scope);
+    // Store error object
+    int offset = UserFunctionEmitLocal(uf);
+    ScopeSetSymbol(catchScope, catchParam->Value, false, true, false, offset);
+    _EmitArg(compiler, uf, OP_STORE_LOCAL, offset);
+    while (catchBlock != NULL) {
+        _Statement(compiler, uf, catchScope, catchBlock);
+        catchBlock = catchBlock->Next;
+    }
+    FreeScope(catchScope);
+    // Catch end
+    _JumpToLabel(compiler, uf, skipCatchOffset);
+}
+
 static void _BlockStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
     Scope* block = CreateScope(SCOPE_BLOCK, scope);
     Ast* current = node->A;
@@ -1174,6 +1207,10 @@ static void _ContinueStatement(Compiler* compiler, UserFunction* uf, Scope* scop
             "continue statement can only be used inside a loop"
         );
     }
+    if (ScopeInside(scope, SCOPE_TRY_BLOCK)) {
+        // Pop try blocks until we exit the try block
+        _Emit(compiler, uf, OP_POP_TRY);
+    }
     int offset = _EmitJumpTo(compiler, uf, OP_JUMP);
     ScopeAddContinueJump(scope, offset);
 }
@@ -1186,6 +1223,10 @@ static void _BreakStatement(Compiler* compiler, UserFunction* uf, Scope* scope, 
             node->Position, 
             "break statement can only be used inside a loop"
         );
+    }
+    if (ScopeInside(scope, SCOPE_TRY_BLOCK)) {
+        // Pop try blocks until we exit the try block
+        _Emit(compiler, uf, OP_POP_TRY);
     }
     int offset = _EmitJumpTo(compiler, uf, OP_JUMP);
     ScopeAddBreakJump(scope, offset);
@@ -1204,6 +1245,11 @@ static void _ReturnStatement(Compiler* compiler, UserFunction* uf, Scope* scope,
     Scope* fnScope = ScopeGetFirst(scope, SCOPE_FUNCTION);
     if (fnScope != NULL) {
         fnScope->Returned = true;
+    }
+
+    if (ScopeInside(scope, SCOPE_TRY_BLOCK)) {
+        // Pop try blocks until we exit the try block
+        _Emit(compiler, uf, OP_POP_TRY);
     }
 
     if (node->A != NULL) _Expression(compiler, uf, scope, node->A);
@@ -1258,6 +1304,9 @@ static void _Statement(Compiler* compiler, UserFunction* userFunction, Scope* sc
             break;
         case AST_DO_WHILE:
             _DoWhileStatement(compiler, userFunction, scope, node);
+            break;
+        case AST_TRY_CATCH:
+            _TryCatch(compiler, userFunction, scope, node);
             break;
         case AST_BLOCK:
             _BlockStatement(compiler, userFunction, scope, node);

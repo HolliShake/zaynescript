@@ -6,6 +6,12 @@
 #define VALUE_H
 
 /**
+ * @enum ValueType
+ * @brief Enumeration of possible value types in the interpreter
+ */
+Value* NewErrorValue(Interpreter* interpreter, String message);
+
+/**
  * @brief Creates a new 32-bit integer value
  * 
  * @param interpreter Pointer to the interpreter instance
@@ -91,6 +97,14 @@ Value* NewObjectValue(Interpreter* interpreter);
  * @return String representation of the value
  */
 String ValueToString(Value* value);
+
+/**
+ * @brief Gets the type of a value as a string
+ * 
+ * @param value Pointer to the Value to check
+ * @return String representing the type of the value
+ */
+String ValueTypeOf(Value* value);
 
 /**
  * @brief Converts a value to a boolean representation

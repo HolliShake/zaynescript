@@ -83,10 +83,31 @@ static Token TokenizeIdentifier(Lexer* lexer) {
     
     // Check for keywords
     const char* keywords[] = {
-        KEY_IF, KEY_ELSE, KEY_WHILE, KEY_FOR, KEY_RETURN, KEY_BREAK, KEY_CONTINUE,
-        KEY_NULL, KEY_TRUE, KEY_FALSE,
-        KEY_CLASS, KEY_STRUCT, KEY_ENUM, KEY_IMPORT, KEY_FROM, KEY_CONST, KEY_VAR, KEY_LET, KEY_FN,
-        KEY_ASYNC, KEY_AWAIT, KEY_NEW
+        KEY_IF,     
+        KEY_ELSE,   
+        KEY_WHILE,  
+        KEY_FOR,    
+        KEY_DO,      
+        KEY_TRY,
+        KEY_CATCH,
+        KEY_RETURN, 
+        KEY_BREAK,  
+        KEY_CONTINUE,
+        KEY_NULL,   
+        KEY_TRUE,   
+        KEY_FALSE,
+        KEY_CLASS,  
+        KEY_STRUCT, 
+        KEY_ENUM,   
+        KEY_IMPORT, 
+        KEY_FROM,   
+        KEY_CONST,  
+        KEY_VAR,      
+        KEY_LET, 
+        KEY_FN,
+        KEY_ASYNC,  
+        KEY_AWAIT,  
+        KEY_NEW
     };
     
     for (size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++) {

@@ -150,6 +150,14 @@ Ast* AstDoWhile(Ast* condition, Ast* body, Position position) {
     return ast;
 }
 
+Ast* AstTryCatch(Ast* tryBlock, Ast* errorName,  Ast* catchBlock, Position position) {
+    Ast* ast = InitAst(AST_TRY_CATCH, position);
+    ast->A   = tryBlock;
+    ast->B   = errorName;
+    ast->C   = catchBlock;
+    return ast;
+}
+
 Ast* AstBlock(Ast* statements, Position position) {
     Ast* ast = InitAst(AST_BLOCK, position);
     ast->A = statements;

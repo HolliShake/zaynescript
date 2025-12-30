@@ -22,6 +22,8 @@
 
 #define VARARG -1
 
+#define STACK_SIZE 1500
+
 /**
  * @def panic
  * @brief Prints an error message and terminates the program
@@ -29,8 +31,8 @@
  * @param message Format string for the error message (printf-style)
  * @param ... Optional format arguments (variadic)
  */
-#define panic(message, ...) do { \
-    fprintf(stderr, "[%s:%d] Panic:: ", __FILE__, __LINE__); \
+#define Panic(message, ...) do { \
+    fprintf(stderr, "[%s:%d]::Panic: ", __FILE__, __LINE__); \
     fprintf(stderr, message, ##__VA_ARGS__); \
     fprintf(stderr, "\n"); \
     exit(EXIT_FAILURE); \
@@ -173,6 +175,7 @@ typedef enum ast_type_enum {
     AST_WHILE,
     AST_DO_WHILE,
     AST_BLOCK,
+    AST_TRY_CATCH,
     // 
     AST_NAME,
     AST_INT,
@@ -273,6 +276,8 @@ typedef enum opcode_enum {
     OP_STORE_LOCAL,
     OP_DUPTOP,
     OP_POPTOP,
+    OP_SETUP_TRY,
+    OP_POP_TRY,
     OP_JUMP_IF_FALSE_OR_POP,
     OP_JUMP_IF_TRUE_OR_POP,
     OP_POP_JUMP_IF_FALSE,
@@ -308,6 +313,7 @@ typedef struct user_function_struct {
  * @brief Enumeration of all possible value types in the interpreter
  */
 typedef enum value_type_enum {
+    VT_ERROR,
     VT_INT,
     VT_NUM,
     VT_STR,
@@ -407,8 +413,10 @@ typedef struct hashmap_struct {
     int      ConstantC;
     Value**  Functions;
     int      FunctionC;
-    Value*   Stack[1500];
+    Value*   Stacks[STACK_SIZE];
     int      StackC;
+    int      ExceptionHandlerStacks[STACK_SIZE];
+    int      ExceptionHandlerStackC;
 } Interpreter;
 
 /**
@@ -451,6 +459,7 @@ typedef enum scope_type_enum {
     SCOPE_GLOBAL,
     SCOPE_FUNCTION,
     SCOPE_BLOCK,
+    SCOPE_TRY_BLOCK,
     SCOPE_LOOP,
 } ScopeType;
 

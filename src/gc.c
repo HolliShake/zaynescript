@@ -121,7 +121,7 @@ static void _MarkFunctions(Interpreter* interpreter) {
 
 static void _MarkStack(Interpreter* interpreter) {
     for (int i = 0; i < interpreter->StackC; i++) {
-        Value* value = interpreter->Stack[i];
+        Value* value = interpreter->Stacks[i];
         if (value != NULL) {
             Mark(value);
         }
@@ -130,11 +130,9 @@ static void _MarkStack(Interpreter* interpreter) {
 
 static void _Sweep(Interpreter* interpreter) {
     Value** current = &interpreter->GcRoot;
-    int freed = 0;
     while (*current != NULL) {
         Value* value = *current;
         if (!value->Marked) {
-            freed++;
             Value* unreached = value;
             *current = unreached->Next;
             _Free(unreached);
@@ -143,7 +141,6 @@ static void _Sweep(Interpreter* interpreter) {
             current = &value->Next;
         }
     }
-    // printf("FREED: %d\n", freed);
 }
 
 void GarbageCollect(Interpreter* interpreter) {
