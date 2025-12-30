@@ -201,7 +201,6 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                         args[i] = Popp();
                     }
                     Value* nativeResult = nf(interpreter, argc, args);
-
                     Push(nativeResult);
                     break;
                 }
