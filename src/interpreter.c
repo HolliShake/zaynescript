@@ -224,9 +224,12 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 lhs = Popp();
                 res = NULL;
                 int result = DoMul(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) {
-                    Panic("invalid operation");
-                }
+                if (result == FLG_INVALID_OPERATION) 
+                    HandleError(
+                        "invalid operation (*) for type %s and %s", 
+                        ValueTypeOf(lhs), 
+                        ValueTypeOf(rhs)
+                    );
                 Push(res);
                 break;
             }
@@ -235,11 +238,16 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 lhs = Popp();
                 res = NULL;
                 int result = DoDiv(interpreter, lhs, rhs, &res);
-                if (result == FLG_ZERO_DIV) {
-                    Panic("invalid operation");
-                } else if (result == FLG_INVALID_OPERATION) {
-                    Panic("invalid operation");
-                }
+                if (result == FLG_ZERO_DIV) 
+                    HandleError(
+                        "zero division error"
+                    )
+                else if (result == FLG_INVALID_OPERATION) 
+                    HandleError(
+                        "invalid operation (/) for type %s and %s", 
+                        ValueTypeOf(lhs), 
+                        ValueTypeOf(rhs)
+                    );
                 Push(res);
                 break;
             }
@@ -248,11 +256,16 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 lhs = Popp();
                 res = NULL;
                 int result = DoMod(interpreter, lhs, rhs, &res);
-                if (result == FLG_ZERO_DIV) {
-                    Panic("invalid operation");
-                } else if (result == FLG_INVALID_OPERATION) {
-                    Panic("invalid operation");
-                }
+                if (result == FLG_ZERO_DIV) 
+                    HandleError(
+                        "zero division error"
+                    )
+                else if (result == FLG_INVALID_OPERATION) 
+                    HandleError(
+                        "invalid operation (%%) for type %s and %s", 
+                        ValueTypeOf(lhs), 
+                        ValueTypeOf(rhs)
+                    );
                 Push(res);
                 break;
             }
@@ -275,9 +288,12 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 lhs = Popp();
                 res = NULL;
                 int result = DoSub(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) {
-                    Panic("invalid operation");
-                }
+                if (result == FLG_INVALID_OPERATION) 
+                    HandleError(
+                        "invalid operation (-) for type %s and %s", 
+                        ValueTypeOf(lhs), 
+                        ValueTypeOf(rhs)
+                    );
                 Push(res);
                 break;
             }
@@ -286,9 +302,12 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 lhs = Popp();
                 res = NULL;
                 int result = DoLShift(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) {
-                    Panic("invalid operation");
-                }
+                if (result == FLG_INVALID_OPERATION) 
+                    HandleError(
+                        "invalid operation (<<) for type %s and %s", 
+                        ValueTypeOf(lhs), 
+                        ValueTypeOf(rhs)
+                    );
                 Push(res);
                 break;
             }
@@ -297,9 +316,12 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 lhs = Popp();
                 res = NULL;
                 int result = DoRShift(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) {
-                    Panic("invalid operation");
-                }
+                if (result == FLG_INVALID_OPERATION) 
+                    HandleError(
+                        "invalid operation (>>) for type %s and %s", 
+                        ValueTypeOf(lhs), 
+                        ValueTypeOf(rhs)
+                    );
                 Push(res);
                 break;
             }
@@ -308,9 +330,12 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 lhs = Popp();
                 res = NULL;
                 int result = DoLT(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) {
-                   Panic("invalid operation %s and %s", ValueToString(lhs), ValueToString(rhs));
-                }
+                if (result == FLG_INVALID_OPERATION) 
+                    HandleError(
+                        "invalid operation (<) for type %s and %s", 
+                        ValueTypeOf(lhs), 
+                        ValueTypeOf(rhs)
+                    );
                 Push(res);
                 break;
             }
@@ -319,9 +344,12 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 lhs = Popp();
                 res = NULL;
                 int result = DoLTE(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) {
-                    Panic("invalid operation");
-                }
+                if (result == FLG_INVALID_OPERATION) 
+                    HandleError(
+                        "invalid operation (<=) for type %s and %s", 
+                        ValueTypeOf(lhs), 
+                        ValueTypeOf(rhs)
+                    );
                 Push(res);
                 break;
             }
@@ -330,9 +358,12 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 lhs = Popp();
                 res = NULL;
                 int result = DoGT(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) {
-                    Panic("invalid operation");
-                }
+                if (result == FLG_INVALID_OPERATION) 
+                    HandleError(
+                        "invalid operation (>) for type %s and %s", 
+                        ValueTypeOf(lhs), 
+                        ValueTypeOf(rhs)
+                    );
                 Push(res);
                 break;
             }
@@ -341,9 +372,12 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 lhs = Popp();
                 res = NULL;
                 int result = DoGTE(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) {
-                    Panic("invalid operation");
-                }
+                if (result == FLG_INVALID_OPERATION) 
+                    HandleError(
+                        "invalid operation (>=) for type %s and %s", 
+                        ValueTypeOf(lhs), 
+                        ValueTypeOf(rhs)
+                    );
                 Push(res);
                 break;
             }
@@ -352,9 +386,12 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 lhs = Popp();
                 res = NULL;
                 int result = DoEQ(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) {
-                    Panic("invalid operation");
-                }
+                if (result == FLG_INVALID_OPERATION) 
+                    HandleError(
+                        "invalid operation (==) for type %s and %s", 
+                        ValueTypeOf(lhs), 
+                        ValueTypeOf(rhs)
+                    );
                 Push(res);
                 break;
             }
@@ -363,9 +400,12 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 lhs = Popp();
                 res = NULL;
                 int result = DoNE(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) {
-                    Panic("invalid operation");
-                }
+                if (result == FLG_INVALID_OPERATION) 
+                    HandleError(
+                        "invalid operation (!=) for type %s and %s", 
+                        ValueTypeOf(lhs), 
+                        ValueTypeOf(rhs)
+                    );
                 Push(res);
                 break;
             }
