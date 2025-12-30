@@ -49,6 +49,7 @@ println(
 const msg = "Hello";
 
 try {
+    let x = 2;
     try {
         2 + msg;
         println("Exec??");
@@ -60,4 +61,8 @@ try {
     println("error >>", e);
 }
 
-true + "asdasd";
+fn runnable(a) {
+    
+}
+
+true - "asdasd";

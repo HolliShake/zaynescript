@@ -930,7 +930,7 @@ static void _VarDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope
 }
 
 static void _LetDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
-    if (!(ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_BLOCK))) {
+    if (!(ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
         ThrowError(
             compiler->Parser->Lexer->Path, 
             compiler->Parser->Lexer->Data, 
@@ -964,6 +964,14 @@ static void _LetDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope
 }
 
 static void _ConstDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
+    if (!(ScopeIs(scope, SCOPE_GLOBAL) || ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
+        ThrowError(
+            compiler->Parser->Lexer->Path, 
+            compiler->Parser->Lexer->Data, 
+            node->Position, 
+            "const declarations can only be used inside a function or a block"
+        );
+    }
     Ast* declarations = node->A;
     while (declarations != NULL) {
         if (declarations->B != NULL) {
@@ -1196,6 +1204,7 @@ static void _BlockStatement(Compiler* compiler, UserFunction* uf, Scope* scope, 
         _Statement(compiler, uf, block, current);
         current = current->Next;
     }
+    FreeScope(block);
 }
 
 static void _ContinueStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
