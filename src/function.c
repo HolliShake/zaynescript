@@ -16,6 +16,40 @@ UserFunction* CreateUserFunction(String name, int argc) {
     return userFunction;
 }
 
+UserFunction* UserFunctionClone(UserFunction* userFunction) {
+    UserFunction* clone = CreateUserFunction(
+        userFunction->Name != NULL ? AllocateString(userFunction->Name) : NULL,
+        userFunction->Argc
+    );
+    clone->ParentEnv   = userFunction->ParentEnv;
+    clone->CodeC       = userFunction->CodeC;
+    clone->Codes       = Reallocate(
+        clone->Codes,
+        sizeof(uint8_t) * (userFunction->CodeC + 1)
+    );
+    memcpy(clone->Codes, userFunction->Codes, sizeof(uint8_t) * userFunction->CodeC);
+    clone->LocalC       = userFunction->LocalC;
+    clone->CaptureC     = userFunction->CaptureC;
+    clone->CaptureMetas = Reallocate(
+        clone->CaptureMetas,
+        sizeof(CaptureMeta) * (userFunction->CaptureC + 1)
+    );
+    memcpy(
+        clone->CaptureMetas,
+        userFunction->CaptureMetas,
+        sizeof(CaptureMeta) * userFunction->CaptureC
+    );
+    clone->Captures    = Reallocate(
+        clone->Captures,
+        sizeof(EnvCell*) * (userFunction->CaptureC + 1)
+    );
+    memcpy(
+        clone->Captures,
+        userFunction->Captures,
+        sizeof(EnvCell*) * userFunction->CaptureC
+    );
+    return clone;
+}
 
 int UserFunctionEmitLocal(UserFunction* userFunction) {
     return userFunction->LocalC++;

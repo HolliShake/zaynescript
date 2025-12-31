@@ -13,6 +13,14 @@
 UserFunction* CreateUserFunction(String name, int argc);
 
 /**
+ * @brief Clones an existing user function
+ * 
+ * @param userFunction Pointer to the user function to clone
+ * @return Pointer to the cloned UserFunction structure
+ */
+UserFunction* UserFunctionClone(UserFunction* userFunction);
+
+/**
  * @brief Emits a local variable to the user function
  * 
  * @param userFunction Pointer to the user function to emit the local variable to

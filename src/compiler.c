@@ -208,7 +208,6 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
 
             if (ScopeInside(scope, SCOPE_FUNCTION_CLOSURE) && !ScopeIsLocalToFnClosure(scope, node->Value)) {
                 int captureOffset = 0;
-
                 if (!ScopeHasCapture(scope, node->Value)) {
                     captureOffset = UserFunctionAddCapture(
                         uf, 

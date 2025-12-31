@@ -1,4 +1,5 @@
 #include "./gc.h"
+#include <stdio.h>
 
 extern String ValueToString(Value* value);
 

@@ -1,4 +1,5 @@
 #include "./operation.h"
+#include "global.h"
 
 #define PushArray(type, array, count, val, defaultValue) do { \
     (array)[(count)++] = val; \
@@ -702,7 +703,7 @@ void DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int o
         return;
     }
 
-    Value* fn = interp->Functions[offset];
+    Value* fn = NewUserFunctionValue(interp, UserFunctionClone((UserFunction*) interp->Functions[offset]->Value.Opaque));
     *out = fn;
 
     UserFunction* uf     = (UserFunction*) fn->Value.Opaque;
