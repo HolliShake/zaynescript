@@ -39,4 +39,14 @@ int UserFunctionEmitLocal(UserFunction* userFunction);
  */
 int UserFunctionAddCapture(UserFunction* userFunction, bool isGlobal, int src, int dst);
 
+/**
+ * @brief Creates a new native function metadata structure
+ * 
+ * @param name The name of the native function
+ * @param argc The number of arguments the native function takes
+ * @param funcPtr Pointer to the native function implementation
+ * @return Pointer to the newly created NativeFunctionMeta structure
+ */
+NativeFunctionMeta* CreateNativeFunctionMeta(const String name, int argc, NativeFunction funcPtr);
+
 #endif

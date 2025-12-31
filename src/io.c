@@ -114,13 +114,13 @@ static Value* _IoParseNum(Interpreter* interpreter, int argc, Value** arguments)
 
 static ModuleFunction _IoModuleFunctions[] = {
     // print
-    { .Name = "print",   .Argc = VARARG, .CFunction = (NativeFunction*) (&_IoPrint),    .Value = NULL },
+    { .Name = "print",   .Argc = VARARG, .CFunction = (NativeFunction) (_IoPrint),    .Value = NULL },
     // println
-    { .Name = "println", .Argc = VARARG, .CFunction = (NativeFunction*) (&_IoPrintln),  .Value = NULL },
+    { .Name = "println", .Argc = VARARG, .CFunction = (NativeFunction) (_IoPrintln),  .Value = NULL },
     // scan
-    { .Name = "scan",    .Argc =      1, .CFunction = (NativeFunction*) (&_IoScan),     .Value = NULL },
+    { .Name = "scan",    .Argc =      1, .CFunction = (NativeFunction) (_IoScan),     .Value = NULL },
     // parse num
-    { .Name = "parseNum", .Argc =     1, .CFunction = (NativeFunction*) (&_IoParseNum), .Value = NULL },
+    { .Name = "parseNum", .Argc =     1, .CFunction = (NativeFunction) (_IoParseNum), .Value = NULL },
     // end of module functions
     { .Name = NULL }
 };
@@ -136,7 +136,13 @@ Value* LoadCoreIo(Interpreter* interpeter) {
         if (func.Value != NULL) {
             HashMapSet(ioMap, name, _IoModuleFunctions[i].Value);
         } else {
-            HashMapSet(ioMap, name, NewNativeFunctionValue(interpeter, func.CFunction));
+            HashMapSet(ioMap, name, NewNativeFunctionValue(interpeter, 
+                CreateNativeFunctionMeta(
+                    (const String) name,
+                    func.Argc,
+                    func.CFunction
+                )
+            ));
         }
     }
 

@@ -1,3 +1,4 @@
+#include "./function.h"
 #include "./global.h"
 #include "./value.h"
 

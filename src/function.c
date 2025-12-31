@@ -73,3 +73,11 @@ int UserFunctionAddCapture(UserFunction* userFunction, bool isGlobal, int src, i
     );
     return offset;
 }
+
+NativeFunctionMeta* CreateNativeFunctionMeta(const String name, int argc, NativeFunction funcPtr) {
+    NativeFunctionMeta* meta = Allocate(sizeof(NativeFunctionMeta));
+    meta->Name    = name;
+    meta->Argc    = argc;
+    meta->FuncPtr = funcPtr;
+    return meta;
+}

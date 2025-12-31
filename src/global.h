@@ -460,10 +460,10 @@ typedef struct hashmap_struct {
  * The offset of the symbol in the function's local variables
  */
 typedef struct symbol_struct {
-    bool   IsGlobal;
-    bool   IsLocalToFn;
-    bool   IsConstant;
-    int    Offset;
+    bool IsGlobal;
+    bool IsLocalToFn;
+    bool IsConstant;
+    int  Offset;
 } Symbol;
 
 /**
@@ -567,6 +567,23 @@ typedef struct compiler_struct {
 typedef Value* (*NativeFunction)(Interpreter* interpreter, int argc, Value** arguments);
 
 /**
+ * @struct native_function_struct
+ * @brief Represents a native (C-implemented) function in the interpreter
+ * 
+ * @var native_function_struct::Name
+ * Name of the native function
+ * @var native_function_struct::Argc
+ * Number of arguments the function accepts (-1 for variadic)
+ * @var native_function_struct::FuncPtr
+ * Pointer to the C function implementing the native function
+ */
+typedef struct native_function_struct {
+    String         Name;
+    int            Argc;
+    NativeFunction FuncPtr;
+} NativeFunctionMeta;
+
+/**
  * @struct module_function_struct
  * @brief Represents a function or value exported by a module
  * 
@@ -586,7 +603,7 @@ typedef Value* (*NativeFunction)(Interpreter* interpreter, int argc, Value** arg
 typedef struct module_function_struct {
     const String    Name;
     int             Argc;
-    NativeFunction* CFunction; // If NativeFunction
+    NativeFunction  CFunction; // If NativeFunction
     Value*          Value;     // If value
 } ModuleFunction;
 

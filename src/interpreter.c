@@ -212,7 +212,13 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 }
 
                 if (ValueIsNativeFunction(function)) {
-                    NativeFunction nf = (NativeFunction) function->Value.Opaque;
+                    NativeFunctionMeta* nFMeta = (NativeFunctionMeta*) function->Value.Opaque;
+                    NativeFunction nf          = nFMeta->FuncPtr;
+
+                    if (nFMeta->Argc != VARARG && argc != nFMeta->Argc) {
+                        Panic("Expected %d arguments, got %d\n", nFMeta->Argc, argc);
+                    }
+
                     Value** args = Allocate(sizeof(Value*) * argc);
                     for (int i = argc - 1; i >= 0; i--) {
                         args[i] = Popp();
