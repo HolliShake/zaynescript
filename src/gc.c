@@ -52,7 +52,11 @@ static void _Free(Value* value) {
             if (env != NULL) {
                 env->Parent = NULL;
                 for (int i = 0; i < env->LocalC; i++) {
-                    if (env->Locals[i] != NULL) free(env->Locals[i]);
+                    if (env->Locals[i] != NULL && !(env->Locals[i]->IsCaptured)) {
+                        // Do not free cells that are captured by closures
+                        env->Locals[i]->Value = NULL;
+                        free(env->Locals[i]);
+                    }
                 }
                 free(env);
                 value->Value.Opaque = NULL;
@@ -67,6 +71,16 @@ static void _Free(Value* value) {
                     free(uf->Codes);
                     uf->Codes = NULL;
                 }
+                for (int i = 0; i < uf->CaptureC; i++) {
+                    // Captured environment cells are freed by their original environment
+                    EnvCell* cell = uf->Captures[i];
+                    if (cell != NULL) {
+                        cell->Value = NULL;
+                        free(cell);
+                    }
+                }
+                free(uf->CaptureMetas);
+                free(uf->Captures);
                 free(uf);
                 value->Value.Opaque = NULL;
             }
@@ -113,6 +127,12 @@ void Mark(Value* value) {
             UserFunction* uf = (UserFunction*) value->Value.Opaque;
             if (uf != NULL) {
                 Mark(uf->ParentEnv);
+                for (int i = 0; i < uf->CaptureC; i++) {
+                    EnvCell* cell = uf->Captures[i];
+                    if (cell != NULL && cell->Value != NULL) {
+                        Mark(cell->Value);
+                    }
+                }
             }
             break;
         }

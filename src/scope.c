@@ -1,4 +1,5 @@
 #include "./scope.h"
+#include "global.h"
 
 Symbol* CreateSymbol(String name, bool isGlobal, bool isLocalToFn, bool isConstant, int offset) {
     Symbol* symbol       = Allocate(sizeof(Symbol));
@@ -125,6 +126,29 @@ bool ScopeIsLocalToFn(Scope* scope, String name) {
     return false;
 }
 
+bool ScopeIsLocalToFnClosure(Scope* scope, String name) {
+    Scope* current = scope;
+    while (current != NULL) {
+        if (HashMapContains(current->Symbols, name)) {
+            // Found the symbol, now check if we're inside a function scope
+            Scope* check = current;
+            while (check != NULL) {
+                if (check->Type == SCOPE_FUNCTION_CLOSURE) {
+                    return true;
+                }
+                check = check->Parent;
+            }
+            return false;
+        }
+        if (current->Type == SCOPE_FUNCTION_CLOSURE) {
+            // We've reached a function boundary without finding the symbol
+            return false;
+        }
+        current = current->Parent;
+    }
+    return false;
+}
+
 void ScopeSetSymbol(Scope* scope, String name, bool isGlobal, bool isLocalToFn, bool isConstant, int offset) {
     String key = AllocateString(name);
     Symbol* symbol = CreateSymbol(key, isGlobal, isLocalToFn, isConstant, offset);
@@ -141,6 +165,47 @@ Symbol* ScopeGetSymbol(Scope* scope, String name, bool recurse) {
         return ScopeGetSymbol(scope->Parent, name, recurse);
     }
     
+    return NULL;
+}
+
+bool ScopeHasCapture(Scope* scope, String name) {
+    while (scope != NULL) {
+        Symbol* symbol = (Symbol*) HashMapGet(scope->Captures, name);
+        if (symbol != NULL) {
+            return true;
+        }
+        if (scope->Type == SCOPE_FUNCTION_CLOSURE) {
+            return false;
+        }
+        scope = scope->Parent;
+    }
+    return false;
+}
+
+void ScopeSetCapture(Scope* scope, String name, bool isGlobal, bool isLocalToFn, bool isConstant, int offset) {
+    Scope* closureScope = ScopeGetFirst(scope, SCOPE_FUNCTION_CLOSURE);
+    if (closureScope == NULL) {
+        return;
+    }
+    String key = AllocateString(name);
+    Symbol* symbol = CreateSymbol(key, isGlobal, isLocalToFn, isConstant, offset);
+    HashMapSet(closureScope->Captures, key, symbol);
+}
+
+Symbol* ScopeGetCapture(Scope* scope, String name, bool recurse) {
+    while (scope != NULL) {
+        Symbol* symbol = (Symbol*) HashMapGet(scope->Captures, name);
+        if (symbol != NULL) {
+            return symbol;
+        }
+        if (scope->Type == SCOPE_FUNCTION_CLOSURE) {
+            return NULL;
+        }
+        if (!recurse) {
+            return NULL;
+        }
+        scope = scope->Parent;
+    }
     return NULL;
 }
 

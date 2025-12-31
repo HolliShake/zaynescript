@@ -61,8 +61,16 @@ try {
     println("error >>", e);
 }
 
-fn runnable(a) {
-    
-}
 
-true - "asdasd";
+println("Dec>>");
+
+
+fn runnable(local) {
+   println("Hello!");
+   return fn() {
+        const a = 2 << 2;
+        println("Word!", local, local);
+   };
+}                                
+
+runnable(69420)();

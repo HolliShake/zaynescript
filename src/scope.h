@@ -97,6 +97,15 @@ bool ScopeIsLocalToGlobal(Scope *scope, String name);
 bool ScopeIsLocalToFn(Scope* scope, String name);
 
 /**
+ * @brief Checks if a scope is local to a function closure
+ * 
+ * @param scope Pointer to the scope to check
+ * @param name The name of the variable to check for
+ * @return true if the scope is local to a function closure, false otherwise
+ */
+bool ScopeIsLocalToFnClosure(Scope* scope, String name);
+
+/**
  * @brief Sets a symbol in a scope
  * 
  * @param scope Pointer to the scope to set the symbol in
@@ -117,6 +126,37 @@ void ScopeSetSymbol(Scope* scope, String name, bool isGlobal, bool isLocalToFn, 
  * @return Pointer to the symbol if found, NULL otherwise
  */
 Symbol* ScopeGetSymbol(Scope* scope, String name, bool recurse);
+
+/**
+ * @brief Checks if a scope has a captured variable with a given name
+ * 
+ * @param scope Pointer to the scope to check
+ * @param name The name of the variable to check for
+ * @return true if the scope has a captured variable with the given name, false otherwise
+ */
+bool ScopeHasCapture(Scope* scope, String name);
+
+/**
+ * @brief Sets a captured variable in a scope
+ * 
+ * @param scope Pointer to the scope to set the captured variable in
+ * @param name The name of the captured variable
+ * @param isGlobal Whether the captured variable is global
+ * @param isLocalToFn Whether the captured variable is local to a function
+ * @param isConstant Whether the captured variable is constant
+ * @param offset The offset of the captured variable in the function's local variables
+ */
+void ScopeSetCapture(Scope* scope, String name, bool isGlobal, bool isLocalToFn, bool isConstant, int offset);
+
+/**
+ * @brief Gets a captured variable from a scope
+ * 
+ * @param scope Pointer to the scope to get the captured variable from
+ * @param name The name of the captured variable
+ * @param recurse Whether to recurse up the scope chain
+ * @return Pointer to the captured variable if found, NULL otherwise
+ */
+Symbol* ScopeGetCapture(Scope* scope, String name, bool recurse);
 
 /**
  * @brief Gets the first scope of a given type

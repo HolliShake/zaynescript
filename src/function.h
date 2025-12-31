@@ -20,4 +20,15 @@ UserFunction* CreateUserFunction(String name, int argc);
  */
 int UserFunctionEmitLocal(UserFunction* userFunction);
 
+/**
+ * @brief Adds a captured variable to the user function
+ * 
+ * @param userFunction Pointer to the user function to add the captured variable to
+ * @param isGlobal Whether the captured variable is global
+ * @param src The source offset of the captured variable
+ * @param dst The destination offset of the captured variable
+ * @return The offset of the captured variable
+ */
+int UserFunctionAddCapture(UserFunction* userFunction, bool isGlobal, int src, int dst);
+
 #endif

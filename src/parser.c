@@ -124,8 +124,57 @@ static Ast* _Terminal(Parser* parser) {
     return node;
 }
 
+static Ast* _ListOfStatements(Parser* parser);
+
+static Ast* _FunctionExpression(Parser* parser);
+
+static Ast* _Group(Parser* parser) {
+    if (CHECKTV("(")) {
+        ACCEPTV_FREE("(");
+        Ast* expr = _Expression(parser);
+        if (expr == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                parser->Next.Position, 
+                "expected an expression"
+            );
+        }
+        ACCEPTV_FREE(")");
+        return expr;
+    } else if (CHECKTV(KEY_FN)) {
+        return _FunctionExpression(parser);
+    }
+    return _Terminal(parser);
+}
+
+static Ast* _FunctionExpression(Parser* parser) {
+    Position start = parser->Next.Position, ended = start;
+    Ast* parameters = NULL, *current = parameters, *body = NULL;
+    ACCEPTV_FREE(KEY_FN);
+    ACCEPTV_FREE("(");
+    current = parameters = _ListOfExpressions(parser);
+    while (current != NULL) {
+        if (current->Type != AST_NAME) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                current->Position, 
+                "expected an identifier or name"
+            );
+        }
+        current = current->Next;
+    }
+    ACCEPTV_FREE(")");
+    ACCEPTV_FREE("{");
+    body  = _ListOfStatements(parser);
+    ended = parser->Next.Position;
+    ACCEPTV_FREE("}");
+    return AstFunction(NULL, parameters, body, MergePositions(start, ended));
+}
+
 static Ast* _MemberOrCall(Parser* parser) {
-    Ast* call = _Terminal(parser);
+    Ast* call = _Group(parser);
     if (call == NULL) {
         return NULL;
     }
@@ -526,8 +575,6 @@ static Ast* _ListOfExpressions(Parser* parser) {
 }
 
 static Ast* _Statement(Parser* parser);
-
-static Ast* _ListOfStatements(Parser* parser);
 
 static Ast* _Function(Parser* parser) {
     Position start = parser->Next.Position, ended = start;

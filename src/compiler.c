@@ -1,6 +1,5 @@
 #include "./compiler.h"
 #include "global.h"
-#include <_mingw_mac.h>
 
 #define PushArray(type, array, count, val, defaultValue) do { \
     (array)[(count)] = val; \
@@ -179,6 +178,8 @@ static void _JumpToAbsoluteLabel(Compiler* compiler, UserFunction* uf, int sourc
 
 #define _Expression(compiler, uf, scope, node) _ExpressionMain(compiler, uf, scope, node, false)
 
+static void _Statement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node);
+
 static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node, bool evalOnly) {
     Value* lhs = NULL, *rhs = NULL, *val = NULL;
     switch (node->Type) {
@@ -191,20 +192,57 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     "variable not found"
                 );
             }
-            
-            bool isOwnedLocally = ScopeIsLocalToFn(scope, node->Value);
-
-            // if (!isOwnedLocally) {
-            //     // Capture the variable
-            //     printf("CAPTURE: %s\n", node->Value);
-            // }
 
             Symbol* symbol = ScopeGetSymbol(scope, node->Value, true);
 
+            if (symbol->IsGlobal) {
+                // Global variable
+                _EmitArg(
+                    compiler, 
+                    uf, 
+                    OP_LOAD_NAME,
+                    symbol->Offset
+                );
+                break;
+            }
+
+            if (ScopeInside(scope, SCOPE_FUNCTION_CLOSURE) && !ScopeIsLocalToFnClosure(scope, node->Value)) {
+                int captureOffset = 0;
+
+                if (!ScopeHasCapture(scope, node->Value)) {
+                    captureOffset = UserFunctionAddCapture(
+                        uf, 
+                        symbol->IsGlobal, 
+                        symbol->Offset, 
+                        captureOffset
+                    );
+                    ScopeSetCapture(
+                        scope, 
+                        node->Value, 
+                        false, 
+                        true, 
+                        false, 
+                        captureOffset
+                    );
+                } else {
+                    Symbol* captureSymbol = ScopeGetCapture(scope, node->Value, false);
+                    captureOffset = captureSymbol->Offset;
+                }
+
+                // Capture the variable
+                _EmitArg(
+                    compiler, 
+                    uf, 
+                    OP_LOAD_CAPTURE,
+                    captureOffset
+                );
+                break;
+            }
+            
             _EmitArg(
                 compiler, 
                 uf, 
-                isOwnedLocally ? OP_LOAD_LOCAL : OP_LOAD_NAME,
+                OP_LOAD_LOCAL,
                 symbol->Offset
             );
             break;
@@ -281,6 +319,52 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 uf, 
                 OP_LOAD_NULL
             );
+            break;
+        }
+        case AST_FUNCTION: {
+            Scope* fnScope = CreateScope(SCOPE_FUNCTION_CLOSURE, scope);
+            Ast* params = node->B;
+            Ast* body   = node->C;
+
+            UserFunction* fn = CreateUserFunction(NULL, 0);
+
+            int paramc = 0;
+            while (params != NULL) {
+                if (ScopeHasLocal(fnScope, params->Value)) {
+                    ThrowError(
+                        compiler->Parser->Lexer->Path, 
+                        compiler->Parser->Lexer->Data, 
+                        params->Position, 
+                        "duplicate parameter name"
+                    );
+                }
+
+                int offset = UserFunctionEmitLocal(fn);
+
+                ScopeSetSymbol(fnScope, params->Value, false, true, false, offset);
+
+                _EmitArg(compiler, fn, OP_STORE_LOCAL, offset);
+                paramc++;
+                params = params->Next;
+            }
+
+            fn->Argc = paramc;
+
+            while (body != NULL) {
+                _Statement(compiler, fn, fnScope, body);
+                body = body->Next;
+            }
+
+            _Emit(compiler, fn, OP_LOAD_NULL);
+            _Emit(compiler, fn, OP_RETURN);
+
+            // Create the function
+            Value* fnValue = NewUserFunctionValue(compiler->Interpreter, fn);
+            int funcOffset = _SaveFunction(compiler, fnValue);
+
+            _EmitArg(compiler, uf, OP_LOAD_FUNCTION, funcOffset);
+            FreeScope(fnScope);
+            printf("Done!\n");
             break;
         }
         case AST_CALL: {
@@ -751,8 +835,6 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
     return val;
 }
 
-static void _Statement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node);
-
 static void _FunctionDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
     if (!ScopeIs(scope, SCOPE_GLOBAL)) {
         ThrowError(
@@ -782,7 +864,7 @@ static void _FunctionDeclaration(Compiler* compiler, UserFunction* uf, Scope* sc
 
     int nameOffset = symbol->Offset;
 
-    UserFunction* fn = CreateUserFunction(fnName->Value, 0);
+    UserFunction* fn = CreateUserFunction(AllocateString(fnName->Value), 0);
 
     int paramc = 0;
     while (params != NULL) {
@@ -930,7 +1012,7 @@ static void _VarDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope
 }
 
 static void _LetDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
-    if (!(ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
+    if (!(ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_FUNCTION_CLOSURE) || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
         ThrowError(
             compiler->Parser->Lexer->Path, 
             compiler->Parser->Lexer->Data, 
@@ -964,7 +1046,7 @@ static void _LetDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope
 }
 
 static void _ConstDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
-    if (!(ScopeIs(scope, SCOPE_GLOBAL) || ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
+    if (!(ScopeIs(scope, SCOPE_GLOBAL) || ScopeIs(scope, SCOPE_FUNCTION_CLOSURE) || ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
         ThrowError(
             compiler->Parser->Lexer->Path, 
             compiler->Parser->Lexer->Data, 
@@ -1242,7 +1324,7 @@ static void _BreakStatement(Compiler* compiler, UserFunction* uf, Scope* scope, 
 }
 
 static void _ReturnStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
-    if (!ScopeInside(scope, SCOPE_FUNCTION)) {
+    if (!ScopeInside(scope, SCOPE_FUNCTION) && !ScopeInside(scope, SCOPE_FUNCTION_CLOSURE)) {
         ThrowError(
             compiler->Parser->Lexer->Path, 
             compiler->Parser->Lexer->Data, 
@@ -1347,6 +1429,9 @@ static Value* _Program(Compiler* compiler, Ast* node) {
     Scope* scope = CreateScope(SCOPE_GLOBAL, NULL);
     UserFunction* uf = CreateUserFunction(AllocateString("main"), 0);
 
+    Value* value = NewUserFunctionValue(compiler->Interpreter, uf);
+    _SaveFunction(compiler, value);
+
     Ast* current = node->A;
     _ForwardFunctions(compiler, uf, scope, current);
     while (current != NULL) {
@@ -1359,7 +1444,7 @@ static Value* _Program(Compiler* compiler, Ast* node) {
 
     FreeScope(scope);
 
-    return NewUserFunctionValue(compiler->Interpreter, uf);
+    return value;
 }
 
 Value* Compile(Compiler* compiler) {

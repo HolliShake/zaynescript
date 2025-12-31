@@ -4,6 +4,7 @@
 // Order patters
 #include "../utf/utf.h"
 #include <errno.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -248,6 +249,7 @@ typedef struct ast_struct {
  */
 typedef enum opcode_enum {
     OP_IMPORT_CORE,
+    OP_LOAD_CAPTURE,
     OP_LOAD_NAME,
     OP_LOAD_LOCAL,
     OP_LOAD_CONST, // with 4 bytes arg
@@ -333,9 +335,41 @@ typedef struct value_struct {
 } Value;
 
 /**
+ * @struct native_function_struct
+ * @brief Represents a native (C-implemented) function in the interpreter
+ * 
+ * @var native_function_struct::Name
+ * Name of the native function
+ * @var native_function_struct::FuncPtr
+ * Pointer to the C function implementing the native function
+ * @var native_function_struct::Argc
+ * Number of arguments the function accepts (-1 for variadic)
+ */
+typedef struct capture_meta_struct {
+    bool IsGlobal;
+    int  Src;
+    int  Dst;
+} CaptureMeta;
+
+/**
+ * @struct envcell_struct
+ * @brief Represents a cell in the environment
+ * 
+ * @var envcell_struct::Value
+ * @var envcell_struct::IsCaptured
+ * The value in the cell
+ */
+typedef struct envcell_struct {
+    Value* Value;  
+    bool   IsCaptured;
+} EnvCell;
+
+/**
  * @struct user_function_struct
  * @brief Represents a user-defined function in the interpreter
  * 
+ * @var user_function_struct::ParentEnv
+ * Pointer to the parent environment
  * @var user_function_struct::Name
  * Optional name of the function (nullable)
  * @var user_function_struct::Codes
@@ -344,15 +378,46 @@ typedef struct value_struct {
  * Number of bytecode instructions in the Codes array
  * @var user_function_struct::Argc
  * Number of arguments the function accepts
+ * @var user_function_struct::LocalC
+ * Number of local variables in the function
+ * @var user_function_struct::CaptureMetas
+ * Array of capture metadata
+ * @var user_function_struct::CaptureC
+ * Number of captures
+ * @var user_function_struct::Captures
+ * Array of captured environment cells
  */
 typedef struct user_function_struct {
-    Value*   ParentEnv;
-    String   Name; // Nullable
-    uint8_t* Codes;
-    int      CodeC;
-    int      Argc;
-    int      LocalC;
+    Value*       ParentEnv;
+    String       Name; // Nullable
+    uint8_t*     Codes;
+    int          CodeC;
+    int          Argc;
+    int          LocalC;
+    CaptureMeta* CaptureMetas;
+    int          CaptureC;
+    struct envcell_struct** Captures;
 } UserFunction;
+
+/**
+ * @struct environment_struct
+ * @brief Represents an environment in the interpreter
+ * 
+ * An environment is a runtime structure that holds local variables for a function
+ * or block scope. Environments form a chain through their Parent pointers, allowing
+ * for lexical scoping and variable lookup in outer scopes.
+ * 
+ * @var value_struct::Parent
+ * Pointer to the parent environment in the scope chain. NULL for the global environment.
+ * @var environment_struct::Locals
+ * Array of pointers to Value objects representing local variables in this environment.
+ * The array is indexed by the variable's offset within the scope.
+ */
+typedef struct environment_struct {
+    Value*       Parent;
+    EnvCell**    Locals;
+    int          LocalC;
+} Environment;
 
 /**
  * @brief Forward declaration of HashNode structure
@@ -381,6 +446,61 @@ typedef struct hashmap_struct {
     size_t    Count;   /**< Current number of entries in the hash map */
     HashNode* Buckets; /**< Array of hash node buckets */
 } HashMap;
+
+/**
+ * @struct symbol_struct
+ * @brief Represents a symbol in the compiler
+ * 
+ * @var symbol_struct::IsGlobal
+ * Whether the symbol is global
+ * @var symbol_struct::IsLocalToFn
+ * Whether the symbol is local to a function
+ * @var symbol_struct::Offset
+ * The offset of the symbol in the function's local variables
+ */
+typedef struct symbol_struct {
+    bool   IsGlobal;
+    bool   IsLocalToFn;
+    bool   IsConstant;
+    int    Offset;
+} Symbol;
+
+/**
+ * @enum scope_type_enum
+ * @brief Enumeration of all possible scope types
+ */
+typedef enum scope_type_enum {
+    SCOPE_GLOBAL,
+    SCOPE_FUNCTION,
+    SCOPE_FUNCTION_CLOSURE,
+    SCOPE_BLOCK,
+    SCOPE_TRY_BLOCK,
+    SCOPE_LOOP,
+} ScopeType;
+
+/**
+ * @struct scope_struct
+ * @brief Represents a scope in the compiler
+ * 
+ * @var scope_struct::Parent
+ * The parent scope
+ * @var scope_struct::Symbols
+ * The symbols in the scope
+ */
+typedef struct scope_struct Scope;
+typedef struct scope_struct {
+    ScopeType Type;
+    Scope*    Parent;
+    HashMap*  Symbols;
+    HashMap*  Captures;
+    // FN
+    bool      Returned;
+    // Loop
+    int*      ContinueJumps;
+    int       ContinueJumpC;
+    int*      BreakJumps;
+    int       BreakJumpC;
+} Scope;
 
 /**
  * @struct interpreter_struct
@@ -433,91 +553,6 @@ typedef struct compiler_struct {
     Interpreter* Interpreter;
     Parser*      Parser;
 } Compiler;
-
-/**
- * @struct symbol_struct
- * @brief Represents a symbol in the compiler
- * 
- * @var symbol_struct::IsGlobal
- * Whether the symbol is global
- * @var symbol_struct::IsLocalToFn
- * Whether the symbol is local to a function
- * @var symbol_struct::Offset
- * The offset of the symbol in the function's local variables
- */
-typedef struct symbol_struct {
-    bool   IsGlobal;
-    bool   IsLocalToFn;
-    bool   IsConstant;
-    int    Offset;
-} Symbol;
-
-/**
- * @enum scope_type_enum
- * @brief Enumeration of all possible scope types
- */
-typedef enum scope_type_enum {
-    SCOPE_GLOBAL,
-    SCOPE_FUNCTION,
-    SCOPE_BLOCK,
-    SCOPE_TRY_BLOCK,
-    SCOPE_LOOP,
-} ScopeType;
-
-/**
- * @struct scope_struct
- * @brief Represents a scope in the compiler
- * 
- * @var scope_struct::Parent
- * The parent scope
- * @var scope_struct::Symbols
- * The symbols in the scope
- */
-typedef struct scope_struct Scope;
-typedef struct scope_struct {
-    ScopeType Type;
-    Scope*    Parent;
-    HashMap*  Symbols;
-    HashMap*  Captures;
-    // FN
-    bool      Returned;
-    // Loop
-    int*      ContinueJumps;
-    int       ContinueJumpC;
-    int*      BreakJumps;
-    int       BreakJumpC;
-} Scope;
-
-/**
- * @struct envcell_struct
- * @brief Represents a cell in the environment
- * 
- * @var envcell_struct::Value
- * The value in the cell
- */
-typedef struct envcell_struct {
-    Value* Value;  
-} EnvCell;
-
-/**
- * @struct environment_struct
- * @brief Represents an environment in the interpreter
- * 
- * An environment is a runtime structure that holds local variables for a function
- * or block scope. Environments form a chain through their Parent pointers, allowing
- * for lexical scoping and variable lookup in outer scopes.
- * 
- * @var value_struct::Parent
- * Pointer to the parent environment in the scope chain. NULL for the global environment.
- * @var environment_struct::Locals
- * Array of pointers to Value objects representing local variables in this environment.
- * The array is indexed by the variable's offset within the scope.
- */
-typedef struct environment_struct {
-    Value*       Parent;
-    EnvCell**    Locals;
-    int          LocalC;
-} Environment;
 
 /**
  * @typedef NativeFunction

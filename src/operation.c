@@ -697,10 +697,29 @@ int DoXor(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
     return offset;
 }
 
-void DoLoadFunction(Interpreter* interp, int offset, Value** out) {
-    if (out != NULL) {
-        *out = interp->Functions[offset];
+void DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int offset, Value** out) {
+    if (out == NULL) {
+        return;
     }
+
+    Value* fn = interp->Functions[offset];
+    *out = fn;
+
+    UserFunction* uf     = (UserFunction*) fn->Value.Opaque;
+    Environment* rootEnv = (Environment*) rootEnvObj->Value.Opaque;
+    Environment* loclEnv = (Environment*) envObj    ->Value.Opaque;
+    for (int i = 0; i < uf->CaptureC; i++) {
+        CaptureMeta capture = uf->CaptureMetas[i];
+        if (capture.IsGlobal) {
+            rootEnv->Locals[capture.Src]->IsCaptured = true;
+            uf->Captures[capture.Dst] = rootEnv->Locals[capture.Src];
+        } else {
+            loclEnv->Locals[capture.Src]->IsCaptured = true;
+            uf->Captures[capture.Dst] = loclEnv->Locals[capture.Src];
+        }
+    }
+
+    uf->ParentEnv = rootEnvObj;
 }
 
 #undef PushArray

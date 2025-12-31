@@ -1,4 +1,6 @@
 #include "./interpreter.h"
+#include "global.h"
+#include <stdio.h>
 
 Interpreter* CreateInterpreter() {
     Interpreter* interpreter                = Allocate(sizeof(Interpreter));
@@ -91,7 +93,7 @@ static String _ReadString(uint8_t* codes, int alignStart) {
     } \
     InterpreterPanic(message); \
     free(message); \
-    continue; } \
+    break; } \
 
 static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* envObj) {
     UserFunction* uf = ValueToUFn(fnValue);
@@ -110,7 +112,6 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
     #define JmpFrwd(addr) (ip  = addr)
 
     while (ip < uf->CodeC) {
-        opcode = uf->Codes[ip++];
 
         if (interpreter->Allocated >= GC_THRESHOLD) {
             Mark(fnValue);
@@ -118,6 +119,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             Mark(envObj);
             GarbageCollect(interpreter);
         }
+
+        opcode = uf->Codes[ip++];
 
         catched = interpreter->ExceptionHandlerStackC != 0;
 
@@ -129,6 +132,12 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 Forward(strlen(str) + 1);
                 free(str);
                 str = NULL;
+                break;
+            }
+            case OP_LOAD_CAPTURE: {
+                offset = _ReadOffset(uf->Codes, ip);
+                Push(uf->Captures[offset]->Value);
+                Forward(4);
                 break;
             }
             case OP_LOAD_NAME: {
@@ -161,8 +170,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             }
             case OP_LOAD_FUNCTION: {
                 offset = _ReadOffset(uf->Codes, ip);
-                DoLoadFunction(interpreter, offset, &res);
-                ValueToUFn(res)->ParentEnv = rootEnvObj;
+                res    = NULL;
+                DoLoadFunction(interpreter, rootEnvObj, envObj, offset, &res);
                 Push(res);
                 Forward(4);
                 break;
@@ -491,7 +500,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 return;
             }
             default: {
-                Panic("Unknown opcode: %d %d\n", opcode, OP_LOAD_NAME);
+                Panic("Unknown opcode: %s, %d %d\n", uf->Name != NULL ? uf->Name : "<anonymous>", opcode, OP_LOAD_NAME);
                 return;
             }
         }

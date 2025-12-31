@@ -1,3 +1,4 @@
+#include "./decompiler.h"
 #include "./environment.h"
 #include "./function.h"
 #include "./gc.h"

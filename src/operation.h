@@ -183,9 +183,11 @@ int DoXor(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
 /**
  * Loads a function from the interpreter's functions array.
  * @param interp The interpreter instance
+ * @param rootEnvObj The root environment object
+ * @param envObj The local environment object
  * @param offset The offset of the function in the functions array
  * @param out Output parameter for the result (if not NULL, result is stored here)
  */
-void DoLoadFunction(Interpreter* interp, int offset, Value** out);
+void DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int offset, Value** out);
 
 #endif

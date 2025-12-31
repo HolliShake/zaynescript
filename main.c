@@ -36,7 +36,7 @@ int main() {
 
     Interpreter* interpreter = CreateInterpreter();
 
-    String path = "./test.lang";
+    String path = "./tests/test.lang";
     Rune* data = StringToRunes(ReadFile(path));
 
 
@@ -52,6 +52,6 @@ int main() {
     FreeLexer(lexer);
     FreeParser(parser);
     FreeInterpreter(interpreter);
-    printf("Done!\n");
+    printf("Program Finished!\n");
     return 0;
 }
