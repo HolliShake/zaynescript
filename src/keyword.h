@@ -1,7 +1,6 @@
 
 
 #define KEY_CLASS    "class"
-#define KEY_STRUCT   "struct"
 #define KEY_ENUM     "enum"
 #define KEY_IMPORT   "import"
 #define KEY_FROM     "from"
@@ -12,6 +11,9 @@
 #define KEY_FN       "fn"
 #define KEY_IF       "if"
 #define KEY_ELSE     "else"
+#define KEY_SWITCH   "switch"
+#define KEY_CASE     "case"
+#define KEY_DEFAULT  "default"
 #define KEY_WHILE    "while"
 #define KEY_DO       "do"
 #define KEY_FOR      "for"
@@ -25,4 +27,5 @@
 #define KEY_FALSE    "false"
 #define KEY_NEW      "new"
 #define KEY_AWAIT    "await"
+#define KEY_THIS     "this"
 

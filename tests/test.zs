@@ -22,6 +22,10 @@ fn b() {
         }
         println("|>>", xx);
     }
+    while (yy := 0; yy <= 5/*; yy = yy+1 optional */) {
+        println(yy);
+        yy = yy + 1;
+    }
     println("Done", io);
 }
 
@@ -63,7 +67,6 @@ try {
 
 
 println("Dec>>");
-
 
 fn runnable(local) {
    println("Hello!");

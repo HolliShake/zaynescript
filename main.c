@@ -3,6 +3,7 @@
 #include "src/interpreter.h"
 #include "src/lexer.h"
 #include "src/parser.h"
+#include <stdlib.h>
 
 
 String ReadFile(String path) {
@@ -36,11 +37,11 @@ int main() {
 
     Interpreter* interpreter = CreateInterpreter();
 
-    String path = "./tests/test.lang";
+    String path = "./tests/test.zs";
     Rune* data = StringToRunes(ReadFile(path));
 
 
-    Lexer* lexer = CreateLexer("test.txt", data);
+    Lexer* lexer = CreateLexer(path, data);
     Parser* parser = CreateParser(lexer);
 
     Compiler* compiler = CreateCompiler(interpreter, parser);
@@ -52,6 +53,7 @@ int main() {
     FreeLexer(lexer);
     FreeParser(parser);
     FreeInterpreter(interpreter);
+    free(data);
     printf("Program Finished!\n");
     return 0;
 }

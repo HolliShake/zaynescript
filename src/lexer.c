@@ -85,6 +85,9 @@ static Token TokenizeIdentifier(Lexer* lexer) {
     const char* keywords[] = {
         KEY_IF,     
         KEY_ELSE,   
+        KEY_SWITCH,
+        KEY_CASE,
+        KEY_DEFAULT,
         KEY_WHILE,  
         KEY_FOR,    
         KEY_DO,      
@@ -97,7 +100,6 @@ static Token TokenizeIdentifier(Lexer* lexer) {
         KEY_TRUE,   
         KEY_FALSE,
         KEY_CLASS,  
-        KEY_STRUCT, 
         KEY_ENUM,   
         KEY_IMPORT, 
         KEY_FROM,   
@@ -107,7 +109,8 @@ static Token TokenizeIdentifier(Lexer* lexer) {
         KEY_FN,
         KEY_ASYNC,  
         KEY_AWAIT,  
-        KEY_NEW
+        KEY_NEW,
+        KEY_THIS
     };
     
     for (size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++) {
