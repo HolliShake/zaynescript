@@ -215,9 +215,10 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                     NativeFunctionMeta* nFMeta = (NativeFunctionMeta*) function->Value.Opaque;
                     NativeFunction nf          = nFMeta->FuncPtr;
 
-                    if (nFMeta->Argc != VARARG && argc != nFMeta->Argc) {
-                        Panic("Expected %d arguments, got %d\n", nFMeta->Argc, argc);
-                    }
+                    if (nFMeta->Argc != VARARG && argc != nFMeta->Argc) 
+                        HandleError(
+                            "expected %d arguments, got %d", nFMeta->Argc, argc
+                        );
 
                     Value** args = Allocate(sizeof(Value*) * argc);
                     for (int i = argc - 1; i >= 0; i--) {

@@ -1,6 +1,13 @@
 import { println, scan, parseNum } from "core:io";
 
-const x = parseNum(scan("input> "));
+var x;
+
+try {
+    x = parseNum(scan("input> "));
+} catch (e) {
+    println("Error parsing number:", e);
+    x = 0;
+}
 
 println("Hello", 123, x);
 
