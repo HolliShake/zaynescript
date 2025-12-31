@@ -705,8 +705,8 @@ void DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int o
 
     // For closure, clone the function
     Value* fn = closure
-    ? NewUserFunctionValue(interp, UserFunctionClone((UserFunction*) interp->Functions[offset]->Value.Opaque))
-    : interp->Functions[offset];
+        ? NewUserFunctionValue(interp, UserFunctionClone((UserFunction*) interp->Functions[offset]->Value.Opaque))
+        : interp->Functions[offset];
 
     *out = fn;
 
