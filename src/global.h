@@ -255,6 +255,7 @@ typedef enum opcode_enum {
     OP_LOAD_CONST, // with 4 bytes arg
     OP_LOAD_BOOL,  // with 4 bytes arg
     OP_LOAD_NULL,
+    OP_LOAD_FUNCTION_CLOSURE,
     OP_LOAD_FUNCTION,
     OP_PLUCK_ATTRIBUTE,
     OP_CALL,

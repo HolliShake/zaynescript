@@ -81,5 +81,6 @@ const add = fn(a, b) {
 };
 
 runnable(69420)();
+runnable(69420)();
 
 println(add(10, 5));

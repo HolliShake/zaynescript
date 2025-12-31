@@ -1,4 +1,5 @@
 #include "./global.h"
+#include "./gc.h"
 #include "./io.h"
 #include "./value.h"
 
@@ -186,8 +187,9 @@ int DoXor(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
  * @param rootEnvObj The root environment object
  * @param envObj The local environment object
  * @param offset The offset of the function in the functions array
+ * @param closure Whether to create a closure (clone) of the function
  * @param out Output parameter for the result (if not NULL, result is stored here)
  */
-void DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int offset, Value** out);
+void DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int offset, bool closure, Value** out);
 
 #endif

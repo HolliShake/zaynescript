@@ -698,12 +698,16 @@ int DoXor(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
     return offset;
 }
 
-void DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int offset, Value** out) {
+void DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int offset, bool closure, Value** out) {
     if (out == NULL) {
         return;
     }
 
-    Value* fn = NewUserFunctionValue(interp, UserFunctionClone((UserFunction*) interp->Functions[offset]->Value.Opaque));
+    // For closure, clone the function
+    Value* fn = closure
+    ? NewUserFunctionValue(interp, UserFunctionClone((UserFunction*) interp->Functions[offset]->Value.Opaque))
+    : interp->Functions[offset];
+
     *out = fn;
 
     UserFunction* uf     = (UserFunction*) fn->Value.Opaque;

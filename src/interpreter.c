@@ -1,5 +1,6 @@
 #include "./interpreter.h"
 #include "global.h"
+#include <stdbool.h>
 #include <stdio.h>
 
 Interpreter* CreateInterpreter() {
@@ -167,10 +168,18 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 Push(interpreter->Null);
                 break;
             }
+            case OP_LOAD_FUNCTION_CLOSURE: {
+                offset = _ReadOffset(uf->Codes, ip);
+                res    = NULL;
+                DoLoadFunction(interpreter, rootEnvObj, envObj, offset, true, &res);
+                Push(res);
+                Forward(4);
+                break;
+            }
             case OP_LOAD_FUNCTION: {
                 offset = _ReadOffset(uf->Codes, ip);
                 res    = NULL;
-                DoLoadFunction(interpreter, rootEnvObj, envObj, offset, &res);
+                DoLoadFunction(interpreter, rootEnvObj, envObj, offset, false, &res);
                 Push(res);
                 Forward(4);
                 break;

@@ -361,7 +361,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             Value* fnValue = NewUserFunctionValue(compiler->Interpreter, fn);
             int funcOffset = _SaveFunction(compiler, fnValue);
 
-            _EmitArg(compiler, uf, OP_LOAD_FUNCTION, funcOffset);
+            _EmitArg(compiler, uf, OP_LOAD_FUNCTION_CLOSURE, funcOffset);
             FreeScope(fnScope);
             break;
         }
