@@ -69,8 +69,14 @@ fn runnable(local) {
    println("Hello!");
    return fn() {
         const a = 2 << 2;
-        println("Word!", local, local);
+        println("Word!", a, local + local);
    };
-}                                
+}
+
+const add = fn(a, b) {
+    return a + b;
+};
 
 runnable(69420)();
+
+println(add(10, 5));

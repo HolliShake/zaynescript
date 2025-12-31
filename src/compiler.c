@@ -364,7 +364,6 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
 
             _EmitArg(compiler, uf, OP_LOAD_FUNCTION, funcOffset);
             FreeScope(fnScope);
-            printf("Done!\n");
             break;
         }
         case AST_CALL: {

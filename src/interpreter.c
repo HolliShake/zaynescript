@@ -114,7 +114,6 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
     while (ip < uf->CodeC) {
 
         if (interpreter->Allocated >= GC_THRESHOLD) {
-            Mark(fnValue);
             Mark(rootEnvObj);
             Mark(envObj);
             GarbageCollect(interpreter);
