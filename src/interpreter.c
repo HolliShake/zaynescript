@@ -112,9 +112,10 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
     #define Forward(size) (ip += size)
     #define JmpFrwd(addr) (ip  = addr)
 
-    while (ip < uf->CodeC) {
+    while (ip != uf->CodeC) {
 
         if (interpreter->Allocated >= GC_THRESHOLD) {
+            Mark(fnValue);
             Mark(rootEnvObj);
             Mark(envObj);
             GarbageCollect(interpreter);
@@ -168,18 +169,11 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 Push(interpreter->Null);
                 break;
             }
-            case OP_LOAD_FUNCTION_CLOSURE: {
-                offset = _ReadOffset(uf->Codes, ip);
-                res    = NULL;
-                DoLoadFunction(interpreter, rootEnvObj, envObj, offset, true, &res);
-                Push(res);
-                Forward(4);
-                break;
-            }
+            case OP_LOAD_FUNCTION_CLOSURE:
             case OP_LOAD_FUNCTION: {
                 offset = _ReadOffset(uf->Codes, ip);
                 res    = NULL;
-                DoLoadFunction(interpreter, rootEnvObj, envObj, offset, false, &res);
+                DoLoadFunction(interpreter, rootEnvObj, envObj, offset, opcode == OP_LOAD_FUNCTION_CLOSURE, &res);
                 Push(res);
                 Forward(4);
                 break;
@@ -240,7 +234,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 if (argc != uf->Argc) {
                     Panic("Expected %d arguments, got %d\n", uf->Argc, argc);
                 }
-
+                
+                // printf("Running function %s with %d args\n", uf->Name, argc);
                 _Run(
                     interpreter, 
                     function, 

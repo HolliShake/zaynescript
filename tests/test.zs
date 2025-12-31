@@ -1,13 +1,7 @@
 import { println, scan, parseNum } from "core:io";
 
-var x;
+var x = parseNum(scan("input> "));
 
-try {
-    x = parseNum(scan("input> "));
-} catch (e) {
-    println("Error parsing number:", e);
-    x = 0;
-}
 
 println("Hello", 123, x);
 
@@ -29,7 +23,7 @@ fn b() {
         }
         println("|>>", xx);
     }
-    while (yy := 0; yy <= 5 /*; yy = yy+1 optional */) {
+    while (yy := 0; yy <= 5 /*; yy = yy + 1 optional */) {
         println(yy);
         yy = yy + 1;
     }
@@ -83,11 +77,6 @@ fn runnable(local) {
    };
 }
 
-const add = fn(a, b) {
-    return a + b;
-};
 
 runnable(69420)();
 runnable(69420)();
-
-println(add(10, 5));

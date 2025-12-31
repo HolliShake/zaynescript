@@ -27,7 +27,7 @@ UserFunction* UserFunctionClone(UserFunction* userFunction) {
         clone->Codes,
         sizeof(uint8_t) * (userFunction->CodeC + 1)
     );
-    memcpy(clone->Codes, userFunction->Codes, sizeof(uint8_t) * userFunction->CodeC);
+    memcpy(clone->Codes, userFunction->Codes, sizeof(uint8_t) * (userFunction->CodeC + 1));
     clone->LocalC       = userFunction->LocalC;
     clone->CaptureC     = userFunction->CaptureC;
     clone->CaptureMetas = Reallocate(

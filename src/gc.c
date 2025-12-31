@@ -65,7 +65,6 @@ static void _Free(Value* value) {
             break;
         }
         case VT_USER_FUNCTION: {
-            // printf("Freeing user function\n");
             UserFunction* uf = (UserFunction*) value->Value.Opaque;
             if (uf != NULL) {
                 if (uf->Codes != NULL) {
