@@ -184,6 +184,9 @@ typedef enum ast_type_enum {
     AST_STR,
     AST_BOOL,
     AST_NULL,
+    AST_SPREAD,
+    AST_OBJECT_KEY_VAL,
+    AST_OBJECT_LITERAL,
     AST_MEMBER,
     AST_INDEX,
     AST_CALL,
@@ -255,6 +258,9 @@ typedef enum opcode_enum {
     OP_LOAD_CONST, // with 4 bytes arg
     OP_LOAD_BOOL,  // with 4 bytes arg
     OP_LOAD_NULL,
+    OP_OBJECT_EXTEND,
+    OP_OBJECT_MAKE,
+    OP_OBJECT_SET_ATTRIBUTE,
     OP_LOAD_FUNCTION_CLOSURE,
     OP_LOAD_FUNCTION,
     OP_PLUCK_ATTRIBUTE,

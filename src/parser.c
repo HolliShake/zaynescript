@@ -1,4 +1,5 @@
 #include "./parser.h"
+#include "global.h"
 
 Parser* CreateParser(Lexer* lexer) {
     Parser* parser = Allocate(sizeof(Parser));
@@ -126,10 +127,14 @@ static Ast* _Terminal(Parser* parser) {
 
 static Ast* _ListOfStatements(Parser* parser);
 
+static Ast* _Object(Parser* parser);
+
 static Ast* _FunctionExpression(Parser* parser);
 
 static Ast* _Group(Parser* parser) {
-    if (CHECKTV("(")) {
+    if (CHECKTV("{")) {
+        return _Object(parser);
+    } else if (CHECKTV("(")) {
         ACCEPTV_FREE("(");
         Ast* expr = _Expression(parser);
         if (expr == NULL) {
@@ -146,6 +151,92 @@ static Ast* _Group(Parser* parser) {
         return _FunctionExpression(parser);
     }
     return _Terminal(parser);
+}
+
+static Ast*_ObjectElement(Parser* parser) {
+    Position start = parser->Next.Position, ended = start;
+    Ast* element = NULL;
+    if (CHECKTV("...")) {
+        ACCEPTV_FREE("...");
+        Ast* spreadValue = _Expression(parser);
+        if (spreadValue == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                parser->Next.Position, 
+                "expected an expression after spread operator"
+            );
+        }
+        ended = spreadValue->Position;
+        return AstSpread(
+            spreadValue, 
+            MergePositions(start, ended)
+        );
+    }
+    element = _Terminal(parser);
+    if (element == NULL) {
+        return NULL;
+    }
+    if (element->Type != AST_NAME) {
+        ThrowError(
+            parser->Lexer->Path, 
+            parser->Lexer->Data, 
+            element->Position, 
+            "expected an identifier or name for object key"
+        );
+    }
+    if (!CHECKTV(":")) {
+        return element;
+    }
+    ACCEPTV_FREE(":");
+    element->B = _Expression(parser);
+    if (element->B == NULL) {
+        ThrowError(
+            parser->Lexer->Path, 
+            parser->Lexer->Data, 
+            parser->Next.Position, 
+            "expected an expression after ':'"
+        );
+    }
+    ended = element->B->Position;
+    return AstObjectKeyVal(
+        element, 
+        MergePositions(start, ended)
+    );
+}
+
+static Ast* _Object(Parser* parser) {
+    Position start = parser->Next.Position, ended = start;
+    ACCEPTV_FREE("{");
+
+    Ast* head = NULL;
+    Ast* tail = NULL;
+    
+    Ast* element = _ObjectElement(parser);
+    if (element != NULL) {
+        head = element;
+        tail = element;
+        
+        while (CHECKTV(",")) {
+            ACCEPTV_FREE(",");
+            element = _ObjectElement(parser);
+            if (element == NULL) {
+                ThrowError(
+                    parser->Lexer->Path, 
+                    parser->Lexer->Data, 
+                    tail->Position, 
+                    "expected object element after comma"
+                );
+            }
+            tail->Next = element;
+            tail = element;
+        }
+    }
+    
+    ended = parser->Next.Position;
+    ACCEPTV_FREE("}");
+    
+    return AstObjectLiteral(head, MergePositions(start, ended));
 }
 
 static Ast* _FunctionExpression(Parser* parser) {

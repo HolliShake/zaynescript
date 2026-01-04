@@ -178,4 +178,12 @@ bool ValueIsNativeFunction(Value* value);
  */
 bool ValueIsCallable(Value* value);
 
+/**
+ * @brief Checks if a value is an object
+ * 
+ * @param value Pointer to the Value to check
+ * @return true if the value is an object, false otherwise
+ */
+bool ValueIsObject(Value* value);
+
 #endif

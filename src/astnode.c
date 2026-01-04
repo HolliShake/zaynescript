@@ -50,6 +50,24 @@ Ast* AstNull(Position position) {
     return ast;
 }
 
+Ast* AstSpread(Ast* expression, Position position) {
+    Ast* ast = InitAst(AST_SPREAD, position);
+    ast->A   = expression;
+    return ast;
+}
+
+Ast* AstObjectKeyVal(Ast* key, Position position) {
+    Ast* ast = InitAst(AST_OBJECT_KEY_VAL, position);
+    ast->A   = key;
+    return ast;
+}
+
+Ast* AstObjectLiteral(Ast* properties, Position position) {
+    Ast* ast = InitAst(AST_OBJECT_LITERAL, position);
+    ast->A   = properties;
+    return ast;
+}
+
 Ast* AstMember(Ast* object, Ast* member, Position position) {
     Ast* ast = InitAst(AST_MEMBER, position);
     ast->A   = object;

@@ -169,6 +169,44 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 Push(interpreter->Null);
                 break;
             }
+            case OP_OBJECT_EXTEND: {
+                Value* ext = Popp();
+                Value* obj = Peek();
+                if (!ValueIsObject(ext)) {
+                    HandleError(
+                        "expected object to extend to be an object, got %s", 
+                        ValueTypeOf(ext)
+                    );
+                }
+                HashMapExtend((HashMap*)obj->Value.Opaque, (HashMap*)ext->Value.Opaque);
+                break;
+            }
+            case OP_OBJECT_SET_ATTRIBUTE: {
+                Value* key = Popp();
+                Value* val = Popp();
+                Value* obj = Peek();
+                if (!ValueIsObject(obj)) {
+                    HandleError(
+                        "expected object to set attribute on to be an object, got %s", 
+                        ValueTypeOf(obj)
+                    );
+                }
+                HashMapSet((HashMap*)obj->Value.Opaque, ValueToString(key), val);
+                break;
+            }
+            case OP_OBJECT_MAKE: {
+                int size     = _ReadOffset(uf->Codes, ip);
+                Value* obj   = NewObjectValue(interpreter);
+                HashMap* map = (HashMap*) obj->Value.Opaque;
+                for (int i = 0; i < size; i++) {
+                    Value* k = Popp();
+                    Value* v = Popp();
+                    HashMapSet(map, ValueToString(k), v);
+                }
+                Push(obj);
+                Forward(4);
+                break;
+            }
             case OP_LOAD_FUNCTION_CLOSURE:
             case OP_LOAD_FUNCTION: {
                 offset = _ReadOffset(uf->Codes, ip);

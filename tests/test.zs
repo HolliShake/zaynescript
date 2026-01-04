@@ -2,7 +2,6 @@ import { println, scan, parseNum } from "core:io";
 
 var x = parseNum(scan("input> "));
 
-
 println("Hello", 123, x);
 
 var counter = 0;
@@ -66,7 +65,6 @@ try {
     println("error >>", e);
 }
 
-
 println("Dec>>");
 
 fn runnable(local) {
@@ -77,6 +75,18 @@ fn runnable(local) {
    };
 }
 
+runnable(69420)();
+runnable(69420)();
 
-runnable(69420)();
-runnable(69420)();
+const obj = {
+    name: "Test Object",
+    value: 123,
+    ...({
+        extra: "Extra Value",
+        number: 456
+    }),
+    name: "Doy2x",
+    runnable
+};
+
+println(obj);

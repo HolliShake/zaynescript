@@ -33,6 +33,17 @@ void HashMapSet(HashMap* hashmap, String key, void* value);
 void* HashMapGet(HashMap* hashmap, String key);
 
 /**
+ * @brief Extends one hash map with entries from another
+ * 
+ * Entries from the source hash map will be added to the destination hash map.
+ * If a key already exists in the destination, its value will be overwritten.
+ * 
+ * @param dest Pointer to the destination hash map
+ * @param src Pointer to the source hash map
+ */
+void HashMapExtend(HashMap* dest, HashMap* src);
+
+/**
  * @brief Checks if a key exists in the hash map
  * 
  * @param hashmap Pointer to the hash map

@@ -1,5 +1,8 @@
 #include "./compiler.h"
 #include "global.h"
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
 
 #define PushArray(type, array, count, val, defaultValue) do { \
     (array)[(count)] = val; \
@@ -318,6 +321,86 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 uf, 
                 OP_LOAD_NULL
             );
+            break;
+        }
+        case AST_OBJECT_LITERAL: {
+            Ast* properties = node->A, *k = NULL, *v = NULL;
+            bool hasSpread = false;
+            int count = 0;
+            while (properties != NULL) {
+                switch (properties->Type) {
+                    case AST_SPREAD: {
+                        if (!hasSpread) {
+                            // Emit object with number if pairs
+                            _EmitArg(compiler, uf, OP_OBJECT_MAKE, count);
+                        }
+                        count = 0;
+                        hasSpread = true;
+                        _Expression(compiler, uf, scope, properties->A);
+                        _Emit(compiler, uf, OP_OBJECT_EXTEND);
+                        break;
+                    }
+                    case AST_NAME: {
+                        if(!hasSpread) ++count;
+                        k = properties;
+                        v = properties;
+                        _Expression(compiler, uf, scope, v);
+                        // Key | Store as constant
+                        int offset = _GetConstant(compiler, k->Value);
+                        if (offset == FLG_NOTFOUND) {
+                            offset = _SaveStr(compiler, AllocateString(k->Value));
+                        }
+
+                        val = _GetConstantValue(compiler, offset);
+
+                        if (!evalOnly) _EmitConst(
+                            compiler, 
+                            uf, 
+                            OP_LOAD_CONST, 
+                            offset
+                        );
+
+                        if (hasSpread) _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
+                        break;
+                    }
+                    case AST_OBJECT_KEY_VAL: {
+                        if (!hasSpread) ++count;
+                        k = properties->A;
+                        v = k->B;
+                        _Expression(compiler, uf, scope, v);
+                        // Key | Store as constant
+                        int offset = _GetConstant(compiler, k->Value);
+                        if (offset == FLG_NOTFOUND) {
+                            offset = _SaveStr(compiler, AllocateString(k->Value));
+                        }
+
+                        val = _GetConstantValue(compiler, offset);
+
+                        if (!evalOnly) _EmitConst(
+                            compiler, 
+                            uf, 
+                            OP_LOAD_CONST, 
+                            offset
+                        );
+
+                        if (hasSpread) _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
+                        break;
+                    }
+                    default: {
+                        ThrowError(
+                            compiler->Parser->Lexer->Path, 
+                            compiler->Parser->Lexer->Data, 
+                            properties->Position, 
+                            "invalid object property"
+                        );
+                    }
+                }
+                properties = properties->Next;
+            }
+            if (!hasSpread) {
+                // Emit object with number if pairs
+                _EmitArg(compiler, uf, OP_OBJECT_MAKE, count);
+            }
             break;
         }
         case AST_FUNCTION: {

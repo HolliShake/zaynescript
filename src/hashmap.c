@@ -154,6 +154,77 @@ void* HashMapGet(HashMap* hashmap, String key) {
     return NULL;
 }
 
+void HashMapExtend(HashMap* dest, HashMap* src) {
+    if (dest == NULL || src == NULL) {
+        return;
+    }
+    
+    // Pre-calculate if we need to rehash to avoid multiple rehashes
+    size_t totalCount = dest->Count + src->Count;
+    double projectedLoadFactor = (double)totalCount / (double)dest->Size;
+    
+    // Rehash proactively if needed to avoid multiple rehashes during insertion
+    while (projectedLoadFactor >= LOAD_FACTOR_THRESHOLD) {
+        _Rehash(dest);
+        projectedLoadFactor = (double)totalCount / (double)dest->Size;
+    }
+    
+    for (size_t i = 0; i < src->Size; i++) {
+        HashNode* node = &src->Buckets[i];
+        while (node != NULL && node->Key != NULL) {
+            // Clone the key from source
+            String clonedKey = AllocateString(node->Key);
+            if (clonedKey == NULL) {
+                node = node->Next;
+                continue;
+            }
+            
+            // Direct insertion without load factor check since we pre-rehashed
+            size_t index = _Hash(clonedKey, dest->Size);
+            HashNode* destNode = &dest->Buckets[index];
+            
+            // If bucket is empty, use it directly
+            if (destNode->Key == NULL) {
+                destNode->Key = clonedKey;
+                destNode->Val = node->Val;
+                dest->Count++;
+            } else {
+                // Check if key exists or find end of chain
+                HashNode* current = destNode;
+                bool found = false;
+                while (current != NULL) {
+                    if (strcmp(current->Key, clonedKey) == 0) {
+                        current->Val = node->Val;
+                        free(clonedKey); // Free cloned key since we're updating existing
+                        found = true;
+                        break;
+                    }
+                    if (current->Next == NULL) {
+                        break;
+                    }
+                    current = current->Next;
+                }
+                
+                // Add new node if key doesn't exist
+                if (!found) {
+                    HashNode* newNode = Allocate(sizeof(HashNode));
+                    if (newNode != NULL) {
+                        newNode->Key = clonedKey;
+                        newNode->Val = node->Val;
+                        newNode->Next = NULL;
+                        current->Next = newNode;
+                        dest->Count++;
+                    } else {
+                        free(clonedKey); // Free cloned key if node allocation failed
+                    }
+                }
+            }
+            
+            node = node->Next;
+        }
+    }
+}
+
 int HashMapContains(HashMap* hashmap, String key) {
     if (hashmap == NULL || key == NULL) {
         return 0;

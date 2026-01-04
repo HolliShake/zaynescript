@@ -218,3 +218,7 @@ bool ValueIsNativeFunction(Value* value) {
 bool ValueIsCallable(Value* value) {
     return ValueIsUserFunction(value) || ValueIsNativeFunction(value);
 }
+
+bool ValueIsObject(Value* value) {
+    return value->Type == VT_OBJECT;
+}
