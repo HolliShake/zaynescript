@@ -84,9 +84,12 @@ const obj = {
     ...({
         extra: "Extra Value",
         number: 456
-    }),
+    }),  
     name: "Doy2x",
     runnable
 };
 
+println(obj);
+obj["hello"] = "Hello, world!";
+++obj["value"] + 2 - 1 * 5;
 println(obj);

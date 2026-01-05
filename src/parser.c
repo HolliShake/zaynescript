@@ -323,9 +323,55 @@ static Ast* _MemberOrCall(Parser* parser) {
     return call;
 }
 
+static Ast* _Unary(Parser* parser) {
+    String op = NULL;
+    if (CHECKTV("+") || CHECKTV("-") || CHECKTV("!")) {
+        op = parser->Next.Value;
+        ACCEPTT(TK_SYM);
+        Ast* operand = _Unary(parser);
+        if (operand == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                parser->Next.Position, 
+                "expected an expression"
+            );
+        }
+        return AstUnary(
+            strcmp(op, "+") == 0 
+                ? AST_POSITIVE 
+                : strcmp(op, "-") == 0 
+                    ? AST_NEGATIVE 
+                    : AST_LOGICAL_NOT,
+            operand, 
+            MergePositions(operand->Position, operand->Position)
+        );
+    } else if (CHECKTV("++") || CHECKTV("--")) {
+        op = parser->Next.Value;
+        ACCEPTT(TK_SYM);
+        Ast* operand = _MemberOrCall(parser);
+        if (operand == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                parser->Next.Position, 
+                "expected an expression"
+            );
+        }
+        return AstUnary(
+            strcmp(op, "++") == 0 
+                ? AST_PRE_INC 
+                : AST_PRE_DEC,
+            operand, 
+            MergePositions(operand->Position, operand->Position)
+        );
+    }
+    return _MemberOrCall(parser);
+}
+
 static Ast* _Multiplicative(Parser* parser) {
     String op = NULL;
-    Ast* lhs  = _MemberOrCall(parser), *rhs = NULL;
+    Ast* lhs  = _Unary(parser), *rhs = NULL;
     
     if (lhs == NULL) {
         return NULL;
@@ -336,7 +382,7 @@ static Ast* _Multiplicative(Parser* parser) {
         op = parser->Next.Value;
         ACCEPTT(TK_SYM);
 
-        rhs = _MemberOrCall(parser);
+        rhs = _Unary(parser);
 
         if (rhs == NULL) {
             ThrowError(
@@ -633,8 +679,168 @@ static Ast* _Assignment(Parser* parser) {
     return lhs;
 }
 
+static Ast* _AugmentedMuliplicative(Parser* parser) {
+    String op = NULL;
+    Ast* lhs  = _Assignment(parser), *rhs = NULL;
+    
+    if (lhs == NULL) {
+        return NULL;
+    }
+
+    while (CHECKTV("*=") || CHECKTV("/=") || CHECKTV("%=")) {
+        // = | /= | %=
+        op = parser->Next.Value;
+        ACCEPTT(TK_SYM);
+
+        rhs = _Assignment(parser);
+        
+        if (rhs == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                lhs->Position, 
+                "missing right operand"
+            );
+        }
+
+        lhs = AstBinary(
+            (strcmp(op, "*=") == 0 
+                ? AST_MUL_ASSIGN 
+                : strcmp(op, "/=") == 0
+                    ? AST_DIV_ASSIGN
+                    : AST_MOD_ASSIGN),
+            lhs, 
+            rhs, 
+            MergePositions(lhs->Position, rhs->Position)
+        );
+
+        free(op);
+    }
+
+    return lhs;
+}
+
+static Ast* _AugmentedAddetive(Parser* parser) {
+    String op = NULL;
+    Ast* lhs  = _AugmentedMuliplicative(parser), *rhs = NULL;
+    
+    if (lhs == NULL) {
+        return NULL;
+    }
+
+    while (CHECKTV("+=") || CHECKTV("-=")) {
+        // += | -=
+        op = parser->Next.Value;
+        ACCEPTT(TK_SYM);
+
+        rhs = _AugmentedMuliplicative(parser);
+        
+        if (rhs == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                lhs->Position, 
+                "missing right operand"
+            );
+        }
+
+        lhs = AstBinary(
+            (strcmp(op, "+=") == 0 
+                ? AST_ADD_ASSIGN 
+                : AST_SUB_ASSIGN),
+            lhs, 
+            rhs, 
+            MergePositions(lhs->Position, rhs->Position)
+        );
+
+        free(op);
+    }
+
+    return lhs;
+}
+
+static Ast* _AugmentedShift(Parser* parser) {
+    String op = NULL;
+    Ast* lhs  = _AugmentedAddetive(parser), *rhs = NULL;
+    
+    if (lhs == NULL) {
+        return NULL;
+    }
+
+    while (CHECKTV("<<=") || CHECKTV(">>=")) {
+        // <<= | >>=
+        op = parser->Next.Value;
+        ACCEPTT(TK_SYM);
+
+        rhs = _AugmentedAddetive(parser);
+        
+        if (rhs == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                lhs->Position, 
+                "missing right operand"
+            );
+        }
+
+        lhs = AstBinary(
+            (strcmp(op, "<<=") == 0 
+                ? AST_LSHFT_ASSIGN 
+                : AST_RSHFT_ASSIGN),
+            lhs, 
+            rhs, 
+            MergePositions(lhs->Position, rhs->Position)
+        );
+
+        free(op);
+    }
+
+    return lhs;
+}
+
+static Ast* _AugmentedBitwise(Parser* parser) {
+    String op = NULL;
+    Ast* lhs  = _AugmentedShift(parser), *rhs = NULL;
+    
+    if (lhs == NULL) {
+        return NULL;
+    }
+
+    while (CHECKTV("&=") || CHECKTV("|=") || CHECKTV("^=")) {
+        // &= | |= | ^=
+        op = parser->Next.Value;
+        ACCEPTT(TK_SYM);
+
+        rhs = _AugmentedShift(parser);
+        
+        if (rhs == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                lhs->Position, 
+                "missing right operand"
+            );
+        }
+
+        lhs = AstBinary(
+            (strcmp(op, "&=") == 0 
+                ? AST_AND_ASSIGN 
+                : strcmp(op, "|=") == 0
+                    ? AST_OR_ASSIGN
+                    : AST_XOR_ASSIGN),
+            lhs, 
+            rhs, 
+            MergePositions(lhs->Position, rhs->Position)
+        );
+
+        free(op);
+    }
+
+    return lhs;
+}
+
 static Ast* _Expression(Parser* parser) {
-    return _Assignment(parser);
+    return _AugmentedBitwise(parser);
 }
 
 static Ast* _ListOfExpressions(Parser* parser) {

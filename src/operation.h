@@ -51,6 +51,15 @@ int DoDiv(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
 int DoMod(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
 
 /**
+ * Performs increment operation on a value.
+ * @param interp The interpreter instance
+ * @param val The value to increment
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ * @return Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
+ */
+int DoInc(Interpreter* interp, Value* val, Value** out);
+
+/**
  * Performs addition operation on two values.
  * @param interp The interpreter instance
  * @param lhs Left-hand side value
@@ -59,6 +68,15 @@ int DoMod(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
  * @return Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
  */
 int DoAdd(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
+
+/**
+ * Performs decrement operation on a value.
+ * @param interp The interpreter instance
+ * @param val The value to decrement
+ * @param out Output parameter for the result (if not NULL, result is stored here)
+ * @return Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
+ */
+int DoDec(Interpreter* interp, Value* val, Value** out);
 
 /**
  * Performs subtraction operation on two values.

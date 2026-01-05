@@ -1,5 +1,6 @@
 #include "./compiler.h"
 #include "global.h"
+#include <_mingw_mac.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -183,6 +184,10 @@ static void _JumpToAbsoluteLabel(Compiler* compiler, UserFunction* uf, int sourc
 
 static void _Statement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node);
 
+static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* exp);
+static void _AssignOpRhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* lhs, bool postfix);
+static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* lhs, bool postfix);
+
 static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node, bool evalOnly) {
     Value* lhs = NULL, *rhs = NULL, *val = NULL;
     switch (node->Type) {
@@ -345,21 +350,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                         k = properties;
                         v = properties;
                         _Expression(compiler, uf, scope, v);
-                        // Key | Store as constant
-                        int offset = _GetConstant(compiler, k->Value);
-                        if (offset == FLG_NOTFOUND) {
-                            offset = _SaveStr(compiler, AllocateString(k->Value));
-                        }
-
-                        val = _GetConstantValue(compiler, offset);
-
-                        if (!evalOnly) _EmitConst(
-                            compiler, 
-                            uf, 
-                            OP_LOAD_CONST, 
-                            offset
-                        );
-
+                        _EmitString(compiler, uf, OP_LOAD_STRING, k->Value);
                         if (hasSpread) _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
                         break;
                     }
@@ -368,21 +359,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                         k = properties->A;
                         v = k->B;
                         _Expression(compiler, uf, scope, v);
-                        // Key | Store as constant
-                        int offset = _GetConstant(compiler, k->Value);
-                        if (offset == FLG_NOTFOUND) {
-                            offset = _SaveStr(compiler, AllocateString(k->Value));
-                        }
-
-                        val = _GetConstantValue(compiler, offset);
-
-                        if (!evalOnly) _EmitConst(
-                            compiler, 
-                            uf, 
-                            OP_LOAD_CONST, 
-                            offset
-                        );
-
+                        _EmitString(compiler, uf, OP_LOAD_STRING, k->Value);
                         if (hasSpread) _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
                         break;
                     }
@@ -446,6 +423,20 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
 
             _EmitArg(compiler, uf, OP_LOAD_FUNCTION_CLOSURE, funcOffset);
             FreeScope(fnScope);
+            break;
+        }
+        case AST_PRE_INC: {
+            _AssignOpRhs(compiler, uf, scope, node->A, false);
+            _Emit(compiler, uf, OP_INC);
+            _Emit(compiler, uf, OP_DUPTOP);
+            _AssignOpLhs(compiler, uf, scope, node->A, false);
+            break;
+        }
+        case AST_PRE_DEC: {
+            _AssignOpRhs(compiler, uf, scope, node->A, false);
+            _Emit(compiler, uf, OP_DEC);
+            _Emit(compiler, uf, OP_DUPTOP);
+            _AssignOpLhs(compiler, uf, scope, node->A, false);
             break;
         }
         case AST_CALL: {
@@ -862,45 +853,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             break;
         }
         case AST_ASSIGN: {
-            rhs = _Expression(compiler, uf, scope, node->B);
-            _Emit(compiler, uf, OP_DUPTOP);
-            switch (node->A->Type) {
-                case AST_NAME: {
-                    if (!ScopeHasName(scope, node->A->Value)) {
-                        ThrowError(
-                            compiler->Parser->Lexer->Path, 
-                            compiler->Parser->Lexer->Data, 
-                            node->A->Position, 
-                            "variable not found"
-                        );
-                    }
-                    bool isOwnedLocally = ScopeIsLocalToFn(scope, node->A->Value);
-                    Symbol* symbol = ScopeGetSymbol(scope, node->A->Value, true);
-                    if (symbol->IsConstant) {
-                        ThrowError(
-                            compiler->Parser->Lexer->Path, 
-                            compiler->Parser->Lexer->Data, 
-                            node->A->Position, 
-                            "cannot assign to constant"
-                        );
-                    }
-                    _EmitArg(
-                        compiler, 
-                        uf, 
-                        isOwnedLocally ? OP_STORE_LOCAL : OP_STORE_NAME,
-                        symbol->Offset
-                    );
-                    break;
-                }
-                default: {
-                    ThrowError(
-                        compiler->Parser->Lexer->Path, 
-                        compiler->Parser->Lexer->Data, 
-                        node->Position, 
-                        "invalid left operand"
-                    );
-                }
-            }
+            _AssignOp(compiler, uf, scope, node); 
             break;
         }
         default: {
@@ -914,6 +867,178 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
         }
     }
     return val;
+}
+
+static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* exp) {
+    Ast* lhs = exp->A;
+    Ast* rhs = exp->B;
+    switch (lhs->Type) {
+        case AST_NAME: {
+            _Expression(compiler, uf, scope, rhs);
+            _Emit(compiler, uf, OP_DUPTOP);
+            _AssignOpLhs(compiler, uf, scope, lhs, false);
+            break;
+        }
+        case AST_MEMBER: {
+            Ast* obj = lhs->A;
+            Ast* att = lhs->B;
+            _Expression(compiler, uf, scope, rhs);
+            _Emit(compiler, uf, OP_DUPTOP);
+            _Expression(compiler, uf, scope, obj);
+            _Emit(compiler, uf, OP_ROT2); // Swap value and object, so value is on top
+            _EmitString(compiler, uf, OP_LOAD_STRING, att->Value);
+            _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
+            _Emit(compiler, uf, OP_POPTOP); // Pops object
+            break;
+        }
+        case AST_INDEX: {
+            Ast* obj = lhs->A;
+            Ast* idx = lhs->B;
+            _Expression(compiler, uf, scope, rhs);
+            _Emit(compiler, uf, OP_DUPTOP);
+            _Expression(compiler, uf, scope, obj);
+            _Emit(compiler, uf, OP_ROT2); // Swap value and object, so value is on top
+            _Expression(compiler, uf, scope, idx);
+            _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
+            _Emit(compiler, uf, OP_POPTOP); // Pops object
+            break;
+        }
+        default: {
+            ThrowError(
+                compiler->Parser->Lexer->Path, 
+                compiler->Parser->Lexer->Data, 
+                exp->Position, 
+                "invalid assignment operation"
+            );
+        }
+    }
+}
+
+static void _AssignOpRhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* rhs, bool postfix) {
+    switch (rhs->Type) {
+        case AST_NAME: {
+            if (!ScopeHasName(scope, rhs->Value)) {
+                ThrowError(
+                    compiler->Parser->Lexer->Path, 
+                    compiler->Parser->Lexer->Data, 
+                    rhs->Position, 
+                    "variable not found"
+                );
+            }
+            Symbol* symbol = ScopeGetSymbol(scope, rhs->Value, true);
+            
+            if (symbol->IsGlobal) {
+                _EmitArg(compiler, uf, OP_LOAD_NAME, symbol->Offset);
+            } else if (ScopeInside(scope, SCOPE_FUNCTION_CLOSURE) && !ScopeIsLocalToFnClosure(scope, rhs->Value)) {
+                int captureOffset = 0;
+                if (!ScopeHasCapture(scope, rhs->Value)) {
+                    captureOffset = UserFunctionAddCapture(uf, symbol->IsGlobal, symbol->Offset, captureOffset);
+                    ScopeSetCapture(scope, rhs->Value, false, true, false, captureOffset);
+                } else {
+                    Symbol* captureSymbol = ScopeGetCapture(scope, rhs->Value, false);
+                    captureOffset = captureSymbol->Offset;
+                }
+                _EmitArg(compiler, uf, OP_LOAD_CAPTURE, captureOffset);
+            } else {
+                _EmitArg(compiler, uf, OP_LOAD_LOCAL, symbol->Offset);
+            }
+            if (postfix) _Emit(compiler, uf, OP_DUPTOP);
+            break;
+        }
+        case AST_INDEX: {
+            _Expression(compiler, uf, scope, rhs->A);
+            _Expression(compiler, uf, scope, rhs->B);
+            _Emit(compiler, uf, OP_DUP2);
+            _Emit(compiler, uf, OP_OBJECT_GET_ATTRIBUTE);
+            if (postfix) _Emit(compiler, uf, OP_ROT3);
+            break;
+        }
+        case AST_MEMBER: {
+            _Expression(compiler, uf, scope, rhs->A);
+            if (postfix) {
+                _Emit(compiler, uf, OP_DUPTOP);
+                _EmitString(compiler, uf, OP_LOAD_STRING, rhs->B->Value);
+                _Emit(compiler, uf, OP_DUP2);
+                _Emit(compiler, uf, OP_OBJECT_GET_ATTRIBUTE);
+            } else {
+                _Emit(compiler, uf, OP_DUPTOP);
+                _EmitString(compiler, uf, OP_LOAD_STRING, rhs->B->Value);
+                _Emit(compiler, uf, OP_OBJECT_GET_ATTRIBUTE);
+            }
+            break;
+        }
+        default: {
+            ThrowError(
+                compiler->Parser->Lexer->Path, 
+                compiler->Parser->Lexer->Data, 
+                rhs->Position, 
+                "invalid left operand"
+            );
+        }
+    }
+}
+
+static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* lhs, bool postfix) {
+    switch (lhs->Type) {
+        case AST_NAME: {
+            if (!ScopeHasName(scope, lhs->Value)) {
+                ThrowError(
+                    compiler->Parser->Lexer->Path, 
+                    compiler->Parser->Lexer->Data, 
+                    lhs->Position, 
+                    "variable not found"
+                );
+            }
+            Symbol* symbol = ScopeGetSymbol(scope, lhs->Value, true);
+            if (symbol->IsConstant) {
+                ThrowError(
+                    compiler->Parser->Lexer->Path, 
+                    compiler->Parser->Lexer->Data, 
+                    lhs->Position, 
+                    "cannot assign to constant"
+                );
+            }
+            if (postfix) _Emit(compiler, uf, OP_ROT2);
+            
+            if (symbol->IsGlobal) {
+                _EmitArg(compiler, uf, OP_STORE_NAME, symbol->Offset);
+            } else if (ScopeInside(scope, SCOPE_FUNCTION_CLOSURE) && !ScopeIsLocalToFnClosure(scope, lhs->Value)) {
+                int captureOffset = 0;
+                if (!ScopeHasCapture(scope, lhs->Value)) {
+                    captureOffset = UserFunctionAddCapture(uf, symbol->IsGlobal, symbol->Offset, captureOffset);
+                    ScopeSetCapture(scope, lhs->Value, false, true, false, captureOffset);
+                } else {
+                    Symbol* captureSymbol = ScopeGetCapture(scope, lhs->Value, false);
+                    captureOffset = captureSymbol->Offset;
+                }
+                _EmitArg(compiler, uf, OP_STORE_CAPTURE, captureOffset);
+            } else {
+                _EmitArg(compiler, uf, OP_STORE_LOCAL, symbol->Offset);
+            }
+            break;
+        }
+        case AST_INDEX: {
+            if (postfix) _Emit(compiler, uf, OP_ROT4);
+            _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
+            break;
+        }
+        case AST_MEMBER: {
+            if (postfix) {
+                // Stack: value, obj, attr_name -> obj, attr_name, value
+                _Emit(compiler, uf, OP_ROT3);
+            }
+            _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
+            break;
+        }
+        default: {
+            ThrowError(
+                compiler->Parser->Lexer->Path, 
+                compiler->Parser->Lexer->Data, 
+                lhs->Position, 
+                "invalid left operand"
+            );
+        }
+    }
 }
 
 static void _FunctionDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {

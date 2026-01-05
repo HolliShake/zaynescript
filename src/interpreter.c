@@ -1,7 +1,4 @@
-#include "./interpreter.h"
-#include "global.h"
-#include <stdbool.h>
-#include <stdio.h>
+#include "./interpreter.h" 
 
 Interpreter* CreateInterpreter() {
     Interpreter* interpreter                = Allocate(sizeof(Interpreter));
@@ -169,6 +166,13 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 Push(interpreter->Null);
                 break;
             }
+            case OP_LOAD_STRING: {
+                str = _ReadString(uf->Codes, ip);
+                Push(NewStrValue(interpreter, str));
+                Forward(strlen(str) + 1);
+                free(str);
+                break;
+            }
             case OP_OBJECT_EXTEND: {
                 Value* ext = Popp();
                 Value* obj = Peek();
@@ -192,6 +196,24 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                     );
                 }
                 HashMapSet((HashMap*)obj->Value.Opaque, ValueToString(key), val);
+                break;
+            }
+            case OP_OBJECT_GET_ATTRIBUTE: {
+                Value* key = Popp();
+                Value* obj = Popp();
+                if (!ValueIsObject(obj))
+                    HandleError(
+                        "expected object to get attribute from to be an object, got %s", 
+                        ValueTypeOf(obj)
+                    );
+    
+                res = HashMapGet((HashMap*)obj->Value.Opaque, ValueToString(key));
+                if (res == NULL)
+                    HandleError(
+                        "object has no attribute '%s'", 
+                        ValueToString(key)
+                    );
+                Push(res);
                 break;
             }
             case OP_OBJECT_MAKE: {
@@ -332,6 +354,18 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 Push(res);
                 break;
             }
+            case OP_INC: {
+                lhs = Popp();
+                res = NULL;
+                int result = DoInc(interpreter, lhs, &res);
+                if (result == FLG_INVALID_OPERATION) 
+                    HandleError(
+                        "invalid operation (++) for type %s", 
+                        ValueTypeOf(lhs)
+                    );
+                Push(res);
+                break;
+            }
             case OP_ADD: {
                 rhs = Popp();
                 lhs = Popp();
@@ -342,6 +376,18 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                         "invalid operation (+) for type %s and %s", 
                         ValueTypeOf(lhs), 
                         ValueTypeOf(rhs)
+                    );
+                Push(res);
+                break;
+            }
+            case OP_DEC: {
+                lhs = Popp();
+                res = NULL;
+                int result = DoDec(interpreter, lhs, &res);
+                if (result == FLG_INVALID_OPERATION) 
+                    HandleError(
+                        "invalid operation (--) for type %s", 
+                        ValueTypeOf(lhs)
                     );
                 Push(res);
                 break;
@@ -488,8 +534,45 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 Push(Peek());
                 break;
             }
+            case OP_DUP2: {
+                Value* a = interpreter->Stacks[interpreter->StackC - 1];
+                Value* b = interpreter->Stacks[interpreter->StackC - 2];
+                Push(b);
+                Push(a);
+                break;
+            }
             case OP_POPTOP: {
                 Value* val = Popp();
+                break;
+            }
+            case OP_ROT2: {
+                // A B -> B A
+                Value* a = interpreter->Stacks[interpreter->StackC - 1];
+                Value* b = interpreter->Stacks[interpreter->StackC - 2];
+                interpreter->Stacks[interpreter->StackC - 1] = b;
+                interpreter->Stacks[interpreter->StackC - 2] = a;
+                break;
+            }
+            case OP_ROT3: {
+                // A B C -> C A B
+                Value* a = interpreter->Stacks[interpreter->StackC - 1];
+                Value* b = interpreter->Stacks[interpreter->StackC - 2];
+                Value* c = interpreter->Stacks[interpreter->StackC - 3];
+                interpreter->Stacks[interpreter->StackC - 1] = c;
+                interpreter->Stacks[interpreter->StackC - 2] = a;
+                interpreter->Stacks[interpreter->StackC - 3] = b;
+                break;
+            }
+            case OP_ROT4: {
+                // A B C D -> D A B C
+                Value* a = interpreter->Stacks[interpreter->StackC - 1];
+                Value* b = interpreter->Stacks[interpreter->StackC - 2];
+                Value* c = interpreter->Stacks[interpreter->StackC - 3];
+                Value* d = interpreter->Stacks[interpreter->StackC - 4];
+                interpreter->Stacks[interpreter->StackC - 1] = d;
+                interpreter->Stacks[interpreter->StackC - 2] = a;
+                interpreter->Stacks[interpreter->StackC - 3] = b;
+                interpreter->Stacks[interpreter->StackC - 4] = c;
                 break;
             }
             case OP_SETUP_TRY: {

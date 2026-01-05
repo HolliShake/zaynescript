@@ -89,6 +89,12 @@ Ast* AstCall(Ast* object, Ast* arguments, Position position) {
     return ast;
 }
 
+Ast* AstUnary(AstType type, Ast* operand, Position position) {
+    Ast* ast = InitAst(type, position);
+    ast->A   = operand;
+    return ast;
+}
+
 Ast* AstBinary(AstType type, Ast* lhs, Ast* rhs, Position position) {
     Ast* ast = InitAst(type, position);
     ast->A   = lhs;

@@ -170,6 +170,45 @@ int DoMod(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
     return offset;
 }
 
+int DoInc(Interpreter* interp, Value* val, Value** out) {
+    Value* result = NULL;
+    int offset    = GetOffset();
+
+    if (ValueIsInt(val)) {
+        long resultNum = CoerceToI64(val) + 1;
+        result = (resultNum <= INT_MAX && resultNum >= INT_MIN) 
+            ? NewIntValue(interp, (int) resultNum)
+            : NewNumValue(interp, (double) resultNum);
+    } else if (ValueIsNum(val)) {
+        double resultNum = CoerceToNum(val) + 1.0;
+        result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
+            ? NewIntValue(interp, (int) resultNum)
+            : NewNumValue(interp, resultNum);
+    }
+
+    if (result == NULL) {
+        return FLG_INVALID_OPERATION;
+    }
+    
+    if (out != NULL) {
+        *out = result;
+        return offset;
+    }
+
+    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
+        return _GetConstantOffset(interp, result);
+    }
+
+    PushArray(
+        Value*,
+        interp->Constants,
+        interp->ConstantC, 
+        result, 
+        NULL
+    );
+    return offset;
+}
+
 int DoAdd(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
     Value* result = NULL;
     int offset    = GetOffset();
@@ -222,6 +261,45 @@ int DoAdd(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         NULL
     );
 
+    return offset;
+}
+
+int DoDec(Interpreter* interp, Value* val, Value** out) {
+    Value* result = NULL;
+    int offset    = GetOffset();
+
+    if (ValueIsInt(val)) {
+        long resultNum = CoerceToI64(val) - 1;
+        result = (resultNum <= INT_MAX && resultNum >= INT_MIN) 
+            ? NewIntValue(interp, (int) resultNum)
+            : NewNumValue(interp, (double) resultNum);
+    } else if (ValueIsNum(val)) {
+        double resultNum = CoerceToNum(val) - 1.0;
+        result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
+            ? NewIntValue(interp, (int) resultNum)
+            : NewNumValue(interp, resultNum);
+    }
+
+    if (result == NULL) {
+        return FLG_INVALID_OPERATION;
+    }
+    
+    if (out != NULL) {
+        *out = result;
+        return offset;
+    }
+
+    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
+        return _GetConstantOffset(interp, result);
+    }
+
+    PushArray(
+        Value*,
+        interp->Constants,
+        interp->ConstantC, 
+        result, 
+        NULL
+    );
     return offset;
 }
 
