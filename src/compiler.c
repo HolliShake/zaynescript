@@ -876,29 +876,84 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
         case AST_NAME: {
             _Expression(compiler, uf, scope, rhs);
             _Emit(compiler, uf, OP_DUPTOP);
-            _AssignOpLhs(compiler, uf, scope, lhs, false);
+            if (!ScopeHasName(scope, lhs->Value)) {
+                ThrowError(
+                    compiler->Parser->Lexer->Path, 
+                    compiler->Parser->Lexer->Data, 
+                    lhs->Position, 
+                    "variable not found"
+                );
+            }
+            Symbol* symbol = ScopeGetSymbol(scope, lhs->Value, true);
+            if (symbol->IsGlobal) {
+                // Global variable
+                _EmitArg(
+                    compiler, 
+                    uf, 
+                    OP_STORE_NAME,
+                    symbol->Offset
+                );
+            } else {
+                if (ScopeInside(scope, SCOPE_FUNCTION_CLOSURE) && !ScopeIsLocalToFnClosure(scope, lhs->Value)) {
+                    int captureOffset = 0;
+                    if (!ScopeHasCapture(scope, lhs->Value)) {
+                        captureOffset = UserFunctionAddCapture(
+                            uf, 
+                            symbol->IsGlobal, 
+                            symbol->Offset, 
+                            captureOffset
+                        );
+                        ScopeSetCapture(
+                            scope, 
+                            lhs->Value, 
+                            false, 
+                            true, 
+                            false, 
+                            captureOffset
+                        );
+                    } else {
+                        Symbol* captureSymbol = ScopeGetCapture(scope, lhs->Value, false);
+                        captureOffset = captureSymbol->Offset;
+                    }
+
+                    // Capture the variable
+                    _EmitArg(
+                        compiler, 
+                        uf, 
+                        OP_STORE_CAPTURE,
+                        captureOffset
+                    );
+                } else {
+                    _EmitArg(
+                        compiler, 
+                        uf, 
+                        OP_STORE_LOCAL,
+                        symbol->Offset
+                    );
+                }
+            }
             break;
         }
         case AST_MEMBER: {
+            // bot [obj, key, val] top
             Ast* obj = lhs->A;
             Ast* att = lhs->B;
+            _Expression(compiler, uf, scope, obj);
+            _EmitString(compiler, uf, OP_LOAD_STRING, att->Value);
             _Expression(compiler, uf, scope, rhs);
             _Emit(compiler, uf, OP_DUPTOP);
-            _Expression(compiler, uf, scope, obj);
-            _Emit(compiler, uf, OP_ROT2); // Swap value and object, so value is on top
-            _EmitString(compiler, uf, OP_LOAD_STRING, att->Value);
             _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
             _Emit(compiler, uf, OP_POPTOP); // Pops object
             break;
         }
         case AST_INDEX: {
+            // bot [obj, key, val] top
             Ast* obj = lhs->A;
             Ast* idx = lhs->B;
+            _Expression(compiler, uf, scope, obj);
+            _Expression(compiler, uf, scope, idx);
             _Expression(compiler, uf, scope, rhs);
             _Emit(compiler, uf, OP_DUPTOP);
-            _Expression(compiler, uf, scope, obj);
-            _Emit(compiler, uf, OP_ROT2); // Swap value and object, so value is on top
-            _Expression(compiler, uf, scope, idx);
             _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
             _Emit(compiler, uf, OP_POPTOP); // Pops object
             break;
@@ -916,55 +971,26 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
 
 static void _AssignOpRhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* rhs, bool postfix) {
     switch (rhs->Type) {
-        case AST_NAME: {
-            if (!ScopeHasName(scope, rhs->Value)) {
-                ThrowError(
-                    compiler->Parser->Lexer->Path, 
-                    compiler->Parser->Lexer->Data, 
-                    rhs->Position, 
-                    "variable not found"
-                );
-            }
-            Symbol* symbol = ScopeGetSymbol(scope, rhs->Value, true);
-            
-            if (symbol->IsGlobal) {
-                _EmitArg(compiler, uf, OP_LOAD_NAME, symbol->Offset);
-            } else if (ScopeInside(scope, SCOPE_FUNCTION_CLOSURE) && !ScopeIsLocalToFnClosure(scope, rhs->Value)) {
-                int captureOffset = 0;
-                if (!ScopeHasCapture(scope, rhs->Value)) {
-                    captureOffset = UserFunctionAddCapture(uf, symbol->IsGlobal, symbol->Offset, captureOffset);
-                    ScopeSetCapture(scope, rhs->Value, false, true, false, captureOffset);
-                } else {
-                    Symbol* captureSymbol = ScopeGetCapture(scope, rhs->Value, false);
-                    captureOffset = captureSymbol->Offset;
-                }
-                _EmitArg(compiler, uf, OP_LOAD_CAPTURE, captureOffset);
-            } else {
-                _EmitArg(compiler, uf, OP_LOAD_LOCAL, symbol->Offset);
-            }
-            if (postfix) _Emit(compiler, uf, OP_DUPTOP);
-            break;
-        }
         case AST_INDEX: {
-            _Expression(compiler, uf, scope, rhs->A);
-            _Expression(compiler, uf, scope, rhs->B);
+            // bot [obj, key, val] top
+            Ast* obj = rhs->A;
+            Ast* att = rhs->B;
+            _Expression(compiler, uf, scope, obj);
+            _Expression(compiler, uf, scope, att);
             _Emit(compiler, uf, OP_DUP2);
             _Emit(compiler, uf, OP_OBJECT_GET_ATTRIBUTE);
             if (postfix) _Emit(compiler, uf, OP_ROT3);
             break;
         }
         case AST_MEMBER: {
-            _Expression(compiler, uf, scope, rhs->A);
-            if (postfix) {
-                _Emit(compiler, uf, OP_DUPTOP);
-                _EmitString(compiler, uf, OP_LOAD_STRING, rhs->B->Value);
-                _Emit(compiler, uf, OP_DUP2);
-                _Emit(compiler, uf, OP_OBJECT_GET_ATTRIBUTE);
-            } else {
-                _Emit(compiler, uf, OP_DUPTOP);
-                _EmitString(compiler, uf, OP_LOAD_STRING, rhs->B->Value);
-                _Emit(compiler, uf, OP_OBJECT_GET_ATTRIBUTE);
-            }
+            // bot [obj, key, val] top
+            Ast* obj = rhs->A;
+            Ast* att = rhs->B;
+            _Expression(compiler, uf, scope, obj);
+            _EmitString(compiler, uf, OP_LOAD_STRING, att->Value);
+            _Emit(compiler, uf, OP_DUP2);
+            _Emit(compiler, uf, OP_OBJECT_GET_ATTRIBUTE);
+            if (postfix) _Emit(compiler, uf, OP_ROT3);
             break;
         }
         default: {
@@ -980,54 +1006,14 @@ static void _AssignOpRhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
 
 static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* lhs, bool postfix) {
     switch (lhs->Type) {
-        case AST_NAME: {
-            if (!ScopeHasName(scope, lhs->Value)) {
-                ThrowError(
-                    compiler->Parser->Lexer->Path, 
-                    compiler->Parser->Lexer->Data, 
-                    lhs->Position, 
-                    "variable not found"
-                );
-            }
-            Symbol* symbol = ScopeGetSymbol(scope, lhs->Value, true);
-            if (symbol->IsConstant) {
-                ThrowError(
-                    compiler->Parser->Lexer->Path, 
-                    compiler->Parser->Lexer->Data, 
-                    lhs->Position, 
-                    "cannot assign to constant"
-                );
-            }
-            if (postfix) _Emit(compiler, uf, OP_ROT2);
-            
-            if (symbol->IsGlobal) {
-                _EmitArg(compiler, uf, OP_STORE_NAME, symbol->Offset);
-            } else if (ScopeInside(scope, SCOPE_FUNCTION_CLOSURE) && !ScopeIsLocalToFnClosure(scope, lhs->Value)) {
-                int captureOffset = 0;
-                if (!ScopeHasCapture(scope, lhs->Value)) {
-                    captureOffset = UserFunctionAddCapture(uf, symbol->IsGlobal, symbol->Offset, captureOffset);
-                    ScopeSetCapture(scope, lhs->Value, false, true, false, captureOffset);
-                } else {
-                    Symbol* captureSymbol = ScopeGetCapture(scope, lhs->Value, false);
-                    captureOffset = captureSymbol->Offset;
-                }
-                _EmitArg(compiler, uf, OP_STORE_CAPTURE, captureOffset);
-            } else {
-                _EmitArg(compiler, uf, OP_STORE_LOCAL, symbol->Offset);
-            }
-            break;
-        }
-        case AST_INDEX: {
-            if (postfix) _Emit(compiler, uf, OP_ROT4);
-            _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
-            break;
-        }
+        case AST_INDEX:
         case AST_MEMBER: {
-            if (postfix) {
-                // Stack: value, obj, attr_name -> obj, attr_name, value
-                _Emit(compiler, uf, OP_ROT3);
-            }
+            // bot [obj, key, val, val] top
+            // After rotate:
+            // bot [val, obj, key, val] top
+            _Emit(compiler, uf, OP_ROT4);
             _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
+            _Emit(compiler, uf, OP_POPTOP); // Pops object
             break;
         }
         default: {

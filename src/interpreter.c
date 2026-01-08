@@ -186,8 +186,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_OBJECT_SET_ATTRIBUTE: {
-                Value* key = Popp();
                 Value* val = Popp();
+                Value* key = Popp();
                 Value* obj = Peek();
                 if (!ValueIsObject(obj)) {
                     HandleError(
@@ -210,7 +210,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 res = HashMapGet((HashMap*)obj->Value.Opaque, ValueToString(key));
                 if (res == NULL)
                     HandleError(
-                        "object has no attribute '%s'", 
+                        "object (%s) has no attribute '%s'", 
+                        ValueToString(obj),
                         ValueToString(key)
                     );
                 Push(res);
@@ -535,7 +536,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_DUP2: {
-                Value* a = interpreter->Stacks[interpreter->StackC - 1];
+                Value* a = Peek();
                 Value* b = interpreter->Stacks[interpreter->StackC - 2];
                 Push(b);
                 Push(a);
@@ -565,14 +566,14 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             }
             case OP_ROT4: {
                 // A B C D -> D A B C
-                Value* a = interpreter->Stacks[interpreter->StackC - 1];
-                Value* b = interpreter->Stacks[interpreter->StackC - 2];
-                Value* c = interpreter->Stacks[interpreter->StackC - 3];
-                Value* d = interpreter->Stacks[interpreter->StackC - 4];
-                interpreter->Stacks[interpreter->StackC - 1] = d;
-                interpreter->Stacks[interpreter->StackC - 2] = a;
-                interpreter->Stacks[interpreter->StackC - 3] = b;
-                interpreter->Stacks[interpreter->StackC - 4] = c;
+                Value* d = interpreter->Stacks[interpreter->StackC - 1];
+                Value* c = interpreter->Stacks[interpreter->StackC - 2];
+                Value* b = interpreter->Stacks[interpreter->StackC - 3];
+                Value* a = interpreter->Stacks[interpreter->StackC - 4];
+                interpreter->Stacks[interpreter->StackC - 1] = c;
+                interpreter->Stacks[interpreter->StackC - 2] = b;
+                interpreter->Stacks[interpreter->StackC - 3] = a;
+                interpreter->Stacks[interpreter->StackC - 4] = d;
                 break;
             }
             case OP_SETUP_TRY: {

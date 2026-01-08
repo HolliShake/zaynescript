@@ -90,6 +90,5 @@ const obj = {
 };
 
 println(obj);
-obj["hello"] = "Hello, world!";
-++obj["value"] + 2 - 1 * 5;
+++obj.value + 23 - 1;
 println(obj);
