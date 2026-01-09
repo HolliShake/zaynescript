@@ -86,7 +86,6 @@ println(obj);
 ++obj["value"] + 23 - 1;
 println(obj);
 
-
 println(obj);
 println(obj.value++ + 23 - 1);
 println(obj, 2, 3, 2);

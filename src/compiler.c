@@ -916,6 +916,14 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
                 );
             }
             Symbol* symbol = ScopeGetSymbol(scope, lhs->Value, true);
+            if (symbol->IsConstant) {
+                ThrowError(
+                    compiler->Parser->Lexer->Path, 
+                    compiler->Parser->Lexer->Data, 
+                    lhs->Position, 
+                    "cannot reassign constant variable"
+                );
+            }
             if (symbol->IsGlobal) {
                 // Global variable
                 _EmitArg(
@@ -1054,6 +1062,14 @@ static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
                 );
             }
             Symbol* symbol = ScopeGetSymbol(scope, lhs->Value, true);
+            if (symbol->IsConstant) {
+                ThrowError(
+                    compiler->Parser->Lexer->Path, 
+                    compiler->Parser->Lexer->Data, 
+                    lhs->Position, 
+                    "cannot reassign constant variable"
+                );
+            }
             if (symbol->IsGlobal) {
                 // Global variable
                 _EmitArg(
