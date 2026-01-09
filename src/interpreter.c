@@ -1,4 +1,5 @@
 #include "./interpreter.h" 
+#include "global.h"
 
 Interpreter* CreateInterpreter() {
     Interpreter* interpreter                = Allocate(sizeof(Interpreter));
@@ -36,14 +37,11 @@ Interpreter* CreateInterpreter() {
     printf("\n"); \
 } while (0)
 
-
-
-
 #define DumpStack() do { \
     printf("Stack [%d items]: [ ", interpreter->StackC); \
     for (int i = 0; i < interpreter->StackC; i++) { \
         if (i > 0) printf(", "); \
-        printf("%s", ValueToString(interpreter->Stack[i])); \
+        printf("%s", ValueToString(interpreter->Stacks[i])); \
     } \
     printf(" ]\n"); \
 } while (0)
@@ -355,6 +353,20 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 Push(res);
                 break;
             }
+            case OP_POSTINC: {
+                // bot [obj, key, val] top
+                rhs = Popp(); // old value
+                res = NULL;
+                int result = DoInc(interpreter, rhs, &res);
+                if (result == FLG_INVALID_OPERATION) 
+                    HandleError(
+                        "invalid operation (++) for type %s", 
+                        ValueTypeOf(rhs)
+                    );
+                Push(res);
+                Push(rhs);
+                break;
+            }
             case OP_INC: {
                 lhs = Popp();
                 res = NULL;
@@ -379,6 +391,20 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                         ValueTypeOf(rhs)
                     );
                 Push(res);
+                break;
+            }
+            case OP_POSTDEC: {
+                // bot [obj, key, val] top
+                rhs = Popp(); // old value
+                res = NULL;
+                int result = DoDec(interpreter, rhs, &res);
+                if (result == FLG_INVALID_OPERATION) 
+                    HandleError(
+                        "invalid operation (--) for type %s", 
+                        ValueTypeOf(rhs)
+                    );
+                Push(res);
+                Push(rhs);
                 break;
             }
             case OP_DEC: {

@@ -114,14 +114,14 @@ Ast* AstIndex(Ast* object, Ast* index, Position position);
 Ast* AstCall(Ast* object, Ast* arguments, Position position);
 
 /**
- * AstUnary - Creates an AST node representing a unary operation
+ * AstSingle - Creates an AST node representing a unary or postfix operation
  * @type: The type of unary operation (e.g., negation, logical NOT)
  * @operand: Pointer to the operand AST node
  * @position: Source code location information
  *
  * Return: Pointer to newly allocated AST_UNARY node
  */
-Ast* AstUnary(AstType type, Ast* operand, Position position);
+Ast* AstSingle(AstType type, Ast* operand, Position position);
 
 /**
  * AstBinary - Creates an AST node representing a binary operation

@@ -323,6 +323,26 @@ static Ast* _MemberOrCall(Parser* parser) {
     return call;
 }
 
+static Ast* _Postfix(Parser* parser) {
+    Ast* node = _MemberOrCall(parser);
+    if (node == NULL) {
+        return NULL;
+    }
+    while (CHECKTV("++") || CHECKTV("--")) {
+        String op = parser->Next.Value;
+        ACCEPTT(TK_SYM);
+        node = AstSingle(
+            strcmp(op, "++") == 0 
+                ? AST_POST_INC 
+                : AST_POST_DEC,
+            node, 
+            MergePositions(node->Position, node->Position)
+        );
+        free(op);
+    }
+    return node;
+}
+
 static Ast* _Unary(Parser* parser) {
     String op = NULL;
     if (CHECKTV("+") || CHECKTV("-") || CHECKTV("!")) {
@@ -337,7 +357,7 @@ static Ast* _Unary(Parser* parser) {
                 "expected an expression"
             );
         }
-        return AstUnary(
+        return AstSingle(
             strcmp(op, "+") == 0 
                 ? AST_POSITIVE 
                 : strcmp(op, "-") == 0 
@@ -358,7 +378,7 @@ static Ast* _Unary(Parser* parser) {
                 "expected an expression"
             );
         }
-        return AstUnary(
+        return AstSingle(
             strcmp(op, "++") == 0 
                 ? AST_PRE_INC 
                 : AST_PRE_DEC,
@@ -366,7 +386,7 @@ static Ast* _Unary(Parser* parser) {
             MergePositions(operand->Position, operand->Position)
         );
     }
-    return _MemberOrCall(parser);
+    return _Postfix(parser);
 }
 
 static Ast* _Multiplicative(Parser* parser) {

@@ -68,27 +68,30 @@ try {
 println("Dec>>");
 
 fn runnable(local) {
-   println("Hello!");
-   return fn() {
+    println("Hello!");
+    return fn() {
         const a = 2 << 2;
         println("Word!", a, local + local);
-   };
+    };
 }
 
 runnable(69420)();
-runnable(69420)();
+runnable(69421)();
 
 const obj = {
-    name: "Test Object",
-    value: 123,
-    ...({
-        extra: "Extra Value",
-        number: 456
-    }),  
-    name: "Doy2x",
-    runnable
+    value: 123
 };
 
 println(obj);
-++obj.value + 23 - 1;
+++obj["value"] + 23 - 1;
 println(obj);
+
+
+println(obj);
+println(obj.value++ + 23 - 1);
+println(obj, 2, 3, 2);
+
+var hhj = 0;
+
+println(hhj++);
+println(hhj, obj.value, obj["value"]);

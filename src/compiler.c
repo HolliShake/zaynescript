@@ -360,7 +360,10 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                         v = k->B;
                         _Expression(compiler, uf, scope, v);
                         _EmitString(compiler, uf, OP_LOAD_STRING, k->Value);
-                        if (hasSpread) _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
+                        if (hasSpread) {
+                            _Emit(compiler, uf, OP_ROT2);
+                            _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
+                        }
                         break;
                     }
                     default: {
@@ -425,6 +428,18 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             FreeScope(fnScope);
             break;
         }
+        case AST_POST_INC: {
+            _AssignOpRhs(compiler, uf, scope, node->A, true);
+            _Emit(compiler, uf, OP_POSTINC);
+            _AssignOpLhs(compiler, uf, scope, node->A, true);
+            break;
+        }
+        case AST_POST_DEC: {
+            _AssignOpRhs(compiler, uf, scope, node->A, true);
+            _Emit(compiler, uf, OP_POSTDEC);
+            _AssignOpLhs(compiler, uf, scope, node->A, true);
+            break;
+        }
         case AST_PRE_INC: {
             _AssignOpRhs(compiler, uf, scope, node->A, false);
             _Emit(compiler, uf, OP_INC);
@@ -437,6 +452,22 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             _Emit(compiler, uf, OP_DEC);
             _Emit(compiler, uf, OP_DUPTOP);
             _AssignOpLhs(compiler, uf, scope, node->A, false);
+            break;
+        }
+        case AST_MEMBER: {
+            Ast* objc = node->A;
+            Ast* attr = node->B;
+            _Expression(compiler, uf, scope, objc);
+            _EmitString(compiler, uf, OP_LOAD_STRING, attr->Value);
+            _Emit(compiler, uf, OP_OBJECT_GET_ATTRIBUTE);
+            break;
+        }
+        case AST_INDEX: {
+            Ast* objc = node->A;
+            Ast* indx = node->B;
+            _Expression(compiler, uf, scope, objc);
+            _Expression(compiler, uf, scope, indx);
+            _Emit(compiler, uf, OP_OBJECT_GET_ATTRIBUTE);
             break;
         }
         case AST_CALL: {
@@ -942,6 +973,7 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
             _EmitString(compiler, uf, OP_LOAD_STRING, att->Value);
             _Expression(compiler, uf, scope, rhs);
             _Emit(compiler, uf, OP_DUPTOP);
+            _Emit(compiler, uf, OP_ROT4);
             _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
             _Emit(compiler, uf, OP_POPTOP); // Pops object
             break;
@@ -954,6 +986,7 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
             _Expression(compiler, uf, scope, idx);
             _Expression(compiler, uf, scope, rhs);
             _Emit(compiler, uf, OP_DUPTOP);
+            _Emit(compiler, uf, OP_ROT4);
             _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
             _Emit(compiler, uf, OP_POPTOP); // Pops object
             break;
@@ -971,26 +1004,28 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
 
 static void _AssignOpRhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* rhs, bool postfix) {
     switch (rhs->Type) {
+        case AST_NAME: {
+            _Expression(compiler, uf, scope, rhs);
+            break;
+        }
         case AST_INDEX: {
-            // bot [obj, key, val] top
+            // bot [obj, key, obj, key, val] top
             Ast* obj = rhs->A;
             Ast* att = rhs->B;
             _Expression(compiler, uf, scope, obj);
             _Expression(compiler, uf, scope, att);
             _Emit(compiler, uf, OP_DUP2);
             _Emit(compiler, uf, OP_OBJECT_GET_ATTRIBUTE);
-            if (postfix) _Emit(compiler, uf, OP_ROT3);
             break;
         }
         case AST_MEMBER: {
-            // bot [obj, key, val] top
+            // bot [obj, key, obj, key,val] top
             Ast* obj = rhs->A;
             Ast* att = rhs->B;
             _Expression(compiler, uf, scope, obj);
             _EmitString(compiler, uf, OP_LOAD_STRING, att->Value);
             _Emit(compiler, uf, OP_DUP2);
             _Emit(compiler, uf, OP_OBJECT_GET_ATTRIBUTE);
-            if (postfix) _Emit(compiler, uf, OP_ROT3);
             break;
         }
         default: {
@@ -1006,11 +1041,77 @@ static void _AssignOpRhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
 
 static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* lhs, bool postfix) {
     switch (lhs->Type) {
+        case AST_NAME: {
+            if (postfix) {
+                _Emit(compiler, uf, OP_ROT2);
+            }
+            if (!ScopeHasName(scope, lhs->Value)) {
+                ThrowError(
+                    compiler->Parser->Lexer->Path, 
+                    compiler->Parser->Lexer->Data, 
+                    lhs->Position, 
+                    "variable not found"
+                );
+            }
+            Symbol* symbol = ScopeGetSymbol(scope, lhs->Value, true);
+            if (symbol->IsGlobal) {
+                // Global variable
+                _EmitArg(
+                    compiler, 
+                    uf, 
+                    OP_STORE_NAME,
+                    symbol->Offset
+                );
+            } else {
+                if (ScopeInside(scope, SCOPE_FUNCTION_CLOSURE) && !ScopeIsLocalToFnClosure(scope, lhs->Value)) {
+                    int captureOffset = 0;
+                    if (!ScopeHasCapture(scope, lhs->Value)) {
+                        captureOffset = UserFunctionAddCapture(
+                            uf, 
+                            symbol->IsGlobal, 
+                            symbol->Offset, 
+                            captureOffset
+                        );
+                        ScopeSetCapture(
+                            scope, 
+                            lhs->Value, 
+                            false, 
+                            true, 
+                            false, 
+                            captureOffset
+                        );
+                    } else {
+                        Symbol* captureSymbol = ScopeGetCapture(scope, lhs->Value, false);
+                        captureOffset = captureSymbol->Offset;
+                    }
+
+                    // Capture the variable
+                    _EmitArg(
+                        compiler, 
+                        uf, 
+                        OP_STORE_CAPTURE,
+                        captureOffset
+                    );
+                } else {
+                    _EmitArg(
+                        compiler, 
+                        uf, 
+                        OP_STORE_LOCAL,
+                        symbol->Offset
+                    );
+                }
+            }
+            break;
+        }
         case AST_INDEX:
         case AST_MEMBER: {
             // bot [obj, key, val, val] top
-            // After rotate:
+            // After rotate4:
             // bot [val, obj, key, val] top
+            // postfix:
+            // bot [obj, key, val, old] top
+            // after rotate4:
+            // bot [old, obj, key, val] top
             _Emit(compiler, uf, OP_ROT4);
             _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
             _Emit(compiler, uf, OP_POPTOP); // Pops object
@@ -1165,6 +1266,9 @@ static void _ImportStatement(Compiler* compiler, UserFunction* uf, Scope* scope,
 
         imports = imports->Next;
     }
+
+    // Pop the module object
+    _Emit(compiler, uf, OP_POPTOP);
 }
 
 static void _VarDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
