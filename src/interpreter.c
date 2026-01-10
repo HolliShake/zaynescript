@@ -23,6 +23,7 @@ Interpreter* CreateInterpreter() {
 
 #define Push(value) (interpreter->Stacks[interpreter->StackC++] = value)
 #define Popp() (interpreter->Stacks[--interpreter->StackC])
+#define PopN(n) (interpreter->Stacks[interpreter->StackC -= (n)])
 #define Peek() (interpreter->Stacks[interpreter->StackC  - 1])
 
 #define PushEH(addr) (interpreter->ExceptionHandlerStacks[interpreter->ExceptionHandlerStackC++] = addr)
@@ -171,6 +172,43 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 free(str);
                 break;
             }
+            case OP_ARRAY_EXTEND: {
+                Value* ext = Popp();
+                Value* arr = Peek();
+                if (!ValueIsArray(ext)) {
+                    HandleError(
+                        "expected array to extend to be an array, got %s", 
+                        ValueTypeOf(ext)
+                    );
+                }
+                ArrayExtend((Array*)arr->Value.Opaque, (Array*)ext->Value.Opaque);
+                break;
+            }
+            case OP_ARRAY_PUSH: {
+                Value* val = Popp();
+                Value* arr = Peek();
+                if (!ValueIsArray(arr)) {
+                    HandleError(
+                        "expected array to push to be an array, got %s", 
+                        ValueTypeOf(arr)
+                    );
+                }
+                ArrayPush((Array*)arr->Value.Opaque, val);
+                break;
+            }
+            case OP_ARRAY_MAKE: {
+                int size     = _ReadOffset(uf->Codes, ip);
+                Value* arr   = NewArrayValue(interpreter);
+                Array* array = (Array*) arr->Value.Opaque;
+                for (int i = 0; i < size; i++) {
+                    Value* v = interpreter->Stacks[interpreter->StackC - size + i];
+                    ArrayPush(array, v);
+                }
+                PopN(size);
+                Push(arr);
+                Forward(4);
+                break;
+            }
             case OP_OBJECT_EXTEND: {
                 Value* ext = Popp();
                 Value* obj = Peek();
@@ -183,7 +221,37 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 HashMapExtend((HashMap*)obj->Value.Opaque, (HashMap*)ext->Value.Opaque);
                 break;
             }
-            case OP_OBJECT_SET_ATTRIBUTE: {
+            case OP_OBJECT_MAKE: {
+                int size     = _ReadOffset(uf->Codes, ip);
+                Value* obj   = NewObjectValue(interpreter);
+                HashMap* map = (HashMap*) obj->Value.Opaque;
+                for (int i = 0; i < size; i++) {
+                    Value* k = Popp();
+                    Value* v = Popp();
+                    HashMapSet(map, ValueToString(k), v);
+                }
+                Push(obj);
+                Forward(4);
+                break;
+            }
+            case OP_OBJECT_PLUCK_ATTRIBUTE: {
+                str = _ReadString(uf->Codes, ip);
+                Value* object = Peek();
+                
+                HashMap* map = (HashMap*) object->Value.Opaque;
+
+                if (!HashMapContains(map, str)) {
+                    Panic("Object does not have attribute '%s'\n", str);
+                }
+                res = HashMapGet(map, str);
+
+                Push(res);
+                Forward(strlen(str) + 1);
+                free(str);
+                str = NULL;
+                break;
+            }
+            case OP_SET_INDEX: {
                 Value* val = Popp();
                 Value* key = Popp();
                 Value* obj = Peek();
@@ -196,7 +264,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 HashMapSet((HashMap*)obj->Value.Opaque, ValueToString(key), val);
                 break;
             }
-            case OP_OBJECT_GET_ATTRIBUTE: {
+            case OP_GET_INDEX: {
                 Value* key = Popp();
                 Value* obj = Popp();
                 if (!ValueIsObject(obj))
@@ -215,19 +283,6 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 Push(res);
                 break;
             }
-            case OP_OBJECT_MAKE: {
-                int size     = _ReadOffset(uf->Codes, ip);
-                Value* obj   = NewObjectValue(interpreter);
-                HashMap* map = (HashMap*) obj->Value.Opaque;
-                for (int i = 0; i < size; i++) {
-                    Value* k = Popp();
-                    Value* v = Popp();
-                    HashMapSet(map, ValueToString(k), v);
-                }
-                Push(obj);
-                Forward(4);
-                break;
-            }
             case OP_LOAD_FUNCTION_CLOSURE:
             case OP_LOAD_FUNCTION: {
                 offset = _ReadOffset(uf->Codes, ip);
@@ -235,23 +290,6 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 DoLoadFunction(interpreter, rootEnvObj, envObj, offset, opcode == OP_LOAD_FUNCTION_CLOSURE, &res);
                 Push(res);
                 Forward(4);
-                break;
-            }
-            case OP_PLUCK_ATTRIBUTE: {
-                str = _ReadString(uf->Codes, ip);
-                Value* object = Peek();
-                
-                HashMap* map = (HashMap*) object->Value.Opaque;
-
-                if (!HashMapContains(map, str)) {
-                    Panic("Object does not have attribute '%s'\n", str);
-                }
-                res = HashMapGet(map, str);
-
-                Push(res);
-                Forward(strlen(str) + 1);
-                free(str);
-                str = NULL;
                 break;
             }
             case OP_CALL: {

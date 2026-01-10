@@ -328,6 +328,35 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             );
             break;
         }
+        case AST_LIST_LITERAL: {
+            Ast* elements  = node->A;
+            bool hasSpread = false;
+            int count = 0;
+            while (elements != NULL) {
+                switch (elements->Type) {
+                    case AST_SPREAD: {
+                        if (!hasSpread) {
+                            // Emit array with number if elements
+                            _EmitArg(compiler, uf, OP_ARRAY_MAKE, count);
+                        }
+                        count = 0;
+                        hasSpread = true;
+                        _Expression(compiler, uf, scope, elements->A);
+                        _Emit(compiler, uf, OP_ARRAY_EXTEND);
+                        break;
+                    }
+                    default: {
+                        if (!hasSpread) ++count;
+                        _Expression(compiler, uf, scope, elements);
+                        if (hasSpread) _Emit(compiler, uf, OP_ARRAY_PUSH);
+                        break;
+                    }
+                }
+                elements = elements->Next;
+            }
+            if (!hasSpread) _EmitArg(compiler, uf, OP_ARRAY_MAKE, count);
+            break;
+        }
         case AST_OBJECT_LITERAL: {
             Ast* properties = node->A, *k = NULL, *v = NULL;
             bool hasSpread = false;
@@ -351,7 +380,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                         v = properties;
                         _Expression(compiler, uf, scope, v);
                         _EmitString(compiler, uf, OP_LOAD_STRING, k->Value);
-                        if (hasSpread) _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
+                        if (hasSpread) _Emit(compiler, uf, OP_SET_INDEX);
                         break;
                     }
                     case AST_OBJECT_KEY_VAL: {
@@ -362,7 +391,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                         _EmitString(compiler, uf, OP_LOAD_STRING, k->Value);
                         if (hasSpread) {
                             _Emit(compiler, uf, OP_ROT2);
-                            _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
+                            _Emit(compiler, uf, OP_SET_INDEX);
                         }
                         break;
                     }
@@ -459,7 +488,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             Ast* attr = node->B;
             _Expression(compiler, uf, scope, objc);
             _EmitString(compiler, uf, OP_LOAD_STRING, attr->Value);
-            _Emit(compiler, uf, OP_OBJECT_GET_ATTRIBUTE);
+            _Emit(compiler, uf, OP_GET_INDEX);
             break;
         }
         case AST_INDEX: {
@@ -467,7 +496,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             Ast* indx = node->B;
             _Expression(compiler, uf, scope, objc);
             _Expression(compiler, uf, scope, indx);
-            _Emit(compiler, uf, OP_OBJECT_GET_ATTRIBUTE);
+            _Emit(compiler, uf, OP_GET_INDEX);
             break;
         }
         case AST_CALL: {
@@ -982,7 +1011,7 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
             _Expression(compiler, uf, scope, rhs);
             _Emit(compiler, uf, OP_DUPTOP);
             _Emit(compiler, uf, OP_ROT4);
-            _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
+            _Emit(compiler, uf, OP_SET_INDEX);
             _Emit(compiler, uf, OP_POPTOP); // Pops object
             break;
         }
@@ -995,7 +1024,7 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
             _Expression(compiler, uf, scope, rhs);
             _Emit(compiler, uf, OP_DUPTOP);
             _Emit(compiler, uf, OP_ROT4);
-            _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
+            _Emit(compiler, uf, OP_SET_INDEX);
             _Emit(compiler, uf, OP_POPTOP); // Pops object
             break;
         }
@@ -1023,7 +1052,7 @@ static void _AssignOpRhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
             _Expression(compiler, uf, scope, obj);
             _Expression(compiler, uf, scope, att);
             _Emit(compiler, uf, OP_DUP2);
-            _Emit(compiler, uf, OP_OBJECT_GET_ATTRIBUTE);
+            _Emit(compiler, uf, OP_GET_INDEX);
             break;
         }
         case AST_MEMBER: {
@@ -1033,7 +1062,7 @@ static void _AssignOpRhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
             _Expression(compiler, uf, scope, obj);
             _EmitString(compiler, uf, OP_LOAD_STRING, att->Value);
             _Emit(compiler, uf, OP_DUP2);
-            _Emit(compiler, uf, OP_OBJECT_GET_ATTRIBUTE);
+            _Emit(compiler, uf, OP_GET_INDEX);
             break;
         }
         default: {
@@ -1129,7 +1158,7 @@ static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
             // after rotate4:
             // bot [old, obj, key, val] top
             _Emit(compiler, uf, OP_ROT4);
-            _Emit(compiler, uf, OP_OBJECT_SET_ATTRIBUTE);
+            _Emit(compiler, uf, OP_SET_INDEX);
             _Emit(compiler, uf, OP_POPTOP); // Pops object
             break;
         }
@@ -1265,7 +1294,7 @@ static void _ImportStatement(Compiler* compiler, UserFunction* uf, Scope* scope,
     while (imports != NULL) {
         String attributeName = imports->Value;
 
-        _EmitString(compiler, uf, OP_PLUCK_ATTRIBUTE, attributeName);
+        _EmitString(compiler, uf, OP_OBJECT_PLUCK_ATTRIBUTE, attributeName);
 
         if (ScopeHasLocal(scope, attributeName)) {
             ThrowError(

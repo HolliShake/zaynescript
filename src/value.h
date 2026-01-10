@@ -1,3 +1,4 @@
+#include "./array.h"
 #include "./function.h"
 #include "./global.h"
 #include "./hashmap.h"
@@ -81,6 +82,14 @@ Value* NewNativeFunctionValue(Interpreter* interpreter, NativeFunctionMeta* nati
  * @return Pointer to newly allocated Value structure containing the environment
  */
 Value* NewEnvironmentValue(Interpreter* interpreter, Environment* environment);
+
+/**
+ * @brief Creates a new array value
+ * 
+ * @param interpreter Pointer to the interpreter instance
+ * @return Pointer to newly allocated Value structure containing the array
+ */
+Value* NewArrayValue(Interpreter* interpreter);
 
  /**
   * @brief Creates a new object value
@@ -177,6 +186,14 @@ bool ValueIsNativeFunction(Value* value);
  * @return true if the value is callable, false otherwise
  */
 bool ValueIsCallable(Value* value);
+
+/**
+ * @brief Checks if a value is an array
+ * 
+ * @param value Pointer to the Value to check
+ * @return true if the value is an array, false otherwise
+ */
+bool ValueIsArray(Value* value);
 
 /**
  * @brief Checks if a value is an object

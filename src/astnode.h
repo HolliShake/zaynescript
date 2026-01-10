@@ -57,15 +57,6 @@ Ast* AstBool(bool value, Position position);
 Ast* AstNull(Position position);
 
 /**
- * AstObjectKeyVal - Creates an AST node representing a key-value pair in an object
- * @key: Pointer to the key AST node
- * @position: Source code location information
- *
- * Return: Pointer to newly allocated AST_OBJECT_KEY_VAL node
- */
-Ast* AstObjectKeyVal(Ast* key, Position position);
-
-/**
  * AstSpread - Creates an AST node representing a spread operator
  * @expression: Pointer to the expression AST node
  * @position: Source code location information
@@ -73,6 +64,24 @@ Ast* AstObjectKeyVal(Ast* key, Position position);
  * Return: Pointer to newly allocated AST_SPREAD_OPERATOR node
  */
 Ast* AstSpread(Ast* expression, Position position);
+
+/**
+ * AstListLiteral - Creates an AST node representing a list literal
+ * @elements: Pointer to AST node containing the list elements
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_LIST_LITERAL node
+ */
+Ast* AstListLiteral(Ast* elements, Position position);
+
+/**
+ * AstObjectKeyVal - Creates an AST node representing a key-value pair in an object
+ * @key: Pointer to the key AST node
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_OBJECT_KEY_VAL node
+ */
+Ast* AstObjectKeyVal(Ast* key, Position position);
 
 /**
  * AstObjectLiteral - Creates an AST node representing an object literal

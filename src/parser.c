@@ -127,12 +127,14 @@ static Ast* _Terminal(Parser* parser) {
 
 static Ast* _ListOfStatements(Parser* parser);
 
+static Ast* _List(Parser* parser);
 static Ast* _Object(Parser* parser);
-
 static Ast* _FunctionExpression(Parser* parser);
 
 static Ast* _Group(Parser* parser) {
-    if (CHECKTV("{")) {
+    if (CHECKTV("[")) {
+        return _List(parser);
+    } else if (CHECKTV("{")) {
         return _Object(parser);
     } else if (CHECKTV("(")) {
         ACCEPTV_FREE("(");
@@ -151,6 +153,61 @@ static Ast* _Group(Parser* parser) {
         return _FunctionExpression(parser);
     }
     return _Terminal(parser);
+}
+
+static Ast* _ListElement(Parser* parser) {
+    if (CHECKTV("...")) {
+        ACCEPTV_FREE("...");
+        Ast* spreadValue = _Expression(parser);
+        if (spreadValue == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                parser->Next.Position, 
+                "expected an expression after spread operator"
+            );
+        }
+        return AstSpread(
+            spreadValue, 
+            spreadValue->Position
+        );
+    }
+
+    return _Expression(parser);
+}
+
+static Ast* _List(Parser* parser) {
+    Position start = parser->Next.Position, ended = start;
+    ACCEPTV_FREE("[");
+    
+    Ast* head = NULL;
+    Ast* tail = NULL;
+    
+    Ast* element = _ListElement(parser);
+    if (element != NULL) {
+        head = element;
+        tail = element;
+        
+        while (CHECKTV(",")) {
+            ACCEPTV_FREE(",");
+            element = _ListElement(parser);
+            if (element == NULL) {
+                ThrowError(
+                    parser->Lexer->Path, 
+                    parser->Lexer->Data, 
+                    tail->Position, 
+                    "expected list element after comma"
+                );
+            }
+            tail->Next = element;
+            tail = element;
+        }
+    }
+    
+    ended = parser->Next.Position;
+    ACCEPTV_FREE("]");
+    
+    return AstListLiteral(head, MergePositions(start, ended));
 }
 
 static Ast*_ObjectElement(Parser* parser) {

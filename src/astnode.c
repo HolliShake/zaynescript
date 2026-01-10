@@ -56,6 +56,12 @@ Ast* AstSpread(Ast* expression, Position position) {
     return ast;
 }
 
+Ast* AstListLiteral(Ast* elements, Position position) {
+    Ast* ast = InitAst(AST_LIST_LITERAL, position);
+    ast->A   = elements;
+    return ast;
+}
+
 Ast* AstObjectKeyVal(Ast* key, Position position) {
     Ast* ast = InitAst(AST_OBJECT_KEY_VAL, position);
     ast->A   = key;

@@ -1,4 +1,5 @@
 #include "./decompiler.h"
+#include "global.h"
 
 extern String ValueToString(Value* value);
 
@@ -107,7 +108,7 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
                 ip += 4;
                 break;
             }
-            case OP_PLUCK_ATTRIBUTE: {
+            case OP_OBJECT_PLUCK_ATTRIBUTE: {
                 String str = _ReadString(uf->Codes, ip);
                 _AppendFmt(&result, "OP_PLUCK_ATTRIBUTE \"%s\"\n", str);
                 ip += strlen(str) + 1;

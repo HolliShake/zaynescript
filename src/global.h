@@ -185,6 +185,7 @@ typedef enum ast_type_enum {
     AST_BOOL,
     AST_NULL,
     AST_SPREAD,
+    AST_LIST_LITERAL,
     AST_OBJECT_KEY_VAL,
     AST_OBJECT_LITERAL,
     AST_MEMBER,
@@ -277,13 +278,16 @@ typedef enum opcode_enum {
     OP_LOAD_BOOL,  // with 4 bytes arg
     OP_LOAD_NULL,
     OP_LOAD_STRING,
+    OP_ARRAY_EXTEND,
+    OP_ARRAY_PUSH,
+    OP_ARRAY_MAKE,
     OP_OBJECT_EXTEND,
+    OP_OBJECT_PLUCK_ATTRIBUTE,
     OP_OBJECT_MAKE,
-    OP_OBJECT_SET_ATTRIBUTE,
-    OP_OBJECT_GET_ATTRIBUTE,
+    OP_SET_INDEX,
+    OP_GET_INDEX,
     OP_LOAD_FUNCTION_CLOSURE,
     OP_LOAD_FUNCTION,
-    OP_PLUCK_ATTRIBUTE,
     OP_CALL,
     OP_MUL,
     OP_DIV,
@@ -454,6 +458,16 @@ typedef struct environment_struct {
     EnvCell**    Locals;
     int          LocalC;
 } Environment;
+
+/**
+ * @typedef array_struct
+ * @brief Forward declaration of Array structure
+ */
+typedef struct array_struct {
+    void** Items;
+    size_t Capacity;
+    size_t Count;
+} Array;
 
 /**
  * @brief Forward declaration of HashNode structure

@@ -94,3 +94,11 @@ var hhj = 0;
 
 println(hhj++);
 println(hhj, obj.value, obj["value"]);
+
+fn inc() {
+    hhj++;
+}
+
+inc();
+
+println(hhj, [1, 2, 3, ...[4,5,6], 7, 8, 9]);

@@ -67,6 +67,12 @@ Value* NewEnvironmentValue(Interpreter* interpreter, Environment* environment) {
     return v;
 }
 
+Value* NewArrayValue(Interpreter* interpreter) {
+    Value* v = _CreateValue(interpreter, VT_ARRAY);
+    v->Value.Opaque = CreateArray();
+    return v;
+}
+
 Value* NewObjectValue(Interpreter* interpreter) {
     Value* v = _CreateValue(interpreter, VT_OBJECT);
     v->Value.Opaque = CreateHashMap(16);
@@ -127,6 +133,8 @@ String ValueToString(Value* value) {
             return AllocateString("function");
         case VT_ENVIRONMENT:
             return AllocateString("environment");
+        case VT_ARRAY:
+            return ArrayToString((Array*) value->Value.Opaque);
         case VT_OBJECT:
             return HashMapToString((HashMap*) value->Value.Opaque);
         case VT_CLASS:
@@ -158,6 +166,8 @@ String ValueTypeOf(Value* value) {
             return "native function";
         case VT_ENVIRONMENT:
             return "environment";
+        case VT_ARRAY:
+            return "array";
         case VT_OBJECT:
             return "object";
         case VT_CLASS:
@@ -181,6 +191,17 @@ bool ValueToBool(Value* value) {
             return !!(value->Value.I32);
         case VT_NULL:
             return false;
+        case VT_USER_FUNCTION:
+        case VT_NATV_FUNCTION:
+        case VT_ENVIRONMENT: {
+            return true;
+        }
+        case VT_ARRAY: {
+            return (((Array*)value->Value.Opaque)->Count > 0);
+        }
+        case VT_OBJECT: {
+            return (((HashMap*)value->Value.Opaque)->Count > 0);
+        }
         default:
             printf("ValueToBool: Unknown value type: %d\n", value->Type);
             return false;
@@ -217,6 +238,10 @@ bool ValueIsNativeFunction(Value* value) {
 
 bool ValueIsCallable(Value* value) {
     return ValueIsUserFunction(value) || ValueIsNativeFunction(value);
+}
+
+bool ValueIsArray(Value* value) {
+    return value->Type == VT_ARRAY;
 }
 
 bool ValueIsObject(Value* value) {
