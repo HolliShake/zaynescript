@@ -1,4 +1,5 @@
 #include "./gc.h"
+#include "global.h"
 #include <stdio.h>
 
 extern String ValueToString(Value* value);
@@ -16,6 +17,18 @@ static void _Free(Value* value) {
                 value->Value.Opaque = NULL;
             }
             break;
+        case VT_ARRAY: {
+            Array* array = (Array*) value->Value.Opaque;
+            if (array != NULL) {
+                if (array->Items != NULL) {
+                    free(array->Items);
+                    array->Items = NULL;
+                }
+                free(array);
+                value->Value.Opaque = NULL;
+            }
+            break;
+        }
         case VT_OBJECT:
             if (value->Value.Opaque != NULL) {
                 // Note: deeply freeing HashMap keys/values would require more logic
@@ -98,6 +111,15 @@ void Mark(Value* value) {
     }
     value->Marked = 1;
     switch (value->Type) {
+        case VT_ARRAY: {
+            Array* array = (Array*) value->Value.Opaque;
+            if (array != NULL) {
+                for (size_t i = 0; i < array->Count; i++) {
+                    Mark(array->Items[i]);
+                }
+            }
+            break;
+        }
         case VT_OBJECT: {
             HashMap* hashMap = (HashMap*) value->Value.Opaque;
             if (hashMap != NULL) {

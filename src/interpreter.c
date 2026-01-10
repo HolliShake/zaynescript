@@ -28,6 +28,7 @@ Interpreter* CreateInterpreter() {
 
 #define PushEH(addr) (interpreter->ExceptionHandlerStacks[interpreter->ExceptionHandlerStackC++] = addr)
 #define PoppEH() (interpreter->ExceptionHandlerStacks[--interpreter->ExceptionHandlerStackC])
+#define PopNEH(n) (interpreter->ExceptionHandlerStacks[interpreter->ExceptionHandlerStackC -= (n)])
 #define PeekEH() (interpreter->ExceptionHandlerStacks[interpreter->ExceptionHandlerStackC - 1])
 
 #define DumpFrame() do { \
@@ -648,6 +649,12 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             }
             case OP_POP_TRY: {
                 PoppEH();
+                break;
+            }
+            case OP_POPN_TRY: {
+                offset = _ReadOffset(uf->Codes, ip);
+                PopNEH(offset);
+                Forward(4);
                 break;
             }
             case OP_JUMP_IF_FALSE_OR_POP: {

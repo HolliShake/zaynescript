@@ -219,6 +219,17 @@ Scope* ScopeGetFirst(Scope* scope, ScopeType type) {
     return NULL;
 }
 
+int ScopeCountNested(Scope* scope, ScopeType type) {
+    int count = 0;
+    while (scope != NULL) {
+        if (scope->Type == type) {
+            count++;
+        }
+        scope = scope->Parent;
+    }
+    return count;
+}
+
 void FreeScope(Scope* scope) {
     if (scope == NULL) {
         return;

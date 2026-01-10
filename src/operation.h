@@ -1,6 +1,6 @@
+#include "./core/io.h"
 #include "./global.h"
 #include "./gc.h"
-#include "./io.h"
 #include "./value.h"
 
 #ifndef OPERATION_H

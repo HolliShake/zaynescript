@@ -1640,8 +1640,10 @@ static void _ContinueStatement(Compiler* compiler, UserFunction* uf, Scope* scop
         );
     }
     if (ScopeInside(scope, SCOPE_TRY_BLOCK)) {
+        int n = ScopeCountNested(scope, SCOPE_TRY_BLOCK);
         // Pop try blocks until we exit the try block
-        _Emit(compiler, uf, OP_POP_TRY);
+        if (n == 1) _Emit(compiler, uf, OP_POP_TRY);
+        else _EmitArg(compiler, uf, OP_POPN_TRY, n);
     }
     int offset = _EmitJumpTo(compiler, uf, OP_JUMP);
     ScopeAddContinueJump(scope, offset);
@@ -1657,8 +1659,10 @@ static void _BreakStatement(Compiler* compiler, UserFunction* uf, Scope* scope, 
         );
     }
     if (ScopeInside(scope, SCOPE_TRY_BLOCK)) {
+        int n = ScopeCountNested(scope, SCOPE_TRY_BLOCK);
         // Pop try blocks until we exit the try block
-        _Emit(compiler, uf, OP_POP_TRY);
+        if (n == 1) _Emit(compiler, uf, OP_POP_TRY);
+        else _EmitArg(compiler, uf, OP_POPN_TRY, n);
     }
     int offset = _EmitJumpTo(compiler, uf, OP_JUMP);
     ScopeAddBreakJump(scope, offset);
@@ -1680,8 +1684,10 @@ static void _ReturnStatement(Compiler* compiler, UserFunction* uf, Scope* scope,
     }
 
     if (ScopeInside(scope, SCOPE_TRY_BLOCK)) {
+        int n = ScopeCountNested(scope, SCOPE_TRY_BLOCK);
         // Pop try blocks until we exit the try block
-        _Emit(compiler, uf, OP_POP_TRY);
+        if (n == 1) _Emit(compiler, uf, OP_POP_TRY);
+        else _EmitArg(compiler, uf, OP_POPN_TRY, n);
     }
 
     if (node->A != NULL) _Expression(compiler, uf, scope, node->A);

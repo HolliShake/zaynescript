@@ -1,5 +1,4 @@
 #include "./io.h"
-#include "global.h"
 
 
 static Value* _IoGenericPrint(Interpreter* interpeter, int argc, Value** arguments, bool newline) {

@@ -1,6 +1,6 @@
-#include "./function.h"
-#include "./global.h"
-#include "./value.h"
+#include "../function.h"
+#include "../global.h"
+#include "../value.h"
 
 #ifndef IO_H
 #define IO_H

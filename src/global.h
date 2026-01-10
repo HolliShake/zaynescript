@@ -320,6 +320,7 @@ typedef enum opcode_enum {
     OP_ROT4,
     OP_SETUP_TRY,
     OP_POP_TRY,
+    OP_POPN_TRY,
     OP_JUMP_IF_FALSE_OR_POP,
     OP_JUMP_IF_TRUE_OR_POP,
     OP_POP_JUMP_IF_FALSE,

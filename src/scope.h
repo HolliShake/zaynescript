@@ -168,6 +168,15 @@ Symbol* ScopeGetCapture(Scope* scope, String name, bool recurse);
 Scope* ScopeGetFirst(Scope* scope, ScopeType type);
 
 /**
+ * @brief Counts the number of nested scopes of a given type
+ * 
+ * @param scope Pointer to the scope to count nested scopes of the given type from
+ * @param type The type of scope to count
+ * @return Number of nested scopes of the given type
+ */
+int ScopeCountNested(Scope* scope, ScopeType type);
+
+/**
  * @brief Frees all memory associated with a scope
  * 
  * @param scope Pointer to the scope to free
