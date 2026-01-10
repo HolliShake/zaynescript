@@ -1000,29 +1000,32 @@ static Ast* _Function(Parser* parser) {
 static Ast* _ImportStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
     ACCEPTV_FREE(KEY_IMPORT);
-    ACCEPTV_FREE("{");
-    Ast* current = _ListOfExpressions(parser), *imports = current;
-    if (current == NULL) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            start, 
-            "expected a list of imports"
-        );
-    }
-    while (current != NULL) {
-        if (current->Type != AST_NAME) {
+    Ast* current = NULL, *imports = current;
+    if (CHECKTV("{")) {
+        ACCEPTV_FREE("{");
+        current = _ListOfExpressions(parser), imports = current;
+        if (current == NULL) {
             ThrowError(
                 parser->Lexer->Path, 
                 parser->Lexer->Data, 
-                current->Position, 
-                "expected an identifier or name"
+                start, 
+                "expected a list of imports"
             );
         }
-        current = current->Next;
+        while (current != NULL) {
+            if (current->Type != AST_NAME) {
+                ThrowError(
+                    parser->Lexer->Path, 
+                    parser->Lexer->Data, 
+                    current->Position, 
+                    "expected an identifier or name"
+                );
+            }
+            current = current->Next;
+        }
+        ACCEPTV_FREE("}");
+        ACCEPTV_FREE(KEY_FROM);
     }
-    ACCEPTV_FREE("}");
-    ACCEPTV_FREE(KEY_FROM);
     Ast* moduleName = _Terminal(parser);
     if (moduleName == NULL) {
         ThrowError(

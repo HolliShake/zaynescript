@@ -1,4 +1,5 @@
 #include "./decompiler.h"
+#include "./interpreter.h"
 #include "global.h"
 
 extern String ValueToString(Value* value);

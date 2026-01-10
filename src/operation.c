@@ -35,6 +35,9 @@ int DoImportCore(Interpreter* interp, String moduleName, Value** out) {
     if (strcmp(moduleName, "io") == 0) {
         *out = LoadCoreIo(interp);
         return 0;
+    } else if (strcmp(moduleName, "math") == 0) {
+        *out = LoadCoreMath(interp);
+        return 0;
     }
     printf("Unknown core module: %s\n", moduleName);
     exit(EXIT_FAILURE);

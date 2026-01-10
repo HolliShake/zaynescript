@@ -1,4 +1,5 @@
 import { println, scan, parseNum } from "core:io";
+import "core:math";
 
 var x = parseNum(scan("input> "));
 
@@ -102,3 +103,5 @@ fn inc() {
 inc();
 
 println(hhj, [1, 2, 3, ...[4,5,6], 7, 8, 9]);
+
+println(math);

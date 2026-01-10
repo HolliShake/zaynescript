@@ -1,4 +1,5 @@
 #include "./core/io.h"
+#include "./core/math.h"
 #include "./global.h"
 #include "./gc.h"
 #include "./value.h"
