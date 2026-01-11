@@ -1,5 +1,4 @@
 #include "./class.h"
-#include "global.h"
 
 UserClass* CreateUserClass(String name, Value* base) {
     UserClass* cls = Allocate(sizeof(UserClass));

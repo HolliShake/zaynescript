@@ -1,5 +1,4 @@
 #include "./value.h"
-#include "global.h"
 
 
 static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
@@ -109,8 +108,8 @@ String ValueToString(Value* value) {
                 // It's a whole number that fits in a long
                 snprintf(buffer, 64, "%ld", (long)num);
             } else {
-                // It's a fractional number, use %g to avoid trailing zeros
-                snprintf(buffer, 64, "%g", num);
+                // It's a fractional number, use %.15g for better precision
+                snprintf(buffer, 64, "%.15g", num);
             }
             return buffer;
         case VT_ERROR:

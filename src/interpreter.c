@@ -1,5 +1,4 @@
 #include "./interpreter.h" 
-#include "global.h"
 
 Interpreter* CreateInterpreter() {
     Interpreter* interpreter                = Allocate(sizeof(Interpreter));

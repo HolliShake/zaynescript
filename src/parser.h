@@ -8,23 +8,49 @@
 #define PARSER_H
 
 /**
- * @brief Initializes a new parser instance with the given lexer
+ * @file parser.h
+ * @brief Syntax analysis and Abstract Syntax Tree construction
+ * 
+ * This module provides functionality for parsing a stream of tokens into an
+ * Abstract Syntax Tree (AST). The parser performs syntax analysis according
+ * to the language grammar, constructing a hierarchical representation of the
+ * program structure that can be used for semantic analysis and code generation.
+ */
+
+/**
+ * @brief Creates a new parser instance
+ * 
+ * Allocates and initializes a Parser structure that will consume tokens from
+ * the provided lexer. The parser maintains state during the parsing process,
+ * including the current token position and error tracking.
  * 
  * @param lexer Pointer to the lexer that will provide the token stream
- * @return Parser* Pointer to newly allocated Parser structure
+ * @return Pointer to the newly created Parser structure, or NULL on allocation failure
  */
 Parser* CreateParser(Lexer* lexer);
 
 /**
  * @brief Parses the token stream and constructs an Abstract Syntax Tree
  * 
+ * Performs syntax analysis on the token stream provided by the parser's lexer,
+ * constructing an AST that represents the program structure. The parser validates
+ * that the token sequence conforms to the language grammar and reports syntax
+ * errors if invalid constructs are encountered.
+ * 
+ * The resulting AST can be traversed for semantic analysis, optimization, and
+ * code generation.
+ * 
  * @param parser Pointer to the parser instance to use for parsing
- * @return Ast* Pointer to the root Ast node representing the parsed program
+ * @return Pointer to the root Ast node representing the parsed program, or NULL on parse failure
  */
 Ast* Parse(Parser* parser);
 
 /**
  * @brief Frees all memory associated with a parser instance
+ * 
+ * Deallocates the Parser structure and any internal resources it holds.
+ * This does not free the lexer or the AST produced by Parse(); those must
+ * be freed separately by the caller.
  * 
  * @param parser Pointer to the parser instance to be freed
  */

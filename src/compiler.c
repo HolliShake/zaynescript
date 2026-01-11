@@ -1,9 +1,4 @@
 #include "./compiler.h"
-#include "global.h"
-#include <_mingw_mac.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
 
 #define PushArray(type, array, count, val, defaultValue) do { \
     (array)[(count)] = val; \

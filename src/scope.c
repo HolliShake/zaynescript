@@ -1,5 +1,4 @@
 #include "./scope.h"
-#include "global.h"
 
 Symbol* CreateSymbol(String name, bool isGlobal, bool isLocalToFn, bool isConstant, int offset) {
     Symbol* symbol       = Allocate(sizeof(Symbol));

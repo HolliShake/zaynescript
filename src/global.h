@@ -88,8 +88,12 @@ typedef int Rune;
 // -----------------------------------------------------------------------------
 
 /**
- * @typedef array_struct
- * @brief Forward declaration of Array structure.
+ * @struct array_struct
+ * @brief Dynamic array structure for storing generic pointers.
+ * 
+ * This structure provides a resizable array implementation that can store
+ * pointers to any type of data. It maintains both the current count of items
+ * and the allocated capacity.
  */
 typedef struct array_struct {
     void** Items;    /**< Pointer to the array of items */
@@ -98,7 +102,11 @@ typedef struct array_struct {
 } Array;
 
 /**
+ * @struct hashnode_struct
  * @brief Node structure for hash map entries.
+ * 
+ * Represents a single entry in a hash map bucket. Uses chaining for collision
+ * resolution through the Next pointer.
  */
 typedef struct hashnode_struct HashNode;
 struct hashnode_struct {
@@ -108,7 +116,11 @@ struct hashnode_struct {
 };
 
 /**
+ * @struct hashmap_struct
  * @brief Hash map structure for key-value storage.
+ * 
+ * Implements a hash table with separate chaining for collision resolution.
+ * Keys are strings and values are generic pointers.
  */
 typedef struct hashmap_struct {
     size_t    Size;    /**< Total number of buckets in the hash map */
@@ -123,6 +135,9 @@ typedef struct hashmap_struct {
 /**
  * @struct position_struct
  * @brief Tracks the location of a token or AST node in source code.
+ * 
+ * Stores both line and column information for the start and end positions
+ * of a token or syntax element. All values are 1-based.
  */
 typedef struct position_struct {
     int LineStart; /**< Starting line number (1-based) */
@@ -134,6 +149,8 @@ typedef struct position_struct {
 /**
  * @enum token_type_enum
  * @brief Enumeration of all possible token types in the language.
+ * 
+ * Defines the lexical token categories recognized by the lexer.
  */
 typedef enum token_type_enum {
     TK_KEY, /**< Keyword token */
@@ -148,6 +165,8 @@ typedef enum token_type_enum {
 /**
  * @struct token_struct
  * @brief Represents a single lexical token from source code.
+ * 
+ * Contains the token type, its string value, and its position in the source.
  */
 typedef struct token_struct {
     TokenType Type;     /**< The type of the token */
@@ -158,6 +177,9 @@ typedef struct token_struct {
 /**
  * @struct lexer_struct
  * @brief State machine for lexical analysis of source code.
+ * 
+ * Maintains the current position in the source file and provides
+ * tokenization functionality.
  */
 typedef struct lexer_struct {
     String Path; /**< Path to the source file being lexed */
@@ -170,6 +192,8 @@ typedef struct lexer_struct {
 /**
  * @struct parser_struct
  * @brief State machine for syntactic analysis of tokenized source code.
+ * 
+ * Consumes tokens from the lexer and builds an abstract syntax tree.
  */
 typedef struct parser_struct {
     Lexer* Lexer; /**< Pointer to the lexer instance */
@@ -183,6 +207,10 @@ typedef struct parser_struct {
 /**
  * @enum ast_type_enum
  * @brief Enumeration of all possible AST node types.
+ * 
+ * Defines the complete set of syntax tree node types representing
+ * all language constructs including statements, expressions, literals,
+ * and operators.
  */
 typedef enum ast_type_enum {
     AST_PROGRAM,              /**< Root program node */
@@ -263,6 +291,10 @@ typedef enum ast_type_enum {
 /**
  * @struct ast_struct
  * @brief Abstract Syntax Tree node representing parsed source code structure.
+ * 
+ * A flexible tree node structure that can represent any language construct.
+ * The meaning of child nodes (A, B, C, D) depends on the Type field.
+ * Nodes can be chained using the Next pointer for lists and sequences.
  */
 typedef struct ast_struct Ast;
 struct ast_struct {
@@ -283,6 +315,9 @@ struct ast_struct {
 /**
  * @enum value_type_enum
  * @brief Enumeration of all possible value types in the interpreter.
+ * 
+ * Defines the runtime type system including primitives, collections,
+ * functions, and objects.
  */
 typedef enum value_type_enum {
     VT_ERROR,          /**< Error value */
@@ -303,6 +338,10 @@ typedef enum value_type_enum {
 /**
  * @struct value_struct
  * @brief Runtime value structure for the interpreter.
+ * 
+ * Tagged union representing any runtime value. Uses a discriminated union
+ * to store different value types efficiently. Includes garbage collection
+ * metadata (Next pointer and Marked flag).
  */
 typedef struct value_struct Value;
 struct value_struct {
@@ -324,6 +363,11 @@ struct value_struct {
 /**
  * @enum opcode_enum
  * @brief Enumeration of all possible opcode types for the virtual machine.
+ * 
+ * Defines the complete instruction set for the bytecode interpreter.
+ * Instructions are organized by category: loading, array/object operations,
+ * function operations, arithmetic, comparison, control flow, and stack
+ * manipulation.
  */
 typedef enum opcode_enum {
     OP_IMPORT_CORE,                  /**< Import core library */
@@ -348,7 +392,7 @@ typedef enum opcode_enum {
     OP_GET_INDEX,                    /**< Get value at index */
     OP_LOAD_FUNCTION_CLOSURE,        /**< Load a function closure */
     OP_LOAD_FUNCTION,                /**< Load a function */
-    OP_CALL_CTOR,                   /**< Call a constructor */
+    OP_CALL_CTOR,                    /**< Call a constructor */
     OP_CALL,                         /**< Call a function */
     OP_MUL,                          /**< Multiply */
     OP_DIV,                          /**< Divide */
@@ -398,6 +442,9 @@ typedef enum opcode_enum {
 /**
  * @struct capture_meta_struct
  * @brief Metadata for captured variables in closures.
+ * 
+ * Describes how a variable from an outer scope is captured by a closure,
+ * including whether it's global and the source/destination indices.
  */
 typedef struct capture_meta_struct {
     bool IsGlobal; /**< True if capturing a global variable */
@@ -408,6 +455,9 @@ typedef struct capture_meta_struct {
 /**
  * @struct envcell_struct
  * @brief Represents a cell in the environment (variable storage).
+ * 
+ * A single variable slot in an environment. Tracks whether the variable
+ * has been captured by a closure to enable proper lifetime management.
  */
 typedef struct envcell_struct {
     Value* Value;      /**< Pointer to the value stored in the cell */
@@ -417,16 +467,22 @@ typedef struct envcell_struct {
 /**
  * @struct environment_struct
  * @brief Represents an execution environment (scope).
+ * 
+ * Contains the local variables for a function or block scope, along with
+ * a reference to the parent environment for lexical scoping.
  */
 typedef struct environment_struct {
-    Value*       Parent; /**< Pointer to the parent environment */
-    EnvCell**    Locals; /**< Array of local variable cells */
-    int          LocalC; /**< Count of local variables */
+    Value*    Parent; /**< Pointer to the parent environment */
+    EnvCell** Locals; /**< Array of local variable cells */
+    int       LocalC; /**< Count of local variables */
 } Environment;
 
 /**
  * @struct user_function_struct
  * @brief Represents a user-defined function in the interpreter.
+ * 
+ * Contains the compiled bytecode, parameter information, local variable
+ * count, and closure captures for a function defined in the source language.
  */
 typedef struct user_function_struct {
     Value*       ParentEnv;    /**< The environment where the function was defined */
@@ -443,6 +499,9 @@ typedef struct user_function_struct {
 /**
  * @struct symbol_struct
  * @brief Represents a symbol table entry in the compiler.
+ * 
+ * Tracks information about a variable or constant during compilation,
+ * including its scope, mutability, and memory location.
  */
 typedef struct symbol_struct {
     bool IsGlobal;    /**< True if symbol is global */
@@ -454,6 +513,9 @@ typedef struct symbol_struct {
 /**
  * @enum scope_type_enum
  * @brief Enumeration of all possible scope types.
+ * 
+ * Defines the different kinds of scopes that can exist during compilation,
+ * which affects variable resolution and control flow handling.
  */
 typedef enum scope_type_enum {
     SCOPE_GLOBAL,           /**< Global scope */
@@ -467,6 +529,10 @@ typedef enum scope_type_enum {
 /**
  * @struct scope_struct
  * @brief Represents a compilation scope.
+ * 
+ * Maintains symbol tables and control flow information during compilation.
+ * Scopes are nested and linked through the Parent pointer. Loop scopes
+ * track jump locations for break and continue statements.
  */
 typedef struct scope_struct Scope;
 struct scope_struct {
@@ -490,6 +556,9 @@ struct scope_struct {
 /**
  * @struct user_class_struct
  * @brief Represents a user-defined class in the interpreter.
+ * 
+ * Contains the class name, optional base class for inheritance, and
+ * separate hash maps for static and instance members.
  */
 typedef struct user_class_struct {
     String   Name;            /**< Class name */
@@ -501,6 +570,8 @@ typedef struct user_class_struct {
 /**
  * @struct class_instance_struct
  * @brief Represents an instance of a user-defined class.
+ * 
+ * Links to the class prototype and maintains instance-specific member values.
  */
 typedef struct class_instance_struct {
     Value*   Proto;   /**< Prototype class (must be UserClass) */
@@ -517,6 +588,10 @@ typedef struct interpreter_struct Interpreter;
  * @typedef NativeFunction
  * @brief Function pointer type for native functions.
  * 
+ * Native functions are implemented in C and callable from the interpreted
+ * language. They receive the interpreter context, argument count, and
+ * argument array, and return a Value pointer.
+ * 
  * @param interpreter Pointer to the interpreter instance.
  * @param argc Number of arguments.
  * @param arguments Array of argument values.
@@ -527,6 +602,9 @@ typedef Value* (*NativeFunction)(Interpreter* interpreter, int argc, Value** arg
 /**
  * @struct native_function_struct
  * @brief Represents a native (C-implemented) function metadata.
+ * 
+ * Wraps a C function pointer with metadata about the function's name
+ * and expected argument count.
  */
 typedef struct native_function_struct {
     String         Name;    /**< Function name */
@@ -537,11 +615,15 @@ typedef struct native_function_struct {
 /**
  * @struct module_function_struct
  * @brief Represents a function or value exported by a native module.
+ * 
+ * Native modules can export both functions and constant values. This
+ * structure describes a single export with its name and either a function
+ * pointer or a value pointer.
  */
 typedef struct module_function_struct {
     const String    Name;      /**< Export name */
     int             Argc;      /**< Argument count (for functions) */
-    NativeFunction  CFunction; /**< C function pointer (if Is NativeFunction) */
+    NativeFunction  CFunction; /**< C function pointer (if is NativeFunction) */
     Value*          Value;     /**< Exported value (if not function) */
 } ModuleFunction;
 
@@ -552,6 +634,10 @@ typedef struct module_function_struct {
 /**
  * @struct interpreter_struct
  * @brief Main interpreter state structure containing execution context.
+ * 
+ * The central runtime state including the execution stack, garbage collector
+ * root, constant pool, function table, and singleton values for true, false,
+ * and null. Also maintains exception handler stack for try-catch blocks.
  */
 struct interpreter_struct {
     Value*   True;      /**< Singleton 'true' value */
@@ -572,6 +658,9 @@ struct interpreter_struct {
 /**
  * @struct compiler_struct
  * @brief Compiler state structure holding parser and interpreter references.
+ * 
+ * Links the compilation process to both the parser (for reading source code)
+ * and the interpreter (for registering constants and functions).
  */
 typedef struct compiler_struct {
     Interpreter* Interpreter; /**< Pointer to the interpreter */
@@ -585,6 +674,10 @@ typedef struct compiler_struct {
 /**
  * @def Allocate
  * @brief Wrapper macro for memory allocation with file/line tracking.
+ * 
+ * Provides debugging information by recording the source location of
+ * each allocation.
+ * 
  * @param size Size in bytes to allocate.
  */
 #define Allocate(size) _Allocate(__FILE__, __LINE__, size)
@@ -592,6 +685,9 @@ typedef struct compiler_struct {
 /**
  * @def Callocate
  * @brief Wrapper macro for zero-initialized memory allocation with tracking.
+ * 
+ * Allocates memory and initializes it to zero, with debugging information.
+ * 
  * @param count Number of elements.
  * @param size Size of each element.
  */
@@ -600,6 +696,9 @@ typedef struct compiler_struct {
 /**
  * @def Reallocate
  * @brief Wrapper macro for memory reallocation with tracking.
+ * 
+ * Resizes an existing memory block, with debugging information.
+ * 
  * @param ptr Pointer to existing memory block.
  * @param size New size in bytes.
  */
@@ -607,6 +706,10 @@ typedef struct compiler_struct {
 
 /**
  * @brief Internal allocation function.
+ * 
+ * Allocates memory and tracks the allocation location for debugging.
+ * Terminates the program if allocation fails.
+ * 
  * @param file Source file name calling allocation.
  * @param line Line number calling allocation.
  * @param size Size in bytes.
@@ -616,6 +719,10 @@ void* _Allocate(String file, int line, size_t size);
 
 /**
  * @brief Internal zero-initialized allocation function.
+ * 
+ * Allocates memory, initializes it to zero, and tracks the allocation
+ * location for debugging. Terminates the program if allocation fails.
+ * 
  * @param file Source file name calling allocation.
  * @param line Line number calling allocation.
  * @param count Number of elements.
@@ -626,6 +733,10 @@ void* _Callocate(String file, int line, size_t count, size_t size);
 
 /**
  * @brief Internal reallocation function.
+ * 
+ * Resizes an existing memory block and tracks the allocation location
+ * for debugging. Terminates the program if reallocation fails.
+ * 
  * @param file Source file name calling allocation.
  * @param line Line number calling allocation.
  * @param ptr Pointer to existing memory.
@@ -638,6 +749,10 @@ void* _Reallocate(String file, int line, void* ptr, size_t size);
 
 /**
  * @brief Duplicates a C string using the custom allocator.
+ * 
+ * Creates a new copy of the given string on the heap using the tracked
+ * allocation system.
+ * 
  * @param str The string to duplicate.
  * @return A new copy of the string.
  */
@@ -645,6 +760,10 @@ String AllocateString(String str);
 
 /**
  * @brief Converts a UTF-8 string to an array of Runes (UTF-32).
+ * 
+ * Decodes a UTF-8 encoded string into an array of Unicode code points.
+ * The returned array is null-terminated.
+ * 
  * @param str The UTF-8 string.
  * @return Pointer to the array of Runes.
  */
@@ -652,6 +771,9 @@ Rune* StringToRunes(String str);
 
 /**
  * @brief Converts an array of Runes back to a UTF-8 string.
+ * 
+ * Encodes an array of Unicode code points into a UTF-8 string.
+ * 
  * @param runes The array of Runes.
  * @return A new UTF-8 string.
  */
@@ -659,6 +781,9 @@ String RunesStrToString(Rune* runes);
 
 /**
  * @brief Checks if a string starts with a given prefix.
+ * 
+ * Performs a case-sensitive prefix comparison.
+ * 
  * @param str The string to check.
  * @param prefix The prefix to look for.
  * @return true if str starts with prefix, false otherwise.
@@ -669,6 +794,10 @@ bool StringStartsWith(String str, String prefix);
 
 /**
  * @brief Coerces a value to a 32-bit integer.
+ * 
+ * Converts a runtime value to an integer, performing type conversion
+ * as necessary. Behavior depends on the value's type.
+ * 
  * @param value The value to coerce.
  * @return The integer representation.
  */
@@ -676,6 +805,10 @@ int CoerceToI32(Value* value);
 
 /**
  * @brief Coerces a value to a 64-bit integer (long).
+ * 
+ * Converts a runtime value to a long integer, performing type conversion
+ * as necessary. Behavior depends on the value's type.
+ * 
  * @param value The value to coerce.
  * @return The long integer representation.
  */
@@ -683,20 +816,32 @@ long CoerceToI64(Value* value);
 
 /**
  * @brief Coerces a value to a double-precision number.
+ * 
+ * Converts a runtime value to a double, performing type conversion
+ * as necessary. Behavior depends on the value's type.
+ * 
  * @param value The value to coerce.
  * @return The double representation.
  */
 double CoerceToNum(Value* value);
 
 /**
- * @brief Coerces a value to a String.
+ * @brief Coerces a value to an Environment.
+ * 
+ * Extracts the Environment pointer from a value. The value must be
+ * of type VT_ENVIRONMENT.
+ * 
  * @param value The value to coerce.
- * @return The String representation.
+ * @return Pointer to the Environment.
  */
 Environment* CoerceToEnvironment(Value* value);
 
 /**
  * @brief Coerces a value to a HashMap (object).
+ * 
+ * Extracts the HashMap pointer from a value. The value must be
+ * of type VT_OBJECT.
+ * 
  * @param value The value to coerce.
  * @return Pointer to the HashMap.
  */
@@ -704,6 +849,10 @@ HashMap* CoerceToHashMap(Value* value);
 
 /**
  * @brief Coerces a value to an Array.
+ * 
+ * Extracts the Array pointer from a value. The value must be
+ * of type VT_ARRAY.
+ * 
  * @param value The value to coerce.
  * @return Pointer to the Array.
  */
@@ -711,6 +860,10 @@ Array* CoerceToArray(Value* value);
 
 /**
  * @brief Coerces a value to a UserFunction.
+ * 
+ * Extracts the UserFunction pointer from a value. The value must be
+ * of type VT_USER_FUNCTION.
+ * 
  * @param value The value to coerce.
  * @return Pointer to the UserFunction.
  */
@@ -718,6 +871,10 @@ UserFunction* CoerceToUserFunction(Value* value);
 
 /**
  * @brief Coerces a value to a NativeFunctionMeta.
+ * 
+ * Extracts the NativeFunctionMeta pointer from a value. The value must be
+ * of type VT_NATV_FUNCTION.
+ * 
  * @param value The value to coerce.
  * @return Pointer to the NativeFunctionMeta.
  */
@@ -725,6 +882,10 @@ NativeFunctionMeta* CoerceToNativeFunctionMeta(Value* value);
 
 /**
  * @brief Coerces a value to a UserClass.
+ * 
+ * Extracts the UserClass pointer from a value. The value must be
+ * of type VT_CLASS.
+ * 
  * @param value The value to coerce.
  * @return Pointer to the UserClass.
  */
@@ -732,6 +893,10 @@ UserClass* CoerceToUserClass(Value* value);
 
 /**
  * @brief Coerces a value to a ClassInstance.
+ * 
+ * Extracts the ClassInstance pointer from a value. The value must be
+ * of type VT_CLASS_INSTANCE.
+ * 
  * @param value The value to coerce.
  * @return Pointer to the ClassInstance.
  */
@@ -741,6 +906,11 @@ ClassInstance* CoerceToClassInstance(Value* value);
 
 /**
  * @brief Formats an error message with location information.
+ * 
+ * Creates a formatted error message that includes the source file path,
+ * line number, column number, and a snippet of the source code where
+ * the error occurred.
+ * 
  * @param path File path where error occurred.
  * @param runes Source code runes.
  * @param position Token position.
@@ -751,6 +921,10 @@ String GetErrorLine(String path, Rune* runes, Position position, String message)
 
 /**
  * @brief Throws a runtime error (prints and exits).
+ * 
+ * Prints a formatted error message with source location information
+ * and terminates the program.
+ * 
  * @param path File path where error occurred.
  * @param runes Source code runes.
  * @param position Token position.
@@ -760,6 +934,9 @@ void ThrowError(String path, Rune* runes, Position position, String message);
 
 /**
  * @brief Formats a string with variable arguments.
+ * 
+ * Similar to sprintf but allocates a new string to hold the result.
+ * Uses the tracked allocation system.
  * 
  * @param format The format string.
  * @param ... Variable arguments.

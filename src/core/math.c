@@ -1,3 +1,4 @@
+#define _USE_MATH_DEFINES
 #include "../function.h"
 #include "../hashmap.h"
 #include "./math.h"
