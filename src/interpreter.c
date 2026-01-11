@@ -161,7 +161,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 val    = GetVar(rootEnvObj, offset);
                 if (val == NULL)
                     HandleError(
-                        "variable is referenced before assignment"
+                        "variable is referenced before initialization"
                     );
                 Push(val);
                 Forward(4);
@@ -172,7 +172,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 val    = GetVar(envObj, offset);
                 if (val == NULL)
                     HandleError(
-                        "variable is referenced before assignment"
+                        "variable is referenced before initialization"
                     );
                 Push(val);
                 Forward(4);
