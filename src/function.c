@@ -1,4 +1,5 @@
 #include "./function.h"
+#include "global.h"
 
 UserFunction* CreateUserFunction(String name, int argc) {
     UserFunction* userFunction  = Allocate(sizeof(UserFunction));
@@ -71,6 +72,58 @@ int UserFunctionAddCapture(UserFunction* userFunction, bool isGlobal, int src, i
         sizeof(EnvCell*) * (userFunction->CaptureC + 1)
     );
     return offset;
+}
+
+String UserFunctionToString(UserFunction* userFunction) {
+    const char* name = userFunction->Name != NULL ? userFunction->Name : "<anonymous>";
+    
+    if (userFunction->Argc == -1) {
+        // Variadic function
+        size_t nameLen = strlen(name);
+        size_t bufferSize = nameLen + 32; // "function " + name + "(...$n) {...}" + null
+        char* buffer = Allocate(bufferSize);
+        snprintf(buffer, bufferSize, "function %s(...$n) {...}", name);
+        return buffer;
+    } else {
+        // Fixed argument count
+        // Calculate required buffer size for arguments
+        // Each arg is "$N" where N can be multiple digits, plus ", " separator
+        size_t argsSize = 0;
+        for (int i = 0; i < userFunction->Argc; i++) {
+            // Calculate digits in (i + 1)
+            int num = i + 1;
+            int digits = 1;
+            while (num >= 10) {
+                digits++;
+                num /= 10;
+            }
+            argsSize += 1 + digits; // "$" + digits
+            if (i < userFunction->Argc - 1) {
+                argsSize += 2; // ", "
+            }
+        }
+        
+        // Build arguments string
+        char* args = Allocate(argsSize + 1);
+        args[0] = '\0';
+        size_t offset = 0;
+        for (int i = 0; i < userFunction->Argc; i++) {
+            int written = snprintf(args + offset, argsSize + 1 - offset, "$%d", i + 1);
+            offset += written;
+            if (i < userFunction->Argc - 1) {
+                strcpy(args + offset, ", ");
+                offset += 2;
+            }
+        }
+        
+        // Build final string
+        size_t nameLen = strlen(name);
+        size_t bufferSize = nameLen + argsSize + 32; // "function " + name + "(" + args + ") {...}" + null
+        char* buffer = Allocate(bufferSize);
+        snprintf(buffer, bufferSize, "function %s(%s) {...}", name, args);
+        free(args);
+        return buffer;
+    }
 }
 
 NativeFunctionMeta* CreateNativeFunctionMeta(const String name, int argc, NativeFunction funcPtr) {

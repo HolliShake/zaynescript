@@ -116,4 +116,4 @@ class Person(Tao) {
     }
 }
 
-println(new Person("Doy!"));
+println(new Person("Doy!"), fact);

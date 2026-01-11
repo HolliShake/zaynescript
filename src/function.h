@@ -40,6 +40,14 @@ int UserFunctionEmitLocal(UserFunction* userFunction);
 int UserFunctionAddCapture(UserFunction* userFunction, bool isGlobal, int src, int dst);
 
 /**
+ * Converts a user function structure to its string representation.
+ *
+ * @param userFunction Pointer to the UserFunction structure.
+ * @return String representation of the user function.
+ */
+String UserFunctionToString(UserFunction* userFunction);
+
+/**
  * Creates a new native function metadata structure.
  *
  * @param name The name of the native function.

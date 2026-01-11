@@ -141,7 +141,7 @@ String ValueToString(Value* value) {
         case VT_NULL:
             return AllocateString("null");
         case VT_USER_FUNCTION:
-            return AllocateString("function");
+            return UserFunctionToString(CoerceToUserFunction(value));
         case VT_ENVIRONMENT:
             return AllocateString("environment");
         case VT_ARRAY:
