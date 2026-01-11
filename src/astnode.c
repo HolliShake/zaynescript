@@ -74,6 +74,13 @@ Ast* AstObjectLiteral(Ast* properties, Position position) {
     return ast;
 }
 
+Ast* AstAllocation(Ast* cls, Ast* arguments, Position position) {
+    Ast* ast = InitAst(AST_ALLOCATION, position);
+    ast->A   = cls;
+    ast->B   = arguments;
+    return ast;
+}
+
 Ast* AstMember(Ast* object, Ast* member, Position position) {
     Ast* ast = InitAst(AST_MEMBER, position);
     ast->A   = object;
@@ -129,6 +136,23 @@ Ast* AstExpressionStatement(Ast* expression, Position position) {
     ast->A   = expression;
     return ast;
 }
+
+Ast* AstClassMember(bool _static_, Ast* node, Position position) {
+    Ast* ast   = InitAst(AST_CLASS_MEMBER, position);
+    ast->A     = node;
+    ast->Value = (_static_) 
+        ? AllocateString("static") 
+        : AllocateString("instance");
+    return ast;
+}
+
+Ast* AstClass(Ast* name, Ast* super, Ast* body, Position position) {
+    Ast* ast = InitAst(AST_CLASS, position);
+    ast->A   = name;
+    ast->B   = super;
+    ast->C   = body;
+    return ast;
+} 
 
 Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, Position position) {
     Ast* ast = InitAst(AST_FUNCTION, position);

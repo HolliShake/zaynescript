@@ -1,6 +1,5 @@
 #include "./gc.h"
 #include "global.h"
-#include <stdio.h>
 
 extern String ValueToString(Value* value);
 
@@ -18,7 +17,7 @@ static void _Free(Value* value) {
             }
             break;
         case VT_ARRAY: {
-            Array* array = (Array*) value->Value.Opaque;
+            Array* array = CoerceToArray(value);
             if (array != NULL) {
                 if (array->Items != NULL) {
                     free(array->Items);
@@ -33,7 +32,7 @@ static void _Free(Value* value) {
             if (value->Value.Opaque != NULL) {
                 // Note: deeply freeing HashMap keys/values would require more logic
                 // For now, we just free the HashMap struct itself
-                HashMap* hashMap = (HashMap*) value->Value.Opaque;
+                HashMap* hashMap = CoerceToHashMap(value);
                 if (hashMap != NULL) {
                     // Buckets
                     for (size_t i = 0; i < hashMap->Size; i++) {
@@ -61,8 +60,40 @@ static void _Free(Value* value) {
                 value->Value.Opaque = NULL;
             }
             break;
+        case VT_CLASS: {
+            UserClass* classObj = CoerceToUserClass(value);
+            if (classObj != NULL) {
+                if (classObj->StaticMembers != NULL) {
+                    free(classObj->StaticMembers->Buckets);
+                    free(classObj->StaticMembers);
+                    classObj->StaticMembers = NULL;
+                }
+                if (classObj->InstanceMembers != NULL) {
+                    free(classObj->InstanceMembers->Buckets);
+                    free(classObj->InstanceMembers);
+                    classObj->InstanceMembers = NULL;
+                }
+                free(classObj->Name);
+                free(classObj);
+                value->Value.Opaque = NULL;
+            }
+            break;
+        }
+        case VT_CLASS_INSTANCE: {
+            ClassInstance* instance = CoerceToClassInstance(value);
+            if (instance != NULL) {
+                if (instance->Members != NULL) {
+                    free(instance->Members->Buckets);
+                    free(instance->Members);
+                    instance->Members = NULL;
+                }
+                free(instance);
+                value->Value.Opaque = NULL;
+            }
+            break;
+        }
         case VT_ENVIRONMENT: {
-            Environment* env = (Environment*) value->Value.Opaque;
+            Environment* env = CoerceToEnvironment(value);
             if (env != NULL) {
                 env->Parent = NULL;
                 for (int i = 0; i < env->LocalC; i++) {
@@ -78,7 +109,7 @@ static void _Free(Value* value) {
             break;
         }
         case VT_USER_FUNCTION: {
-            UserFunction* uf = (UserFunction*) value->Value.Opaque;
+            UserFunction* uf = CoerceToUserFunction(value);
             if (uf != NULL) {
                 if (uf->Codes != NULL) {
                     free(uf->Codes);
@@ -112,7 +143,7 @@ void Mark(Value* value) {
     value->Marked = 1;
     switch (value->Type) {
         case VT_ARRAY: {
-            Array* array = (Array*) value->Value.Opaque;
+            Array* array = CoerceToArray(value);
             if (array != NULL) {
                 for (size_t i = 0; i < array->Count; i++) {
                     Mark(array->Items[i]);
@@ -121,7 +152,7 @@ void Mark(Value* value) {
             break;
         }
         case VT_OBJECT: {
-            HashMap* hashMap = (HashMap*) value->Value.Opaque;
+            HashMap* hashMap = CoerceToHashMap(value);
             if (hashMap != NULL) {
                 for (size_t i = 0; i < hashMap->Size; i++) {
                     HashNode* node = &hashMap->Buckets[i];
@@ -133,8 +164,52 @@ void Mark(Value* value) {
             }
             break;
         }
+        case VT_CLASS: {
+            UserClass* classObj = CoerceToUserClass(value);
+            if (classObj != NULL) {
+                Mark(classObj->Base);
+                HashMap* staticMembers   = classObj->StaticMembers;
+                HashMap* instanceMembers = classObj->InstanceMembers;
+                if (staticMembers != NULL) {
+                    for (size_t i = 0; i < staticMembers->Size; i++) {
+                        HashNode* node = &staticMembers->Buckets[i];
+                        while (node != NULL) {
+                            Mark(node->Val);
+                            node = node->Next;
+                        }
+                    }
+                }
+                if (instanceMembers != NULL) {
+                    for (size_t i = 0; i < instanceMembers->Size; i++) {
+                        HashNode* node = &instanceMembers->Buckets[i];
+                        while (node != NULL) {
+                            Mark(node->Val);
+                            node = node->Next;
+                        }
+                    }
+                }
+            }
+            break;
+        }
+        case VT_CLASS_INSTANCE: {
+            ClassInstance* instance = CoerceToClassInstance(value);
+            if (instance != NULL) {
+                Mark(instance->Proto);
+                HashMap* members = instance->Members;
+                if (members != NULL) {
+                    for (size_t i = 0; i < members->Size; i++) {
+                        HashNode* node = &members->Buckets[i];
+                        while (node != NULL) {
+                            Mark(node->Val);
+                            node = node->Next;
+                        }
+                    }
+                }
+            }
+            break;
+        }
         case VT_ENVIRONMENT: {
-            Environment* env = (Environment*) value->Value.Opaque;
+            Environment* env = CoerceToEnvironment(value);
             if (env != NULL) {
                 Mark(env->Parent);
                 for (int i = 0; i < env->LocalC; i++) {
@@ -146,7 +221,7 @@ void Mark(Value* value) {
             break;
         }
         case VT_USER_FUNCTION: {
-            UserFunction* uf = (UserFunction*) value->Value.Opaque;
+            UserFunction* uf = CoerceToUserFunction(value);
             if (uf != NULL) {
                 Mark(uf->ParentEnv);
                 for (int i = 0; i < uf->CaptureC; i++) {

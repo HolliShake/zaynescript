@@ -7,9 +7,10 @@
 #ifndef OPERATION_H
 #define OPERATION_H
 
-#define FLG_NOTFOUND -1
-#define FLG_ZERO_DIV -2
+#define FLG_NOTFOUND          -1
+#define FLG_ZERO_DIV          -2
 #define FLG_INVALID_OPERATION -3
+#define FLG_ARG_MISMATCH      -4
 
 /**
  * @brief Performs import core operation

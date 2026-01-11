@@ -1,7 +1,15 @@
+/**
+ * @file global.h
+ * @brief Global definitions, types, and macros for the language interpreter.
+ * 
+ * This file contains the core data structures, type definitions, and constants
+ * used throughout the interpreter and compiler.
+ */
+
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
-// Order patters
+// Order patterns
 #include "../utf/utf.h"
 #include <errno.h>
 #include <stdarg.h>
@@ -19,18 +27,38 @@
 #include <malloc.h>
 #endif
 
+// Constants & Macros
+
+/**
+ * @def GC_THRESHOLD
+ * @brief The allocation threshold for triggering garbage collection.
+ */
 #define GC_THRESHOLD 10
 
+/**
+ * @def VARARG
+ * @brief Constant indicating variable number of arguments for functions.
+ */
 #define VARARG -1
 
+/**
+ * @def STACK_SIZE
+ * @brief The maximum size of the interpreter's execution stack.
+ */
 #define STACK_SIZE 1500
 
 /**
- * @def panic
- * @brief Prints an error message and terminates the program
+ * @def CONSTRUCTOR_NAME
+ * @brief The reserved name for class constructor methods.
+ */
+#define CONSTRUCTOR_NAME "init"
+
+/**
+ * @def Panic
+ * @brief Prints an error message and terminates the program.
  * 
- * @param message Format string for the error message (printf-style)
- * @param ... Optional format arguments (variadic)
+ * @param message The error message format string.
+ * @param ... Additional arguments for the format string.
  */
 #define Panic(message, ...) do { \
     fprintf(stderr, "[%s:%d]::Panic: ", __FILE__, __LINE__); \
@@ -39,458 +67,48 @@
     exit(EXIT_FAILURE); \
 } while(0)
 
+// -----------------------------------------------------------------------------
+// Basic Types
+// -----------------------------------------------------------------------------
+
 /**
  * @typedef String
- * @brief Type alias for C-style null-terminated character strings
+ * @brief Type alias for C-style null-terminated character strings.
  */
 typedef char* String;
 
 /**
  * @typedef Rune
- * @brief Represents a Unicode code point (UTF-32 character)
+ * @brief Represents a Unicode code point (UTF-32 character).
  */
 typedef int Rune;
 
-/**
- * @struct position_struct
- * @brief Tracks the location of a token in source code
- * 
- * @var position_struct::LineStart
- * Starting line number (1-indexed)
- * @var position_struct::LineEnded
- * Ending line number (1-indexed)
- * @var position_struct::ColmStart
- * Starting column number (1-indexed)
- * @var position_struct::ColmEnded
- * Ending column number (1-indexed)
- */
-typedef struct position_struct {
-    int LineStart;
-    int LineEnded;
-    int ColmStart;
-    int ColmEnded;
-} Position;
-
-/**
- * @enum token_type_enum
- * @brief Enumeration of all possible token types in the language
- * 
- * @var token_type_enum::TK_KEY
- * Keyword token (e.g., if, while, fn)
- * @var token_type_enum::TK_SYM
- * Symbol/operator token (e.g., +, ==, &&)
- * @var token_type_enum::TK_IDN
- * Identifier token (variable/function names)
- * @var token_type_enum::TK_INT
- * Integer literal token
- * @var token_type_enum::TK_NUM
- * Floating-point number literal token
- * @var token_type_enum::TK_STR
- * String literal token
- * @var token_type_enum::TK_EOF
- * End-of-file marker
- */
-typedef enum token_type_enum {
-    TK_KEY,
-    TK_SYM,
-    TK_IDN,
-    TK_INT,
-    TK_NUM,
-    TK_STR,
-    TK_EOF,
-} TokenType;
-
-/**
- * @struct token_struct
- * @brief Represents a single lexical token from source code
- * 
- * @var token_struct::Type
- * The type of token (keyword, symbol, identifier, etc.)
- * @var token_struct::Value
- * String representation of the token's value
- * @var token_struct::Position
- * Source code location information for the token
- */
-typedef struct token_struct {
-    TokenType Type;
-    char*     Value;
-    Position  Position;
-} Token;
-
-/**
- * @struct lexer_struct
- * @brief State machine for lexical analysis of source code
- * 
- * @var lexer_struct::Path
- * File path of the source being tokenized
- * @var lexer_struct::Data
- * Array of Unicode runes representing the source code
- * @var lexer_struct::Line
- * Current line number (1-indexed)
- * @var lexer_struct::Colm
- * Current column number (1-indexed)
- * @var lexer_struct::Indx
- * Current index in the Data array
- */
-typedef struct lexer_struct {
-    String Path;
-    Rune*  Data;
-    int    Line;
-    int    Colm;
-    int    Indx;
-} Lexer;
-
-/**
- * @struct parser_struct
- * @brief State machine for syntactic analysis of tokenized source code
- * 
- * @var parser_struct::Lexer
- * Pointer to the lexer providing the token stream
- * @var parser_struct::Next
- * The next token to be processed (lookahead token)
- */
-typedef struct parser_struct {
-    Lexer* Lexer;
-    Token  Next;
-} Parser;
-
-/**
- * @enum ast_type_enum
- * @brief Enumeration of all possible AST node types
- */
-typedef enum ast_type_enum {
-    AST_PROGRAM,
-    AST_EXPR,
-    AST_CONTINUE,
-    AST_BREAK,
-    AST_RETURN,
-    AST_FUNCTION,
-    AST_IMPORT,
-    AST_VAR_DECLARATION,
-    AST_CONST_DECLARATION,
-    AST_LET_DECLARATION,
-    AST_CLASS,
-    AST_EXPRESSION_STATEMENT,
-    AST_IF,
-    AST_FOR,
-    AST_WHILE,
-    AST_DO_WHILE,
-    AST_BLOCK,
-    AST_TRY_CATCH,
-    // 
-    AST_NAME,
-    AST_INT,
-    AST_NUM,
-    AST_STR,
-    AST_BOOL,
-    AST_NULL,
-    AST_SPREAD,
-    AST_LIST_LITERAL,
-    AST_OBJECT_KEY_VAL,
-    AST_OBJECT_LITERAL,
-    AST_MEMBER,
-    AST_INDEX,
-    AST_CALL,
-    //
-    AST_POST_INC,
-    AST_POST_DEC,
-    AST_POSITIVE,
-    AST_NEGATIVE,
-    AST_LOGICAL_NOT,
-    AST_PRE_INC,
-    AST_PRE_DEC,
-    // 
-    AST_MUL,
-    AST_DIV,
-    AST_MOD,
-    AST_ADD,
-    AST_SUB,
-    AST_LSHFT,
-    AST_RSHFT,
-    AST_LT,
-    AST_LTE,
-    AST_GT,
-    AST_GTE,
-    AST_EQ,
-    AST_NE,
-    AST_AND,
-    AST_OR,
-    AST_XOR,
-    AST_LAND,
-    AST_LOR,
-    AST_ASSIGN,
-    AST_SHORT_ASSIGN,
-    AST_MUL_ASSIGN,
-    AST_DIV_ASSIGN,
-    AST_MOD_ASSIGN,
-    AST_ADD_ASSIGN,
-    AST_SUB_ASSIGN,
-    AST_LSHFT_ASSIGN,
-    AST_RSHFT_ASSIGN,
-    AST_AND_ASSIGN,
-    AST_OR_ASSIGN,
-    AST_XOR_ASSIGN,
-} AstType;
-
-/**
- * @struct ast_struct
- * @brief Abstract Syntax Tree node representing parsed source code structure
- * 
- * @var ast_struct::Type
- * The type of AST node (program, expression, statement, etc.)
- * @var ast_struct::Position
- * Source code location information for this node
- * @var ast_struct::Value
- * String value associated with this node (e.g., identifier name, literal value)
- * @var ast_struct::A
- * First child node pointer (usage varies by node type)
- * @var ast_struct::B
- * Second child node pointer (usage varies by node type)
- * @var ast_struct::C
- * Third child node pointer (usage varies by node type)
- * @var ast_struct::D
- * Fourth child node pointer (usage varies by node type)
- * @var ast_struct::Next
- * Pointer to next AST node in a linked list
- */
-typedef struct ast_struct Ast;
-typedef struct ast_struct {
-    AstType  Type;
-    Position Position;
-    String   Value;
-    Ast*     A;
-    Ast*     B;
-    Ast*     C;
-    Ast*     D;
-    Ast*     Next;
-} Ast;
-
-/**
- * @enum opcode_enum
- * @brief Enumeration of all possible opcode types
- */
-typedef enum opcode_enum {
-    OP_IMPORT_CORE,
-    OP_LOAD_CAPTURE,
-    OP_LOAD_NAME,
-    OP_LOAD_LOCAL,
-    OP_LOAD_CONST, // with 4 bytes arg
-    OP_LOAD_BOOL,  // with 4 bytes arg
-    OP_LOAD_NULL,
-    OP_LOAD_STRING,
-    OP_ARRAY_EXTEND,
-    OP_ARRAY_PUSH,
-    OP_ARRAY_MAKE,
-    OP_OBJECT_EXTEND,
-    OP_OBJECT_PLUCK_ATTRIBUTE,
-    OP_OBJECT_MAKE,
-    OP_SET_INDEX,
-    OP_GET_INDEX,
-    OP_LOAD_FUNCTION_CLOSURE,
-    OP_LOAD_FUNCTION,
-    OP_CALL,
-    OP_MUL,
-    OP_DIV,
-    OP_MOD,
-    OP_INC,
-    OP_POSTINC,
-    OP_ADD,
-    OP_DEC,
-    OP_POSTDEC,
-    OP_SUB,
-    OP_LSHFT,
-    OP_RSHFT,
-    OP_LT,
-    OP_LTE,
-    OP_GT,
-    OP_GTE,
-    OP_EQ,
-    OP_NE,
-    OP_AND,
-    OP_OR,
-    OP_XOR,
-    OP_STORE_CAPTURE,
-    OP_STORE_NAME,
-    OP_STORE_LOCAL,
-    OP_DUPTOP,
-    OP_DUP2,
-    OP_POPTOP,
-    OP_ROT2,
-    OP_ROT3,
-    OP_ROT4,
-    OP_SETUP_TRY,
-    OP_POP_TRY,
-    OP_POPN_TRY,
-    OP_JUMP_IF_FALSE_OR_POP,
-    OP_JUMP_IF_TRUE_OR_POP,
-    OP_POP_JUMP_IF_FALSE,
-    OP_POP_JUMP_IF_TRUE,
-    OP_JUMP,
-    OP_ABSOLUTE_JUMP,
-    OP_RETURN
-} OpcodeEnum;
-
-/**
- * @enum value_type_enum
- * @brief Enumeration of all possible value types in the interpreter
- */
-typedef enum value_type_enum {
-    VT_ERROR,
-    VT_INT,
-    VT_NUM,
-    VT_STR,
-    VT_BOOL,
-    VT_NULL,
-    VT_ARRAY,
-    VT_OBJECT,
-    VT_CLASS,
-    VT_USER_FUNCTION,
-    VT_NATV_FUNCTION,
-    VT_ENVIRONMENT,
-} ValueType;
-
-/**
- * @struct value_struct
- * @brief Runtime value structure for the interpreter
- * 
- * @var value_struct::Type
- * The type of value (integer, number, string, boolean, null, user function, native function, class)
- * @var value_struct::Value
- * Union holding the actual value data
- * @var value_struct::Next
- * Pointer to next Value in garbage collector's linked list
- * @var value_struct::Marked
- * Garbage collection mark flag (0 = unmarked, non-zero = marked)
- */
-typedef struct value_struct Value;
-typedef struct value_struct {
-    ValueType  Type;
-    union value_union {
-        int    I32;    /**< 32-bit integer value */
-        double Num;    /**< Double-precision floating point number */
-        void*  Opaque; /**< Pointer to heap-allocated data (String, Function, Class, etc.) */
-    } Value;
-    // GC
-    Value* Next;
-    int    Marked;
-} Value;
-
-/**
- * @struct native_function_struct
- * @brief Represents a native (C-implemented) function in the interpreter
- * 
- * @var native_function_struct::Name
- * Name of the native function
- * @var native_function_struct::FuncPtr
- * Pointer to the C function implementing the native function
- * @var native_function_struct::Argc
- * Number of arguments the function accepts (-1 for variadic)
- */
-typedef struct capture_meta_struct {
-    bool IsGlobal;
-    int  Src;
-    int  Dst;
-} CaptureMeta;
-
-/**
- * @struct envcell_struct
- * @brief Represents a cell in the environment
- * 
- * @var envcell_struct::Value
- * @var envcell_struct::IsCaptured
- * The value in the cell
- */
-typedef struct envcell_struct {
-    Value* Value;  
-    bool   IsCaptured;
-} EnvCell;
-
-/**
- * @struct user_function_struct
- * @brief Represents a user-defined function in the interpreter
- * 
- * @var user_function_struct::ParentEnv
- * Pointer to the parent environment
- * @var user_function_struct::Name
- * Optional name of the function (nullable)
- * @var user_function_struct::Codes
- * Array of bytecode instructions representing the compiled function
- * @var user_function_struct::CodeC
- * Number of bytecode instructions in the Codes array
- * @var user_function_struct::Argc
- * Number of arguments the function accepts
- * @var user_function_struct::LocalC
- * Number of local variables in the function
- * @var user_function_struct::CaptureMetas
- * Array of capture metadata
- * @var user_function_struct::CaptureC
- * Number of captures
- * @var user_function_struct::Captures
- * Array of captured environment cells
- */
-typedef struct user_function_struct {
-    Value*       ParentEnv;
-    String       Name; // Nullable
-    uint8_t*     Codes;
-    int          CodeC;
-    int          Argc;
-    int          LocalC;
-    CaptureMeta* CaptureMetas;
-    int          CaptureC;
-    struct envcell_struct** Captures;
-} UserFunction;
-
-/**
- * @struct environment_struct
- * @brief Represents an environment in the interpreter
- * 
- * An environment is a runtime structure that holds local variables for a function
- * or block scope. Environments form a chain through their Parent pointers, allowing
- * for lexical scoping and variable lookup in outer scopes.
- * 
- * @var value_struct::Parent
- * Pointer to the parent environment in the scope chain. NULL for the global environment.
- * @var environment_struct::Locals
- * Array of pointers to Value objects representing local variables in this environment.
- * The array is indexed by the variable's offset within the scope.
- */
-typedef struct environment_struct {
-    Value*       Parent;
-    EnvCell**    Locals;
-    int          LocalC;
-} Environment;
+// -----------------------------------------------------------------------------
+// Generic Data Structures
+// -----------------------------------------------------------------------------
 
 /**
  * @typedef array_struct
- * @brief Forward declaration of Array structure
+ * @brief Forward declaration of Array structure.
  */
 typedef struct array_struct {
-    void** Items;
-    size_t Capacity;
-    size_t Count;
+    void** Items;    /**< Pointer to the array of items */
+    size_t Capacity; /**< Allocated capacity of the array */
+    size_t Count;    /**< Current number of items in the array */
 } Array;
 
 /**
- * @brief Forward declaration of HashNode structure
+ * @brief Node structure for hash map entries.
  */
 typedef struct hashnode_struct HashNode;
+struct hashnode_struct {
+    String    Key;  /**< The key string for the entry */
+    void*     Val;  /**< The value associated with the key */
+    HashNode* Next; /**< Pointer to the next node in the bucket chain (collision handling) */
+};
 
 /**
- * @brief Node structure for hash map entries
- * @brief Represents a single key-value pair in the hash map with chaining support
- * Represents a single key-value pair in the hash map with chaining support
- * for collision resolution.
- */
-typedef struct hashnode_struct {
-    String    Key;
-    void*     Val;
-    HashNode* Next;
- } HashNode;
-
- /**
- * @brief Hash map structure for key-value storage
- * 
- * Implements a hash table with separate chaining for collision resolution.
+ * @brief Hash map structure for key-value storage.
  */
 typedef struct hashmap_struct {
     size_t    Size;    /**< Total number of buckets in the hash map */
@@ -498,303 +116,655 @@ typedef struct hashmap_struct {
     HashNode* Buckets; /**< Array of hash node buckets */
 } HashMap;
 
+// -----------------------------------------------------------------------------
+// Lexer & Parser (Frontend)
+// -----------------------------------------------------------------------------
+
+/**
+ * @struct position_struct
+ * @brief Tracks the location of a token or AST node in source code.
+ */
+typedef struct position_struct {
+    int LineStart; /**< Starting line number (1-based) */
+    int LineEnded; /**< Ending line number (1-based) */
+    int ColmStart; /**< Starting column number (1-based) */
+    int ColmEnded; /**< Ending column number (1-based) */
+} Position;
+
+/**
+ * @enum token_type_enum
+ * @brief Enumeration of all possible token types in the language.
+ */
+typedef enum token_type_enum {
+    TK_KEY, /**< Keyword token */
+    TK_SYM, /**< Symbol/Operator token */
+    TK_IDN, /**< Identifier token */
+    TK_INT, /**< Integer literal token */
+    TK_NUM, /**< Numeric (float) literal token */
+    TK_STR, /**< String literal token */
+    TK_EOF, /**< End-of-file token */
+} TokenType;
+
+/**
+ * @struct token_struct
+ * @brief Represents a single lexical token from source code.
+ */
+typedef struct token_struct {
+    TokenType Type;     /**< The type of the token */
+    String    Value;    /**< The string value of the token */
+    Position  Position; /**< The location of the token in the source code */
+} Token;
+
+/**
+ * @struct lexer_struct
+ * @brief State machine for lexical analysis of source code.
+ */
+typedef struct lexer_struct {
+    String Path; /**< Path to the source file being lexed */
+    Rune*  Data; /**< The source code content as runes */
+    int    Line; /**< Current line number */
+    int    Colm; /**< Current column number */
+    int    Indx; /**< Current index in the Data array */
+} Lexer;
+
+/**
+ * @struct parser_struct
+ * @brief State machine for syntactic analysis of tokenized source code.
+ */
+typedef struct parser_struct {
+    Lexer* Lexer; /**< Pointer to the lexer instance */
+    Token  Next;  /**< The next token to be consumed (lookahead) */
+} Parser;
+
+// -----------------------------------------------------------------------------
+// Abstract Syntax Tree (AST)
+// -----------------------------------------------------------------------------
+
+/**
+ * @enum ast_type_enum
+ * @brief Enumeration of all possible AST node types.
+ */
+typedef enum ast_type_enum {
+    AST_PROGRAM,              /**< Root program node */
+    AST_EXPR,                 /**< Expression statement */
+    AST_CONTINUE,             /**< Continue statement */
+    AST_BREAK,                /**< Break statement */
+    AST_RETURN,               /**< Return statement */
+    AST_FUNCTION,             /**< Function declaration */
+    AST_IMPORT,               /**< Import statement */
+    AST_VAR_DECLARATION,      /**< Variable declaration (var) */
+    AST_CONST_DECLARATION,    /**< Constant declaration (const) */
+    AST_LET_DECLARATION,      /**< Let declaration (let) */
+    AST_CLASS,                /**< Class declaration */
+    AST_CLASS_MEMBER,         /**< Class member definition */
+    AST_EXPRESSION_STATEMENT, /**< Statement wrapping an expression */
+    AST_IF,                   /**< If statement */
+    AST_FOR,                  /**< For loop statement */
+    AST_WHILE,                /**< While loop statement */
+    AST_DO_WHILE,             /**< Do-while loop statement */
+    AST_BLOCK,                /**< Block of statements */
+    AST_TRY_CATCH,            /**< Try-catch block */
+    // Literals
+    AST_NAME,           /**< Identifier/Name */
+    AST_INT,            /**< Integer literal */
+    AST_NUM,            /**< Number literal */
+    AST_STR,            /**< String literal */
+    AST_BOOL,           /**< Boolean literal */
+    AST_NULL,           /**< Null literal */
+    AST_SPREAD,         /**< Spread operator (...) */
+    AST_LIST_LITERAL,   /**< List literal ([...]) */
+    AST_OBJECT_KEY_VAL, /**< Object key-value pair */
+    AST_OBJECT_LITERAL, /**< Object literal ({...}) */
+    AST_ALLOCATION,     /**< Allocation expression (new Class(...)) */
+    AST_MEMBER,         /**< Member access (obj.prop) */
+    AST_INDEX,          /**< Index access (obj[index]) */
+    AST_CALL,           /**< Function call */
+    // Unary Operators
+    AST_POST_INC,    /**< Post-increment (i++) */
+    AST_POST_DEC,    /**< Post-decrement (i--) */
+    AST_POSITIVE,    /**< Unary plus (+) */
+    AST_NEGATIVE,    /**< Unary minus (-) */
+    AST_LOGICAL_NOT, /**< Logical NOT (!) */
+    AST_PRE_INC,     /**< Pre-increment (++i) */
+    AST_PRE_DEC,     /**< Pre-decrement (--i) */
+    // Binary Operators
+    AST_MUL,          /**< Multiplication (*) */
+    AST_DIV,          /**< Division (/) */
+    AST_MOD,          /**< Modulo (%) */
+    AST_ADD,          /**< Addition (+) */
+    AST_SUB,          /**< Subtraction (-) */
+    AST_LSHFT,        /**< Left shift (<<) */
+    AST_RSHFT,        /**< Right shift (>>) */
+    AST_LT,           /**< Less than (<) */
+    AST_LTE,          /**< Less than or equal (<=) */
+    AST_GT,           /**< Greater than (>) */
+    AST_GTE,          /**< Greater than or equal (>=) */
+    AST_EQ,           /**< Equality (==) */
+    AST_NE,           /**< Inequality (!=) */
+    AST_AND,          /**< Bitwise AND (&) */
+    AST_OR,           /**< Bitwise OR (|) */
+    AST_XOR,          /**< Bitwise XOR (^) */
+    AST_LAND,         /**< Logical AND (&&) */
+    AST_LOR,          /**< Logical OR (||) */
+    AST_ASSIGN,       /**< Assignment (=) */
+    AST_SHORT_ASSIGN, /**< Short assignment (e.g. +=, -=) - specific type determined by operation */
+    AST_MUL_ASSIGN,   /**< Multiply assignment (*=) */
+    AST_DIV_ASSIGN,   /**< Divide assignment (/=) */
+    AST_MOD_ASSIGN,   /**< Modulo assignment (%=) */
+    AST_ADD_ASSIGN,   /**< Add assignment (+=) */
+    AST_SUB_ASSIGN,   /**< Subtract assignment (-=) */
+    AST_LSHFT_ASSIGN, /**< Left shift assignment (<<=) */
+    AST_RSHFT_ASSIGN, /**< Right shift assignment (>>=) */
+    AST_AND_ASSIGN,   /**< Bitwise AND assignment (&=) */
+    AST_OR_ASSIGN,    /**< Bitwise OR assignment (|=) */
+    AST_XOR_ASSIGN,   /**< Bitwise XOR assignment (^=) */
+} AstType;
+
+/**
+ * @struct ast_struct
+ * @brief Abstract Syntax Tree node representing parsed source code structure.
+ */
+typedef struct ast_struct Ast;
+struct ast_struct {
+    AstType  Type;     /**< The type of the AST node */
+    Position Position; /**< The position in the source code */
+    String   Value;    /**< String value (for identifiers, literals, etc.) */
+    Ast*     A;        /**< First child node (usage depends on Type) */
+    Ast*     B;        /**< Second child node (usage depends on Type) */
+    Ast*     C;        /**< Third child node (usage depends on Type) */
+    Ast*     D;        /**< Fourth child node (usage depends on Type) */
+    Ast*     Next;     /**< Next sibling node (for lists/blocks) */
+};
+
+// -----------------------------------------------------------------------------
+// Runtime Values & Type System
+// -----------------------------------------------------------------------------
+
+/**
+ * @enum value_type_enum
+ * @brief Enumeration of all possible value types in the interpreter.
+ */
+typedef enum value_type_enum {
+    VT_ERROR,          /**< Error value */
+    VT_INT,            /**< Integer value */
+    VT_NUM,            /**< Number value */
+    VT_STR,            /**< String value */
+    VT_BOOL,           /**< Boolean value */
+    VT_NULL,           /**< Null value */
+    VT_ARRAY,          /**< Array value */
+    VT_OBJECT,         /**< Object value */
+    VT_CLASS,          /**< Class definition value */
+    VT_CLASS_INSTANCE, /**< Class instance value */
+    VT_USER_FUNCTION,  /**< User-defined function value */
+    VT_NATV_FUNCTION,  /**< Native function value */
+    VT_ENVIRONMENT,    /**< Environment value */
+} ValueType;
+
+/**
+ * @struct value_struct
+ * @brief Runtime value structure for the interpreter.
+ */
+typedef struct value_struct Value;
+struct value_struct {
+    ValueType  Type; /**< The type of the value */
+    union value_union {
+        int    I32;    /**< 32-bit integer value */
+        double Num;    /**< Double-precision floating point number */
+        void*  Opaque; /**< Pointer to heap-allocated data (String, Function, Class, etc.) */
+    } Value;
+    // GC
+    Value* Next;   /**< Next value in the GC tracking list */
+    int    Marked; /**< GC mark flag (0 = unmarked, 1 = marked) */
+};
+
+// -----------------------------------------------------------------------------
+// Bytecode & Execution
+// -----------------------------------------------------------------------------
+
+/**
+ * @enum opcode_enum
+ * @brief Enumeration of all possible opcode types for the virtual machine.
+ */
+typedef enum opcode_enum {
+    OP_IMPORT_CORE,                  /**< Import core library */
+    OP_LOAD_CAPTURE,                 /**< Load a captured variable */
+    OP_LOAD_NAME,                    /**< Load a variable by name */
+    OP_LOAD_LOCAL,                   /**< Load a local variable */
+    OP_LOAD_CONST,                   /**< Load a constant value (takes 4 byte arg) */
+    OP_LOAD_BOOL,                    /**< Load a boolean value (takes 4 byte arg) */
+    OP_LOAD_NULL,                    /**< Load null value */
+    OP_LOAD_STRING,                  /**< Load a string literal */
+    OP_ARRAY_EXTEND,                 /**< Extend an array */
+    OP_ARRAY_PUSH,                   /**< Push to an array */
+    OP_ARRAY_MAKE,                   /**< Create a new array */
+    OP_OBJECT_EXTEND,                /**< Extend an object */
+    OP_OBJECT_PLUCK_ATTRIBUTE,       /**< Extract attribute from object */
+    OP_OBJECT_MAKE,                  /**< Create a new object */
+    OP_CLASS_EXTEND,                 /**< Extend a class */
+    OP_CLASS_MAKE,                   /**< Create a new class */
+    OP_CLASS_DEFINE_STATIC_MEMBER,   /**< Define a static class member */
+    OP_CLASS_DEFINE_INSTANCE_MEMBER, /**< Define an instance class member */
+    OP_SET_INDEX,                    /**< Set value at index */
+    OP_GET_INDEX,                    /**< Get value at index */
+    OP_LOAD_FUNCTION_CLOSURE,        /**< Load a function closure */
+    OP_LOAD_FUNCTION,                /**< Load a function */
+    OP_CALL_CTOR,                   /**< Call a constructor */
+    OP_CALL,                         /**< Call a function */
+    OP_MUL,                          /**< Multiply */
+    OP_DIV,                          /**< Divide */
+    OP_MOD,                          /**< Modulo */
+    OP_INC,                          /**< Increment */
+    OP_POSTINC,                      /**< Post-increment */
+    OP_ADD,                          /**< Add */
+    OP_DEC,                          /**< Decrement */
+    OP_POSTDEC,                      /**< Post-decrement */
+    OP_SUB,                          /**< Subtract */
+    OP_LSHFT,                        /**< Left shift */
+    OP_RSHFT,                        /**< Right shift */
+    OP_LT,                           /**< Less than */
+    OP_LTE,                          /**< Less than or equal */
+    OP_GT,                           /**< Greater than */
+    OP_GTE,                          /**< Greater than or equal */
+    OP_EQ,                           /**< Equality */
+    OP_NE,                           /**< Inequality */
+    OP_AND,                          /**< Bitwise AND */
+    OP_OR,                           /**< Bitwise OR */
+    OP_XOR,                          /**< Bitwise XOR */
+    OP_STORE_CAPTURE,                /**< Store to captured variable */
+    OP_STORE_NAME,                   /**< Store to named variable */
+    OP_STORE_LOCAL,                  /**< Store to local variable */
+    OP_DUPTOP,                       /**< Duplicate top of stack */
+    OP_DUP2,                         /**< Duplicate top 2 stack items */
+    OP_POPTOP,                       /**< Pop top of stack */
+    OP_ROT2,                         /**< Rotate top 2 stack items */
+    OP_ROT3,                         /**< Rotate top 3 stack items */
+    OP_ROT4,                         /**< Rotate top 4 stack items */
+    OP_SETUP_TRY,                    /**< Setup try-catch block */
+    OP_POP_TRY,                      /**< Pop try block */
+    OP_POPN_TRY,                     /**< Pop N items from try stack */
+    OP_JUMP_IF_FALSE_OR_POP,         /**< Jump if false or pop */
+    OP_JUMP_IF_TRUE_OR_POP,          /**< Jump if true or pop */
+    OP_POP_JUMP_IF_FALSE,            /**< Pop and jump if false */
+    OP_POP_JUMP_IF_TRUE,             /**< Pop and jump if true */
+    OP_JUMP,                         /**< Unconditional jump */
+    OP_ABSOLUTE_JUMP,                /**< Absolute jump */
+    OP_RETURN                        /**< Return from function */
+} OpcodeEnum;
+
+// -----------------------------------------------------------------------------
+// Runtime Structures (Functions, Scope, Environment)
+// -----------------------------------------------------------------------------
+
+/**
+ * @struct capture_meta_struct
+ * @brief Metadata for captured variables in closures.
+ */
+typedef struct capture_meta_struct {
+    bool IsGlobal; /**< True if capturing a global variable */
+    int  Src;      /**< Source index */
+    int  Dst;      /**< Destination index */
+} CaptureMeta;
+
+/**
+ * @struct envcell_struct
+ * @brief Represents a cell in the environment (variable storage).
+ */
+typedef struct envcell_struct {
+    Value* Value;      /**< Pointer to the value stored in the cell */
+    bool   IsCaptured; /**< True if this cell is captured by a closure */
+} EnvCell;
+
+/**
+ * @struct environment_struct
+ * @brief Represents an execution environment (scope).
+ */
+typedef struct environment_struct {
+    Value*       Parent; /**< Pointer to the parent environment */
+    EnvCell**    Locals; /**< Array of local variable cells */
+    int          LocalC; /**< Count of local variables */
+} Environment;
+
+/**
+ * @struct user_function_struct
+ * @brief Represents a user-defined function in the interpreter.
+ */
+typedef struct user_function_struct {
+    Value*       ParentEnv;    /**< The environment where the function was defined */
+    String       Name;         /**< Function name (Nullable) */
+    uint8_t*     Codes;        /**< Bytecode instructions */
+    int          CodeC;        /**< Size of bytecode */
+    int          Argc;         /**< Argument count */
+    int          LocalC;       /**< Local variable count */
+    CaptureMeta* CaptureMetas; /**< Array of capture metadata */
+    int          CaptureC;     /**< Count of captured variables */
+    struct envcell_struct** Captures; /**< Array of captured environment cells */
+} UserFunction;
+
 /**
  * @struct symbol_struct
- * @brief Represents a symbol in the compiler
- * 
- * @var symbol_struct::IsGlobal
- * Whether the symbol is global
- * @var symbol_struct::IsLocalToFn
- * Whether the symbol is local to a function
- * @var symbol_struct::Offset
- * The offset of the symbol in the function's local variables
+ * @brief Represents a symbol table entry in the compiler.
  */
 typedef struct symbol_struct {
-    bool IsGlobal;
-    bool IsLocalToFn;
-    bool IsConstant;
-    int  Offset;
+    bool IsGlobal;    /**< True if symbol is global */
+    bool IsLocalToFn; /**< True if symbol is local to current function */
+    bool IsConstant;  /**< True if symbol is a constant */
+    int  Offset;      /**< Memory offset or index */
 } Symbol;
 
 /**
  * @enum scope_type_enum
- * @brief Enumeration of all possible scope types
+ * @brief Enumeration of all possible scope types.
  */
 typedef enum scope_type_enum {
-    SCOPE_GLOBAL,
-    SCOPE_FUNCTION,
-    SCOPE_FUNCTION_CLOSURE,
-    SCOPE_BLOCK,
-    SCOPE_TRY_BLOCK,
-    SCOPE_LOOP,
+    SCOPE_GLOBAL,           /**< Global scope */
+    SCOPE_FUNCTION,         /**< Function body scope */
+    SCOPE_FUNCTION_CLOSURE, /**< Function closure scope */
+    SCOPE_BLOCK,            /**< Generic block scope */
+    SCOPE_TRY_BLOCK,        /**< Try block scope */
+    SCOPE_LOOP,             /**< Loop scope */
 } ScopeType;
 
 /**
  * @struct scope_struct
- * @brief Represents a scope in the compiler
- * 
- * @var scope_struct::Parent
- * The parent scope
- * @var scope_struct::Symbols
- * The symbols in the scope
+ * @brief Represents a compilation scope.
  */
 typedef struct scope_struct Scope;
-typedef struct scope_struct {
-    ScopeType Type;
-    Scope*    Parent;
-    HashMap*  Symbols;
-    HashMap*  Captures;
+struct scope_struct {
+    ScopeType Type;          /**< Type of the scope */
+    Scope*    Parent;        /**< Parent scope */
+    HashMap*  Symbols;       /**< Symbol table for this scope */
+    HashMap*  Captures;      /**< Captured variables in this scope */
     // FN
-    bool      Returned;
+    bool      Returned;      /**< True if function returns in this scope */
     // Loop
-    int*      ContinueJumps;
-    int       ContinueJumpC;
-    int*      BreakJumps;
-    int       BreakJumpC;
-} Scope;
+    int*      ContinueJumps; /**< Array of jump locations for continue statements */
+    int       ContinueJumpC; /**< Count of continue jumps */
+    int*      BreakJumps;    /**< Array of jump locations for break statements */
+    int       BreakJumpC;    /**< Count of break jumps */
+};
+
+// -----------------------------------------------------------------------------
+// Classes, Modules & Native Functions
+// -----------------------------------------------------------------------------
+
+/**
+ * @struct user_class_struct
+ * @brief Represents a user-defined class in the interpreter.
+ */
+typedef struct user_class_struct {
+    String   Name;            /**< Class name */
+    Value*   Base;            /**< Base class (must be UserClass or Nullable) */
+    HashMap* StaticMembers;   /**< Static members map */
+    HashMap* InstanceMembers; /**< Instance members map */
+} UserClass;
+
+/**
+ * @struct class_instance_struct
+ * @brief Represents an instance of a user-defined class.
+ */
+typedef struct class_instance_struct {
+    Value*   Proto;   /**< Prototype class (must be UserClass) */
+    HashMap* Members; /**< Instance members map */
+} ClassInstance;
 
 /**
  * @struct interpreter_struct
- * @brief Main interpreter state structure
- * 
- * Holds the runtime state of the interpreter including singleton values,
- * garbage collection root, and constant pool.
- * 
- * @var interpreter_struct::True
- * Pointer to the singleton boolean true value
- * @var interpreter_struct::False
- * Pointer to the singleton boolean false value
- * @var interpreter_struct::Null
- * Pointer to the singleton null value
- * @var interpreter_struct::GcRoot
- * Root pointer for the garbage collector's linked list of values
- * @var interpreter_struct::Allocated
- * Total number of bytes allocated by the interpreter
- * @var interpreter_struct::Constants
- * Array of pointers to constant values used by the bytecode
- * @var interpreter_struct::ConstantC
- * Number of constants in the Constants array
+ * @brief Forward declaration of Interpreter structure for NativeFunction typedef.
  */
- typedef struct interpreter_struct {
-    Value*   True;
-    Value*   False;
-    Value*   Null;
-    Value*   GcRoot;
-    int      Allocated;
-    Value**  Constants;
-    int      ConstantC;
-    Value**  Functions;
-    int      FunctionC;
-    Value*   Stacks[STACK_SIZE];
-    int      StackC;
-    int      ExceptionHandlerStacks[STACK_SIZE];
-    int      ExceptionHandlerStackC;
-} Interpreter;
-
-/**
- * @struct compiler_struct
- * @brief Compiler state structure
- * 
- * @var compiler_struct::Interpreter
- * Pointer to the interpreter instance
- * @var compiler_struct::Parser
- * Pointer to the parser instance
- */
-typedef struct compiler_struct {
-    Interpreter* Interpreter;
-    Parser*      Parser;
-} Compiler;
+typedef struct interpreter_struct Interpreter;
 
 /**
  * @typedef NativeFunction
- * @brief Function pointer type for native functions
+ * @brief Function pointer type for native functions.
  * 
- * @param interpreter Pointer to the interpreter instance
- * @param argc Number of arguments passed to the function
- * @param arguments Array of pointers to the arguments passed to the function
- * @return Pointer to the result of the function
+ * @param interpreter Pointer to the interpreter instance.
+ * @param argc Number of arguments.
+ * @param arguments Array of argument values.
+ * @return Value* The return value of the function.
  */
 typedef Value* (*NativeFunction)(Interpreter* interpreter, int argc, Value** arguments);
 
 /**
  * @struct native_function_struct
- * @brief Represents a native (C-implemented) function in the interpreter
- * 
- * @var native_function_struct::Name
- * Name of the native function
- * @var native_function_struct::Argc
- * Number of arguments the function accepts (-1 for variadic)
- * @var native_function_struct::FuncPtr
- * Pointer to the C function implementing the native function
+ * @brief Represents a native (C-implemented) function metadata.
  */
 typedef struct native_function_struct {
-    String         Name;
-    int            Argc;
-    NativeFunction FuncPtr;
+    String         Name;    /**< Function name */
+    int            Argc;    /**< Expected argument count */
+    NativeFunction FuncPtr; /**< Pointer to the C function */
 } NativeFunctionMeta;
 
 /**
  * @struct module_function_struct
- * @brief Represents a function or value exported by a module
- * 
- * This structure is used to define module exports, which can be either native C functions
- * or pre-computed values. The structure allows modules to expose their functionality to
- * the interpreter.
- * 
- * @var module_function_struct::Name
- * The name of the exported function or value as it will appear in the module
- * @var module_function_struct::Argc
- * Number of arguments the function expects (only relevant for native functions)
- * @var module_function_struct::CFunction
- * Pointer to the native C function implementation (NULL if this is a value export)
- * @var module_function_struct::Value
- * Pointer to a pre-computed Value (NULL if this is a function export)
+ * @brief Represents a function or value exported by a native module.
  */
 typedef struct module_function_struct {
-    const String    Name;
-    int             Argc;
-    NativeFunction  CFunction; // If NativeFunction
-    Value*          Value;     // If value
+    const String    Name;      /**< Export name */
+    int             Argc;      /**< Argument count (for functions) */
+    NativeFunction  CFunction; /**< C function pointer (if Is NativeFunction) */
+    Value*          Value;     /**< Exported value (if not function) */
 } ModuleFunction;
+
+// -----------------------------------------------------------------------------
+// Main State Machines (Interpreter & Compiler)
+// -----------------------------------------------------------------------------
+
+/**
+ * @struct interpreter_struct
+ * @brief Main interpreter state structure containing execution context.
+ */
+struct interpreter_struct {
+    Value*   True;      /**< Singleton 'true' value */
+    Value*   False;     /**< Singleton 'false' value */
+    Value*   Null;      /**< Singleton 'null' value */
+    Value*   GcRoot;    /**< Root of the Garbage Collector object graph */
+    int      Allocated; /**< Total allocated bytes since last GC */
+    Value**  Constants; /**< Array of constant values */
+    int      ConstantC; /**< Count of constants */
+    Value**  Functions; /**< Array of function definitions */
+    int      FunctionC; /**< Count of functions */
+    Value*   Stacks[STACK_SIZE]; /**< Execution stack */
+    int      StackC;    /**< Stack pointer/count */
+    int      ExceptionHandlerStacks[STACK_SIZE]; /**< Stack for exception handlers */
+    int      ExceptionHandlerStackC; /**< Exception handler stack pointer */
+};
+
+/**
+ * @struct compiler_struct
+ * @brief Compiler state structure holding parser and interpreter references.
+ */
+typedef struct compiler_struct {
+    Interpreter* Interpreter; /**< Pointer to the interpreter */
+    Parser*      Parser;      /**< Pointer to the parser */
+} Compiler;
+
+// -----------------------------------------------------------------------------
+// Memory Allocation & Utilities
+// -----------------------------------------------------------------------------
 
 /**
  * @def Allocate
- * @brief Wrapper macro for memory allocation with file/line tracking
- * 
- * @param size Number of bytes to allocate
- * @return Pointer to allocated memory, or NULL on failure
+ * @brief Wrapper macro for memory allocation with file/line tracking.
+ * @param size Size in bytes to allocate.
  */
 #define Allocate(size) _Allocate(__FILE__, __LINE__, size)
 
 /**
  * @def Callocate
- * @brief Wrapper macro for memory allocation with zero-initialization and file/line tracking
- * 
- * @param count Number of elements to allocate
- * @param size Size of each element in bytes
- * @return Pointer to allocated memory, or NULL on failure
+ * @brief Wrapper macro for zero-initialized memory allocation with tracking.
+ * @param count Number of elements.
+ * @param size Size of each element.
  */
 #define Callocate(count, size) _Callocate(__FILE__, __LINE__, count, size)
 
 /**
  * @def Reallocate
- * @brief Wrapper macro for memory reallocation with file/line tracking
- * 
- * @param ptr Pointer to the memory to reallocate
- * @param size Number of bytes to reallocate
- * @return Pointer to reallocated memory, or NULL on failure
+ * @brief Wrapper macro for memory reallocation with tracking.
+ * @param ptr Pointer to existing memory block.
+ * @param size New size in bytes.
  */
 #define Reallocate(ptr, size) _Reallocate(__FILE__, __LINE__, ptr, size)
 
 /**
- * @brief Internal allocation function called by Allocate macro
- * 
- * @param file Source file name where allocation was requested
- * @param line Line number where allocation was requested
- * @param size Number of bytes to allocate
- * @return Pointer to allocated memory, or NULL on failure
+ * @brief Internal allocation function.
+ * @param file Source file name calling allocation.
+ * @param line Line number calling allocation.
+ * @param size Size in bytes.
+ * @return Pointer to allocated memory.
  */
 void* _Allocate(String file, int line, size_t size);
 
 /**
- * @brief Internal allocation function with zero-initialization called by Callocate macro
- * 
- * @param file Source file name where allocation was requested
- * @param line Line number where allocation was requested
- * @param count Number of elements to allocate
- * @param size Size of each element in bytes
- * @return Pointer to allocated memory, or NULL on failure
+ * @brief Internal zero-initialized allocation function.
+ * @param file Source file name calling allocation.
+ * @param line Line number calling allocation.
+ * @param count Number of elements.
+ * @param size Size of each element.
+ * @return Pointer to allocated memory.
  */
 void* _Callocate(String file, int line, size_t count, size_t size);
 
 /**
- * @brief Internal reallocation function called by Reallocate macro
- * 
- * @param file Source file name where reallocation was requested
- * @param line Line number where reallocation was requested
- * @param ptr Pointer to the memory to reallocate
- * @param size Number of bytes to reallocate
- * @return Pointer to reallocated memory, or NULL on failure
+ * @brief Internal reallocation function.
+ * @param file Source file name calling allocation.
+ * @param line Line number calling allocation.
+ * @param ptr Pointer to existing memory.
+ * @param size New size in bytes.
+ * @return Pointer to reallocated memory.
  */
 void* _Reallocate(String file, int line, void* ptr, size_t size);
 
+// String Utilities
+
 /**
- * @def AllocateString
- * @brief Wrapper macro for allocating a string with file/line tracking
- * 
- * @param str String to allocate
- * @return Pointer to allocated string, or NULL on failure
+ * @brief Duplicates a C string using the custom allocator.
+ * @param str The string to duplicate.
+ * @return A new copy of the string.
  */
 String AllocateString(String str);
 
 /**
- * @brief Converts a C string to an array of Unicode runes
- * 
- * @param str Null-terminated C string to convert
- * @return Dynamically allocated array of Rune values, or NULL on failure
+ * @brief Converts a UTF-8 string to an array of Runes (UTF-32).
+ * @param str The UTF-8 string.
+ * @return Pointer to the array of Runes.
  */
 Rune* StringToRunes(String str);
 
 /**
- * @brief Converts an array of Unicode runes to a C string
- * 
- * @param runes Array of Unicode runes to convert
- * @return Dynamically allocated C string, or NULL on failure
+ * @brief Converts an array of Runes back to a UTF-8 string.
+ * @param runes The array of Runes.
+ * @return A new UTF-8 string.
  */
 String RunesStrToString(Rune* runes);
 
 /**
- * @brief Checks if a string starts with a given prefix
- * 
- * @param str String to check
- * @param prefix Prefix to check for
- * @return true if the string starts with the prefix, false otherwise
+ * @brief Checks if a string starts with a given prefix.
+ * @param str The string to check.
+ * @param prefix The prefix to look for.
+ * @return true if str starts with prefix, false otherwise.
  */
 bool StringStartsWith(String str, String prefix);
 
+// Type Coercion
+
 /**
- * @brief Coerces a value to a 32-bit integer
- * 
- * @param value Pointer to the Value to coerce
- * @return The value converted to a 32-bit integer
+ * @brief Coerces a value to a 32-bit integer.
+ * @param value The value to coerce.
+ * @return The integer representation.
  */
 int CoerceToI32(Value* value);
 
 /**
- * @brief Coerces a value to a 64-bit integer
- * 
- * @param value Pointer to the Value to coerce
- * @return The value converted to a 64-bit integer (long)
+ * @brief Coerces a value to a 64-bit integer (long).
+ * @param value The value to coerce.
+ * @return The long integer representation.
  */
 long CoerceToI64(Value* value);
 
 /**
- * @brief Coerces a value to a double-precision floating point number
- * 
- * @param value Pointer to the Value to coerce
- * @return The value converted to a double
+ * @brief Coerces a value to a double-precision number.
+ * @param value The value to coerce.
+ * @return The double representation.
  */
 double CoerceToNum(Value* value);
 
 /**
- * @brief Generates a formatted error message with source code context
- * 
- * @param path File path where the error occurred
- * @param runes Array of Unicode runes representing the entire source file
- * @param position Position information (line and column) of the error
- * @param message Error message to display
- * @return Dynamically allocated formatted error string with line numbers and context
+ * @brief Coerces a value to a String.
+ * @param value The value to coerce.
+ * @return The String representation.
+ */
+Environment* CoerceToEnvironment(Value* value);
+
+/**
+ * @brief Coerces a value to a HashMap (object).
+ * @param value The value to coerce.
+ * @return Pointer to the HashMap.
+ */
+HashMap* CoerceToHashMap(Value* value);
+
+/**
+ * @brief Coerces a value to an Array.
+ * @param value The value to coerce.
+ * @return Pointer to the Array.
+ */
+Array* CoerceToArray(Value* value);
+
+/**
+ * @brief Coerces a value to a UserFunction.
+ * @param value The value to coerce.
+ * @return Pointer to the UserFunction.
+ */
+UserFunction* CoerceToUserFunction(Value* value);
+
+/**
+ * @brief Coerces a value to a NativeFunctionMeta.
+ * @param value The value to coerce.
+ * @return Pointer to the NativeFunctionMeta.
+ */
+NativeFunctionMeta* CoerceToNativeFunctionMeta(Value* value);
+
+/**
+ * @brief Coerces a value to a UserClass.
+ * @param value The value to coerce.
+ * @return Pointer to the UserClass.
+ */
+UserClass* CoerceToUserClass(Value* value);
+
+/**
+ * @brief Coerces a value to a ClassInstance.
+ * @param value The value to coerce.
+ * @return Pointer to the ClassInstance.
+ */
+ClassInstance* CoerceToClassInstance(Value* value);
+
+// Error Handling
+
+/**
+ * @brief Formats an error message with location information.
+ * @param path File path where error occurred.
+ * @param runes Source code runes.
+ * @param position Token position.
+ * @param message Error message.
+ * @return Formatted error string.
  */
 String GetErrorLine(String path, Rune* runes, Position position, String message);
 
 /**
- * @brief Throws an error with formatted message and source code context
- * 
- * @param path File path where the error occurred
- * @param runes Array of Unicode runes representing the entire source file
- * @param position Position information (line and column) of the error
- * @param message Error message to display
+ * @brief Throws a runtime error (prints and exits).
+ * @param path File path where error occurred.
+ * @param runes Source code runes.
+ * @param position Token position.
+ * @param message Error message.
  */
 void ThrowError(String path, Rune* runes, Position position, String message);
+
+/**
+ * @brief Formats a string with variable arguments.
+ * 
+ * @param format The format string.
+ * @param ... Variable arguments.
+ * @return Formatted string.
+ */
+String FormatString(String format, ...);
 
 #endif

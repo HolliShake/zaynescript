@@ -1,4 +1,5 @@
 #include "./interpreter.h" 
+#include "global.h"
 
 Interpreter* CreateInterpreter() {
     Interpreter* interpreter                = Allocate(sizeof(Interpreter));
@@ -24,6 +25,7 @@ Interpreter* CreateInterpreter() {
 #define Popp() (interpreter->Stacks[--interpreter->StackC])
 #define PopN(n) (interpreter->Stacks[interpreter->StackC -= (n)])
 #define Peek() (interpreter->Stacks[interpreter->StackC  - 1])
+#define PeekAt(n) (interpreter->Stacks[interpreter->StackC - n])
 
 #define PushEH(addr) (interpreter->ExceptionHandlerStacks[interpreter->ExceptionHandlerStackC++] = addr)
 #define PoppEH() (interpreter->ExceptionHandlerStacks[--interpreter->ExceptionHandlerStackC])
@@ -47,9 +49,8 @@ Interpreter* CreateInterpreter() {
     printf(" ]\n"); \
 } while (0)
 
-#define SetVar(envObj, offset, value) EnvironmentSetLocal((Environment*)envObj->Value.Opaque, offset, value)
-#define GetVar(envObj, offset) EnvironmentGetLocal((Environment*)envObj->Value.Opaque, offset)->Value
-#define ValueToUFn(value) ((UserFunction*) value->Value.Opaque)
+#define SetVar(envObj, offset, value) EnvironmentSetLocal(CoerceToEnvironment(envObj), offset, value)
+#define GetVar(envObj, offset) EnvironmentGetLocal(CoerceToEnvironment(envObj), offset)->Value
 
 static int _ReadOffset(uint8_t* codes, int alignStart) {
     int offset = 0;
@@ -93,15 +94,25 @@ static String _ReadString(uint8_t* codes, int alignStart) {
     break; } \
 
 static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* envObj) {
-    UserFunction* uf = ValueToUFn(fnValue);
+    UserFunction* uf = CoerceToUserFunction(fnValue);
     uint8_t opcode   = 0;
     Value* lhs       = NULL;
     Value* rhs       = NULL;
     Value* res       = NULL;
+    Value* ext       = NULL;
+    Value* arr       = NULL;
+    Value* obj       = NULL;
+    Value* cls       = NULL;
+    Value* key       = NULL;
+    Value* val       = NULL;
     Value* err       = NULL;
+    HashMap* map     = NULL;
+    Array* array     = NULL;
     int ip           = 0;
     int offset       = 0;
     int argc         = 0;
+    int flg          = 0;
+    int size         = 0;
     bool catched     = false;
     String str       = NULL;
 
@@ -124,28 +135,47 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
         switch (opcode) {
             case OP_IMPORT_CORE: {
                 str = _ReadString(uf->Codes, ip);
-                DoImportCore(interpreter, str, &res);
+                flg = DoImportCore(interpreter, str, &res);
+                if (flg == FLG_NOTFOUND)
+                    HandleError(
+                        "core module '%s' not found", 
+                        str
+                    );
                 Push(res);
                 Forward(strlen(str) + 1);
                 free(str);
-                str = NULL;
                 break;
             }
             case OP_LOAD_CAPTURE: {
                 offset = _ReadOffset(uf->Codes, ip);
-                Push(uf->Captures[offset]->Value);
+                val    = (uf->Captures[offset]->Value);
+                if (val == NULL)
+                    HandleError(
+                        "captured variable is referenced before initialization"
+                    );
+                Push(val);
                 Forward(4);
                 break;
             }
             case OP_LOAD_NAME: {
                 offset = _ReadOffset(uf->Codes, ip);
-                Push(GetVar(rootEnvObj, offset));
+                val    = GetVar(rootEnvObj, offset);
+                if (val == NULL)
+                    HandleError(
+                        "variable is referenced before assignment"
+                    );
+                Push(val);
                 Forward(4);
                 break;
             }
             case OP_LOAD_LOCAL: {
                 offset = _ReadOffset(uf->Codes, ip);
-                Push(GetVar(envObj, offset));
+                val    = GetVar(envObj, offset);
+                if (val == NULL)
+                    HandleError(
+                        "variable is referenced before assignment"
+                    );
+                Push(val);
                 Forward(4);
                 break;
             }
@@ -157,7 +187,11 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             }
             case OP_LOAD_BOOL: {
                 offset = _ReadOffset(uf->Codes, ip);
-                Push(offset == 0 ? interpreter->False : interpreter->True);
+                Push(
+                    offset 
+                    ? interpreter->False 
+                    : interpreter->True
+                );
                 Forward(4);
                 break;
             }
@@ -173,36 +207,34 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_ARRAY_EXTEND: {
-                Value* ext = Popp();
-                Value* arr = Peek();
-                if (!ValueIsArray(ext)) {
+                ext = Popp();
+                arr = Peek();
+                if (!ValueIsArray(ext))
                     HandleError(
                         "expected array to extend to be an array, got %s", 
                         ValueTypeOf(ext)
                     );
-                }
-                ArrayExtend((Array*)arr->Value.Opaque, (Array*)ext->Value.Opaque);
+                ArrayExtend(CoerceToArray(arr), CoerceToArray(ext));
                 break;
             }
             case OP_ARRAY_PUSH: {
-                Value* val = Popp();
-                Value* arr = Peek();
-                if (!ValueIsArray(arr)) {
+                val = Popp();
+                arr = Peek();
+                if (!ValueIsArray(arr))
                     HandleError(
                         "expected array to push to be an array, got %s", 
                         ValueTypeOf(arr)
                     );
-                }
-                ArrayPush((Array*)arr->Value.Opaque, val);
+                ArrayPush(CoerceToArray(arr), val);
                 break;
             }
             case OP_ARRAY_MAKE: {
-                int size     = _ReadOffset(uf->Codes, ip);
-                Value* arr   = NewArrayValue(interpreter);
-                Array* array = (Array*) arr->Value.Opaque;
+                size  = _ReadOffset(uf->Codes, ip);
+                arr   = NewArrayValue(interpreter);
+                array = CoerceToArray(arr);
                 for (int i = 0; i < size; i++) {
-                    Value* v = interpreter->Stacks[interpreter->StackC - size + i];
-                    ArrayPush(array, v);
+                    val = PeekAt(size + i);
+                    ArrayPush(array, val);
                 }
                 PopN(size);
                 Push(arr);
@@ -210,25 +242,24 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_OBJECT_EXTEND: {
-                Value* ext = Popp();
-                Value* obj = Peek();
-                if (!ValueIsObject(ext)) {
+                ext = Popp();
+                obj = Peek();
+                if (!ValueIsObject(ext))
                     HandleError(
                         "expected object to extend to be an object, got %s", 
                         ValueTypeOf(ext)
                     );
-                }
-                HashMapExtend((HashMap*)obj->Value.Opaque, (HashMap*)ext->Value.Opaque);
+                HashMapExtend(CoerceToHashMap(obj), CoerceToHashMap(ext));
                 break;
             }
             case OP_OBJECT_MAKE: {
-                int size     = _ReadOffset(uf->Codes, ip);
-                Value* obj   = NewObjectValue(interpreter);
-                HashMap* map = (HashMap*) obj->Value.Opaque;
+                size = _ReadOffset(uf->Codes, ip);
+                obj  = NewObjectValue(interpreter);
+                map  = CoerceToHashMap(obj);
                 for (int i = 0; i < size; i++) {
-                    Value* k = Popp();
-                    Value* v = Popp();
-                    HashMapSet(map, ValueToString(k), v);
+                    key = Popp();
+                    val = Popp();
+                    HashMapSet(map, ValueToString(key), val);
                 }
                 Push(obj);
                 Forward(4);
@@ -236,44 +267,72 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             }
             case OP_OBJECT_PLUCK_ATTRIBUTE: {
                 str = _ReadString(uf->Codes, ip);
-                Value* object = Peek();
-                
-                HashMap* map = (HashMap*) object->Value.Opaque;
+                obj = Peek();
+                map = CoerceToHashMap(obj);
 
                 if (!HashMapContains(map, str)) {
-                    Panic("Object does not have attribute '%s'\n", str);
+                    Panic("object does not have attribute '%s'\n", str);
                 }
+
                 res = HashMapGet(map, str);
 
                 Push(res);
                 Forward(strlen(str) + 1);
                 free(str);
-                str = NULL;
+                break;
+            }
+            case OP_CLASS_EXTEND: {
+                ext = Popp(); // super class
+                cls = Peek(); // class being extended
+                if (!ValueIsClass(ext))
+                    HandleError(
+                        "expected superclass to be a class, got %s", 
+                        ValueTypeOf(ext)
+                    );
+                ClassExtend(CoerceToUserClass(cls), ext);
+                break;
+            }
+            case OP_CLASS_MAKE: {
+                str = _ReadString(uf->Codes, ip);
+                obj = NewClassValue(interpreter, CreateUserClass(AllocateString(str), NULL));
+                Push(obj);
+                Forward(strlen(str) + 1);
+                free(str);
+                break;
+            }
+            case OP_CLASS_DEFINE_STATIC_MEMBER: 
+            case OP_CLASS_DEFINE_INSTANCE_MEMBER: {
+                bool isStatic = (opcode == OP_CLASS_DEFINE_STATIC_MEMBER);
+                key = Popp();
+                val = Popp();
+                obj = Peek();
+                ClassDefineMember(CoerceToUserClass(obj), key, val, isStatic);
                 break;
             }
             case OP_SET_INDEX: {
-                Value* val = Popp();
-                Value* key = Popp();
-                Value* obj = Peek();
+                val = Popp();
+                key = Popp();
+                obj = Peek();
                 if (!ValueIsObject(obj)) {
                     HandleError(
                         "expected object to set attribute on to be an object, got %s", 
                         ValueTypeOf(obj)
                     );
                 }
-                HashMapSet((HashMap*)obj->Value.Opaque, ValueToString(key), val);
+                HashMapSet(CoerceToHashMap(obj), ValueToString(key), val);
                 break;
             }
             case OP_GET_INDEX: {
-                Value* key = Popp();
-                Value* obj = Popp();
+                key = Popp();
+                obj = Popp();
                 if (!ValueIsObject(obj))
                     HandleError(
                         "expected object to get attribute from to be an object, got %s", 
                         ValueTypeOf(obj)
                     );
     
-                res = HashMapGet((HashMap*)obj->Value.Opaque, ValueToString(key));
+                res = HashMapGet(CoerceToHashMap(obj), ValueToString(key));
+
                 if (res == NULL)
                     HandleError(
                         "object (%s) has no attribute '%s'", 
@@ -292,18 +351,38 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 Forward(4);
                 break;
             }
+            case OP_CALL_CTOR: {
+                argc = _ReadOffset(uf->Codes, ip);
+                Forward(4);
+
+                obj  = Popp();
+
+                if (!ValueIsClass(obj))
+                    HandleError(
+                        "attempted to allocate non-class value of type %s", 
+                        ValueTypeOf(obj)
+                    );
+                
+                if (!ClassHasMember(CoerceToUserClass(obj), CONSTRUCTOR_NAME, false, true)) {
+                    PopN(argc);
+                    // Push default instance, no constructor call
+                    ClassInstance* instance = CreateClassInstance(obj);
+                    Push(NewClassInstanceValue(interpreter, instance));
+                }
+                break;
+            }
             case OP_CALL: {
                 argc = _ReadOffset(uf->Codes, ip);
                 Forward(4);
 
-                Value* function = Popp();
+                obj = Popp();
 
-                if (function == NULL) {
+                if (obj == NULL) {
                     Panic("Attempted to call a null value");
                 }
 
-                if (ValueIsNativeFunction(function)) {
-                    NativeFunctionMeta* nFMeta = (NativeFunctionMeta*) function->Value.Opaque;
+                if (ValueIsNativeFunction(obj)) {
+                    NativeFunctionMeta* nFMeta = CoerceToNativeFunctionMeta(obj);
                     NativeFunction nf          = nFMeta->FuncPtr;
 
                     if (nFMeta->Argc != VARARG && argc != nFMeta->Argc) 
@@ -317,15 +396,16 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                     }
                     Value* nativeResult = nf(interpreter, argc, args);
                     Push(nativeResult);
+                    free(args);
                     break;
                 }
 
                 // Call
-                UserFunction* uf = ValueToUFn(function);
+                UserFunction* uf = CoerceToUserFunction(obj);
                 Environment* env = CreateEnvironment(envObj, uf->LocalC);
 
-                if (!ValueIsCallable(function)) {
-                    Panic("Attempted to call a non-callable value: %s\n", ValueToString(function));
+                if (!ValueIsCallable(obj)) {
+                    Panic("Attempted to call a non-callable value: %s\n", ValueToString(obj));
                 }
 
                 if (argc != uf->Argc) {
@@ -335,7 +415,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 // printf("Running function %s with %d args\n", uf->Name, argc);
                 _Run(
                     interpreter, 
-                    function, 
+                    obj, 
                     uf->ParentEnv != NULL ? uf->ParentEnv : rootEnvObj, 
                     NewEnvironmentValue(interpreter, env)
                 );
@@ -345,8 +425,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 rhs = Popp();
                 lhs = Popp();
                 res = NULL;
-                int result = DoMul(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) 
+                flg = DoMul(interpreter, lhs, rhs, &res);
+                if (flg == FLG_INVALID_OPERATION) 
                     HandleError(
                         "invalid operation (*) for type %s and %s", 
                         ValueTypeOf(lhs), 
@@ -359,12 +439,12 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 rhs = Popp();
                 lhs = Popp();
                 res = NULL;
-                int result = DoDiv(interpreter, lhs, rhs, &res);
-                if (result == FLG_ZERO_DIV) 
+                flg = DoDiv(interpreter, lhs, rhs, &res);
+                if (flg == FLG_ZERO_DIV) 
                     HandleError(
                         "zero division error"
                     )
-                else if (result == FLG_INVALID_OPERATION) 
+                else if (flg == FLG_INVALID_OPERATION) 
                     HandleError(
                         "invalid operation (/) for type %s and %s", 
                         ValueTypeOf(lhs), 
@@ -377,12 +457,12 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 rhs = Popp();
                 lhs = Popp();
                 res = NULL;
-                int result = DoMod(interpreter, lhs, rhs, &res);
-                if (result == FLG_ZERO_DIV) 
+                flg = DoMod(interpreter, lhs, rhs, &res);
+                if (flg == FLG_ZERO_DIV) 
                     HandleError(
                         "zero division error"
                     )
-                else if (result == FLG_INVALID_OPERATION) 
+                else if (flg == FLG_INVALID_OPERATION) 
                     HandleError(
                         "invalid operation (%%) for type %s and %s", 
                         ValueTypeOf(lhs), 
@@ -395,8 +475,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 // bot [obj, key, val] top
                 rhs = Popp(); // old value
                 res = NULL;
-                int result = DoInc(interpreter, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) 
+                flg = DoInc(interpreter, rhs, &res);
+                if (flg == FLG_INVALID_OPERATION) 
                     HandleError(
                         "invalid operation (++) for type %s", 
                         ValueTypeOf(rhs)
@@ -408,8 +488,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             case OP_INC: {
                 lhs = Popp();
                 res = NULL;
-                int result = DoInc(interpreter, lhs, &res);
-                if (result == FLG_INVALID_OPERATION) 
+                flg = DoInc(interpreter, lhs, &res);
+                if (flg == FLG_INVALID_OPERATION) 
                     HandleError(
                         "invalid operation (++) for type %s", 
                         ValueTypeOf(lhs)
@@ -421,8 +501,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 rhs = Popp();
                 lhs = Popp();
                 res = NULL;
-                int result = DoAdd(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) 
+                flg = DoAdd(interpreter, lhs, rhs, &res);
+                if (flg == FLG_INVALID_OPERATION) 
                     HandleError(
                         "invalid operation (+) for type %s and %s", 
                         ValueTypeOf(lhs), 
@@ -435,8 +515,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 // bot [obj, key, val] top
                 rhs = Popp(); // old value
                 res = NULL;
-                int result = DoDec(interpreter, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) 
+                flg = DoDec(interpreter, rhs, &res);
+                if (flg == FLG_INVALID_OPERATION) 
                     HandleError(
                         "invalid operation (--) for type %s", 
                         ValueTypeOf(rhs)
@@ -448,8 +528,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             case OP_DEC: {
                 lhs = Popp();
                 res = NULL;
-                int result = DoDec(interpreter, lhs, &res);
-                if (result == FLG_INVALID_OPERATION) 
+                flg = DoDec(interpreter, lhs, &res);
+                if (flg == FLG_INVALID_OPERATION) 
                     HandleError(
                         "invalid operation (--) for type %s", 
                         ValueTypeOf(lhs)
@@ -461,8 +541,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 rhs = Popp();
                 lhs = Popp();
                 res = NULL;
-                int result = DoSub(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) 
+                flg = DoSub(interpreter, lhs, rhs, &res);
+                if (flg == FLG_INVALID_OPERATION) 
                     HandleError(
                         "invalid operation (-) for type %s and %s", 
                         ValueTypeOf(lhs), 
@@ -475,8 +555,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 rhs = Popp();
                 lhs = Popp();
                 res = NULL;
-                int result = DoLShift(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) 
+                flg = DoLShift(interpreter, lhs, rhs, &res);
+                if (flg == FLG_INVALID_OPERATION) 
                     HandleError(
                         "invalid operation (<<) for type %s and %s", 
                         ValueTypeOf(lhs), 
@@ -489,8 +569,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 rhs = Popp();
                 lhs = Popp();
                 res = NULL;
-                int result = DoRShift(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) 
+                flg = DoRShift(interpreter, lhs, rhs, &res);
+                if (flg == FLG_INVALID_OPERATION) 
                     HandleError(
                         "invalid operation (>>) for type %s and %s", 
                         ValueTypeOf(lhs), 
@@ -503,8 +583,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 rhs = Popp();
                 lhs = Popp();
                 res = NULL;
-                int result = DoLT(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) 
+                flg = DoLT(interpreter, lhs, rhs, &res);
+                if (flg == FLG_INVALID_OPERATION) 
                     HandleError(
                         "invalid operation (<) for type %s and %s", 
                         ValueTypeOf(lhs), 
@@ -517,8 +597,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 rhs = Popp();
                 lhs = Popp();
                 res = NULL;
-                int result = DoLTE(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) 
+                flg = DoLTE(interpreter, lhs, rhs, &res);
+                if (flg == FLG_INVALID_OPERATION) 
                     HandleError(
                         "invalid operation (<=) for type %s and %s", 
                         ValueTypeOf(lhs), 
@@ -531,8 +611,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 rhs = Popp();
                 lhs = Popp();
                 res = NULL;
-                int result = DoGT(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) 
+                flg = DoGT(interpreter, lhs, rhs, &res);
+                if (flg == FLG_INVALID_OPERATION) 
                     HandleError(
                         "invalid operation (>) for type %s and %s", 
                         ValueTypeOf(lhs), 
@@ -545,8 +625,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 rhs = Popp();
                 lhs = Popp();
                 res = NULL;
-                int result = DoGTE(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) 
+                flg = DoGTE(interpreter, lhs, rhs, &res);
+                if (flg == FLG_INVALID_OPERATION) 
                     HandleError(
                         "invalid operation (>=) for type %s and %s", 
                         ValueTypeOf(lhs), 
@@ -559,8 +639,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 rhs = Popp();
                 lhs = Popp();
                 res = NULL;
-                int result = DoEQ(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) 
+                flg = DoEQ(interpreter, lhs, rhs, &res);
+                if (flg == FLG_INVALID_OPERATION) 
                     HandleError(
                         "invalid operation (==) for type %s and %s", 
                         ValueTypeOf(lhs), 
@@ -573,10 +653,52 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 rhs = Popp();
                 lhs = Popp();
                 res = NULL;
-                int result = DoNE(interpreter, lhs, rhs, &res);
-                if (result == FLG_INVALID_OPERATION) 
+                flg = DoNE(interpreter, lhs, rhs, &res);
+                if (flg == FLG_INVALID_OPERATION) 
                     HandleError(
                         "invalid operation (!=) for type %s and %s", 
+                        ValueTypeOf(lhs), 
+                        ValueTypeOf(rhs)
+                    );
+                Push(res);
+                break;
+            }
+            case OP_AND: {
+                rhs = Popp();
+                lhs = Popp();
+                res = NULL;
+                flg = DoAnd(interpreter, lhs, rhs, &res);
+                if (flg == FLG_INVALID_OPERATION) 
+                    HandleError(
+                        "invalid operation (and) for type %s and %s", 
+                        ValueTypeOf(lhs), 
+                        ValueTypeOf(rhs)
+                    );
+                Push(res);
+                break;
+            }
+            case OP_OR: {
+                rhs = Popp();
+                lhs = Popp();
+                res = NULL;
+                flg = DoOr(interpreter, lhs, rhs, &res);
+                if (flg == FLG_INVALID_OPERATION) 
+                    HandleError(
+                        "invalid operation (or) for type %s and %s", 
+                        ValueTypeOf(lhs), 
+                        ValueTypeOf(rhs)
+                    );
+                Push(res);
+                break;
+            }
+            case OP_XOR: {
+                rhs = Popp();
+                lhs = Popp();
+                res = NULL;
+                flg = DoXor(interpreter, lhs, rhs, &res);
+                if (flg == FLG_INVALID_OPERATION) 
+                    HandleError(
+                        "invalid operation (xor) for type %s and %s", 
                         ValueTypeOf(lhs), 
                         ValueTypeOf(rhs)
                     );
@@ -600,29 +722,29 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_DUP2: {
-                Value* a = Peek();
-                Value* b = interpreter->Stacks[interpreter->StackC - 2];
+                Value* a = PeekAt(1);
+                Value* b = PeekAt(2);
                 Push(b);
                 Push(a);
                 break;
             }
             case OP_POPTOP: {
-                Value* val = Popp();
+                Popp();
                 break;
             }
             case OP_ROT2: {
                 // A B -> B A
-                Value* a = interpreter->Stacks[interpreter->StackC - 1];
-                Value* b = interpreter->Stacks[interpreter->StackC - 2];
+                Value* a = PeekAt(1);
+                Value* b = PeekAt(2);
                 interpreter->Stacks[interpreter->StackC - 1] = b;
                 interpreter->Stacks[interpreter->StackC - 2] = a;
                 break;
             }
             case OP_ROT3: {
                 // A B C -> C A B
-                Value* a = interpreter->Stacks[interpreter->StackC - 1];
-                Value* b = interpreter->Stacks[interpreter->StackC - 2];
-                Value* c = interpreter->Stacks[interpreter->StackC - 3];
+                Value* a = PeekAt(1);
+                Value* b = PeekAt(2);
+                Value* c = PeekAt(3);
                 interpreter->Stacks[interpreter->StackC - 1] = c;
                 interpreter->Stacks[interpreter->StackC - 2] = a;
                 interpreter->Stacks[interpreter->StackC - 3] = b;
@@ -630,10 +752,10 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             }
             case OP_ROT4: {
                 // A B C D -> D A B C
-                Value* d = interpreter->Stacks[interpreter->StackC - 1];
-                Value* c = interpreter->Stacks[interpreter->StackC - 2];
-                Value* b = interpreter->Stacks[interpreter->StackC - 3];
-                Value* a = interpreter->Stacks[interpreter->StackC - 4];
+                Value* d = PeekAt(1);
+                Value* c = PeekAt(2);
+                Value* b = PeekAt(3);
+                Value* a = PeekAt(4);
                 interpreter->Stacks[interpreter->StackC - 1] = c;
                 interpreter->Stacks[interpreter->StackC - 2] = b;
                 interpreter->Stacks[interpreter->StackC - 3] = a;
@@ -651,15 +773,15 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_POPN_TRY: {
-                offset = _ReadOffset(uf->Codes, ip);
-                PopNEH(offset);
+                size = _ReadOffset(uf->Codes, ip);
+                PopNEH(size);
                 Forward(4);
                 break;
             }
             case OP_JUMP_IF_FALSE_OR_POP: {
                 offset = _ReadOffset(uf->Codes, ip);
-                res    = Peek();
-                if (!ValueToBool(res)) {
+                val    = Peek();
+                if (!ValueToBool(val)) {
                     JmpFrwd(offset);
                 } else {
                     Popp();
@@ -669,8 +791,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             }
             case OP_JUMP_IF_TRUE_OR_POP: {
                 offset = _ReadOffset(uf->Codes, ip);
-                res    = Peek();
-                if (ValueToBool(res)) {
+                val    = Peek();
+                if (ValueToBool(val)) {
                     JmpFrwd(offset);
                 } else {
                     Popp();
@@ -680,8 +802,8 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             }
             case OP_POP_JUMP_IF_FALSE: {
                 offset = _ReadOffset(uf->Codes, ip);
-                res    = Popp();
-                if (ValueToBool(res) == false) {
+                val    = Popp();
+                if (ValueToBool(val) == false) {
                     JmpFrwd(offset);
                 } else {
                     Forward(4);
@@ -710,7 +832,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
 }
 
 void _RunProgram(Interpreter* interpreter, Value* fnValue) {
-    UserFunction* uf = ValueToUFn(fnValue);
+    UserFunction* uf = CoerceToUserFunction(fnValue);
     Environment* env = CreateEnvironment(NULL, uf->LocalC);
     Value* envObj    = NewEnvironmentValue(interpreter, env);
     _Run(interpreter, fnValue, envObj, envObj);

@@ -79,7 +79,7 @@ static ModuleFunction _MathModuleFunctions[] = {
 
 Value* LoadCoreMath(Interpreter* interpreter) {
     Value* module = NewObjectValue(interpreter);
-    HashMap* map = (HashMap*)module->Value.Opaque;
+    HashMap* map  = CoerceToHashMap(module);
 
     for (int i = 0; _MathModuleFunctions[i].Name != NULL; i++) {
         ModuleFunction func = _MathModuleFunctions[i];

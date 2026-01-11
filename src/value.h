@@ -1,4 +1,5 @@
 #include "./array.h"
+#include "./class.h"
 #include "./function.h"
 #include "./global.h"
 #include "./hashmap.h"
@@ -98,6 +99,24 @@ Value* NewArrayValue(Interpreter* interpreter);
   * @return Pointer to newly allocated Value structure containing the object
   */
 Value* NewObjectValue(Interpreter* interpreter);
+
+/**
+ * @brief Creates a new class value
+ * 
+ * @param interpreter Pointer to the interpreter instance
+ * @param cls Pointer to the UserClass structure to wrap
+ * @return Pointer to newly allocated Value structure containing the class
+ */
+Value* NewClassValue(Interpreter* interpreter, UserClass* cls);
+
+/**
+ * @brief Creates a new class instance value
+ * 
+ * @param interpreter Pointer to the interpreter instance
+ * @param instance Pointer to the ClassInstance structure to wrap
+ * @return Pointer to newly allocated Value structure containing the class instance
+ */
+Value* NewClassInstanceValue(Interpreter* interpreter, ClassInstance* instance);
 
 /**
  * @brief Converts a value to a string representation
@@ -202,5 +221,13 @@ bool ValueIsArray(Value* value);
  * @return true if the value is an object, false otherwise
  */
 bool ValueIsObject(Value* value);
+
+/**
+ * @brief Checks if a value is a class
+ * 
+ * @param value Pointer to the Value to check
+ * @return true if the value is a class, false otherwise
+ */
+bool ValueIsClass(Value* value);
 
 #endif

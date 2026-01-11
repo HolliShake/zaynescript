@@ -1,5 +1,4 @@
 #include "./parser.h"
-#include "global.h"
 
 Parser* CreateParser(Lexer* lexer) {
     Parser* parser = Allocate(sizeof(Parser));
@@ -321,8 +320,34 @@ static Ast* _FunctionExpression(Parser* parser) {
     return AstFunction(NULL, parameters, body, MergePositions(start, ended));
 }
 
+static Ast* _Allocation(Parser* parser) {
+    if (CHECKTV("new")) {
+        Position start = parser->Next.Position, ended = start;
+        ACCEPTV_FREE("new");
+        Ast* cls = _Group(parser);
+        if (cls == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                parser->Next.Position, 
+                "expected a class"
+            );
+        }
+        ACCEPTV_FREE("(");
+        Ast* arguments = _ListOfExpressions(parser);
+        ended = parser->Next.Position;
+        ACCEPTV_FREE(")");
+        return AstAllocation(
+            cls, 
+            arguments, 
+            MergePositions(start, ended)
+        );
+    }
+    return _Group(parser);
+}
+
 static Ast* _MemberOrCall(Parser* parser) {
-    Ast* call = _Group(parser);
+    Ast* call = _Allocation(parser);
     if (call == NULL) {
         return NULL;
     }
@@ -948,7 +973,128 @@ static Ast* _ListOfExpressions(Parser* parser) {
     return head;
 }
 
+static Ast* _Function(Parser* parser);
 static Ast* _Statement(Parser* parser);
+
+static Ast* _ClassMember(Parser* parser) {
+    bool _static_ = false;
+    Ast* node     = NULL;
+
+    if (CHECKTV(KEY_STATIC)) {
+        ACCEPTV_FREE(KEY_STATIC);
+        _static_ = true;
+    }
+
+    if (CHECKTV(KEY_FN)) {
+        node = _Function(parser);
+        if (strcmp(node->A->Value, CONSTRUCTOR_NAME) == 0 && _static_) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                node->Position, 
+                "constructor cannot be static"
+            );
+        }
+    } else if (_static_ && CHECKTT(TK_IDN)) {
+        node = _Assignment(parser);
+        if (node->Type != AST_ASSIGN) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                node->Position, 
+                "expected a method or function declaration"
+            );
+        }
+        if (node->A->Type != AST_NAME) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                node->A->Position, 
+                "expected an identifier or name for member"
+            );
+        }
+        ACCEPTV_FREE(";");
+    }
+
+    if (node == NULL) {
+        return NULL;
+    }
+
+    return AstClassMember(
+        _static_,
+        node,
+        node->Position
+    );
+}
+
+static Ast* _ListOfClassMembers(Parser* parser) {
+    Ast* head = NULL;
+    Ast* tail = NULL;
+    
+    Ast* member = _ClassMember(parser);
+    if (member != NULL) {
+        head = member;
+        tail = member;
+        
+        while (true) {
+            member = _ClassMember(parser);
+            if (member == NULL) {
+                break;
+            }
+            tail->Next = member;
+            tail = member;
+        }
+    }
+    
+    return head;
+}
+
+static Ast* _Class(Parser* parser) {
+    Position start = parser->Next.Position, ended = start;
+    Ast* className = NULL, *body = NULL;
+    ACCEPTV_FREE(KEY_CLASS);
+    className = _Terminal(parser);
+    if (className == NULL) {
+        ThrowError(
+            parser->Lexer->Path, 
+            parser->Lexer->Data, 
+            start, 
+            "expected a class name"
+        );
+    }
+    if (className->Type != AST_NAME) {
+        ThrowError(
+            parser->Lexer->Path, 
+            parser->Lexer->Data, 
+            className->Position, 
+            "expected an identifier or name"
+        );
+    }
+    Ast* superClass = NULL;
+    if (CHECKTV("(")) {
+        ACCEPTV_FREE("(");
+        superClass = _Expression(parser);
+        if (superClass == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                start, 
+                "expected a superclass name"
+            );
+        }
+        ACCEPTV_FREE(")");
+    }
+    ACCEPTV_FREE("{");
+    body  = _ListOfClassMembers(parser);
+    ended = parser->Next.Position;
+    ACCEPTV_FREE("}");
+    return AstClass(
+        className,
+        superClass,
+        body,
+        MergePositions(start, ended)
+    );
+}
 
 static Ast* _Function(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
@@ -1509,7 +1655,9 @@ static Ast* _ExpressionStatement(Parser* parser) {
 }
 
 static Ast* _Statement(Parser* parser) {
-    if (CHECKTV(KEY_FN)) {
+    if (CHECKTV(KEY_CLASS)) {
+        return _Class(parser);
+    } else if (CHECKTV(KEY_FN)) {
         return _Function(parser);
     } else if (CHECKTV(KEY_IMPORT)) {
         return _ImportStatement(parser);

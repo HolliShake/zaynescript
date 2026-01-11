@@ -126,7 +126,7 @@ static ModuleFunction _IoModuleFunctions[] = {
 
 Value* LoadCoreIo(Interpreter* interpeter) {
     Value* ioModule = NewObjectValue(interpeter);
-    HashMap* ioMap  = (HashMap*) ioModule->Value.Opaque;
+    HashMap* ioMap  = CoerceToHashMap(ioModule);
     
     for (int i = 0; _IoModuleFunctions[i].Name != NULL; i++) {
         ModuleFunction func = _IoModuleFunctions[i];

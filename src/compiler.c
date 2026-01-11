@@ -457,30 +457,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             FreeScope(fnScope);
             break;
         }
-        case AST_POST_INC: {
-            _AssignOpRhs(compiler, uf, scope, node->A, true);
-            _Emit(compiler, uf, OP_POSTINC);
-            _AssignOpLhs(compiler, uf, scope, node->A, true);
-            break;
-        }
-        case AST_POST_DEC: {
-            _AssignOpRhs(compiler, uf, scope, node->A, true);
-            _Emit(compiler, uf, OP_POSTDEC);
-            _AssignOpLhs(compiler, uf, scope, node->A, true);
-            break;
-        }
-        case AST_PRE_INC: {
-            _AssignOpRhs(compiler, uf, scope, node->A, false);
-            _Emit(compiler, uf, OP_INC);
-            _Emit(compiler, uf, OP_DUPTOP);
-            _AssignOpLhs(compiler, uf, scope, node->A, false);
-            break;
-        }
-        case AST_PRE_DEC: {
-            _AssignOpRhs(compiler, uf, scope, node->A, false);
-            _Emit(compiler, uf, OP_DEC);
-            _Emit(compiler, uf, OP_DUPTOP);
-            _AssignOpLhs(compiler, uf, scope, node->A, false);
+        case AST_ALLOCATION: {
+            Ast* cls      = node->A;
+            Ast* arguments = node->B;
+
+            int argc = 0;
+            while (arguments != NULL) {
+                _Expression(compiler, uf, scope, arguments);
+                argc++;
+                arguments = arguments->Next;
+            }
+
+            _Expression(compiler, uf, scope, cls);
+            _EmitArg(compiler, uf, OP_CALL_CTOR, argc);
             break;
         }
         case AST_MEMBER: {
@@ -512,6 +501,32 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
 
             _Expression(compiler, uf, scope, objc);
             _EmitArg(compiler, uf, OP_CALL, argc);
+            break;
+        }
+        case AST_POST_INC: {
+            _AssignOpRhs(compiler, uf, scope, node->A, true);
+            _Emit(compiler, uf, OP_POSTINC);
+            _AssignOpLhs(compiler, uf, scope, node->A, true);
+            break;
+        }
+        case AST_POST_DEC: {
+            _AssignOpRhs(compiler, uf, scope, node->A, true);
+            _Emit(compiler, uf, OP_POSTDEC);
+            _AssignOpLhs(compiler, uf, scope, node->A, true);
+            break;
+        }
+        case AST_PRE_INC: {
+            _AssignOpRhs(compiler, uf, scope, node->A, false);
+            _Emit(compiler, uf, OP_INC);
+            _Emit(compiler, uf, OP_DUPTOP);
+            _AssignOpLhs(compiler, uf, scope, node->A, false);
+            break;
+        }
+        case AST_PRE_DEC: {
+            _AssignOpRhs(compiler, uf, scope, node->A, false);
+            _Emit(compiler, uf, OP_DEC);
+            _Emit(compiler, uf, OP_DUPTOP);
+            _AssignOpLhs(compiler, uf, scope, node->A, false);
             break;
         }
         case AST_MUL: {
@@ -1173,6 +1188,137 @@ static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
     }
 }
 
+static void _ClassDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
+    if (!ScopeIs(scope, SCOPE_GLOBAL)) {
+        ThrowError(
+            compiler->Parser->Lexer->Path, 
+            compiler->Parser->Lexer->Data, 
+            node->Position, 
+            "classes can only be declared at the global scope"
+        );
+    }
+
+    Scope* classScope = CreateScope(SCOPE_BLOCK, scope);
+
+    Ast* className = node->A;
+    Ast* super     = node->B;
+    Ast* body      = node->C;
+
+    // Assume its already forwarded
+    Symbol* symbol = ScopeGetSymbol(scope, className->Value, false);
+
+    if (symbol == NULL) {
+        ThrowError(
+            compiler->Parser->Lexer->Path, 
+            compiler->Parser->Lexer->Data, 
+            className->Position, 
+            "class not found"
+        );
+    }
+
+    int nameOffset = symbol->Offset;
+
+    _EmitString(compiler, uf, OP_CLASS_MAKE, className->Value);
+
+    if (super != NULL) {
+        _Expression(compiler, uf, scope, super);
+        _Emit(compiler, uf, OP_CLASS_EXTEND);
+    }
+
+    while (body != NULL) {
+        bool isStatic   = strcmp(body->Value, "static") == 0; // instance or static
+        Ast* actualBody = body->A;
+        switch (actualBody->Type) {
+            case AST_ASSIGN: {
+                Ast* propName = actualBody->A;
+                Ast* propVal  = actualBody->B;
+                _Expression(compiler, uf, scope, propVal);
+                _EmitString(compiler, uf, OP_LOAD_STRING, propName->Value);
+
+                if (ScopeHasLocal(classScope, propName->Value)) {
+                    ThrowError(
+                        compiler->Parser->Lexer->Path, 
+                        compiler->Parser->Lexer->Data, 
+                        propName->Position, 
+                        "duplicate class member name"
+                    );
+                }
+                ScopeSetSymbol(classScope, propName->Value, false, true, false, -1);
+                break;
+            }
+            case AST_FUNCTION: {
+                Scope* fnScope = CreateScope(SCOPE_FUNCTION, scope);
+                Ast* fnName = actualBody->A;
+                Ast* params = actualBody->B;
+                Ast* body   = actualBody->C;
+
+                UserFunction* fn = CreateUserFunction(AllocateString(fnName->Value), 0);
+
+                int paramc = 0;
+                while (params != NULL) {
+                    if (ScopeHasLocal(fnScope, params->Value)) {
+                        ThrowError(
+                            compiler->Parser->Lexer->Path, 
+                            compiler->Parser->Lexer->Data, 
+                            params->Position, 
+                            "duplicate parameter name"
+                        );
+                    }
+
+                    int offset = UserFunctionEmitLocal(fn);
+
+                    ScopeSetSymbol(fnScope, params->Value, false, true, false, offset);
+
+                    _EmitArg(compiler, fn, OP_STORE_LOCAL, offset);
+                    paramc++;
+                    params = params->Next;
+                }
+
+                fn->Argc = paramc;
+
+                while (body != NULL) {
+                    _Statement(compiler, fn, fnScope, body);
+                    body = body->Next;
+                }
+
+                _Emit(compiler, fn, OP_LOAD_NULL);
+                _Emit(compiler, fn, OP_RETURN);
+
+                // Create the function
+                Value* fnValue = NewUserFunctionValue(compiler->Interpreter, fn);
+                int funcOffset = _SaveFunction(compiler, fnValue);
+
+                _EmitArg(compiler, uf, OP_LOAD_FUNCTION, funcOffset);
+                _EmitString(compiler, uf, OP_LOAD_STRING, fnName->Value);
+
+                if (ScopeHasLocal(classScope, fnName->Value)) {
+                    ThrowError(
+                        compiler->Parser->Lexer->Path, 
+                        compiler->Parser->Lexer->Data, 
+                        fnName->Position, 
+                        "duplicate class member name"
+                    );
+                }
+
+                ScopeSetSymbol(classScope, fnName->Value, false, true, false, -1);
+                break;
+            }
+            default: {
+                ThrowError(
+                    compiler->Parser->Lexer->Path, 
+                    compiler->Parser->Lexer->Data, 
+                    body->Position, 
+                    "invalid class body element"
+                );
+            }
+        }
+        _Emit(compiler, uf, isStatic ? OP_CLASS_DEFINE_STATIC_MEMBER : OP_CLASS_DEFINE_INSTANCE_MEMBER);
+        body = body->Next;
+    }
+    _EmitArg(compiler, uf, OP_STORE_NAME, nameOffset);
+    FreeScope(classScope);
+}
+
 static void _FunctionDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
     if (!ScopeIs(scope, SCOPE_GLOBAL)) {
         ThrowError(
@@ -1699,9 +1845,23 @@ static void _ExpressionStatement(Compiler* compiler, UserFunction* uf, Scope* sc
     _Emit(compiler, uf, OP_POPTOP);
 }
 
-static void _ForwardFunctions(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
+static void _ForwardDeclairations(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
     while (node != NULL) {
         switch (node->Type) {
+            case AST_CLASS: {
+                Ast* className = node->A;
+                if (ScopeHasLocal(scope, className->Value)) {
+                    ThrowError(
+                        compiler->Parser->Lexer->Path, 
+                        compiler->Parser->Lexer->Data, 
+                        className->Position, 
+                        "duplicate class name"
+                    );
+                }
+                int offset = UserFunctionEmitLocal(uf);
+                ScopeSetSymbol(scope, className->Value, true, true, false, offset);
+                break;
+            }
             case AST_FUNCTION: {
                 Ast* fnName = node->A;
                 ScopeSetSymbol(scope, fnName->Value, true, true, false, UserFunctionEmitLocal(uf));
@@ -1716,6 +1876,9 @@ static void _ForwardFunctions(Compiler* compiler, UserFunction* uf, Scope* scope
 
 static void _Statement(Compiler* compiler, UserFunction* userFunction, Scope* scope, Ast* node) {\
     switch (node->Type) {
+        case AST_CLASS: 
+            _ClassDeclaration(compiler, userFunction, scope, node);
+            break;
         case AST_FUNCTION:
             _FunctionDeclaration(compiler, userFunction, scope, node);
             break;
@@ -1780,7 +1943,7 @@ static Value* _Program(Compiler* compiler, Ast* node) {
     _SaveFunction(compiler, value);
 
     Ast* current = node->A;
-    _ForwardFunctions(compiler, uf, scope, current);
+    _ForwardDeclairations(compiler, uf, scope, current);
     while (current != NULL) {
         _Statement(compiler, uf, scope, current);
         current = current->Next;

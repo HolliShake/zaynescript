@@ -79,6 +79,18 @@ Value* NewObjectValue(Interpreter* interpreter) {
     return v;
 }
 
+Value* NewClassValue(Interpreter* interpreter, UserClass* cls) {
+    Value* v = _CreateValue(interpreter, VT_CLASS);
+    v->Value.Opaque = cls;
+    return v;
+}
+
+Value* NewClassInstanceValue(Interpreter* interpreter, ClassInstance* instance) {
+    Value* v = _CreateValue(interpreter, VT_CLASS_INSTANCE);
+    v->Value.Opaque = instance;
+    return v;
+}
+
 String ValueToString(Value* value) {
     char* buffer;
     switch (value->Type) {
@@ -134,11 +146,13 @@ String ValueToString(Value* value) {
         case VT_ENVIRONMENT:
             return AllocateString("environment");
         case VT_ARRAY:
-            return ArrayToString((Array*) value->Value.Opaque);
+            return ArrayToString(CoerceToArray(value));
         case VT_OBJECT:
-            return HashMapToString((HashMap*) value->Value.Opaque);
+            return HashMapToString(CoerceToHashMap(value));
         case VT_CLASS:
             return AllocateString("class");
+        case VT_CLASS_INSTANCE:
+            return ClassInstanceToString(CoerceToClassInstance(value));
         case VT_NATV_FUNCTION:
             return AllocateString("native function(){...}");
         default:
@@ -172,6 +186,8 @@ String ValueTypeOf(Value* value) {
             return "object";
         case VT_CLASS:
             return "class";
+        case VT_CLASS_INSTANCE:
+            return "class instance";
         default:
             return "unknown";
     }
@@ -193,15 +209,15 @@ bool ValueToBool(Value* value) {
             return false;
         case VT_USER_FUNCTION:
         case VT_NATV_FUNCTION:
-        case VT_ENVIRONMENT: {
+        case VT_ENVIRONMENT:
             return true;
-        }
-        case VT_ARRAY: {
-            return (((Array*)value->Value.Opaque)->Count > 0);
-        }
-        case VT_OBJECT: {
-            return (((HashMap*)value->Value.Opaque)->Count > 0);
-        }
+        case VT_ARRAY:
+            return (CoerceToArray(value)->Count > 0);
+        case VT_OBJECT:
+            return (CoerceToHashMap(value)->Count > 0);
+        case VT_CLASS:
+        case VT_CLASS_INSTANCE:
+            return true;
         default:
             printf("ValueToBool: Unknown value type: %d\n", value->Type);
             return false;
@@ -246,4 +262,8 @@ bool ValueIsArray(Value* value) {
 
 bool ValueIsObject(Value* value) {
     return value->Type == VT_OBJECT;
+}
+
+bool ValueIsClass(Value* value) {
+    return value->Type == VT_CLASS;
 }

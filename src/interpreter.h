@@ -1,4 +1,5 @@
 #include "./array.h"
+#include "./class.h"
 #include "./decompiler.h"
 #include "./environment.h"
 #include "./function.h"

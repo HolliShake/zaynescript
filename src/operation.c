@@ -1,4 +1,5 @@
 #include "./operation.h"
+#include "global.h"
 
 #define PushArray(type, array, count, val, defaultValue) do { \
     (array)[(count)++] = val; \
@@ -39,9 +40,13 @@ int DoImportCore(Interpreter* interp, String moduleName, Value** out) {
         *out = LoadCoreMath(interp);
         return 0;
     }
-    printf("Unknown core module: %s\n", moduleName);
-    exit(EXIT_FAILURE);
     return FLG_NOTFOUND;
+}
+
+extern void _Run(Interpreter* interp, Value* fnValue, Value* rootEnvObj, Value* envObj);
+
+int DoCall(Interpreter* interp, Value* fn, int argc, Value** out) {
+    
 }
 
 int DoMul(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
@@ -677,7 +682,7 @@ int DoNE(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
 }
 
 int DoAnd(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
-    int offset = interp->ConstantC;
+    int offset    = interp->ConstantC;
     Value* result = NULL;
 
     // Bitwise AND only works on integers
@@ -711,7 +716,7 @@ int DoAnd(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
 }
 
 int DoOr(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
-    int offset = interp->ConstantC;
+    int offset    = interp->ConstantC;
     Value* result = NULL;
 
     // Bitwise OR only works on integers
@@ -745,7 +750,7 @@ int DoOr(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
 }
 
 int DoXor(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
-    int offset = interp->ConstantC;
+    int offset    = interp->ConstantC;
     Value* result = NULL;
 
     // Bitwise XOR only works on integers
@@ -785,14 +790,14 @@ void DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int o
 
     // For closure, clone the function
     Value* fn = closure
-        ? NewUserFunctionValue(interp, UserFunctionClone((UserFunction*) interp->Functions[offset]->Value.Opaque))
+        ? NewUserFunctionValue(interp, UserFunctionClone(CoerceToUserFunction(interp->Functions[offset])))
         : interp->Functions[offset];
 
     *out = fn;
 
-    UserFunction* uf     = (UserFunction*) fn->Value.Opaque;
-    Environment* rootEnv = (Environment*) rootEnvObj->Value.Opaque;
-    Environment* loclEnv = (Environment*) envObj    ->Value.Opaque;
+    UserFunction* uf     = CoerceToUserFunction(fn);
+    Environment* rootEnv = CoerceToEnvironment(rootEnvObj);
+    Environment* loclEnv = CoerceToEnvironment(envObj);
     for (int i = 0; i < uf->CaptureC; i++) {
         CaptureMeta capture = uf->CaptureMetas[i];
         if (capture.IsGlobal) {

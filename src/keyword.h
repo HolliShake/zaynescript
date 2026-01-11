@@ -2,6 +2,7 @@
 
 #define KEY_CLASS    "class"
 #define KEY_ENUM     "enum"
+#define KEY_STATIC   "static"
 #define KEY_IMPORT   "import"
 #define KEY_FROM     "from"
 #define KEY_CONST    "const"

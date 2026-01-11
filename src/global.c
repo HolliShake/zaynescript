@@ -130,6 +130,55 @@ double CoerceToNum(Value* value) {
     }
 }
 
+Environment* CoerceToEnvironment(Value* value) {
+    if (value->Type == VT_ENVIRONMENT) {
+        return (Environment*) value->Value.Opaque;
+    }
+    Panic("Value is not an Environment");
+}
+
+HashMap* CoerceToHashMap(Value* value) {
+    if (value->Type == VT_OBJECT) {
+        return (HashMap*) value->Value.Opaque;
+    }
+    Panic("Value is not a HashMap");
+}
+
+Array* CoerceToArray(Value* value) {
+    if (value->Type == VT_ARRAY) {
+        return (Array*) value->Value.Opaque;
+    }
+    Panic("Value is not an Array");
+}
+
+UserFunction* CoerceToUserFunction(Value* value) {
+    if (value->Type == VT_USER_FUNCTION) {
+        return (UserFunction*) value->Value.Opaque;
+    }
+    Panic("Value is not a UserFunction");
+}
+
+NativeFunctionMeta* CoerceToNativeFunctionMeta(Value* value) {
+    if (value->Type == VT_NATV_FUNCTION) {
+        return (NativeFunctionMeta*) value->Value.Opaque;
+    }
+    Panic("Value is not a NativeFunctionMeta");
+}
+
+UserClass* CoerceToUserClass(Value* value) {
+    if (value->Type == VT_CLASS) {
+        return (UserClass*) value->Value.Opaque;
+    }
+    Panic("Value is not a UserClass");
+}
+
+ClassInstance* CoerceToClassInstance(Value* value) {
+    if (value->Type == VT_CLASS_INSTANCE) {
+        return (ClassInstance*) value->Value.Opaque;
+    }
+    Panic("Value is not a ClassInstance");
+}
+
 String GetErrorLine(String path, Rune* runes, Position position, String message) {
     if (runes == NULL) {
         return NULL;
@@ -269,4 +318,23 @@ void ThrowError(String path, Rune* runes, Position position, String message) {
     fprintf(stderr, "%s", errorLine);
     free(errorLine);
     exit(EXIT_FAILURE);
+}
+
+String FormatString(String format, ...) {
+    va_list args;
+    va_start(args, format);
+    
+    // Determine required buffer size
+    int size = vsnprintf(NULL, 0, format, args) + 1; // +1 for null terminator
+    va_end(args);
+    
+    // Allocate buffer
+    char* buffer = Allocate(size);
+    
+    // Write formatted string to buffer
+    va_start(args, format);
+    vsnprintf(buffer, size, format, args);
+    va_end(args);
+    
+    return buffer;
 }

@@ -93,6 +93,16 @@ Ast* AstObjectKeyVal(Ast* key, Position position);
 Ast* AstObjectLiteral(Ast* properties, Position position);
 
 /**
+ * AstAllocation - Creates an AST node representing an allocation expression
+ * @cls: Pointer to the class AST node
+ * @arguments: Pointer to the arguments AST node
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_ALLOCATION node
+ */
+Ast* AstAllocation(Ast* cls, Ast* arguments, Position position);
+
+/**
  * AstMember - Creates an AST node representing a member access
  * @object: Pointer to the object AST node
  * @member: Pointer to the member AST node
@@ -176,6 +186,27 @@ Ast* AstReturn(Ast* expression, Position position);
  * Return: Pointer to newly allocated AST_EXPRESSION_STATEMENT node
  */
 Ast* AstExpressionStatement(Ast* expression, Position position);
+
+/**
+ * AstClassMember - Creates an AST node representing a class member
+ * @_static_: Boolean indicating if the member is static
+ * @node: Pointer to the member AST node
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_CLASS_MEMBER node
+ */
+Ast* AstClassMember(bool _static_, Ast* node, Position position);
+
+/**
+ * AstClass - Creates an AST node representing a class definition
+ * @name: Pointer to AST node containing the class name
+ * @super: Pointer to AST node containing the superclass (if any)
+ * @body: Pointer to AST node containing the class body
+ * @position: Source code location information
+ *
+ * Return: Pointer to newly allocated AST_CLASS node
+ */
+Ast* AstClass(Ast* name, Ast* super, Ast* body, Position position);
 
 /**
  * AstFunction - Creates an AST node representing a function definition
