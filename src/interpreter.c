@@ -51,7 +51,7 @@ Interpreter* CreateInterpreter() {
 #define SetVar(envObj, offset, value) EnvironmentSetLocal(CoerceToEnvironment(envObj), offset, value)
 #define GetVar(envObj, offset) EnvironmentGetLocal(CoerceToEnvironment(envObj), offset)->Value
 
-static int _ReadOffset(uint8_t* codes, int alignStart) {
+static int _ReadInt32(uint8_t* codes, int alignStart) {
     int offset = 0;
     offset |= codes[alignStart + 0] << 24;
     offset |= codes[alignStart + 1] << 16;
@@ -146,7 +146,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_LOAD_CAPTURE: {
-                offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadInt32(uf->Codes, ip);
                 val    = (uf->Captures[offset]->Value);
                 if (val == NULL)
                     HandleError(
@@ -157,7 +157,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_LOAD_NAME: {
-                offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadInt32(uf->Codes, ip);
                 val    = GetVar(rootEnvObj, offset);
                 if (val == NULL)
                     HandleError(
@@ -168,7 +168,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_LOAD_LOCAL: {
-                offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadInt32(uf->Codes, ip);
                 val    = GetVar(envObj, offset);
                 if (val == NULL)
                     HandleError(
@@ -179,13 +179,13 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_LOAD_CONST: {
-                offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadInt32(uf->Codes, ip);
                 Push(interpreter->Constants[offset]);
                 Forward(4);
                 break;
             }
             case OP_LOAD_BOOL: {
-                offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadInt32(uf->Codes, ip);
                 Push(
                     offset 
                     ? interpreter->False 
@@ -228,7 +228,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_ARRAY_MAKE: {
-                size  = _ReadOffset(uf->Codes, ip);
+                size  = _ReadInt32(uf->Codes, ip);
                 arr   = NewArrayValue(interpreter);
                 array = CoerceToArray(arr);
                 for (int i = 0; i < size; i++) {
@@ -252,7 +252,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_OBJECT_MAKE: {
-                size = _ReadOffset(uf->Codes, ip);
+                size = _ReadInt32(uf->Codes, ip);
                 obj  = NewObjectValue(interpreter);
                 map  = CoerceToHashMap(obj);
                 for (int i = 0; i < size; i++) {
@@ -343,7 +343,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             }
             case OP_LOAD_FUNCTION_CLOSURE:
             case OP_LOAD_FUNCTION: {
-                offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadInt32(uf->Codes, ip);
                 res    = NULL;
                 DoLoadFunction(interpreter, rootEnvObj, envObj, offset, opcode == OP_LOAD_FUNCTION_CLOSURE, &res);
                 Push(res);
@@ -351,7 +351,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_CALL_CTOR: {
-                argc = _ReadOffset(uf->Codes, ip);
+                argc = _ReadInt32(uf->Codes, ip);
                 Forward(4);
 
                 obj  = Popp();
@@ -371,7 +371,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_CALL: {
-                argc = _ReadOffset(uf->Codes, ip);
+                argc = _ReadInt32(uf->Codes, ip);
                 Forward(4);
 
                 obj = Popp();
@@ -705,13 +705,13 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_STORE_NAME: {
-                offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadInt32(uf->Codes, ip);
                 SetVar(rootEnvObj, offset, Popp());
                 Forward(4);
                 break;
             }
             case OP_STORE_LOCAL: {
-                offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadInt32(uf->Codes, ip);
                 SetVar(envObj, offset, Popp());
                 Forward(4);
                 break;
@@ -762,7 +762,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_SETUP_TRY: {
-                offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadInt32(uf->Codes, ip);
                 PushEH(offset);
                 Forward(4);
                 break;
@@ -772,13 +772,13 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_POPN_TRY: {
-                size = _ReadOffset(uf->Codes, ip);
+                size = _ReadInt32(uf->Codes, ip);
                 PopNEH(size);
                 Forward(4);
                 break;
             }
             case OP_JUMP_IF_FALSE_OR_POP: {
-                offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadInt32(uf->Codes, ip);
                 val    = Peek();
                 if (!ValueToBool(val)) {
                     JmpFrwd(offset);
@@ -789,7 +789,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_JUMP_IF_TRUE_OR_POP: {
-                offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadInt32(uf->Codes, ip);
                 val    = Peek();
                 if (ValueToBool(val)) {
                     JmpFrwd(offset);
@@ -800,7 +800,7 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_POP_JUMP_IF_FALSE: {
-                offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadInt32(uf->Codes, ip);
                 val    = Popp();
                 if (ValueToBool(val) == false) {
                     JmpFrwd(offset);
@@ -810,12 +810,12 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
                 break;
             }
             case OP_JUMP: {
-                offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadInt32(uf->Codes, ip);
                 JmpFrwd(offset);
                 break;
             }
             case OP_ABSOLUTE_JUMP: {
-                offset = _ReadOffset(uf->Codes, ip);
+                offset = _ReadInt32(uf->Codes, ip);
                 JmpFrwd(offset);
                 break;
             }

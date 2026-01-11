@@ -153,7 +153,7 @@ String ValueToString(Value* value) {
         case VT_CLASS_INSTANCE:
             return ClassInstanceToString(CoerceToClassInstance(value));
         case VT_NATV_FUNCTION:
-            return AllocateString("native function(){...}");
+            return NativeFunctionMetaToString(CoerceToNativeFunctionMeta(value));
         default:
             return AllocateString("unknown");
     }

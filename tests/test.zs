@@ -110,7 +110,7 @@ class Tao {
 
 }
 
-class Person (Tao) {
+class Person(Tao) {
     fn getName() {
         return Person.name;
     }

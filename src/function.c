@@ -80,3 +80,55 @@ NativeFunctionMeta* CreateNativeFunctionMeta(const String name, int argc, Native
     meta->FuncPtr = funcPtr;
     return meta;
 }
+
+String NativeFunctionMetaToString(NativeFunctionMeta* meta) {
+    // fmt: native function %name ($1, $2) {} if argc != -1 else native function %name (...$n) {}
+    
+    if (meta->Argc == -1) {
+        // Variadic function
+        size_t nameLen = strlen(meta->Name);
+        size_t bufferSize = nameLen + 32; // "native function " + name + "(...$n) {...}" + null
+        char* buffer = Allocate(bufferSize);
+        snprintf(buffer, bufferSize, "native function %s(...$n) {...}", meta->Name);
+        return buffer;
+    } else {
+        // Fixed argument count
+        // Calculate required buffer size for arguments
+        // Each arg is "$N" where N can be multiple digits, plus ", " separator
+        size_t argsSize = 0;
+        for (int i = 0; i < meta->Argc; i++) {
+            // Calculate digits in (i + 1)
+            int num = i + 1;
+            int digits = 1;
+            while (num >= 10) {
+                digits++;
+                num /= 10;
+            }
+            argsSize += 1 + digits; // "$" + digits
+            if (i < meta->Argc - 1) {
+                argsSize += 2; // ", "
+            }
+        }
+        
+        // Build arguments string
+        char* args = Allocate(argsSize + 1);
+        args[0] = '\0';
+        size_t offset = 0;
+        for (int i = 0; i < meta->Argc; i++) {
+            int written = snprintf(args + offset, argsSize + 1 - offset, "$%d", i + 1);
+            offset += written;
+            if (i < meta->Argc - 1) {
+                strcpy(args + offset, ", ");
+                offset += 2;
+            }
+        }
+        
+        // Build final string
+        size_t nameLen = strlen(meta->Name);
+        size_t bufferSize = nameLen + argsSize + 32; // "native function " + name + "(" + args + ") {...}" + null
+        char* buffer = Allocate(bufferSize);
+        snprintf(buffer, bufferSize, "native function %s(%s) {...}", meta->Name, args);
+        free(args);
+        return buffer;
+    }
+}

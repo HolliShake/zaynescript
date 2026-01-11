@@ -49,4 +49,12 @@ int UserFunctionAddCapture(UserFunction* userFunction, bool isGlobal, int src, i
  */
 NativeFunctionMeta* CreateNativeFunctionMeta(const String name, int argc, NativeFunction funcPtr);
 
+/**
+ * Converts a native function metadata structure to its string representation.
+ *
+ * @param meta Pointer to the NativeFunctionMeta structure.
+ * @return String representation of the native function metadata.
+ */
+String NativeFunctionMetaToString(NativeFunctionMeta* meta);
+
 #endif
