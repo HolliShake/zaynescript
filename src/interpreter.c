@@ -280,14 +280,8 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                 str = _ReadString(uf->Codes, ip);
                 obj = Peek();
                 map = CoerceToHashMap(obj);
-
-                if (!HashMapContains(map, str)) {
-                    Panic("object does not have attribute '%s'\n", str);
-                }
-
-                res = HashMapGet(map, str);
-
-                Push(res);
+                val = HashMapGet(map, str);
+                Push((val == NULL) ? interpreter->Null : val);
                 Forward(strlen(str) + 1);
                 free(str);
                 break;
@@ -313,11 +307,10 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             }
             case OP_CLASS_DEFINE_STATIC_MEMBER: 
             case OP_CLASS_DEFINE_INSTANCE_MEMBER: {
-                bool isStatic = (opcode == OP_CLASS_DEFINE_STATIC_MEMBER);
                 key = Popp();
                 val = Popp();
                 obj = Peek();
-                ClassDefineMember(CoerceToUserClass(obj), key, val, isStatic);
+                ClassDefineMember(CoerceToUserClass(obj), key, val, (opcode == OP_CLASS_DEFINE_STATIC_MEMBER));
                 break;
             }
             case OP_SET_INDEX: {
@@ -342,15 +335,15 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                         ValueTypeOf(obj)
                     );
     
-                res = HashMapGet(CoerceToHashMap(obj), ValueToString(key));
+                val = HashMapGet(CoerceToHashMap(obj), ValueToString(key));
 
-                if (res == NULL)
+                if (val == NULL)
                     HandleError(
                         "object (%s) has no attribute '%s'", 
                         ValueToString(obj),
                         ValueToString(key)
                     );
-                Push(res);
+                Push(val);
                 break;
             }
             case OP_LOAD_FUNCTION_CLOSURE:
@@ -362,7 +355,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                     rootEnvObj, 
                     envObj, 
                     offset, 
-                    opcode == OP_LOAD_FUNCTION_CLOSURE, 
+                    (opcode == OP_LOAD_FUNCTION_CLOSURE), 
                     &res
                 );
                 Push(res);
