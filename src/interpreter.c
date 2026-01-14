@@ -21,15 +21,15 @@ Interpreter* CreateInterpreter() {
 }
 
 #define Push(value) (interpreter->Stacks[interpreter->StackC++] = value)
-#define Popp() (interpreter->Stacks[--interpreter->StackC])
-#define PopN(n) (interpreter->Stacks[interpreter->StackC -= (n)])
-#define Peek() (interpreter->Stacks[interpreter->StackC  - 1])
-#define PeekAt(n) (interpreter->Stacks[interpreter->StackC - n])
+#define Popp()      (interpreter->Stacks[--interpreter->StackC])
+#define PopN(n)     (interpreter->Stacks[interpreter->StackC -= (n)])
+#define Peek()      (interpreter->Stacks[interpreter->StackC - 1])
+#define PeekAt(n)   (interpreter->Stacks[interpreter->StackC - n])
 
 #define PushEH(addr) (interpreter->ExceptionHandlerStacks[interpreter->ExceptionHandlerStackC++] = addr)
-#define PoppEH() (interpreter->ExceptionHandlerStacks[--interpreter->ExceptionHandlerStackC])
-#define PopNEH(n) (interpreter->ExceptionHandlerStacks[interpreter->ExceptionHandlerStackC -= (n)])
-#define PeekEH() (interpreter->ExceptionHandlerStacks[interpreter->ExceptionHandlerStackC - 1])
+#define PoppEH()     (interpreter->ExceptionHandlerStacks[--interpreter->ExceptionHandlerStackC])
+#define PopNEH(n)    (interpreter->ExceptionHandlerStacks[interpreter->ExceptionHandlerStackC -= (n)])
+#define PeekEH()     (interpreter->ExceptionHandlerStacks[interpreter->ExceptionHandlerStackC - 1])
 
 #define DumpFrame() do { \
     printf("Stack: "); \
@@ -50,23 +50,6 @@ Interpreter* CreateInterpreter() {
 
 #define SetVar(envObj, offset, value) EnvironmentSetLocal(CoerceToEnvironment(envObj), offset, value)
 #define GetVar(envObj, offset) EnvironmentGetLocal(CoerceToEnvironment(envObj), offset)->Value
-
-static int _ReadInt32(uint8_t* codes, int alignStart) {
-    int offset = 0;
-    offset |= codes[alignStart + 0] << 24;
-    offset |= codes[alignStart + 1] << 16;
-    offset |= codes[alignStart + 2] <<  8;
-    offset |= codes[alignStart + 3] <<  0;
-    return offset;
-}
-
-static String _ReadString(uint8_t* codes, int alignStart) {
-    String str = (String)(codes + alignStart);
-    int length = strlen(str);
-    String new = Allocate(length + 1);
-    memcpy(new, str, length + 1);
-    return new;
-}
 
 #define InterpreterPanic(message, ...) do { \
     fprintf(stderr, "[%s:%d]::Panic: ", __FILE__, __LINE__); \
@@ -92,7 +75,36 @@ static String _ReadString(uint8_t* codes, int alignStart) {
     free(message); \
     break; } \
 
-static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* envObj) {
+static int _ReadInt32(uint8_t* codes, int alignStart) {
+    int offset = 0;
+    offset |= codes[alignStart + 0] << 24;
+    offset |= codes[alignStart + 1] << 16;
+    offset |= codes[alignStart + 2] <<  8;
+    offset |= codes[alignStart + 3] <<  0;
+    return offset;
+}
+
+static String _ReadString(uint8_t* codes, int alignStart) {
+    String str = (String)(codes + alignStart);
+    int length = strlen(str);
+    String new = Allocate(length + 1);
+    memcpy(new, str, length + 1);
+    return new;
+}
+
+
+static int _GetArgc(Value* fn) {
+    if (ValueIsNativeFunction(fn)) {
+        NativeFunctionMeta* nFMeta = CoerceToNativeFunctionMeta(fn);
+        return nFMeta->Argc;
+    } else if (ValueIsUserFunction(fn)) {
+        UserFunction* uf = CoerceToUserFunction(fn);
+        return uf->Argc;
+    }
+    return -1;
+}
+
+void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* envObj) {
     UserFunction* uf = CoerceToUserFunction(fnValue);
     uint8_t opcode   = 0;
     Value* lhs       = NULL;
@@ -345,7 +357,14 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             case OP_LOAD_FUNCTION: {
                 offset = _ReadInt32(uf->Codes, ip);
                 res    = NULL;
-                DoLoadFunction(interpreter, rootEnvObj, envObj, offset, opcode == OP_LOAD_FUNCTION_CLOSURE, &res);
+                DoLoadFunction(
+                    interpreter, 
+                    rootEnvObj, 
+                    envObj, 
+                    offset, 
+                    opcode == OP_LOAD_FUNCTION_CLOSURE, 
+                    &res
+                );
                 Push(res);
                 Forward(4);
                 break;
@@ -372,52 +391,22 @@ static void _Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Va
             }
             case OP_CALL: {
                 argc = _ReadInt32(uf->Codes, ip);
-                Forward(4);
-
-                obj = Popp();
-
-                if (obj == NULL) {
-                    Panic("Attempted to call a null value");
-                }
-
-                if (ValueIsNativeFunction(obj)) {
-                    NativeFunctionMeta* nFMeta = CoerceToNativeFunctionMeta(obj);
-                    NativeFunction nf          = nFMeta->FuncPtr;
-
-                    if (nFMeta->Argc != VARARG && argc != nFMeta->Argc) 
-                        HandleError(
-                            "expected %d arguments, got %d", nFMeta->Argc, argc
-                        );
-
-                    Value** args = Allocate(sizeof(Value*) * argc);
-                    for (int i = argc - 1; i >= 0; i--) {
-                        args[i] = Popp();
-                    }
-                    Value* nativeResult = nf(interpreter, argc, args);
-                    Push(nativeResult);
-                    free(args);
-                    break;
-                }
-
-                // Call
-                UserFunction* uf = CoerceToUserFunction(obj);
-                Environment* env = CreateEnvironment(envObj, uf->LocalC);
-
-                if (!ValueIsCallable(obj)) {
-                    Panic("Attempted to call a non-callable value: %s\n", ValueToString(obj));
-                }
-
-                if (argc != uf->Argc) {
-                    Panic("Expected %d arguments, got %d\n", uf->Argc, argc);
-                }
-                
-                // printf("Running function %s with %d args\n", uf->Name, argc);
-                _Run(
+                obj  = Popp();
+                flg  = DoCall(
                     interpreter, 
+                    rootEnvObj, 
+                    envObj, 
                     obj, 
-                    uf->ParentEnv != NULL ? uf->ParentEnv : rootEnvObj, 
-                    NewEnvironmentValue(interpreter, env)
+                    argc
                 );
+
+                if (flg == FLG_ARG_MISMATCH)
+                    HandleError(
+                        "argument count mismatch expected %d arguments but got %d", 
+                        _GetArgc(obj), argc
+                    );
+                    
+                Forward(4);
                 break;
             }
             case OP_MUL: {
@@ -834,7 +823,7 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
     UserFunction* uf = CoerceToUserFunction(fnValue);
     Environment* env = CreateEnvironment(NULL, uf->LocalC);
     Value* envObj    = NewEnvironmentValue(interpreter, env);
-    _Run(interpreter, fnValue, envObj, envObj);
+    Run(interpreter, fnValue, envObj, envObj);
     ForceGarbageCollect(interpreter);
 }
 
@@ -847,3 +836,19 @@ void FreeInterpreter(Interpreter* interpreter) {
     free(interpreter->Functions);
     free(interpreter);
 }
+
+#undef Push
+#undef Popp
+#undef PopN
+#undef Peek
+#undef PeekAt
+#undef PushEH
+#undef PoppEH
+#undef PopNEH
+#undef PeekEH
+#undef DumpFrame
+#undef DumpStack
+#undef SetVar
+#undef GetVar
+#undef InterpreterPanic
+#undef HandleError

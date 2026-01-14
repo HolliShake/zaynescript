@@ -1,5 +1,6 @@
 #include "./core/io.h"
 #include "./core/math.h"
+#include "./environment.h"
 #include "./global.h"
 #include "./gc.h"
 #include "./value.h"
@@ -7,6 +8,7 @@
 #ifndef OPERATION_H
 #define OPERATION_H
 
+#define FLG_SUCCESS            0
 #define FLG_NOTFOUND          -1
 #define FLG_ZERO_DIV          -2
 #define FLG_INVALID_OPERATION -3
@@ -22,6 +24,19 @@
  * Returns: Offset in constants array, or error flag (FLG_NOTFOUND)
  */
 int DoImportCore(Interpreter* interp, String moduleName, Value** out);
+
+/*
+ * Performs function call operation
+ * 
+ * interp      - The interpreter instance
+ * rootEnvObj  - The root environment object
+ * envObj      - The current environment object
+ * fn          - The function to call
+ * argc        - Number of arguments
+ * 
+ * Returns: Offset in constants array, or error flag (FLG_ARG_MISMATCH)
+ */
+int DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int argc);
 
 /*
  * Performs multiplication operation on two values.
@@ -247,7 +262,8 @@ int DoXor(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
  * offset     - The offset of the function in the functions array
  * closure    - Whether to create a closure (clone) of the function
  * out        - Output parameter for the result (if not NULL, result is stored here)
+ * Returns: Offset in constants array, or error flag (FLG_INVALID_OPERATION)
  */
-void DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int offset, bool closure, Value** out);
+int DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int offset, bool closure, Value** out);
 
 #endif

@@ -8,6 +8,10 @@
 
 #define GetOffset() (interp->ConstantC)
 
+#define _Push(value) (interp->Stacks[interp->StackC++] = (value))
+#define _Popp()      (interp->Stacks[--interp->StackC])
+#define _PopN(n)     (interp->Stacks[interp->StackC -= (n)])
+
 static int _GetConstantOffset(Interpreter* interp, Value* value) {
     if (value == NULL) {
         goto BAD;
@@ -31,6 +35,8 @@ static int _GetConstantOffset(Interpreter* interp, Value* value) {
     return FLG_NOTFOUND;
 }
 
+extern void Run(Interpreter* interp, Value* fnValue, Value* rootEnvObj, Value* envObj);
+
 int DoImportCore(Interpreter* interp, String moduleName, Value** out) {
     if (strcmp(moduleName, "io") == 0) {
         *out = LoadCoreIo(interp);
@@ -42,10 +48,47 @@ int DoImportCore(Interpreter* interp, String moduleName, Value** out) {
     return FLG_NOTFOUND;
 }
 
-extern void _Run(Interpreter* interp, Value* fnValue, Value* rootEnvObj, Value* envObj);
-
-int DoCall(Interpreter* interp, Value* fn, int argc, Value** out) {
+int DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int argc) {
+    if (fn == NULL) Panic("Attempted to call a null value\n");
     
+    if (ValueIsNativeFunction(fn)) {
+        NativeFunctionMeta* nFMeta = CoerceToNativeFunctionMeta(fn);
+        NativeFunction nf          = nFMeta->FuncPtr;
+
+        if (nFMeta->Argc != VARARG && argc != nFMeta->Argc) {
+            _PopN(argc); return FLG_ARG_MISMATCH;
+        }
+
+        Value** args = Allocate(sizeof(Value*) * argc);
+
+        for (int i = argc - 1; i >= 0; i--) {
+            args[i] = _Popp();
+        }
+
+        _Push(nf(interp, argc, args));
+        free(args);
+        return FLG_SUCCESS;
+    }
+
+    // Call
+    UserFunction* uf = CoerceToUserFunction(fn);
+    Environment* env = CreateEnvironment(envObj, uf->LocalC);
+
+    if (!ValueIsCallable(fn)) {
+        Panic("Attempted to call a non-callable value: %s\n", ValueToString(fn));
+    }
+
+    if (argc != uf->Argc) {
+        _PopN(argc); return FLG_ARG_MISMATCH;
+    }
+    
+    Run(
+        interp, 
+        fn, 
+        (uf->ParentEnv != NULL ? uf->ParentEnv : rootEnvObj), 
+        NewEnvironmentValue(interp, env)
+    );
+    return FLG_SUCCESS;
 }
 
 int DoMul(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
@@ -782,17 +825,15 @@ int DoXor(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
     return offset;
 }
 
-void DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int offset, bool closure, Value** out) {
-    if (out == NULL) {
-        return;
-    }
-
+int DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int offset, bool closure, Value** out) {
     // For closure, clone the function
     Value* fn = closure
         ? NewUserFunctionValue(interp, UserFunctionClone(CoerceToUserFunction(interp->Functions[offset])))
         : interp->Functions[offset];
 
-    *out = fn;
+    if (out != NULL) {
+        *out = fn;
+    }
 
     UserFunction* uf     = CoerceToUserFunction(fn);
     Environment* rootEnv = CoerceToEnvironment(rootEnvObj);
@@ -809,6 +850,7 @@ void DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int o
     }
 
     uf->ParentEnv = rootEnvObj;
+    return FLG_SUCCESS;
 }
 
 #undef PushArray
