@@ -1,4 +1,6 @@
 #include "./compiler.h"
+#include "global.h"
+#include <stdlib.h>
 
 #define PushArray(type, array, count, val, defaultValue) do { \
     (array)[(count)] = val; \
@@ -183,70 +185,74 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
 static void _AssignOpRhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* lhs, bool postfix);
 static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* lhs, bool postfix);
 
+static void _Identifier(Compiler* compiler, UserFunction* uf, Scope* scope, String name, Position pos) {
+    if (!ScopeHasName(scope, name)) {
+        ThrowError(
+            compiler->Parser->Lexer->Path, 
+            compiler->Parser->Lexer->Data, 
+            pos, 
+            "variable not found"
+        );
+    }
+
+    Symbol* symbol = ScopeGetSymbol(scope, name, true);
+
+    if (symbol->IsGlobal) {
+        // Global variable
+        _EmitArg(
+            compiler, 
+            uf, 
+            OP_LOAD_NAME,
+            symbol->Offset
+        );
+        return;
+    }
+
+    if (ScopeInside(scope, SCOPE_FUNCTION_CLOSURE) && !ScopeIsLocalToFnClosure(scope, name)) {
+        int captureOffset = 0;
+        if (!ScopeHasCapture(scope, name)) {
+            captureOffset = UserFunctionAddCapture(
+                uf, 
+                symbol->IsGlobal, 
+                symbol->Offset, 
+                captureOffset
+            );
+            ScopeSetCapture(
+                scope, 
+                name, 
+                false, 
+                true, 
+                false, 
+                captureOffset
+            );
+        } else {
+            Symbol* captureSymbol = ScopeGetCapture(scope, name, false);
+            captureOffset = captureSymbol->Offset;
+        }
+
+        // Capture the variable
+        _EmitArg(
+            compiler, 
+            uf, 
+            OP_LOAD_CAPTURE,
+            captureOffset
+        );
+        return;
+    }
+    
+    _EmitArg(
+        compiler, 
+        uf, 
+        OP_LOAD_LOCAL,
+        symbol->Offset
+    );
+}
+
 static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node, bool evalOnly) {
     Value* lhs = NULL, *rhs = NULL, *val = NULL;
     switch (node->Type) {
         case AST_NAME: {
-            if (!ScopeHasName(scope, node->Value)) {
-                ThrowError(
-                    compiler->Parser->Lexer->Path, 
-                    compiler->Parser->Lexer->Data, 
-                    node->Position, 
-                    "variable not found"
-                );
-            }
-
-            Symbol* symbol = ScopeGetSymbol(scope, node->Value, true);
-
-            if (symbol->IsGlobal) {
-                // Global variable
-                _EmitArg(
-                    compiler, 
-                    uf, 
-                    OP_LOAD_NAME,
-                    symbol->Offset
-                );
-                break;
-            }
-
-            if (ScopeInside(scope, SCOPE_FUNCTION_CLOSURE) && !ScopeIsLocalToFnClosure(scope, node->Value)) {
-                int captureOffset = 0;
-                if (!ScopeHasCapture(scope, node->Value)) {
-                    captureOffset = UserFunctionAddCapture(
-                        uf, 
-                        symbol->IsGlobal, 
-                        symbol->Offset, 
-                        captureOffset
-                    );
-                    ScopeSetCapture(
-                        scope, 
-                        node->Value, 
-                        false, 
-                        true, 
-                        false, 
-                        captureOffset
-                    );
-                } else {
-                    Symbol* captureSymbol = ScopeGetCapture(scope, node->Value, false);
-                    captureOffset = captureSymbol->Offset;
-                }
-
-                // Capture the variable
-                _EmitArg(
-                    compiler, 
-                    uf, 
-                    OP_LOAD_CAPTURE,
-                    captureOffset
-                );
-                break;
-            }
-            
-            _EmitArg(
-                compiler, 
-                uf, 
-                OP_LOAD_LOCAL,
-                symbol->Offset
-            );
+            _Identifier(compiler, uf, scope, node->Value, node->Position);
             break;
         }
         case AST_INT: {
@@ -321,6 +327,18 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 uf, 
                 OP_LOAD_NULL
             );
+            break;
+        }
+        case AST_THIS: {
+            if (!(ScopeInside(scope, SCOPE_CLASS) || ScopeInside(scope, SCOPE_FUNCTION))) {
+                ThrowError(
+                    compiler->Parser->Lexer->Path, 
+                    compiler->Parser->Lexer->Data, 
+                    node->Position, 
+                    "'this' can only be used inside class methods"
+                );
+            }
+            _Identifier(compiler, uf, scope, "this", node->Position);
             break;
         }
         case AST_LIST_LITERAL: {
@@ -488,14 +506,68 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             Ast* args = node->B;
 
             int argc = 0;
-            while (args != NULL) {
-                _Expression(compiler, uf, scope, args);
-                argc++;
-                args = args->Next;
-            }
 
-            _Expression(compiler, uf, scope, objc);
-            _EmitArg(compiler, uf, OP_CALL, argc);
+            switch (objc->Type) {
+                case AST_MEMBER:
+                case AST_INDEX: {
+                    Ast* obj = objc->A;
+                    Ast* att = objc->B;
+
+                    // Count arguments first
+                    Ast* argCount = args;
+                    while (argCount != NULL) {
+                        argc++;
+                        argCount = argCount->Next;
+                    }
+
+                    // Emit arguments in reverse order
+                    Ast** argArray = Allocate(sizeof(Ast*) * argc);
+                    int i = 0;
+                    while (args != NULL) {
+                        argArray[i++] = args;
+                        args = args->Next;
+                    }
+                    for (int j = argc - 1; j >= 0; j--) {
+                        _Expression(compiler, uf, scope, argArray[j]);
+                    }
+                    free(argArray);
+
+                    _Expression(compiler, uf, scope, obj); // must be in Stack
+                    _Emit(compiler, uf, OP_DUPTOP); // duplicate for 'this'
+                    if (objc->Type == AST_MEMBER) {
+                        _EmitString(compiler, uf, OP_LOAD_STRING, att->Value);
+                    } else {
+                        _Expression(compiler, uf, scope, att);
+                    }
+                    _Emit(compiler, uf, OP_GET_METHOD_OR_NULL);
+                    _EmitArg(compiler, uf, OP_CALL_METHOD, ++argc); // add 1 for 'this'
+                    break;
+                }
+                default: {
+                    // Count arguments first
+                    Ast* argCount = args;
+                    while (argCount != NULL) {
+                        argc++;
+                        argCount = argCount->Next;
+                    }
+
+                    // Emit arguments in reverse order
+                    Ast** argArray = Allocate(sizeof(Ast*) * argc);
+                    int i = 0;
+                    while (args != NULL) {
+                        argArray[i++] = args;
+                        args = args->Next;
+                    }
+                    for (int j = argc - 1; j >= 0; j--) {
+                        _Expression(compiler, uf, scope, argArray[j]);
+                    }
+                    free(argArray);
+
+                    _Expression(compiler, uf, scope, objc);
+                    _EmitArg(compiler, uf, OP_CALL, argc);
+                    break;
+                }
+            }
             break;
         }
         case AST_POST_INC: {
@@ -1193,7 +1265,7 @@ static void _ClassDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope
         );
     }
 
-    Scope* classScope = CreateScope(SCOPE_BLOCK, scope);
+    Scope* classScope = CreateScope(SCOPE_CLASS, scope);
 
     Ast* className = node->A;
     Ast* super     = node->B;
@@ -1250,6 +1322,15 @@ static void _ClassDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope
                 UserFunction* fn = CreateUserFunction(AllocateString(fnName->Value), 0);
 
                 int paramc = 0;
+
+                if (!isStatic) {
+                    // Emit 'this' as the first parameter
+                    int offset = UserFunctionEmitLocal(fn);
+                    ScopeSetSymbol(fnScope, KEY_THIS, false, true, false, offset);
+                    _EmitArg(compiler, fn, OP_STORE_LOCAL, offset);
+                    paramc++;
+                }
+
                 while (params != NULL) {
                     if (ScopeHasLocal(fnScope, params->Value)) {
                         ThrowError(

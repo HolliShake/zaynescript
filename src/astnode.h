@@ -84,6 +84,18 @@ Ast* AstBool(bool value, Position position);
 Ast* AstNull(Position position);
 
 /**
+ * @brief Creates an AST node representing the 'this' keyword
+ * 
+ * Allocates and initializes an AST_THIS node that represents the 'this'
+ * keyword in the source code, typically used within class methods to refer
+ * to the current instance.
+ * 
+ * @param[in] position Source code location information
+ * @return Pointer to newly allocated AST_THIS node, or NULL on allocation failure
+ */
+Ast* AstThis(Position position);
+
+/**
  * @brief Creates an AST node representing a spread operator
  * 
  * Allocates and initializes an AST_SPREAD_OPERATOR node that represents

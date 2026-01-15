@@ -239,6 +239,7 @@ typedef enum ast_type_enum {
     AST_STR,            /**< String literal */
     AST_BOOL,           /**< Boolean literal */
     AST_NULL,           /**< Null literal */
+    AST_THIS,           /**< This keyword */
     AST_SPREAD,         /**< Spread operator (...) */
     AST_LIST_LITERAL,   /**< List literal ([...]) */
     AST_OBJECT_KEY_VAL, /**< Object key-value pair */
@@ -390,10 +391,12 @@ typedef enum opcode_enum {
     OP_CLASS_DEFINE_INSTANCE_MEMBER, /**< Define an instance class member */
     OP_SET_INDEX,                    /**< Set value at index */
     OP_GET_INDEX,                    /**< Get value at index */
+    OP_GET_METHOD_OR_NULL,           /**< Get method or null */
     OP_LOAD_FUNCTION_CLOSURE,        /**< Load a function closure */
     OP_LOAD_FUNCTION,                /**< Load a function */
     OP_CALL_CTOR,                    /**< Call a constructor */
     OP_CALL,                         /**< Call a function */
+    OP_CALL_METHOD,                  /**< Call a method */
     OP_MUL,                          /**< Multiply */
     OP_DIV,                          /**< Divide */
     OP_MOD,                          /**< Modulo */
@@ -519,6 +522,7 @@ typedef struct symbol_struct {
  */
 typedef enum scope_type_enum {
     SCOPE_GLOBAL,           /**< Global scope */
+    SCOPE_CLASS ,           /**< Class scope */
     SCOPE_FUNCTION,         /**< Function body scope */
     SCOPE_FUNCTION_CLOSURE, /**< Function closure scope */
     SCOPE_BLOCK,            /**< Generic block scope */

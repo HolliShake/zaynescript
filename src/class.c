@@ -1,4 +1,5 @@
 #include "./class.h"
+#include "global.h"
 
 UserClass* CreateUserClass(String name, Value* base) {
     UserClass* cls = Allocate(sizeof(UserClass));
@@ -35,6 +36,11 @@ bool ClassHasMember(UserClass* cls, String key, bool isStatic, bool callable) {
         return ValueIsCallable(member);
     }
     return true;
+}
+
+Value* ClassGetMember(UserClass* cls, String key, bool isStatic) {
+    HashMap* members = isStatic ? cls->StaticMembers : cls->InstanceMembers;
+    return HashMapGet(members, key);
 }
 
 String ClassToString(UserClass* cls) {

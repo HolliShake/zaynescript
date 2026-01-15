@@ -1,4 +1,5 @@
 #include "./interpreter.h" 
+#include "global.h"
 
 Interpreter* CreateInterpreter() {
     Interpreter* interpreter                = Allocate(sizeof(Interpreter));
@@ -346,6 +347,27 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                 Push(val);
                 break;
             }
+            case OP_GET_METHOD_OR_NULL: {
+                key = Popp();
+                obj = Popp();
+                if (ValueIsClassInstance(obj)) {
+                    ClassInstance* instance = CoerceToClassInstance(obj);
+                    if (!ClassHasMember(CoerceToUserClass(instance->Proto), ValueToString(key), false, true)) {
+                        Push(interpreter->Null);
+                        break;
+                    }
+
+                    val = ClassGetMember(
+                        CoerceToUserClass(instance->Proto), 
+                        ValueToString(key), 
+                        false
+                    );
+                    Push(val);
+                } else {
+                    Push(interpreter->Null);
+                }
+                break;
+            }
             case OP_LOAD_FUNCTION_CLOSURE:
             case OP_LOAD_FUNCTION: {
                 offset = _ReadInt32(uf->Codes, ip);
@@ -379,10 +401,13 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                     // Push default instance, no constructor call
                     ClassInstance* instance = CreateClassInstance(obj);
                     Push(NewClassInstanceValue(interpreter, instance));
+                } else {
+
                 }
                 break;
             }
-            case OP_CALL: {
+            case OP_CALL: 
+            case OP_CALL_METHOD: {
                 argc = _ReadInt32(uf->Codes, ip);
                 obj  = Popp();
                 flg  = DoCall(
@@ -392,8 +417,12 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                     obj, 
                     argc
                 );
-
-                if (flg == FLG_ARG_MISMATCH)
+                if (flg == FLG_INVALID_OPERATION)
+                    HandleError(
+                        "attempted to call a non-callable value of type %s", 
+                        ValueTypeOf(obj)
+                    )
+                else if (flg == FLG_ARG_MISMATCH)
                     HandleError(
                         "argument count mismatch expected %d arguments but got %d", 
                         _GetArgc(obj), argc

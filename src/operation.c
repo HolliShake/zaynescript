@@ -51,6 +51,10 @@ int DoImportCore(Interpreter* interp, String moduleName, Value** out) {
 int DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int argc) {
     if (fn == NULL) Panic("Attempted to call a null value\n");
 
+    if (!ValueIsCallable(fn)) {
+        _PopN(argc); return FLG_INVALID_OPERATION;
+    }
+
     if (ValueIsNativeFunction(fn)) {
         NativeFunctionMeta* nFMeta = CoerceToNativeFunctionMeta(fn);
         NativeFunction nf          = nFMeta->FuncPtr;
@@ -61,7 +65,7 @@ int DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int
 
         Value** args = Allocate(sizeof(Value*) * argc);
 
-        for (int i = argc - 1; i >= 0; i--) {
+        for (int i = 0; i < argc; i++) {
             args[i] = _Popp();
         }
 

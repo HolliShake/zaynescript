@@ -67,6 +67,19 @@ void ClassDefineMember(UserClass* cls, Value* key, Value* value, bool isStatic);
 bool ClassHasMember(UserClass* cls, String key, bool isStatic, bool callable);
 
 /**
+ * @brief Retrieves a member (static or instance) from a user-defined class
+ * 
+ * Looks up a member by name in the specified class, searching either
+ * static or instance members.
+ * 
+ * @param[in] cls Pointer to the UserClass from which to retrieve the member
+ * @param[in] key String name of the member to retrieve
+ * @param[in] isStatic Boolean indicating whether to look for a static (true) or instance (false) member
+ * @return Pointer to the Value of the member if found, or NULL if not found
+ */
+Value* ClassGetMember(UserClass* cls, String key, bool isStatic);
+
+/**
  * @brief Converts a user-defined class instance to its string representation
  * 
  * Generates a human-readable string representation of the class instance,

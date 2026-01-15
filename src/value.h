@@ -230,4 +230,12 @@ bool ValueIsObject(Value* value);
  */
 bool ValueIsClass(Value* value);
 
+/**
+ * @brief Checks if a value is a class instance
+ * 
+ * @param value Pointer to the Value to check
+ * @return true if the value is a class instance, false otherwise
+ */
+bool ValueIsClassInstance(Value* value);
+
 #endif

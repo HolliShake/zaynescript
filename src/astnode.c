@@ -50,6 +50,11 @@ Ast* AstNull(Position position) {
     return ast;
 }
 
+Ast* AstThis(Position position) {
+    Ast* ast = InitAst(AST_THIS, position);
+    return ast;
+}
+
 Ast* AstSpread(Ast* expression, Position position) {
     Ast* ast = InitAst(AST_SPREAD, position);
     ast->A   = expression;

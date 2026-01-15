@@ -266,3 +266,7 @@ bool ValueIsObject(Value* value) {
 bool ValueIsClass(Value* value) {
     return value->Type == VT_CLASS;
 }
+
+bool ValueIsClassInstance(Value* value) {
+    return value->Type == VT_CLASS_INSTANCE;
+}

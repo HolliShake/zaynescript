@@ -111,9 +111,18 @@ class Tao {
 }
 
 class Person(Tao) {
+   
     fn GetName() {
-        return Person.name;
+       println(">>", this);
     }
 }
 
-println(new Person("Doy!"), fact);
+const p = new Person();
+
+println(p, p.GetName(), fact);
+
+fn order(a,b) {
+    println(a, b);
+}
+
+order(100, 200);
