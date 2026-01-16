@@ -124,6 +124,7 @@ static void _Free(Value* value) {
                 }
                 free(uf->CaptureMetas);
                 free(uf->Captures);
+                //NOTE: memory leak (UserFunction Name is allocated but not freed here)
                 free(uf);
                 value->Value.Opaque = NULL;
             }

@@ -38,6 +38,7 @@ int main() {
     Interpreter* interpreter = CreateInterpreter();
 
     String path = "./tests/test.zs";
+    //NOTE: memory leak (ReadFile allocates a buffer, StringToRunes reads it, but the buffer is never freed)
     Rune* data = StringToRunes(ReadFile(path));
 
 
@@ -52,6 +53,7 @@ int main() {
 
     FreeLexer(lexer);
     FreeParser(parser);
+    //NOTE: memory leak (The compiler instance is allocated but never freed)
     FreeInterpreter(interpreter);
     free(data);
     printf("Program Finished!\n");

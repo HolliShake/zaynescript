@@ -288,6 +288,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
         case AST_STR: {
             int offset = _GetConstant(compiler, node->Value);
             if (offset == FLG_NOTFOUND) {
+                //NOTE: memory leak (AllocateString creates a char* string that is passed to _SaveStr, but _SaveStr converts it to Runes and doesn't free the original char* string)
                 offset = _SaveStr(compiler, AllocateString(node->Value));
             }
 

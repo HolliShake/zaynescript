@@ -300,6 +300,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             }
             case OP_CLASS_MAKE: {
                 str = _ReadString(uf->Codes, ip);
+                //NOTE: memory leak (AllocateString creates a char* string passed to CreateUserClass. CreateUserClass duplicates this string for its own storage, so the first allocation is leaked)
                 obj = NewClassValue(interpreter, CreateUserClass(AllocateString(str), NULL));
                 Push(obj);
                 Forward(strlen(str) + 1);

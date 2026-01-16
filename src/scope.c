@@ -233,5 +233,6 @@ void FreeScope(Scope* scope) {
     if (scope == NULL) {
         return;
     }
+    //NOTE: memory leak (FreeScope only frees the struct, not the internal HashMaps Symbols/Captures or arrays ContinueJumps/BreakJumps)
     free(scope);
 }

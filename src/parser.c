@@ -104,12 +104,15 @@ static Ast* _Terminal(Parser* parser) {
         case TK_KEY: {
             if (strcmp(parser->Next.Value, KEY_TRUE) == 0 || strcmp(parser->Next.Value, KEY_FALSE) == 0) {
                 node = AstBool(strcmp(parser->Next.Value, KEY_TRUE) == 0, parser->Next.Position);
+                //NOTE: memory leak (ACCEPTT advances to the next token, discarding Value without freeing)
                 ACCEPTT(TK_KEY);
             } else if (strcmp(parser->Next.Value, KEY_NULL) == 0) {
                 node = AstNull(parser->Next.Position);
+                //NOTE: memory leak (ACCEPTT advances to the next token, discarding Value without freeing)
                 ACCEPTT(TK_KEY);
             } else if (strcmp(parser->Next.Value, KEY_THIS) == 0) {
                 node = AstThis(parser->Next.Position);
+                //NOTE: memory leak (ACCEPTT advances to the next token, discarding Value without freeing)
                 ACCEPTT(TK_KEY);
             } else {
                 ThrowError(
@@ -415,6 +418,7 @@ static Ast* _Postfix(Parser* parser) {
     }
     while (CHECKTV("++") || CHECKTV("--")) {
         String op = parser->Next.Value;
+        //NOTE: memory leak (ACCEPTT advances to the next token, effectively discarding the current token's allocated Value string without freeing it)
         ACCEPTT(TK_SYM);
         node = AstSingle(
             strcmp(op, "++") == 0 
@@ -432,6 +436,7 @@ static Ast* _Unary(Parser* parser) {
     String op = NULL;
     if (CHECKTV("+") || CHECKTV("-") || CHECKTV("!")) {
         op = parser->Next.Value;
+        //NOTE: memory leak (ACCEPTT advances to the next token, effectively discarding the current token's allocated Value string without freeing it)
         ACCEPTT(TK_SYM);
         Ast* operand = _Unary(parser);
         if (operand == NULL) {
@@ -453,6 +458,7 @@ static Ast* _Unary(Parser* parser) {
         );
     } else if (CHECKTV("++") || CHECKTV("--")) {
         op = parser->Next.Value;
+        //NOTE: memory leak (ACCEPTT advances to the next token, effectively discarding the current token's allocated Value string without freeing it)
         ACCEPTT(TK_SYM);
         Ast* operand = _MemberOrCall(parser);
         if (operand == NULL) {
@@ -485,6 +491,7 @@ static Ast* _Multiplicative(Parser* parser) {
     while (CHECKTV("*") || CHECKTV("/") || CHECKTV("%")) {
         // * | / | %
         op = parser->Next.Value;
+        //NOTE: memory leak (ACCEPTT advances to the next token, effectively discarding the current token's allocated Value string without freeing it)
         ACCEPTT(TK_SYM);
 
         rhs = _Unary(parser);
@@ -522,6 +529,7 @@ static Ast* _Addetive(Parser* parser) {
     while (CHECKTV("+") || CHECKTV("-")) {
         // + | -
         op = parser->Next.Value;
+        //NOTE: memory leak (ACCEPTT advances to the next token, effectively discarding the current token's allocated Value string without freeing it)
         ACCEPTT(TK_SYM);
 
         rhs = _Multiplicative(parser);
@@ -559,6 +567,7 @@ static Ast* _Shift(Parser* parser) {
     while (CHECKTV("<<") || CHECKTV(">>")) {
         // << | >>
         op = parser->Next.Value;
+        //NOTE: memory leak (ACCEPTT advances to the next token, effectively discarding the current token's allocated Value string without freeing it)
         ACCEPTT(TK_SYM);
 
         rhs = _Addetive(parser);
@@ -596,6 +605,7 @@ static Ast* _Relational(Parser* parser) {
     while (CHECKTV("<") || CHECKTV("<=") || CHECKTV(">") || CHECKTV(">=")) {
         // < | <= | > | >=
         op = parser->Next.Value;
+        //NOTE: memory leak (ACCEPTT advances to the next token, effectively discarding the current token's allocated Value string without freeing it)
         ACCEPTT(TK_SYM);
 
         rhs = _Shift(parser);
@@ -639,6 +649,7 @@ static Ast* _Equality(Parser* parser) {
     while (CHECKTV("==") || CHECKTV("!=")) {
         // == | !=
         op = parser->Next.Value;
+        //NOTE: memory leak (ACCEPTT advances to the next token, effectively discarding the current token's allocated Value string without freeing it)
         ACCEPTT(TK_SYM);
 
         rhs = _Relational(parser);
@@ -678,6 +689,7 @@ static Ast* _Bitwise(Parser* parser) {
     while (CHECKTV("&") || CHECKTV("|") || CHECKTV("^")) {
         // & | | | ^
         op = parser->Next.Value;
+        //NOTE: memory leak (ACCEPTT advances to the next token, effectively discarding the current token's allocated Value string without freeing it)
         ACCEPTT(TK_SYM);
 
         rhs = _Equality(parser);
@@ -719,6 +731,7 @@ static Ast* _Logical(Parser* parser) {
     while (CHECKTV("&&") || CHECKTV("||")) {
         // && | ||
         op = parser->Next.Value;
+        //NOTE: memory leak (ACCEPTT advances to the next token, effectively discarding the current token's allocated Value string without freeing it)
         ACCEPTT(TK_SYM);
 
         rhs = _Bitwise(parser);
@@ -758,6 +771,7 @@ static Ast* _Assignment(Parser* parser) {
     while (CHECKTV("=")) {
         // =
         op = parser->Next.Value;
+        //NOTE: memory leak (ACCEPTT advances to the next token, effectively discarding the current token's allocated Value string without freeing it)
         ACCEPTT(TK_SYM);
 
         rhs = _Logical(parser);
@@ -795,6 +809,7 @@ static Ast* _AugmentedMuliplicative(Parser* parser) {
     while (CHECKTV("*=") || CHECKTV("/=") || CHECKTV("%=")) {
         // = | /= | %=
         op = parser->Next.Value;
+        //NOTE: memory leak (ACCEPTT advances to the next token, effectively discarding the current token's allocated Value string without freeing it)
         ACCEPTT(TK_SYM);
 
         rhs = _Assignment(parser);
@@ -836,6 +851,7 @@ static Ast* _AugmentedAddetive(Parser* parser) {
     while (CHECKTV("+=") || CHECKTV("-=")) {
         // += | -=
         op = parser->Next.Value;
+        //NOTE: memory leak (ACCEPTT advances to the next token, effectively discarding the current token's allocated Value string without freeing it)
         ACCEPTT(TK_SYM);
 
         rhs = _AugmentedMuliplicative(parser);
@@ -875,6 +891,7 @@ static Ast* _AugmentedShift(Parser* parser) {
     while (CHECKTV("<<=") || CHECKTV(">>=")) {
         // <<= | >>=
         op = parser->Next.Value;
+        //NOTE: memory leak (ACCEPTT advances to the next token, effectively discarding the current token's allocated Value string without freeing it)
         ACCEPTT(TK_SYM);
 
         rhs = _AugmentedAddetive(parser);
@@ -914,6 +931,7 @@ static Ast* _AugmentedBitwise(Parser* parser) {
     while (CHECKTV("&=") || CHECKTV("|=") || CHECKTV("^=")) {
         // &= | |= | ^=
         op = parser->Next.Value;
+        //NOTE: memory leak (ACCEPTT advances to the next token, effectively discarding the current token's allocated Value string without freeing it)
         ACCEPTT(TK_SYM);
 
         rhs = _AugmentedShift(parser);
@@ -1222,6 +1240,7 @@ static Ast* _InitializerConditionMutator(Parser* parser) {
 
         // =
         op = parser->Next.Value;
+        //NOTE: memory leak (ACCEPTT advances to the next token, effectively discarding the current token's allocated Value string without freeing it)
         ACCEPTT(TK_SYM);
 
         rhs = _Expression(parser);
@@ -1716,6 +1735,7 @@ static Ast* _ListOfStatements(Parser* parser) {
 
 static Ast* _ParseProgram(Parser* parser) {
     Ast* ast = AstProgram(_ListOfStatements(parser), parser->Next.Position);
+    //NOTE: memory leak (ACCEPTT advances to the next token, discarding Value without freeing)
     ACCEPTT(TK_EOF);
     return ast;
 }
