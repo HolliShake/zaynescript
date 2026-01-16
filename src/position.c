@@ -1,6 +1,5 @@
 #include "./position.h"
 
-
 Position PositionFromLineAndColm(int line, int colm) {
     Position position = {
         .LineStart = line,

@@ -1,6 +1,5 @@
 #include "./decompiler.h"
 
-
 extern String ValueToString(Value* value);
 
 static int _ReadOffset(uint8_t* codes, int alignStart) {

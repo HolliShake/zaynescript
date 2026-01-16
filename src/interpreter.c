@@ -1,11 +1,10 @@
 #include "./interpreter.h" 
-#include "global.h"
-#include <stdio.h>
 
 Interpreter* CreateInterpreter() {
     Interpreter* interpreter                = Allocate(sizeof(Interpreter));
     interpreter->Allocated                  = 0;
     interpreter->GcRoot                     = NULL;
+    interpreter->Array                      = CreateArrayClass(interpreter);
     interpreter->True                       = NewBoolValue(interpreter, 1);
     interpreter->False                      = NewBoolValue(interpreter, 0);
     interpreter->Null                       = NewNullValue(interpreter);

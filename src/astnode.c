@@ -1,6 +1,5 @@
 #include "./astnode.h"
 
-
 static Ast* InitAst(AstType type, Position position) {
     Ast* ast       = Allocate(sizeof(Ast));
     ast->Type      = type;

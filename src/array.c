@@ -86,7 +86,7 @@ String ArrayToString(Array* array) {
         return NULL;
     }
     
-    strcpy(result, "[ ");
+    strcpy(result, "[");
     bool first = true;
     
     for (size_t i = 0; i < array->Count; i++) {
@@ -103,6 +103,6 @@ String ArrayToString(Array* array) {
         first = false;
     }
     
-    strcat(result, " ]");
+    strcat(result, "]");
     return result;
 }

@@ -52,6 +52,35 @@ Value* _GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool f
     String key = ValueToString(attr);
     if (ValueIsArray(obj)) {
         // Handle array methods or attributes
+        Array* array = CoerceToArray(obj);
+
+        if (ValueIsNum(attr)) {
+            long idx = (long) CoerceToI64(attr);
+            if (idx < 0 || idx >= array->Count) {
+                free(key);
+                return interp->Null;
+            }
+            free(key);
+            return array->Items[idx];
+        }
+
+        // Check prototype chain
+        UserClass* cls = CoerceToUserClass(interp->Array);
+
+        while (forMethodCall && cls != NULL) {
+            if (ClassHasMember(cls, key, false, forMethodCall)) {
+                Value* member = ClassGetMember(
+                    cls, 
+                    key, 
+                    false
+                );
+                free(key);
+                return member;
+            }
+            if (cls->Base == NULL) break;
+            cls = CoerceToUserClass(cls->Base);
+        }
+
     } else if (ValueIsObject(obj)) {
         // Handle object methods or attributes
         HashMap* map = CoerceToHashMap(obj);
@@ -78,12 +107,12 @@ Value* _GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool f
                 free(key);
                 return member;
             }
+            if (cls->Base == NULL) break;
             cls = CoerceToUserClass(cls->Base);
         }
     } else if (ValueIsClassInstance(obj)) {
         // Handle class instance methods or attributes
         ClassInstance* instance = CoerceToClassInstance(obj);
-        UserClass* cls = CoerceToUserClass(instance->Proto);
 
         if (!forMethodCall) {
             // First check instance members
@@ -94,7 +123,10 @@ Value* _GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool f
             }
         }
 
-        while (cls != NULL) {
+        // Check prototype chain
+        UserClass* cls = CoerceToUserClass(instance->Proto);
+
+        while (forMethodCall && cls != NULL) {
             if (ClassHasMember(cls, key, !forMethodCall, forMethodCall)) {
                 Value* member = ClassGetMember(
                     cls, 
@@ -104,6 +136,7 @@ Value* _GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool f
                 free(key);
                 return member;
             }
+            if (cls->Base == NULL) break;
             cls = CoerceToUserClass(cls->Base);
         }
     }

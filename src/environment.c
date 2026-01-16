@@ -1,6 +1,5 @@
 #include "./environment.h"
 
-
 EnvCell* CreateEnvCell(Value* value) {
     EnvCell* envCell    = Allocate(sizeof(EnvCell));
     envCell->Value      = value;

@@ -280,6 +280,7 @@ static void _Sweep(Interpreter* interpreter) {
 }
 
 void GarbageCollect(Interpreter* interpreter) {
+    Mark(interpreter->Array);
     Mark(interpreter->True);
     Mark(interpreter->False);
     Mark(interpreter->Null);

@@ -1,5 +1,4 @@
 #include "./class.h"
-#include "global.h"
 
 UserClass* CreateUserClass(String name, Value* base) {
     UserClass* cls = Allocate(sizeof(UserClass));
@@ -21,6 +20,14 @@ void ClassDefineMember(UserClass* cls, Value* key, Value* value, bool isStatic) 
         HashMapSet(cls->StaticMembers, ValueToString(key), value);
     } else {
         HashMapSet(cls->InstanceMembers, ValueToString(key), value);
+    }
+}
+
+void ClassDefineMemberByString(UserClass* cls, String key, Value* value, bool isStatic) {
+    if (isStatic) {
+        HashMapSet(cls->StaticMembers, key, value);
+    } else {
+        HashMapSet(cls->InstanceMembers, key, value);
     }
 }
 

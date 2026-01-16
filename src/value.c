@@ -1,6 +1,5 @@
 #include "./value.h"
 
-
 static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
     Value* v  = Allocate(sizeof(Value));
     v->Type   = type;

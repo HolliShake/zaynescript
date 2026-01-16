@@ -9,8 +9,8 @@
 #include "../global.h"
 #include "../value.h"
 
-#ifndef MATH_H
-#define MATH_H
+#ifndef CORE_MATH_H
+#define CORE_MATH_H
 
 /**
  * @brief Loads the core Math module

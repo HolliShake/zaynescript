@@ -1,5 +1,4 @@
 #include "./function.h"
-#include "global.h"
 
 UserFunction* CreateUserFunction(String name, int argc) {
     UserFunction* userFunction  = Allocate(sizeof(UserFunction));

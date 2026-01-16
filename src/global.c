@@ -1,6 +1,5 @@
 #include "./global.h"
 
-
 void* _Allocate(String file, int line, size_t size) {
     void* ptr = malloc(size);
     if (ptr == NULL) {

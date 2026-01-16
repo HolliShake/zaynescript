@@ -10,8 +10,8 @@
 #include "../global.h"
 #include "../value.h"
 
-#ifndef IO_H
-#define IO_H
+#ifndef CORE_IO_H
+#define CORE_IO_H
 
 /**
  * @brief Loads the core IO module

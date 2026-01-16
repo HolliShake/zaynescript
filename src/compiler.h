@@ -17,26 +17,26 @@
 #define COMPILER_H
 
 /**
- * @brief Creates a new compiler instance
+ * Creates a new compiler instance.
  * 
  * Allocates and initializes a new Compiler structure that will be used
  * to compile parsed source code into bytecode.
  * 
- * @param[in] interpreter Pointer to the interpreter instance
- * @param[in] parser Pointer to the parser instance
- * @return Pointer to the newly created Compiler structure, or NULL on allocation failure
+ * @param interpreter Pointer to the interpreter instance.
+ * @param parser Pointer to the parser instance.
+ * @return Pointer to the newly created Compiler structure, or NULL on allocation failure.
  */
 Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
 
 /**
- * @brief Compiles the parsed AST into bytecode
+ * Compiles the parsed AST into bytecode.
  * 
  * Takes the abstract syntax tree from the parser and compiles it into
  * bytecode instructions that can be executed by the interpreter. This
  * function performs semantic analysis, optimization, and code generation.
  * 
- * @param[in,out] compiler Pointer to the compiler instance containing the parser and interpreter
- * @return Pointer to a Value containing the compiled UserFunction on success, or NULL on compilation failure
+ * @param compiler Pointer to the compiler instance containing the parser and interpreter.
+ * @return Pointer to a Value containing the compiled UserFunction on success, or NULL on compilation failure.
  */
 Value* Compile(Compiler* compiler);
 

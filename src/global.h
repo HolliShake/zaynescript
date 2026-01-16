@@ -644,6 +644,7 @@ typedef struct module_function_struct {
  * and null. Also maintains exception handler stack for try-catch blocks.
  */
 struct interpreter_struct {
+    Value*   Array;     /**< Built-in Array class */
     Value*   True;      /**< Singleton 'true' value */
     Value*   False;     /**< Singleton 'false' value */
     Value*   Null;      /**< Singleton 'null' value */

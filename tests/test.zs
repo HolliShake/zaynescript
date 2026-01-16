@@ -132,3 +132,11 @@ fn order(a,b) {
 }
 
 order(100, 200);
+
+
+const array = [];
+println(array);
+array.push(10);
+array.push(20);
+array[1] = 30;
+println(array, array.push);

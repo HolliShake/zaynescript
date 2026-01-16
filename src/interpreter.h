@@ -9,6 +9,7 @@
 
 #include "./array.h"
 #include "./class.h"
+#include "./core/array.h"
 #include "./decompiler.h"
 #include "./environment.h"
 #include "./function.h"
@@ -22,51 +23,51 @@
 #define INTERPRETER_H
 
 /**
- * @brief Creates and initializes a new interpreter instance
+ * Creates and initializes a new interpreter instance.
  *
  * Allocates and initializes a new interpreter with default settings.
  * The interpreter manages execution state, call stack, and runtime
  * environment for program execution.
  * 
- * @return Pointer to newly allocated Interpreter structure, or NULL on failure
+ * @return Pointer to newly allocated Interpreter structure, or NULL on failure.
  *
  * @note The caller is responsible for freeing the interpreter using
- *       FreeInterpreter() when done
+ *       FreeInterpreter() when done.
  *
  * @see FreeInterpreter()
  */
 Interpreter* CreateInterpreter();
 
 /**
- * @brief Executes the parsed program using the given interpreter
+ * Executes the parsed program using the given interpreter.
  *
  * Interprets and executes the user function contained in the provided
  * Value structure. This is the main entry point for program execution.
  * 
- * @param[in,out] interpreter Pointer to the interpreter instance
- * @param[in]     fnValue     Pointer to the Value containing the UserFunction to execute
+ * @param interpreter Pointer to the interpreter instance.
+ * @param fnValue     Pointer to the Value containing the UserFunction to execute.
  *
- * @pre interpreter must be a valid, non-NULL pointer to an initialized Interpreter
- * @pre fnValue must be a valid, non-NULL pointer to a Value containing a UserFunction
+ * @pre interpreter must be a valid, non-NULL pointer to an initialized Interpreter.
+ * @pre fnValue must be a valid, non-NULL pointer to a Value containing a UserFunction.
  *
- * @note This function may modify the interpreter's internal state
+ * @note This function may modify the interpreter's internal state.
  *
  * @see CreateInterpreter()
  */
 void Interpret(Interpreter* interpreter, Value* fnValue/*UserFunction*/);
 
 /**
- * @brief Frees the interpreter and all associated memory
+ * Frees the interpreter and all associated memory.
  *
  * Deallocates the interpreter instance and releases all associated
  * resources including execution stack, environment, and any other
  * dynamically allocated memory.
  * 
- * @param[in,out] interpreter Pointer to the interpreter instance to free
+ * @param interpreter Pointer to the interpreter instance to free.
  *
  * @note After calling this function, the interpreter pointer becomes invalid
- *       and should not be used
- * @note Passing NULL is safe and results in no operation
+ *       and should not be used.
+ * @note Passing NULL is safe and results in no operation.
  *
  * @see CreateInterpreter()
  */
