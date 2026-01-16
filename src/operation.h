@@ -12,7 +12,8 @@
 #define FLG_NOTFOUND          -1
 #define FLG_ZERO_DIV          -2
 #define FLG_INVALID_OPERATION -3
-#define FLG_ARG_MISMATCH      -4
+#define FLG_OUT_OF_BOUNDS     -4
+#define FLG_ARG_MISMATCH      -5
 
 /*
  * Performs import core operation
@@ -24,6 +25,42 @@
  * Returns: Offset in constants array, or error flag (FLG_NOTFOUND)
  */
 int DoImportCore(Interpreter* interp, String moduleName, Value** out);
+
+/*
+ * Sets an index on an object.
+ * 
+ * interp - The interpreter instance
+ * obj    - The object to set the index on
+ * index  - The index/key to set
+ * val    - The value to set
+ * 
+ * Returns: FLG_SUCCESS, or error flag (FLG_INVALID_OPERATION, FLG_OUT_OF_BOUNDS)
+ */
+int DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val);
+
+/*
+ * Retrieves an attribute from an object.
+ * 
+ * interp        - The interpreter instance
+ * obj           - The object to retrieve the attribute from
+ * attr          - The attribute name
+ * forMethodCall - Whether the attribute is being retrieved for a method call
+ * 
+ * Returns: The attribute value, or Null if not found
+ */
+int DoGetIndex(Interpreter* interp, Value* obj, Value* index, Value** out);
+
+/*
+ * Retrieves a method from an object or returns null if not found.
+ * 
+ * interp     - The interpreter instance
+ * obj        - The object to retrieve the method from
+ * methodName - The name of the method to retrieve
+ * out        - Output parameter for the result (if not NULL, result is stored here)
+ * 
+ * Returns: Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
+ */
+int DoGetMethodOrNull(Interpreter* interp, Value* obj, Value* methodName, Value** out);
 
 /*
  * Performs function call operation
@@ -251,7 +288,6 @@ int DoOr(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
  * Returns: Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
  */
 int DoXor(Interpreter* interp, Value* lhs, Value* rhs, Value** out);
-
 
 /*
  * Loads a function from the interpreter's functions array.

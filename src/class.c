@@ -27,6 +27,7 @@ void ClassDefineMember(UserClass* cls, Value* key, Value* value, bool isStatic) 
 extern bool ValueIsCallable(Value*);
 
 bool ClassHasMember(UserClass* cls, String key, bool isStatic, bool callable) {
+    // if callable is -1, ignore callable check
     HashMap* members = isStatic ? cls->StaticMembers : cls->InstanceMembers;
     Value* member    = HashMapGet(members, key);
     if (member == NULL) {

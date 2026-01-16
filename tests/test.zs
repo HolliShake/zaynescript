@@ -107,19 +107,25 @@ println(hhj, [1, 2, 3, ...[4,5,6], 7, 8, 9]);
 println(math);
 
 class Tao {
-    
+    fn GetAge() {
+        return 20;
+    }
 }
 
 class Person(Tao) {
-   
     fn GetName() {
-       println(">>", this);
+        this.name = "Andy";
+        println(">>", this);
+    }
+
+    static fn StaticMethod() {
+        println("Static Method Called");
     }
 }
 
 const p = new Person();
 
-println(p, p.GetName(), fact);
+println(p, p.GetName(), p.GetAge(), fact, Person.StaticMethod);
 
 fn order(a,b) {
     println(a, b);

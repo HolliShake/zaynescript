@@ -1,5 +1,6 @@
 #include "./interpreter.h" 
 #include "global.h"
+#include <stdio.h>
 
 Interpreter* CreateInterpreter() {
     Interpreter* interpreter                = Allocate(sizeof(Interpreter));
@@ -318,54 +319,33 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                 val = Popp();
                 key = Popp();
                 obj = Peek();
-                if (!ValueIsObject(obj)) {
+                flg = DoSetIndex(interpreter, obj, key, val);
+                if (flg == FLG_OUT_OF_BOUNDS) 
                     HandleError(
-                        "expected object to set attribute on to be an object, got %s", 
+                        "index out of bounds when setting index on %s", 
+                        ValueTypeOf(obj)
+                    )
+                else if (flg == FLG_INVALID_OPERATION)
+                    HandleError(
+                        "invalid operation when setting index on %s", 
                         ValueTypeOf(obj)
                     );
-                }
-                HashMapSet(CoerceToHashMap(obj), ValueToString(key), val);
                 break;
             }
             case OP_GET_INDEX: {
                 key = Popp();
                 obj = Popp();
-                if (!ValueIsObject(obj))
-                    HandleError(
-                        "expected object to get attribute from to be an object, got %s", 
-                        ValueTypeOf(obj)
-                    );
-    
-                val = HashMapGet(CoerceToHashMap(obj), ValueToString(key));
-
-                if (val == NULL)
-                    HandleError(
-                        "object (%s) has no attribute '%s'", 
-                        ValueToString(obj),
-                        ValueToString(key)
-                    );
+                val = NULL;
+                DoGetIndex(interpreter, obj, key, &val);
                 Push(val);
                 break;
             }
             case OP_GET_METHOD_OR_NULL: {
                 key = Popp();
                 obj = Popp();
-                if (ValueIsClassInstance(obj)) {
-                    ClassInstance* instance = CoerceToClassInstance(obj);
-                    if (!ClassHasMember(CoerceToUserClass(instance->Proto), ValueToString(key), false, true)) {
-                        Push(interpreter->Null);
-                        break;
-                    }
-
-                    val = ClassGetMember(
-                        CoerceToUserClass(instance->Proto), 
-                        ValueToString(key), 
-                        false
-                    );
-                    Push(val);
-                } else {
-                    Push(interpreter->Null);
-                }
+                res = NULL;
+                DoGetMethodOrNull(interpreter, obj, key, &res);
+                Push(res);
                 break;
             }
             case OP_LOAD_FUNCTION_CLOSURE:

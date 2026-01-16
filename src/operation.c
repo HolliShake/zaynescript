@@ -48,6 +48,110 @@ int DoImportCore(Interpreter* interp, String moduleName, Value** out) {
     return FLG_NOTFOUND;
 }
 
+Value* _GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool forMethodCall) {
+    String key = ValueToString(attr);
+    if (ValueIsArray(obj)) {
+        // Handle array methods or attributes
+    } else if (ValueIsObject(obj)) {
+        // Handle object methods or attributes
+        HashMap* map = CoerceToHashMap(obj);
+
+        if (HashMapContains(map, key)) {
+            Value* val = HashMapGet(map, key);
+            free(key);
+            return val;
+        }
+
+        // Check prototype chain
+
+    } else if (ValueIsClass(obj)) {
+        // Handle Class static functions or attributes
+        UserClass* cls = CoerceToUserClass(obj);
+
+        while (cls != NULL) {
+            if (ClassHasMember(cls, key, true, forMethodCall)) {
+                Value* member = ClassGetMember(
+                    cls, 
+                    key, 
+                    true
+                );
+                free(key);
+                return member;
+            }
+            cls = CoerceToUserClass(cls->Base);
+        }
+    } else if (ValueIsClassInstance(obj)) {
+        // Handle class instance methods or attributes
+        ClassInstance* instance = CoerceToClassInstance(obj);
+        UserClass* cls = CoerceToUserClass(instance->Proto);
+
+        if (!forMethodCall) {
+            // First check instance members
+            Value* member = HashMapGet(instance->Members, key);
+            if (member != NULL) {
+                free(key);
+                return member;
+            }
+        }
+
+        while (cls != NULL) {
+            if (ClassHasMember(cls, key, !forMethodCall, forMethodCall)) {
+                Value* member = ClassGetMember(
+                    cls, 
+                    key, 
+                    !forMethodCall
+                );
+                free(key);
+                return member;
+            }
+            cls = CoerceToUserClass(cls->Base);
+        }
+    }
+    free(key);
+    return interp->Null;
+}
+
+int DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val) {
+    if (ValueIsArray(obj)) {
+        Array* array = CoerceToArray(obj);
+        long idx = (long) CoerceToI64(index);
+        if (idx < 0 || idx >= array->Count) {
+            return FLG_OUT_OF_BOUNDS;
+        }
+        array->Items[idx] = val;
+        return FLG_SUCCESS;
+    } else if (ValueIsObject(obj)) {
+        HashMap* map = CoerceToHashMap(obj);
+        HashMapSet(map, ValueToString(index), val);
+        return FLG_SUCCESS;
+    } else if (ValueIsClassInstance(obj)) {
+        ClassInstance* instance = CoerceToClassInstance(obj);
+        HashMapSet(instance->Members, ValueToString(index), val);
+        return FLG_SUCCESS;
+    } else if (ValueIsClass(obj)) {
+        UserClass* cls = CoerceToUserClass(obj);
+        HashMapSet(cls->StaticMembers, ValueToString(index), val);
+        return FLG_SUCCESS;
+    }
+    return FLG_INVALID_OPERATION;
+}
+
+int DoGetIndex(Interpreter* interp, Value* obj, Value* index, Value** out) {
+    *out = _GenericGetAttribute(interp, obj, index, false);
+    if (ValueIsNull(*out)) {
+        return FLG_NOTFOUND;
+    }
+    return FLG_SUCCESS;
+}
+
+int DoGetMethodOrNull(Interpreter* interp, Value* obj, Value* methodName, Value** out) {
+    *out = _GenericGetAttribute(interp, obj, methodName, true);
+    if (ValueIsNull(*out)) {
+        _Popp(); return FLG_NOTFOUND; // Pop null
+    }
+    return FLG_SUCCESS;
+}
+
 int DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int argc) {
     if (fn == NULL) Panic("Attempted to call a null value\n");
 
