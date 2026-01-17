@@ -256,7 +256,12 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
         case AST_INT: {
             int offset = _GetConstant(compiler, node->Value);
             if (offset == FLG_NOTFOUND) {
-                offset = _SaveInt(compiler, atoi(node->Value));
+                long long val = strtoll(node->Value, NULL, 10);
+                if (val > INT_MAX || val < INT_MIN) {
+                    offset = _SaveNum(compiler, (double)val);
+                } else {
+                    offset = _SaveInt(compiler, (int)val);
+                }
             }
 
             val = _GetConstantValue(compiler, offset);
@@ -474,14 +479,28 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             Ast* arguments = node->B;
 
             int argc = 0;
-            while (arguments != NULL) {
-                _Expression(compiler, uf, scope, arguments);
+            // Count arguments first
+            Ast* argCount = arguments;
+            while (argCount != NULL) {
                 argc++;
-                arguments = arguments->Next;
+                argCount = argCount->Next;
             }
 
+            // Emit arguments in reverse order
+            Ast** argArray = Allocate(sizeof(Ast*) * argc);
+            int i = 0;
+            Ast* arg = arguments;
+            while (arg != NULL) {
+                argArray[i++] = arg;
+                arg = arg->Next;
+            }
+            for (int j = argc - 1; j >= 0; j--) {
+                _Expression(compiler, uf, scope, argArray[j]);
+            }
+            free(argArray);
+
             _Expression(compiler, uf, scope, cls);
-            _EmitArg(compiler, uf, OP_CALL_CTOR, argc);
+            _EmitArg(compiler, uf, OP_CALL_CTOR, ++argc); // add 1 for 'this'
             break;
         }
         case AST_MEMBER: {

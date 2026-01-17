@@ -183,6 +183,14 @@ bool ValueIsBool(Value* value);
 bool ValueIsNull(Value* value);
 
 /**
+ * @brief Checks if a value is an error
+ * 
+ * @param value Pointer to the Value to check
+ * @return true if the value is an error, false otherwise
+ */
+bool ValueIsError(Value* value);
+
+/**
  * @brief Checks if a value is a user function
  * 
  * @param value Pointer to the Value to check

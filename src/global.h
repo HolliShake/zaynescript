@@ -11,7 +11,10 @@
 
 // Order patterns
 #include "../utf/utf.h"
+#include <ctype.h>
 #include <errno.h>
+#include <limits.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -19,8 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <limits.h>
+#include <time.h>
 
 // Platform-specific includes for aligned allocation
 #if defined(_WIN32)

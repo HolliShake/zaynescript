@@ -32,14 +32,19 @@ String ReadFile(String path) {
 }
 
 // Simple example using the allocator system
-int main() {
+int main(int argc, char** argv) {
     printf("=== LanguageX - Allocator Demo ===\n\n");
 
     Interpreter* interpreter = CreateInterpreter();
 
-    String path = "./tests/test.zs";
+    String path = (argc > 1) ? argv[1] : "./tests/test.zs";
     //NOTE: memory leak (ReadFile allocates a buffer, StringToRunes reads it, but the buffer is never freed)
-    Rune* data = StringToRunes(ReadFile(path));
+    String fileContent = ReadFile(path);
+    if (!fileContent) {
+        return 1;
+    }
+    Rune* data = StringToRunes(fileContent);
+    free(fileContent);
 
 
     Lexer* lexer = CreateLexer(path, data);

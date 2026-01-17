@@ -1,4 +1,5 @@
 #include "./operation.h"
+#include <_mingw_mac.h>
 
 #define PushArray(type, array, count, val, defaultValue) do { \
     (array)[(count)++] = val; \
@@ -11,6 +12,8 @@
 #define _Push(value) (interp->Stacks[interp->StackC++] = (value))
 #define _Popp()      (interp->Stacks[--interp->StackC])
 #define _PopN(n)     (interp->Stacks[interp->StackC -= (n)])
+#define _Peek()      (interp->Stacks[interp->StackC - 1])
+
 
 static int _GetConstantOffset(Interpreter* interp, Value* value) {
     if (value == NULL) {
@@ -35,15 +38,18 @@ static int _GetConstantOffset(Interpreter* interp, Value* value) {
     return FLG_NOTFOUND;
 }
 
+static void _DupTop(Interpreter* interp) {
+    _Push(_Peek());
+}
+
 extern void Run(Interpreter* interp, Value* fnValue, Value* rootEnvObj, Value* envObj);
 
+extern CoreMapper _CoreModuleMappers[];
+
 int DoImportCore(Interpreter* interp, String moduleName, Value** out) {
-    if (strcmp(moduleName, "io") == 0) {
-        *out = LoadCoreIo(interp);
-        return 0;
-    } else if (strcmp(moduleName, "math") == 0) {
-        *out = LoadCoreMath(interp);
-        return 0;
+    *out = LoadCoreModule(interp, moduleName);
+    if (*out != NULL) {
+        return FLG_SUCCESS;
     }
     return FLG_NOTFOUND;
 }
@@ -185,6 +191,47 @@ int DoGetMethodOrNull(Interpreter* interp, Value* obj, Value* methodName, Value*
     return FLG_SUCCESS;
 }
 
+int DoCallCtor(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* clsValue, int argc) {
+    if (clsValue == NULL) Panic("Attempted to call constructor on a null value\n");
+
+    if (!ValueIsClass(clsValue)) {
+        _PopN(argc); return FLG_INVALID_OPERATION;
+    }
+
+    UserClass* cls = CoerceToUserClass(clsValue);
+
+    if (!ClassHasMember(cls, CONSTRUCTOR_NAME, false, true)) {
+        if (argc != 1) {
+            return FLG_ARG_MISMATCH;
+        }
+        // Push default instance, no constructor call
+        ClassInstance* instance = CreateClassInstance(clsValue);
+        _Push(NewClassInstanceValue(interp, instance));
+        return FLG_SUCCESS;
+    }
+
+    // Push thisArg
+    ClassInstance* instance = CreateClassInstance(clsValue);
+    Value* instanceValue = NewClassInstanceValue(interp, instance);
+    _Push(instanceValue);
+
+    Value* constructor = ClassGetMember(cls, CONSTRUCTOR_NAME, false);
+
+    int flg = DoCall(
+        interp, 
+        rootEnvObj, 
+        envObj, 
+        constructor, 
+        argc
+    );
+    if (flg == FLG_SUCCESS) {
+        _Popp(); // Pop constructor return value
+        _Push(instanceValue); // Push instance as return value
+    }
+
+    return flg;
+}
+
 int DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int argc) {
     if (fn == NULL) Panic("Attempted to call a null value\n");
 
@@ -206,7 +253,13 @@ int DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int
             args[i] = _Popp();
         }
 
-        _Push(nf(interp, argc, args));
+        Value* res = nf(interp, argc, args);
+
+        if (ValueIsError(res)) {
+            return FLG_ERROR;
+        }
+
+        _Push(res);
         free(args);
         
         return FLG_SUCCESS;

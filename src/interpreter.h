@@ -9,7 +9,6 @@
 
 #include "./array.h"
 #include "./class.h"
-#include "./core/array.h"
 #include "./decompiler.h"
 #include "./environment.h"
 #include "./function.h"

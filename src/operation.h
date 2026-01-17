@@ -1,19 +1,20 @@
-#include "./core/io.h"
-#include "./core/math.h"
+#include "./core/loader.h"
 #include "./environment.h"
 #include "./global.h"
 #include "./gc.h"
 #include "./value.h"
 
+
 #ifndef OPERATION_H
 #define OPERATION_H
 
 #define FLG_SUCCESS            0
-#define FLG_NOTFOUND          -1
-#define FLG_ZERO_DIV          -2
-#define FLG_INVALID_OPERATION -3
-#define FLG_OUT_OF_BOUNDS     -4
-#define FLG_ARG_MISMATCH      -5
+#define FLG_ERROR             -1
+#define FLG_NOTFOUND          -2
+#define FLG_ZERO_DIV          -3
+#define FLG_INVALID_OPERATION -4
+#define FLG_OUT_OF_BOUNDS     -5
+#define FLG_ARG_MISMATCH      -6
 
 /**
  * Performs import core operation.
@@ -61,6 +62,19 @@ int DoGetIndex(Interpreter* interp, Value* obj, Value* index, Value** out);
  * @return Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
  */
 int DoGetMethodOrNull(Interpreter* interp, Value* obj, Value* methodName, Value** out);
+
+/**
+ * Performs constructor call operation.
+ * 
+ * @param interp      The interpreter instance
+ * @param rootEnvObj  The root environment object
+ * @param envObj      The current environment object
+ * @param clsValue    The class to instantiate
+ * @param argc        Number of arguments
+ * 
+ * @return Offset in constants array, or error flag (FLG_ARG_MISMATCH)
+ */
+int DoCallCtor(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* clsValue, int argc);
 
 /**
  * Performs function call operation.

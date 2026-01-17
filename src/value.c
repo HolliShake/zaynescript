@@ -242,6 +242,10 @@ bool ValueIsNull(Value* value) {
     return value->Type == VT_NULL;
 }
 
+bool ValueIsError(Value* value) {
+    return value->Type == VT_ERROR;
+}
+
 bool ValueIsUserFunction(Value* value) {
     return value->Type == VT_USER_FUNCTION;
 }

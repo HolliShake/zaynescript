@@ -18,9 +18,25 @@ Value* _ArrayPush(Interpreter* interpreter, int argc, Value** arguments) {
     return interpreter->Null;
 }
 
-static ModuleFunction _IoModuleFunctions[] = {
+static Value* _ArrayLength(Interpreter* interpreter, int argc, Value** arguments) {
+    if (argc != 1) {
+        return NewErrorValue(interpreter, "Array.length expects no arguments");
+    }
+
+    Value* thisArg = arguments[0];
+
+    if (!ValueIsArray(thisArg)) {
+        return NewErrorValue(interpreter, "First argument to Array.length must be an array");
+    }
+
+    Array* array = CoerceToArray(thisArg);
+    return NewIntValue(interpreter, (int) ArrayLength(array));
+}
+
+static ModuleFunction _ArrayClassMethods[] = {
     // Array class
-    { .Name = "push", .Argc = 2, .CFunction = (NativeFunction) _ArrayPush, .Value = NULL },
+    { .Name = "push",   .Argc = 2, .CFunction = (NativeFunction) _ArrayPush  , .Value = NULL },
+    { .Name = "length", .Argc = 1, .CFunction = (NativeFunction) _ArrayLength, .Value = NULL },
     // end of module functions
     { .Name = NULL }
 };
@@ -30,8 +46,8 @@ Value* CreateArrayClass(Interpreter* interpreter) {
     UserClass* cls = CoerceToUserClass(arrayClass);
 
     // Define Array methods here (e.g., push, pop, length, etc.)
-    for (int i = 0; _IoModuleFunctions[i].Name != NULL; i++) {
-        ModuleFunction func = _IoModuleFunctions[i];
+    for (int i = 0; _ArrayClassMethods[i].Name != NULL; i++) {
+        ModuleFunction func = _ArrayClassMethods[i];
         String name = AllocateString(func.Name);
         
         if (func.CFunction != NULL) {

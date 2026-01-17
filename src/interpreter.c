@@ -95,7 +95,15 @@ static String _ReadString(uint8_t* codes, int alignStart) {
 
 
 static int _GetArgc(Value* fn) {
-    if (ValueIsNativeFunction(fn)) {
+    if (ValueIsClass(fn)) {
+        UserClass* cls = CoerceToUserClass(fn);
+        if (ClassHasMember(cls, CONSTRUCTOR_NAME, false, true)) {
+            Value* constructor = ClassGetMember(cls, CONSTRUCTOR_NAME, false);
+            return _GetArgc(constructor);
+        } else {
+            return 0;
+        }
+    } else if (ValueIsNativeFunction(fn)) {
         NativeFunctionMeta* nFMeta = CoerceToNativeFunctionMeta(fn);
         return nFMeta->Argc;
     } else if (ValueIsUserFunction(fn)) {
@@ -367,22 +375,28 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             case OP_CALL_CTOR: {
                 argc = _ReadInt32(uf->Codes, ip);
                 Forward(4);
-
                 obj  = Popp();
+                flg  = DoCallCtor(
+                    interpreter, 
+                    rootEnvObj, 
+                    envObj, 
+                    obj, 
+                    argc
+                );
 
-                if (!ValueIsClass(obj))
+                if (flg == FLG_ARG_MISMATCH)
                     HandleError(
-                        "attempted to allocate non-class value of type %s", 
+                        "argument count mismatch expected %d arguments but got %d", 
+                        _GetArgc(obj), argc
+                    )
+                else if (flg == FLG_INVALID_OPERATION)
+                    HandleError(
+                        "attempted to call constructor on a non-class value of type %s", 
                         ValueTypeOf(obj)
-                    );
-                
-                if (!ClassHasMember(CoerceToUserClass(obj), CONSTRUCTOR_NAME, false, true)) {
-                    PopN(argc);
-                    // Push default instance, no constructor call
-                    ClassInstance* instance = CreateClassInstance(obj);
-                    Push(NewClassInstanceValue(interpreter, instance));
-                } else {
-
+                    )
+                else if (flg == FLG_ERROR) {
+                    String msg = ValueToString(Popp());
+                    HandleError("%s", msg);
                 }
                 break;
             }
@@ -397,6 +411,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                     obj, 
                     argc
                 );
+              
                 if (flg == FLG_INVALID_OPERATION)
                     HandleError(
                         "attempted to call a non-callable value of type %s", 
@@ -406,7 +421,11 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                     HandleError(
                         "argument count mismatch expected %d arguments but got %d", 
                         _GetArgc(obj), argc
-                    );
+                    )
+                else if (flg == FLG_ERROR) {
+                    String msg = ValueToString(Popp());
+                    HandleError("%s", msg);
+                }
                     
                 Forward(4);
                 break;

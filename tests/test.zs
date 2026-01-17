@@ -108,11 +108,17 @@ println(math);
 
 class Tao {
     fn GetAge() {
-        return 20;
+        return this.age;
     }
 }
 
 class Person(Tao) {
+    fn init(name, age) {
+        println(">> Init Person", this, name, age);
+        this.name = name;
+        this.age  = age;
+    }
+
     fn GetName() {
         this.name = "Andy";
         println(">>", this);
@@ -123,7 +129,7 @@ class Person(Tao) {
     }
 }
 
-const p = new Person();
+const p = new Person("Philipp", 26);
 
 println(p, p.GetName(), p.GetAge(), fact, Person.StaticMethod);
 
@@ -133,10 +139,9 @@ fn order(a,b) {
 
 order(100, 200);
 
-
 const array = [];
 println(array);
 array.push(10);
 array.push(20);
 array[1] = 30;
-println(array, array.push);
+println(array, array.push, array.length());
