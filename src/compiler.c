@@ -1508,20 +1508,23 @@ static void _ImportStatement(Compiler* compiler, UserFunction* uf, Scope* scope,
 
     if (StringStartsWith(moduleName->Value, "core:")) {
         _EmitString(compiler, uf, OP_IMPORT_CORE, moduleName->Value + 5);
-        _Emit(compiler, uf, OP_DUPTOP);
+        if (imports == NULL) {
+            // store as object
+            _Emit(compiler, uf, OP_DUPTOP);
 
-        if (ScopeHasLocal(scope, moduleName->Value + 5)) {
-            ThrowError(
-                compiler->Parser->Lexer->Path, 
-                compiler->Parser->Lexer->Data, 
-                moduleName->Position, 
-                "duplicate import name"
-            );
+            if (ScopeHasLocal(scope, moduleName->Value + 5)) {
+                ThrowError(
+                    compiler->Parser->Lexer->Path, 
+                    compiler->Parser->Lexer->Data, 
+                    moduleName->Position, 
+                    "duplicate import name"
+                );
+            }
+
+            int offset = UserFunctionEmitLocal(uf);
+            ScopeSetSymbol(scope, moduleName->Value + 5, true, true, true, offset);
+            _EmitArg(compiler, uf, OP_STORE_NAME, offset);
         }
-
-        int offset = UserFunctionEmitLocal(uf);
-        ScopeSetSymbol(scope, moduleName->Value + 5, true, true, true, offset);
-        _EmitArg(compiler, uf, OP_STORE_NAME, offset);
     } else {
         ThrowError(
             compiler->Parser->Lexer->Path, 

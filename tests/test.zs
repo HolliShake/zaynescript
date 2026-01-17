@@ -27,7 +27,7 @@ fn b() {
         println(yy);
         yy = yy + 1;
     }
-    println("Done", io);
+    println("Done");
 }
 
 a();
