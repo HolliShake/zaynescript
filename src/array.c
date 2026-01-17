@@ -97,6 +97,7 @@ String ArrayToString(Array* array) {
         if (array->Items[i] == array) {
             strcat(result, "[self]");
         } else {
+            //NOTE: memory leak (ValueToString returns a new string that is not freed)
             strcat(result, ValueToString(array->Items[i]));
         }
         

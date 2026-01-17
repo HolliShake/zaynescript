@@ -90,6 +90,7 @@ static Value* _IoScan(Interpreter* interpreter, int argc, Value** arguments) {
         }
     }
     
+    //NOTE: memory leak (AllocateString creates a char* string that is passed to NewStrValue, but NewStrValue converts it to Runes and doesn't free the original char* string)
     Value* result = NewStrValue(interpreter, AllocateString(buffer));
     free(buffer);
     return result;

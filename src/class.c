@@ -99,6 +99,7 @@ String ClassInstanceToString(ClassInstance* instance) {
             String valueStr = ValueToString((Value*)node->Val);
             currentPos += snprintf(buffer + currentPos, bufferSize - currentPos, 
                                   "%s: %s", node->Key, valueStr);
+            //NOTE: memory leak (ValueToString returns a new string that is not freed)
             
             node = node->Next;
         }

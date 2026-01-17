@@ -189,8 +189,10 @@ static Value* _DateToString(Interpreter* interpreter, int argc, Value** argument
     if (tstr) {
         size_t len = strlen(tstr);
         if (len > 0 && tstr[len-1] == '\n') tstr[len-1] = '\0';
+        //NOTE: memory leak (AllocateString creates a char* string that is passed to NewStrValue, but NewStrValue converts it to Runes and doesn't free the original char* string)
         return NewStrValue(interpreter, AllocateString(tstr));
     }
+    //NOTE: memory leak (AllocateString creates a char* string that is passed to NewStrValue, but NewStrValue converts it to Runes and doesn't free the original char* string)
     return NewStrValue(interpreter, AllocateString("Invalid Date"));
 }
 
