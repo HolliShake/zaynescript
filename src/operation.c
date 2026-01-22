@@ -1,5 +1,4 @@
 #include "./operation.h"
-#include <_mingw_mac.h>
 
 #define PushArray(type, array, count, val, defaultValue) do { \
     (array)[(count)++] = val; \
@@ -42,19 +41,109 @@ static void _DupTop(Interpreter* interp) {
     _Push(_Peek());
 }
 
-extern void Run(Interpreter* interp, Value* fnValue, Value* rootEnvObj, Value* envObj);
+static bool _IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
+    String key = ValueToString(method);
+    if (ValueIsArray(obj)) {
+        // Handle array methods or attributes
+        Array* array = CoerceToArray(obj);
 
-extern CoreMapper _CoreModuleMappers[];
+        if (ValueIsNum(method)) {
+            long idx = (long) CoerceToI64(method);
+            if (idx < 0 || idx >= array->Count) {
+                free(key);
+                return interp->Null;
+            }
+            free(key);
+            return array->Items[idx];
+        }
 
-int DoImportCore(Interpreter* interp, String moduleName, Value** out) {
-    *out = LoadCoreModule(interp, moduleName);
-    if (*out != NULL) {
-        return FLG_SUCCESS;
+        // Check prototype chain
+        UserClass* cls = CoerceToUserClass(interp->Array);
+
+        while (cls != NULL) {
+            if (ClassHasMember(cls, key, false, true)) {
+                Value* member = ClassGetMember(
+                    cls, 
+                    key, 
+                    false
+                );
+                free(key);
+                return true;
+            }
+            if (cls->Base == NULL) break;
+            cls = CoerceToUserClass(cls->Base);
+        }
+    } else if (ValueIsObject(obj)) {
+        // Handle object methods or attributes
+        HashMap* map = CoerceToHashMap(obj);
+
+        if (HashMapContains(map, key)) {
+            Value* val = HashMapGet(map, key);
+            free(key);
+            return val;
+        }
+
+        // Check prototype chain
+        UserClass* cls = NULL;
+
+        while (cls != NULL) {
+            if (ClassHasMember(cls, key, false, true)) {
+                Value* member = ClassGetMember(
+                    cls, 
+                    key, 
+                    false
+                );
+                free(key);
+                return true;
+            }
+            if (cls->Base == NULL) break;
+            cls = CoerceToUserClass(cls->Base);
+        }
+    } else if (ValueIsClass(obj)) {
+        // Handle Class static functions or attributes
+        UserClass* cls = CoerceToUserClass(obj);
+
+        while (cls != NULL) {
+            if (ClassHasMember(cls, key, false, true)) {
+                Value* member = ClassGetMember(
+                    cls, 
+                    key, 
+                    true
+                );
+                free(key);
+                return true;
+            }
+            if (cls->Base == NULL) break;
+            cls = CoerceToUserClass(cls->Base);
+        }
+    } else if (ValueIsClassInstance(obj)) {
+        // Handle class instance methods or attributes
+        ClassInstance* instance = CoerceToClassInstance(obj);
+
+        // Check prototype chain
+        UserClass* cls = CoerceToUserClass(instance->Proto);
+
+        while (cls != NULL) {
+            if (ClassHasMember(cls, key, false, true)) {
+                Value* member = ClassGetMember(
+                    cls, 
+                    key, 
+                    false
+                );
+                free(key);
+                return true;
+            }
+            if (cls->Base == NULL) break;
+            cls = CoerceToUserClass(cls->Base);
+        }
+
     }
-    return FLG_NOTFOUND;
+
+    free(key);
+    return false;
 }
 
-Value* _GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool forMethodCall) {
+static Value* _GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool forMethodCall) {
     String key = ValueToString(attr);
     if (ValueIsArray(obj)) {
         // Handle array methods or attributes
@@ -98,6 +187,21 @@ Value* _GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool f
         }
 
         // Check prototype chain
+        UserClass* cls = NULL;
+
+        while (forMethodCall && cls != NULL) {
+            if (ClassHasMember(cls, key, false, forMethodCall)) {
+                Value* member = ClassGetMember(
+                    cls, 
+                    key, 
+                    false
+                );
+                free(key);
+                return member;
+            }
+            if (cls->Base == NULL) break;
+            cls = CoerceToUserClass(cls->Base);
+        }
 
     } else if (ValueIsClass(obj)) {
         // Handle Class static functions or attributes
@@ -120,15 +224,6 @@ Value* _GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool f
         // Handle class instance methods or attributes
         ClassInstance* instance = CoerceToClassInstance(obj);
 
-        if (!forMethodCall) {
-            // First check instance members
-            Value* member = HashMapGet(instance->Members, key);
-            if (member != NULL) {
-                free(key);
-                return member;
-            }
-        }
-
         // Check prototype chain
         UserClass* cls = CoerceToUserClass(instance->Proto);
 
@@ -145,9 +240,28 @@ Value* _GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool f
             if (cls->Base == NULL) break;
             cls = CoerceToUserClass(cls->Base);
         }
+
+        // Check instance members
+        Value* member = HashMapGet(instance->Members, key);
+        if (member != NULL) {
+            free(key);
+            return member;
+        }
     }
     free(key);
     return interp->Null;
+}
+
+extern void Run(Interpreter* interp, Value* fnValue, Value* rootEnvObj, Value* envObj);
+
+extern CoreMapper _CoreModuleMappers[];
+
+int DoImportCore(Interpreter* interp, String moduleName, Value** out) {
+    *out = LoadCoreModule(interp, moduleName);
+    if (*out != NULL) {
+        return FLG_SUCCESS;
+    }
+    return FLG_NOTFOUND;
 }
 
 int DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val) {
@@ -183,14 +297,6 @@ int DoGetIndex(Interpreter* interp, Value* obj, Value* index, Value** out) {
     return FLG_SUCCESS;
 }
 
-int DoGetMethodOrNull(Interpreter* interp, Value* obj, Value* methodName, Value** out) {
-    *out = _GenericGetAttribute(interp, obj, methodName, true);
-    if (ValueIsNull(*out)) {
-        _Popp(); return FLG_NOTFOUND; // Pop null
-    }
-    return FLG_SUCCESS;
-}
-
 int DoCallCtor(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* clsValue, int argc) {
     if (clsValue == NULL) Panic("Attempted to call constructor on a null value\n");
 
@@ -201,7 +307,7 @@ int DoCallCtor(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* cls
     UserClass* cls = CoerceToUserClass(clsValue);
 
     if (!ClassHasMember(cls, CONSTRUCTOR_NAME, false, true)) {
-        if (argc != 1) {
+        if (argc != 0) {
             return FLG_ARG_MISMATCH;
         }
         // Push default instance, no constructor call
@@ -222,8 +328,9 @@ int DoCallCtor(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* cls
         rootEnvObj, 
         envObj, 
         constructor, 
-        argc
+        ++argc
     );
+    
     if (flg == FLG_SUCCESS) {
         _Popp(); // Pop constructor return value
         _Push(instanceValue); // Push instance as return value
@@ -284,6 +391,28 @@ int DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int
         NewEnvironmentValue(interp, env)
     );
     return FLG_SUCCESS;
+}
+
+int DoCallMethod(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* obj, Value* methodName, int argc) {
+    if (_IsMethodOfObject(interp, obj, methodName)) {
+        ++argc; // add 1 for 'this'
+    } else {
+        _Popp(); // pop 'this'
+    }
+    
+    Value* method = _GenericGetAttribute(interp, obj, methodName, true);
+    
+    if (ValueIsNull(method)) {
+        _PopN(argc); return FLG_NOTFOUND;
+    }
+
+    return DoCall(
+        interp, 
+        rootEnvObj, 
+        envObj, 
+        method, 
+        argc
+    );
 }
 
 int DoMul(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {

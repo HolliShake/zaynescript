@@ -117,6 +117,9 @@ class Person(Tao) {
         println(">> Init Person", this, name, age);
         this.name = name;
         this.age  = age;
+        this.callable = fn() {
+            return "Called > " + this.name;
+        };
     }
 
     fn GetName() {
@@ -129,7 +132,7 @@ class Person(Tao) {
     }
 }
 
-const p = new Person("Philipp", 26);
+const p = new Person("Philipp", 26, 2);
 
 println(p, p.GetName(), p.GetAge(), fact, Person.StaticMethod);
 
@@ -144,4 +147,5 @@ println(array);
 array.push(10);
 array.push(20);
 array[1] = 30;
-println(array, array.push, array.length());
+println("HEre!");
+println(array, array.push, array.length(), p.callable());

@@ -148,7 +148,6 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
             case OP_CLASS_DEFINE_INSTANCE_MEMBER: _Append(&result, "OP_CLASS_DEFINE_INSTANCE_MEMBER\n"); break;
             case OP_SET_INDEX: _Append(&result, "OP_SET_INDEX\n"); break;
             case OP_GET_INDEX: _Append(&result, "OP_GET_INDEX\n"); break;
-            case OP_GET_METHOD_OR_NULL: _Append(&result, "OP_GET_METHOD_OR_NULL\n"); break;
             case OP_LOAD_FUNCTION_CLOSURE: {
                 int offset = _ReadOffset(uf->Codes, ip);
                 _AppendFmt(&result, "OP_LOAD_FUNCTION_CLOSURE %d\n", offset);

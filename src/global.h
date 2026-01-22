@@ -393,7 +393,6 @@ typedef enum opcode_enum {
     OP_CLASS_DEFINE_INSTANCE_MEMBER, /**< Define an instance class member */
     OP_SET_INDEX,                    /**< Set value at index */
     OP_GET_INDEX,                    /**< Get value at index */
-    OP_GET_METHOD_OR_NULL,           /**< Get method or null */
     OP_LOAD_FUNCTION_CLOSURE,        /**< Load a function closure */
     OP_LOAD_FUNCTION,                /**< Load a function */
     OP_CALL_CTOR,                    /**< Call a constructor */

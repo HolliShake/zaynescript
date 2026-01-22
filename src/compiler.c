@@ -500,7 +500,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             free(argArray);
 
             _Expression(compiler, uf, scope, cls);
-            _EmitArg(compiler, uf, OP_CALL_CTOR, ++argc); // add 1 for 'this'
+            _EmitArg(compiler, uf, OP_CALL_CTOR, argc);
             break;
         }
         case AST_MEMBER: {
@@ -557,8 +557,8 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     } else {
                         _Expression(compiler, uf, scope, att);
                     }
-                    _Emit(compiler, uf, OP_GET_METHOD_OR_NULL);
-                    _EmitArg(compiler, uf, OP_CALL_METHOD, ++argc); // add 1 for 'this'
+                    
+                    _EmitArg(compiler, uf, OP_CALL_METHOD, argc);
                     break;
                 }
                 default: {

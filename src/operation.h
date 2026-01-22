@@ -52,18 +52,6 @@ int DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val);
 int DoGetIndex(Interpreter* interp, Value* obj, Value* index, Value** out);
 
 /**
- * Retrieves a method from an object or returns null if not found.
- * 
- * @param interp     The interpreter instance
- * @param obj        The object to retrieve the method from
- * @param methodName The name of the method to retrieve
- * @param out        Output parameter for the result (if not NULL, result is stored here)
- * 
- * @return Offset in constants array, or error flag (FLG_INVALID_OPERATION, FLG_NOTFOUND)
- */
-int DoGetMethodOrNull(Interpreter* interp, Value* obj, Value* methodName, Value** out);
-
-/**
  * Performs constructor call operation.
  * 
  * @param interp      The interpreter instance
@@ -88,6 +76,20 @@ int DoCallCtor(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* cls
  * @return Offset in constants array, or error flag (FLG_ARG_MISMATCH)
  */
 int DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int argc);
+
+/**
+ * Performs method call operation.
+ * 
+ * @param interp      The interpreter instance
+ * @param rootEnvObj  The root environment object
+ * @param envObj      The current environment object
+ * @param obj         The object on which the method is called
+ * @param methodName  The name of the method to call
+ * @param argc        Number of arguments
+ * 
+ * @return Offset in constants array, or error flag (FLG_ARG_MISMATCH)
+ */
+int DoCallMethod(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* obj, Value* methodName, int argc);
 
 /**
  * Performs multiplication operation on two values.

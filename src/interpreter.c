@@ -348,14 +348,6 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                 Push(val);
                 break;
             }
-            case OP_GET_METHOD_OR_NULL: {
-                key = Popp();
-                obj = Popp();
-                res = NULL;
-                DoGetMethodOrNull(interpreter, obj, key, &res);
-                Push(res);
-                break;
-            }
             case OP_LOAD_FUNCTION_CLOSURE:
             case OP_LOAD_FUNCTION: {
                 offset = _ReadInt32(uf->Codes, ip);
@@ -375,24 +367,24 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             case OP_CALL_CTOR: {
                 argc = _ReadInt32(uf->Codes, ip);
                 Forward(4);
-                obj  = Popp();
+                cls  = Popp();
                 flg  = DoCallCtor(
                     interpreter, 
                     rootEnvObj, 
                     envObj, 
-                    obj, 
+                    cls, 
                     argc
                 );
 
                 if (flg == FLG_ARG_MISMATCH)
                     HandleError(
                         "argument count mismatch expected %d arguments but got %d", 
-                        _GetArgc(obj), argc
+                        _GetArgc(cls), argc
                     )
                 else if (flg == FLG_INVALID_OPERATION)
                     HandleError(
                         "attempted to call constructor on a non-class value of type %s", 
-                        ValueTypeOf(obj)
+                        ValueTypeOf(cls)
                     )
                 else if (flg == FLG_ERROR) {
                     String msg = ValueToString(Popp());
@@ -400,8 +392,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                 }
                 break;
             }
-            case OP_CALL: 
-            case OP_CALL_METHOD: {
+            case OP_CALL: {
                 argc = _ReadInt32(uf->Codes, ip);
                 obj  = Popp();
                 flg  = DoCall(
@@ -411,7 +402,36 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                     obj, 
                     argc
                 );
-              
+                if (flg == FLG_INVALID_OPERATION)
+                    HandleError(
+                        "attempted to call a non-callable value of type %s", 
+                        ValueTypeOf(obj)
+                    )
+                else if (flg == FLG_ARG_MISMATCH)
+                    HandleError(
+                        "argument count mismatch expected %d arguments but got %d", 
+                        _GetArgc(obj), argc
+                    )
+                else if (flg == FLG_ERROR) {
+                    String msg = ValueToString(Popp());
+                    HandleError("%s", msg);
+                }
+                    
+                Forward(4);
+                break;
+            }
+            case OP_CALL_METHOD: {
+                argc = _ReadInt32(uf->Codes, ip);
+                key  = Popp(); // method
+                obj  = Popp(); // 'this' object
+                flg  = DoCallMethod(
+                    interpreter, 
+                    rootEnvObj, 
+                    envObj, 
+                    obj, 
+                    key,
+                    argc
+                );
                 if (flg == FLG_INVALID_OPERATION)
                     HandleError(
                         "attempted to call a non-callable value of type %s", 
@@ -845,6 +865,13 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
     Environment* env = CreateEnvironment(NULL, uf->LocalC);
     Value* envObj    = NewEnvironmentValue(interpreter, env);
     Run(interpreter, fnValue, envObj, envObj);
+    if (interpreter->StackC != 1) {
+        InterpreterPanic(
+            "internal error: stack not cleaned up after function '%s' execution, expected 1 value on stack but got %d values", 
+            uf->Name != NULL ? uf->Name : "<anonymous>", 
+            interpreter->StackC
+        );
+    }
     ForceGarbageCollect(interpreter);
 }
 
