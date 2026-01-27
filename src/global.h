@@ -12,6 +12,7 @@
 // Order patterns
 #include "../utf/utf.h"
 #include <ctype.h>
+#include <dirent.h>
 #include <errno.h>
 #include <limits.h>
 #include <math.h>
@@ -149,12 +150,12 @@ typedef struct position_struct {
 } Position;
 
 /**
- * @enum token_type_enum
+ * @enum token_kind_enum
  * @brief Enumeration of all possible token types in the language.
  * 
  * Defines the lexical token categories recognized by the lexer.
  */
-typedef enum token_type_enum {
+typedef enum token_kind_enum {
     TK_KEY, /**< Keyword token */
     TK_SYM, /**< Symbol/Operator token */
     TK_IDN, /**< Identifier token */
@@ -162,7 +163,7 @@ typedef enum token_type_enum {
     TK_NUM, /**< Numeric (float) literal token */
     TK_STR, /**< String literal token */
     TK_EOF, /**< End-of-file token */
-} TokenType;
+} TokenKind;
 
 /**
  * @struct token_struct
@@ -171,7 +172,7 @@ typedef enum token_type_enum {
  * Contains the token type, its string value, and its position in the source.
  */
 typedef struct token_struct {
-    TokenType Type;     /**< The type of the token */
+    TokenKind Type;     /**< The type of the token */
     String    Value;    /**< The string value of the token */
     Position  Position; /**< The location of the token in the source code */
 } Token;
@@ -323,19 +324,19 @@ struct ast_struct {
  * functions, and objects.
  */
 typedef enum value_type_enum {
-    VT_ERROR,          /**< Error value */
-    VT_INT,            /**< Integer value */
-    VT_NUM,            /**< Number value */
-    VT_STR,            /**< String value */
-    VT_BOOL,           /**< Boolean value */
-    VT_NULL,           /**< Null value */
-    VT_ARRAY,          /**< Array value */
-    VT_OBJECT,         /**< Object value */
-    VT_CLASS,          /**< Class definition value */
-    VT_CLASS_INSTANCE, /**< Class instance value */
-    VT_USER_FUNCTION,  /**< User-defined function value */
-    VT_NATV_FUNCTION,  /**< Native function value */
-    VT_ENVIRONMENT,    /**< Environment value */
+    VLT_ERROR,          /**< Error value */
+    VLT_INT,            /**< Integer value */
+    VLT_NUM,            /**< Number value */
+    VLT_STR,            /**< String value */
+    VLT_BOOL,           /**< Boolean value */
+    VLT_NULL,           /**< Null value */
+    VLT_ARRAY,          /**< Array value */
+    VLT_OBJECT,         /**< Object value */
+    VLT_CLASS,          /**< Class definition value */
+    VLT_CLASS_INSTANCE, /**< Class instance value */
+    VLT_USER_FUNCTION,  /**< User-defined function value */
+    VLT_NATV_FUNCTION,  /**< Native function value */
+    VLT_ENVIRONMENT,    /**< Environment value */
 } ValueType;
 
 /**
@@ -835,7 +836,7 @@ double CoerceToNum(Value* value);
  * @brief Coerces a value to an Environment.
  * 
  * Extracts the Environment pointer from a value. The value must be
- * of type VT_ENVIRONMENT.
+ * of type VLT_ENVIRONMENT.
  * 
  * @param value The value to coerce.
  * @return Pointer to the Environment.
@@ -846,7 +847,7 @@ Environment* CoerceToEnvironment(Value* value);
  * @brief Coerces a value to a HashMap (object).
  * 
  * Extracts the HashMap pointer from a value. The value must be
- * of type VT_OBJECT.
+ * of type VLT_OBJECT.
  * 
  * @param value The value to coerce.
  * @return Pointer to the HashMap.
@@ -857,7 +858,7 @@ HashMap* CoerceToHashMap(Value* value);
  * @brief Coerces a value to an Array.
  * 
  * Extracts the Array pointer from a value. The value must be
- * of type VT_ARRAY.
+ * of type VLT_ARRAY.
  * 
  * @param value The value to coerce.
  * @return Pointer to the Array.
@@ -868,7 +869,7 @@ Array* CoerceToArray(Value* value);
  * @brief Coerces a value to a UserFunction.
  * 
  * Extracts the UserFunction pointer from a value. The value must be
- * of type VT_USER_FUNCTION.
+ * of type VLT_USER_FUNCTION.
  * 
  * @param value The value to coerce.
  * @return Pointer to the UserFunction.
@@ -879,7 +880,7 @@ UserFunction* CoerceToUserFunction(Value* value);
  * @brief Coerces a value to a NativeFunctionMeta.
  * 
  * Extracts the NativeFunctionMeta pointer from a value. The value must be
- * of type VT_NATV_FUNCTION.
+ * of type VLT_NATV_FUNCTION.
  * 
  * @param value The value to coerce.
  * @return Pointer to the NativeFunctionMeta.
@@ -890,7 +891,7 @@ NativeFunctionMeta* CoerceToNativeFunctionMeta(Value* value);
  * @brief Coerces a value to a UserClass.
  * 
  * Extracts the UserClass pointer from a value. The value must be
- * of type VT_CLASS.
+ * of type VLT_CLASS.
  * 
  * @param value The value to coerce.
  * @return Pointer to the UserClass.
@@ -901,7 +902,7 @@ UserClass* CoerceToUserClass(Value* value);
  * @brief Coerces a value to a ClassInstance.
  * 
  * Extracts the ClassInstance pointer from a value. The value must be
- * of type VT_CLASS_INSTANCE.
+ * of type VLT_CLASS_INSTANCE.
  * 
  * @param value The value to coerce.
  * @return Pointer to the ClassInstance.

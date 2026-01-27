@@ -12,79 +12,79 @@ static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
 }
 
 Value* NewErrorValue(Interpreter* interpreter, String message) {
-    Value* v = _CreateValue(interpreter, VT_ERROR);
+    Value* v = _CreateValue(interpreter, VLT_ERROR);
     v->Value.Opaque = StringToRunes(message);
     return v;
 }
 
 Value* NewIntValue(Interpreter* interpreter, int value) {
-    Value* v = _CreateValue(interpreter, VT_INT);
+    Value* v = _CreateValue(interpreter, VLT_INT);
     v->Value.I32 = value;
     return v;
 }
 
 Value* NewNumValue(Interpreter* interpreter, double value) {
-    Value* v = _CreateValue(interpreter, VT_NUM);
+    Value* v = _CreateValue(interpreter, VLT_NUM);
     v->Value.Num = value;
     return v;
 }
 
 Value* NewStrValue(Interpreter* interpreter, String value) {
-    Value* v = _CreateValue(interpreter, VT_STR);
+    Value* v = _CreateValue(interpreter, VLT_STR);
     v->Value.Opaque = StringToRunes(value);
     return v;
 }
 
 Value* NewBoolValue(Interpreter* interpreter, int value) {
-    Value* v = _CreateValue(interpreter, VT_BOOL);
+    Value* v = _CreateValue(interpreter, VLT_BOOL);
     v->Value.I32 = value ? 1 : 0;
     return v;
 }
 
 Value* NewNullValue(Interpreter* interpreter) {
-    Value* v = _CreateValue(interpreter, VT_NULL);
+    Value* v = _CreateValue(interpreter, VLT_NULL);
     v->Value.Opaque = NULL;
     return v;
 }
 
 Value* NewUserFunctionValue(Interpreter* interpreter, UserFunction* userFunction) {
-    Value* v = _CreateValue(interpreter, VT_USER_FUNCTION);
+    Value* v = _CreateValue(interpreter, VLT_USER_FUNCTION);
     v->Value.Opaque = userFunction;
     return v;
 }
 
 Value* NewNativeFunctionValue(Interpreter* interpreter, NativeFunctionMeta* nativeFunctionMeta) {
-    Value* v = _CreateValue(interpreter, VT_NATV_FUNCTION);
+    Value* v = _CreateValue(interpreter, VLT_NATV_FUNCTION);
     v->Value.Opaque = nativeFunctionMeta;
     return v;
 }
 
 Value* NewEnvironmentValue(Interpreter* interpreter, Environment* environment) {
-    Value* v = _CreateValue(interpreter, VT_ENVIRONMENT);
+    Value* v = _CreateValue(interpreter, VLT_ENVIRONMENT);
     v->Value.Opaque = environment;
     return v;
 }
 
 Value* NewArrayValue(Interpreter* interpreter) {
-    Value* v = _CreateValue(interpreter, VT_ARRAY);
+    Value* v = _CreateValue(interpreter, VLT_ARRAY);
     v->Value.Opaque = CreateArray();
     return v;
 }
 
 Value* NewObjectValue(Interpreter* interpreter) {
-    Value* v = _CreateValue(interpreter, VT_OBJECT);
+    Value* v = _CreateValue(interpreter, VLT_OBJECT);
     v->Value.Opaque = CreateHashMap(16);
     return v;
 }
 
 Value* NewClassValue(Interpreter* interpreter, UserClass* cls) {
-    Value* v = _CreateValue(interpreter, VT_CLASS);
+    Value* v = _CreateValue(interpreter, VLT_CLASS);
     v->Value.Opaque = cls;
     return v;
 }
 
 Value* NewClassInstanceValue(Interpreter* interpreter, ClassInstance* instance) {
-    Value* v = _CreateValue(interpreter, VT_CLASS_INSTANCE);
+    Value* v = _CreateValue(interpreter, VLT_CLASS_INSTANCE);
     v->Value.Opaque = instance;
     return v;
 }
@@ -92,11 +92,11 @@ Value* NewClassInstanceValue(Interpreter* interpreter, ClassInstance* instance) 
 String ValueToString(Value* value) {
     char* buffer;
     switch (value->Type) {
-        case VT_INT:
+        case VLT_INT:
             buffer = Allocate(32);
             snprintf(buffer, 32, "%d", value->Value.I32);
             return buffer;
-        case VT_NUM:
+        case VLT_NUM:
             buffer = Allocate(64);
             // Check if the number can be represented as an integer
             double num = value->Value.Num;
@@ -111,8 +111,8 @@ String ValueToString(Value* value) {
                 snprintf(buffer, 64, "%.15g", num);
             }
             return buffer;
-        case VT_ERROR:
-        case VT_STR: {
+        case VLT_ERROR:
+        case VLT_STR: {
             Rune* runes = (Rune*) value->Value.Opaque;
             // Convert runes back to UTF-8 string
             size_t runeCount = 0;
@@ -135,23 +135,23 @@ String ValueToString(Value* value) {
             buffer[pos] = '\0';
             return buffer;
         }
-        case VT_BOOL:
+        case VLT_BOOL:
             return AllocateString(value->Value.I32 ? "true" : "false");
-        case VT_NULL:
+        case VLT_NULL:
             return AllocateString("null");
-        case VT_USER_FUNCTION:
+        case VLT_USER_FUNCTION:
             return UserFunctionToString(CoerceToUserFunction(value));
-        case VT_ENVIRONMENT:
+        case VLT_ENVIRONMENT:
             return AllocateString("environment");
-        case VT_ARRAY:
+        case VLT_ARRAY:
             return ArrayToString(CoerceToArray(value));
-        case VT_OBJECT:
+        case VLT_OBJECT:
             return HashMapToString(CoerceToHashMap(value));
-        case VT_CLASS:
+        case VLT_CLASS:
             return AllocateString("class");
-        case VT_CLASS_INSTANCE:
+        case VLT_CLASS_INSTANCE:
             return ClassInstanceToString(CoerceToClassInstance(value));
-        case VT_NATV_FUNCTION:
+        case VLT_NATV_FUNCTION:
             return NativeFunctionMetaToString(CoerceToNativeFunctionMeta(value));
         default:
             return AllocateString("unknown");
@@ -160,31 +160,31 @@ String ValueToString(Value* value) {
 
 String ValueTypeOf(Value* value) {
     switch (value->Type) {
-        case VT_ERROR:
+        case VLT_ERROR:
             return "error";
-        case VT_INT:
+        case VLT_INT:
             return "int";
-        case VT_NUM:
+        case VLT_NUM:
             return "num";
-        case VT_STR:
+        case VLT_STR:
             return "str";
-        case VT_BOOL:
+        case VLT_BOOL:
             return "bool";
-        case VT_NULL:
+        case VLT_NULL:
             return "null";
-        case VT_USER_FUNCTION:
+        case VLT_USER_FUNCTION:
             return "function";
-        case VT_NATV_FUNCTION:
+        case VLT_NATV_FUNCTION:
             return "native function";
-        case VT_ENVIRONMENT:
+        case VLT_ENVIRONMENT:
             return "environment";
-        case VT_ARRAY:
+        case VLT_ARRAY:
             return "array";
-        case VT_OBJECT:
+        case VLT_OBJECT:
             return "object";
-        case VT_CLASS:
+        case VLT_CLASS:
             return "class";
-        case VT_CLASS_INSTANCE:
+        case VLT_CLASS_INSTANCE:
             return "class instance";
         default:
             return "unknown";
@@ -193,28 +193,28 @@ String ValueTypeOf(Value* value) {
 
 bool ValueToBool(Value* value) {
     switch (value->Type) {
-        case VT_ERROR:
+        case VLT_ERROR:
             return false;
-        case VT_INT:
+        case VLT_INT:
             return value->Value.I32 != 0;
-        case VT_NUM:
+        case VLT_NUM:
             return value->Value.Num != 0.0;
-        case VT_STR:
+        case VLT_STR:
             return strlen(value->Value.Opaque) > 0;
-        case VT_BOOL:
+        case VLT_BOOL:
             return !!(value->Value.I32);
-        case VT_NULL:
+        case VLT_NULL:
             return false;
-        case VT_USER_FUNCTION:
-        case VT_NATV_FUNCTION:
-        case VT_ENVIRONMENT:
+        case VLT_USER_FUNCTION:
+        case VLT_NATV_FUNCTION:
+        case VLT_ENVIRONMENT:
             return true;
-        case VT_ARRAY:
+        case VLT_ARRAY:
             return (CoerceToArray(value)->Count > 0);
-        case VT_OBJECT:
+        case VLT_OBJECT:
             return (CoerceToHashMap(value)->Count > 0);
-        case VT_CLASS:
-        case VT_CLASS_INSTANCE:
+        case VLT_CLASS:
+        case VLT_CLASS_INSTANCE:
             return true;
         default:
             printf("ValueToBool: Unknown value type: %d\n", value->Type);
@@ -223,35 +223,35 @@ bool ValueToBool(Value* value) {
 }
 
 bool ValueIsInt(Value* value) {
-    return value->Type == VT_INT;
+    return value->Type == VLT_INT;
 }
 
 bool ValueIsNum(Value* value) {
-    return value->Type == VT_NUM || value->Type == VT_INT;
+    return value->Type == VLT_NUM || value->Type == VLT_INT;
 }
 
 bool ValueIsStr(Value* value) {
-    return value->Type == VT_STR;
+    return value->Type == VLT_STR;
 }
 
 bool ValueIsBool(Value* value) {
-    return value->Type == VT_BOOL;
+    return value->Type == VLT_BOOL;
 }
 
 bool ValueIsNull(Value* value) {
-    return value->Type == VT_NULL;
+    return value->Type == VLT_NULL;
 }
 
 bool ValueIsError(Value* value) {
-    return value->Type == VT_ERROR;
+    return value->Type == VLT_ERROR;
 }
 
 bool ValueIsUserFunction(Value* value) {
-    return value->Type == VT_USER_FUNCTION;
+    return value->Type == VLT_USER_FUNCTION;
 }
 
 bool ValueIsNativeFunction(Value* value) {
-    return value->Type == VT_NATV_FUNCTION;
+    return value->Type == VLT_NATV_FUNCTION;
 }
 
 bool ValueIsCallable(Value* value) {
@@ -259,17 +259,17 @@ bool ValueIsCallable(Value* value) {
 }
 
 bool ValueIsArray(Value* value) {
-    return value->Type == VT_ARRAY;
+    return value->Type == VLT_ARRAY;
 }
 
 bool ValueIsObject(Value* value) {
-    return value->Type == VT_OBJECT;
+    return value->Type == VLT_OBJECT;
 }
 
 bool ValueIsClass(Value* value) {
-    return value->Type == VT_CLASS;
+    return value->Type == VLT_CLASS;
 }
 
 bool ValueIsClassInstance(Value* value) {
-    return value->Type == VT_CLASS_INSTANCE;
+    return value->Type == VLT_CLASS_INSTANCE;
 }

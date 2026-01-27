@@ -98,9 +98,9 @@ bool StringStartsWith(String str, String prefix) {
 
 int CoerceToI32(Value* value) {
     switch (value->Type) {
-        case VT_INT:
+        case VLT_INT:
             return value->Value.I32;
-        case VT_NUM:
+        case VLT_NUM:
             return (int) value->Value.Num;
         default:
             return 0;
@@ -109,9 +109,9 @@ int CoerceToI32(Value* value) {
 
 long CoerceToI64(Value* value) {
     switch (value->Type) {
-        case VT_INT:
+        case VLT_INT:
             return (long) value->Value.I32;
-        case VT_NUM:
+        case VLT_NUM:
             return (long) value->Value.Num;
         default:
             return 0;
@@ -120,9 +120,9 @@ long CoerceToI64(Value* value) {
 
 double CoerceToNum(Value* value) {
     switch (value->Type) {
-        case VT_INT:
+        case VLT_INT:
             return (double) value->Value.I32;
-        case VT_NUM:
+        case VLT_NUM:
             return (double) value->Value.Num;
         default:
             return 0.0;
@@ -130,49 +130,49 @@ double CoerceToNum(Value* value) {
 }
 
 Environment* CoerceToEnvironment(Value* value) {
-    if (value->Type == VT_ENVIRONMENT) {
+    if (value->Type == VLT_ENVIRONMENT) {
         return (Environment*) value->Value.Opaque;
     }
     Panic("Value is not an Environment");
 }
 
 HashMap* CoerceToHashMap(Value* value) {
-    if (value->Type == VT_OBJECT) {
+    if (value->Type == VLT_OBJECT) {
         return (HashMap*) value->Value.Opaque;
     }
     Panic("Value is not a HashMap");
 }
 
 Array* CoerceToArray(Value* value) {
-    if (value->Type == VT_ARRAY) {
+    if (value->Type == VLT_ARRAY) {
         return (Array*) value->Value.Opaque;
     }
     Panic("Value is not an Array");
 }
 
 UserFunction* CoerceToUserFunction(Value* value) {
-    if (value->Type == VT_USER_FUNCTION) {
+    if (value->Type == VLT_USER_FUNCTION) {
         return (UserFunction*) value->Value.Opaque;
     }
     Panic("Value is not a UserFunction");
 }
 
 NativeFunctionMeta* CoerceToNativeFunctionMeta(Value* value) {
-    if (value->Type == VT_NATV_FUNCTION) {
+    if (value->Type == VLT_NATV_FUNCTION) {
         return (NativeFunctionMeta*) value->Value.Opaque;
     }
     Panic("Value is not a NativeFunctionMeta");
 }
 
 UserClass* CoerceToUserClass(Value* value) {
-    if (value->Type == VT_CLASS) {
+    if (value->Type == VLT_CLASS) {
         return (UserClass*) value->Value.Opaque;
     }
     Panic("Value is not a UserClass");
 }
 
 ClassInstance* CoerceToClassInstance(Value* value) {
-    if (value->Type == VT_CLASS_INSTANCE) {
+    if (value->Type == VLT_CLASS_INSTANCE) {
         return (ClassInstance*) value->Value.Opaque;
     }
     Panic("Value is not a ClassInstance");

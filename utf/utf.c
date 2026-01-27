@@ -168,14 +168,14 @@ char* utf_rune_to_string(int codepoint) {
     buffer[size] = '\0';
     if (res != size) {
         fprintf(stderr, "Failed to create string from rune.\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     // assert
     int code;
     if ((code = utf_to_codepoint(buffer[0], buffer[1], buffer[2], buffer[3])) != codepoint) {
         fprintf(stderr, "Mismatch codepoint.\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     char* final = malloc(sizeof(unsigned char) * (strlen(buffer) + 1));
@@ -183,7 +183,7 @@ char* utf_rune_to_string(int codepoint) {
 
     if (final == NULL) {
         fprintf(stderr, "Failed to create string from rune.\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     strcpy(final, buffer);
@@ -194,7 +194,7 @@ char* utf_nfkc(char* _str) {
     char* str = utf8proc_NFKC((unsigned char*) str);
     if (str == NULL) {
         fprintf(stderr, "Failed to normalize string.\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     return str;
 }

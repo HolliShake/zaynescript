@@ -113,6 +113,8 @@ class Tao {
 }
 
 class Person(Tao) {
+    static DEFAULT_AGE = 5;
+
     fn init(name, age) {
         println(">> Init Person", this, name, age);
         this.name = name;
@@ -132,7 +134,7 @@ class Person(Tao) {
     }
 }
 
-const p = new Person("Philipp", 26, 2);
+const p = new Person("Philipp", 26);
 
 println(p, p.GetName(), p.GetAge(), fact, Person.StaticMethod);
 
@@ -148,4 +150,4 @@ array.push(10);
 array.push(20);
 array[1] = 30;
 println("HEre!");
-println(array, array.push, array.length(), p.callable());
+println(array, array.push, array.length(), p.callable(), p.name = "Doy", p.DEFAULT_AGE, Person.DEFAULT_AGE);

@@ -41,7 +41,11 @@ static void _DupTop(Interpreter* interp) {
     _Push(_Peek());
 }
 
-static bool _IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
+extern void Run(Interpreter* interp, Value* fnValue, Value* rootEnvObj, Value* envObj);
+
+extern CoreMapper _CoreModuleMappers[];
+
+bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
     String key = ValueToString(method);
     if (ValueIsArray(obj)) {
         // Handle array methods or attributes
@@ -143,7 +147,7 @@ static bool _IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
     return false;
 }
 
-static Value* _GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool forMethodCall) {
+Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool forMethodCall) {
     String key = ValueToString(attr);
     if (ValueIsArray(obj)) {
         // Handle array methods or attributes
@@ -252,10 +256,6 @@ static Value* _GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr,
     return interp->Null;
 }
 
-extern void Run(Interpreter* interp, Value* fnValue, Value* rootEnvObj, Value* envObj);
-
-extern CoreMapper _CoreModuleMappers[];
-
 int DoImportCore(Interpreter* interp, String moduleName, Value** out) {
     *out = LoadCoreModule(interp, moduleName);
     if (*out != NULL) {
@@ -290,7 +290,7 @@ int DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val) {
 }
 
 int DoGetIndex(Interpreter* interp, Value* obj, Value* index, Value** out) {
-    *out = _GenericGetAttribute(interp, obj, index, false);
+    *out = GenericGetAttribute(interp, obj, index, false);
     if (ValueIsNull(*out)) {
         return FLG_NOTFOUND;
     }
@@ -394,13 +394,13 @@ int DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int
 }
 
 int DoCallMethod(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* obj, Value* methodName, int argc) {
-    if (_IsMethodOfObject(interp, obj, methodName)) {
+    if (IsMethodOfObject(interp, obj, methodName)) {
         ++argc; // add 1 for 'this'
     } else {
         _Popp(); // pop 'this'
     }
     
-    Value* method = _GenericGetAttribute(interp, obj, methodName, true);
+    Value* method = GenericGetAttribute(interp, obj, methodName, true);
     
     if (ValueIsNull(method)) {
         _PopN(argc); return FLG_NOTFOUND;

@@ -110,7 +110,15 @@ static int _GetArgc(Value* fn) {
         UserFunction* uf = CoerceToUserFunction(fn);
         return uf->Argc;
     }
-    return -1;
+    return 0;
+}
+
+static int _GetArg2(Interpreter* interp, Value* obj, Value* methodName)  {
+    Value* method = GenericGetAttribute(interp, obj, methodName, true);
+    if (ValueIsNull(method)) {
+        return 0;
+    }
+    return _GetArgc(method);
 }
 
 void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* envObj) {
@@ -135,7 +143,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
     int size         = 0;
     bool catched     = false;
     String str       = NULL;
-
+ 
     #define Forward(size) (ip += size)
     #define JmpFrwd(addr) (ip  = addr)
 
@@ -440,7 +448,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                 else if (flg == FLG_ARG_MISMATCH)
                     HandleError(
                         "argument count mismatch expected %d arguments but got %d", 
-                        _GetArgc(obj), argc
+                        _GetArg2(interpreter, obj, key), argc
                     )
                 else if (flg == FLG_ERROR) {
                     String msg = ValueToString(Popp());

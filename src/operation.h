@@ -8,13 +8,36 @@
 #ifndef OPERATION_H
 #define OPERATION_H
 
-#define FLG_SUCCESS            0
-#define FLG_ERROR             -1
-#define FLG_NOTFOUND          -2
-#define FLG_ZERO_DIV          -3
-#define FLG_INVALID_OPERATION -4
-#define FLG_OUT_OF_BOUNDS     -5
 #define FLG_ARG_MISMATCH      -6
+#define FLG_ERROR             -1
+#define FLG_INVALID_OPERATION -4
+#define FLG_NOTFOUND          -2
+#define FLG_OUT_OF_BOUNDS     -5
+#define FLG_SUCCESS            0
+#define FLG_ZERO_DIV          -3
+
+/**
+ * Checks if a method exists on an object.
+ * 
+ * @param interp      The interpreter instance
+ * @param obj         The object to check
+ * @param method      The method name to check for
+ * 
+ * @return true if the method exists, false otherwise
+ */
+bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method);
+
+/**
+ * Generic attribute retrieval function.
+ * 
+ * @param interp        The interpreter instance
+ * @param obj           The object to retrieve the attribute from
+ * @param attr          The attribute/key to retrieve
+ * @param forMethodCall Whether the attribute is being retrieved for a method call
+ * 
+ * @return The retrieved attribute value, or Null value if not found
+ */
+Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool forMethodCall);
 
 /**
  * Performs import core operation.

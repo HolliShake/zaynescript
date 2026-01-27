@@ -9,13 +9,13 @@ extern String ValueToString(Value* value);
  */
 static void _Free(Value* value) {
     switch (value->Type) {
-        case VT_STR:
+        case VLT_STR:
             if (value->Value.Opaque != NULL) {
                 free(value->Value.Opaque);
                 value->Value.Opaque = NULL;
             }
             break;
-        case VT_ARRAY: {
+        case VLT_ARRAY: {
             Array* array = CoerceToArray(value);
             if (array != NULL) {
                 if (array->Items != NULL) {
@@ -27,7 +27,7 @@ static void _Free(Value* value) {
             }
             break;
         }
-        case VT_OBJECT:
+        case VLT_OBJECT:
             if (value->Value.Opaque != NULL) {
                 // Note: deeply freeing HashMap keys/values would require more logic
                 // For now, we just free the HashMap struct itself
@@ -59,7 +59,7 @@ static void _Free(Value* value) {
                 value->Value.Opaque = NULL;
             }
             break;
-        case VT_CLASS: {
+        case VLT_CLASS: {
             UserClass* classObj = CoerceToUserClass(value);
             if (classObj != NULL) {
                 if (classObj->StaticMembers != NULL) {
@@ -78,7 +78,7 @@ static void _Free(Value* value) {
             }
             break;
         }
-        case VT_CLASS_INSTANCE: {
+        case VLT_CLASS_INSTANCE: {
             ClassInstance* instance = CoerceToClassInstance(value);
             if (instance != NULL) {
                 if (instance->Members != NULL) {
@@ -91,7 +91,7 @@ static void _Free(Value* value) {
             }
             break;
         }
-        case VT_ENVIRONMENT: {
+        case VLT_ENVIRONMENT: {
             Environment* env = CoerceToEnvironment(value);
             if (env != NULL) {
                 env->Parent = NULL;
@@ -107,7 +107,7 @@ static void _Free(Value* value) {
             }
             break;
         }
-        case VT_USER_FUNCTION: {
+        case VLT_USER_FUNCTION: {
             UserFunction* uf = CoerceToUserFunction(value);
             if (uf != NULL) {
                 if (uf->Codes != NULL) {
@@ -142,7 +142,7 @@ void Mark(Value* value) {
     }
     value->Marked = 1;
     switch (value->Type) {
-        case VT_ARRAY: {
+        case VLT_ARRAY: {
             Array* array = CoerceToArray(value);
             if (array != NULL) {
                 for (size_t i = 0; i < array->Count; i++) {
@@ -151,7 +151,7 @@ void Mark(Value* value) {
             }
             break;
         }
-        case VT_OBJECT: {
+        case VLT_OBJECT: {
             HashMap* hashMap = CoerceToHashMap(value);
             if (hashMap != NULL) {
                 for (size_t i = 0; i < hashMap->Size; i++) {
@@ -164,7 +164,7 @@ void Mark(Value* value) {
             }
             break;
         }
-        case VT_CLASS: {
+        case VLT_CLASS: {
             UserClass* classObj = CoerceToUserClass(value);
             if (classObj != NULL) {
                 Mark(classObj->Base);
@@ -191,7 +191,7 @@ void Mark(Value* value) {
             }
             break;
         }
-        case VT_CLASS_INSTANCE: {
+        case VLT_CLASS_INSTANCE: {
             ClassInstance* instance = CoerceToClassInstance(value);
             if (instance != NULL) {
                 Mark(instance->Proto);
@@ -208,7 +208,7 @@ void Mark(Value* value) {
             }
             break;
         }
-        case VT_ENVIRONMENT: {
+        case VLT_ENVIRONMENT: {
             Environment* env = CoerceToEnvironment(value);
             if (env != NULL) {
                 Mark(env->Parent);
@@ -220,7 +220,7 @@ void Mark(Value* value) {
             }
             break;
         }
-        case VT_USER_FUNCTION: {
+        case VLT_USER_FUNCTION: {
             UserFunction* uf = CoerceToUserFunction(value);
             if (uf != NULL) {
                 Mark(uf->ParentEnv);

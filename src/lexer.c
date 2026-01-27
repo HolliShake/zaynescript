@@ -31,7 +31,7 @@ static void SkipWhitespace(Lexer* lexer) {
 }
 
 // Helper function to create a token
-static Token MakeToken(TokenType type, char* value, Position position) {
+static Token MakeToken(TokenKind type, char* value, Position position) {
     Token token;
     token.Type = type;
     token.Value = value;

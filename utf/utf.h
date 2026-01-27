@@ -12,7 +12,7 @@
 #define invalidUtf()                                                                               \
     {                                                                                              \
         fprintf(stderr, "UTF::%s:Error: Invalid utf!!\n", __func__);                               \
-        exit(1);                                                                                   \
+        exit(EXIT_FAILURE);                                                                        \
     }
 
 enum UTF
