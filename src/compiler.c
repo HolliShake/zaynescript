@@ -55,11 +55,12 @@ static int _SaveInt(Compiler* compiler, int val) {
         }
     }
 
+    Value* newValue = NewIntValue(compiler->Interpreter, val);
     PushArray(
         Value*,
         compiler->Interpreter->Constants, 
         compiler->Interpreter->ConstantC, 
-        NewIntValue(compiler->Interpreter, val), 
+        newValue, 
         NULL
     );
 
@@ -76,11 +77,12 @@ static int _SaveNum(Compiler* compiler, double val) {
         }
     }
 
+    Value* newValue = NewNumValue(compiler->Interpreter, val);
     PushArray(
         Value*,
         compiler->Interpreter->Constants, 
         compiler->Interpreter->ConstantC, 
-        NewNumValue(compiler->Interpreter, val), 
+        newValue, 
         NULL
     );
 
@@ -93,17 +95,19 @@ static int _SaveStr(Compiler* compiler, String val) {
     for (int i = 0; i < offset; i++) {
         Value* constantRaw = compiler->Interpreter->Constants[i];
         String constantStr = RunesStrToString((Rune*) constantRaw->Value.Opaque);
-        if (ValueIsStr(constantRaw) && strcmp(constantStr, val) == 0) {
+        bool isEqual = strcmp(constantStr, val) == 0;
+        free(constantStr);
+        if (ValueIsStr(constantRaw) && isEqual) {
             return i;
         }
-        free(constantStr);
     }
 
+    Value* newValue = NewStrValue(compiler->Interpreter, val);
     PushArray(
         Value*,
         compiler->Interpreter->Constants, 
         compiler->Interpreter->ConstantC, 
-        NewStrValue(compiler->Interpreter, val), 
+        newValue, 
         NULL
     );
 
@@ -112,6 +116,7 @@ static int _SaveStr(Compiler* compiler, String val) {
 
 static int _SaveConstantValue(Compiler* compiler, Value* val) {
     int offset = GetOffset();
+    
     // Search if the constant already exists
     for (int i = 0; i < offset; i++) {
         Value* constant = compiler->Interpreter->Constants[i];
@@ -133,7 +138,7 @@ static int _SaveConstantValue(Compiler* compiler, Value* val) {
 
 static Value* _GetConstantValue(Compiler* compiler, int offset) {
     if (offset < 0 || offset >= compiler->Interpreter->ConstantC) {
-        return NULL;
+        Panic("Constant offset out of bounds");
     }
     return compiler->Interpreter->Constants[offset];
 }
@@ -306,6 +311,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
         case AST_STR: {
             offset = _SaveStr(compiler, node->Value);
             val = _GetConstantValue(compiler, offset);
+            printf("Saved \"\"%s\" at offset %d\n", node->Value, offset);
             if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
             break;
         }
@@ -713,6 +719,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     );
                 }
                 offset = _SaveConstantValue(compiler, val);
+                printf("Constant ADD folded %s to offset %d\n", ValueToString(val), offset);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }

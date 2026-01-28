@@ -20,10 +20,18 @@ if "%1"=="--release" (
 
 chcp 65001 >nul
 
-if exist zscript.exe (
-    zscript.exe
+if "%1"=="--compile" (
+    if exist zscript.exe (
+        echo Build successful.
+    ) else (
+        echo Error: Failed to build zscript.exe
+    )
 ) else (
-    echo Error: Failed to build zscript.exe
-    pause
+    if exist zscript.exe (
+        zscript.exe
+    ) else (
+        echo Error: Failed to build zscript.exe
+        pause
+    )
 )
 pause
