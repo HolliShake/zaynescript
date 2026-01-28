@@ -150,7 +150,6 @@ static Ast* _Terminal(Parser* parser) {
 }
 
 static Ast* _ListOfStatements(Parser* parser);
-
 static Ast* _List(Parser* parser);
 static Ast* _Object(Parser* parser);
 static Ast* _FunctionExpression(Parser* parser);

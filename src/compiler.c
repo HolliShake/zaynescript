@@ -588,6 +588,21 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             }
             break;
         }
+        case AST_LOGICAL_NOT: {
+            _Expression(compiler, uf, scope, node->A);
+            _Emit(compiler, uf, OP_NOT);
+            break;
+        }
+        case AST_POSITIVE: {
+            _Expression(compiler, uf, scope, node->A);
+            _Emit(compiler, uf, OP_POS);
+            break;
+        }
+        case AST_NEGATIVE: {
+            _Expression(compiler, uf, scope, node->A);
+            _Emit(compiler, uf, OP_NEG);
+            break;
+        }
         case AST_POST_INC: {
             _AssignOpRhs(compiler, uf, scope, node->A, true);
             _Emit(compiler, uf, OP_POSTINC);

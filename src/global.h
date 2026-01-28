@@ -399,6 +399,9 @@ typedef enum opcode_enum {
     OP_CALL_CTOR,                    /**< Call a constructor */
     OP_CALL,                         /**< Call a function */
     OP_CALL_METHOD,                  /**< Call a method */
+    OP_NOT,                          /**< Logical NOT */
+    OP_POS,                          /**< Unary plus */
+    OP_NEG,                          /**< Unary minus */
     OP_MUL,                          /**< Multiply */
     OP_DIV,                          /**< Divide */
     OP_MOD,                          /**< Modulo */

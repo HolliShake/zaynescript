@@ -115,6 +115,39 @@ int DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int
 int DoCallMethod(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* obj, Value* methodName, int argc);
 
 /**
+ * Performs logical NOT operation on a value.
+ * 
+ * @param interp The interpreter instance
+ * @param val    The value to perform the logical NOT operation on
+ * @param out    Output parameter for the result (if not NULL, result is stored here)
+ * 
+ * @return FLG_SUCCESS
+ */
+int DoNot(Interpreter* interp, Value* val, Value** out);
+
+/**
+ * Performs unary plus operation on a value.
+ * 
+ * @param interp The interpreter instance
+ * @param val    The value to perform the unary plus operation on
+ * @param out    Output parameter for the result (if not NULL, result is stored here)
+ * 
+ * @return FLG_SUCCESS
+ */
+int DoPos(Interpreter* interp, Value* val, Value** out);
+
+/**
+ * Performs unary minus operation on a value.
+ * 
+ * @param interp The interpreter instance
+ * @param val    The value to perform the unary minus operation on
+ * @param out    Output parameter for the result (if not NULL, result is stored here)
+ * 
+ * @return FLG_SUCCESS
+ */
+int DoNeg(Interpreter* interp, Value* val, Value** out);
+
+/**
  * Performs multiplication operation on two values.
  * 
  * @param interp The interpreter instance

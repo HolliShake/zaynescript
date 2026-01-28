@@ -415,6 +415,22 @@ int DoCallMethod(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* o
     );
 }
 
+int DoNot(Interpreter* interp, Value* val, Value** out) {
+    bool resultBool = !CoerceToBool(val);
+    *out = resultBool ? interp->True : interp->False;
+    return FLG_SUCCESS;
+}
+
+int DoPos(Interpreter* interp, Value* val, Value** out) {
+    *out = val;
+    return FLG_SUCCESS;
+}
+
+int DoNeg(Interpreter* interp, Value* val, Value** out) {
+    *out = val;
+    return FLG_SUCCESS;
+}
+
 int DoMul(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
     Value* result = NULL;
     int offset    = GetOffset();

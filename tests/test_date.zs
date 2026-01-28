@@ -36,5 +36,3 @@ println("Minutes:", d4.getMinutes());
 println("Seconds:", d4.getSeconds());
 
 println("Done.");
-
-2 + "asdasd";

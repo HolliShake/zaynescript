@@ -234,29 +234,34 @@ Lexer* CreateLexer(String path, Rune* data) {
 
 Token NextToken(Lexer* lexer) {
     // Skip whitespace and comments
-    SkipWhitespace(lexer);
-    
-    // Check for single-line comments
-    if (CurrentRune(lexer) == '/' && PeekRune(lexer, 1) == '/') {
-        while (CurrentRune(lexer) != '\n' && CurrentRune(lexer) != 0) {
-            Advance(lexer);
-        }
+    while (true) {
         SkipWhitespace(lexer);
-    }
-    
-    // Check for multi-line comments
-    if (CurrentRune(lexer) == '/' && PeekRune(lexer, 1) == '*') {
-        Advance(lexer); // Skip '/'
-        Advance(lexer); // Skip '*'
-        while (!(CurrentRune(lexer) == '*' && PeekRune(lexer, 1) == '/') && 
-               CurrentRune(lexer) != 0) {
-            Advance(lexer);
+        
+        // Check for single-line comments starting with //
+        if (CurrentRune(lexer) == '/' && PeekRune(lexer, 1) == '/') {
+            while (CurrentRune(lexer) != '\n' && CurrentRune(lexer) != 0) {
+                Advance(lexer);
+            }
+            continue;
         }
-        if (CurrentRune(lexer) == '*') {
-            Advance(lexer); // Skip '*'
+        
+        // Check for multi-line comments
+        if (CurrentRune(lexer) == '/' && PeekRune(lexer, 1) == '*') {
             Advance(lexer); // Skip '/'
+            Advance(lexer); // Skip '*'
+            while (!(CurrentRune(lexer) == '*' && PeekRune(lexer, 1) == '/') && 
+                   CurrentRune(lexer) != 0) {
+                Advance(lexer);
+            }
+            if (CurrentRune(lexer) == '*') {
+                Advance(lexer); // Skip '*'
+                Advance(lexer); // Skip '/'
+            }
+            continue;
         }
-        SkipWhitespace(lexer);
+        
+        // No more comments or whitespace
+        break;
     }
     
     Position pos = PositionFromLineAndColm(lexer->Line, lexer->Colm);
