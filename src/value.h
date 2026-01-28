@@ -135,14 +135,6 @@ String ValueToString(Value* value);
 String ValueTypeOf(Value* value);
 
 /**
- * @brief Converts a value to a boolean representation
- * 
- * @param value Pointer to the Value to convert
- * @return Boolean representation of the value
- */
-bool ValueToBool(Value* value);
-
-/**
  * @brief Checks if a value is an integer type
  * 
  * @param value Pointer to the Value to check
@@ -245,5 +237,14 @@ bool ValueIsClass(Value* value);
  * @return true if the value is a class instance, false otherwise
  */
 bool ValueIsClassInstance(Value* value);
+
+/**
+ * @brief Compares two values for equality
+ * 
+ * @param a Pointer to the first Value
+ * @param b Pointer to the second Value
+ * @return true if the values are equal, false otherwise
+ */
+bool ValueIsEqual(Value* a, Value* b);
 
 #endif

@@ -47,6 +47,14 @@ static int _SaveFunction(Compiler* compiler, Value* fn) {
 
 static int _SaveInt(Compiler* compiler, int val) {
     int offset = GetOffset();
+
+    for (int i = 0; i < offset; i++) {
+        Value* constantRaw = compiler->Interpreter->Constants[i];
+        if (ValueIsInt(constantRaw) && CoerceToI32(constantRaw) == val) {
+            return i;
+        }
+    }
+
     PushArray(
         Value*,
         compiler->Interpreter->Constants, 
@@ -54,11 +62,20 @@ static int _SaveInt(Compiler* compiler, int val) {
         NewIntValue(compiler->Interpreter, val), 
         NULL
     );
+
     return offset;
 }
 
 static int _SaveNum(Compiler* compiler, double val) {
     int offset = GetOffset();
+
+    for (int i = 0; i < offset; i++) {
+        Value* constantRaw = compiler->Interpreter->Constants[i];
+        if (ValueIsNum(constantRaw) && CoerceToNum(constantRaw) == val) {
+            return i;
+        }
+    }
+
     PushArray(
         Value*,
         compiler->Interpreter->Constants, 
@@ -66,11 +83,22 @@ static int _SaveNum(Compiler* compiler, double val) {
         NewNumValue(compiler->Interpreter, val), 
         NULL
     );
+
     return offset;
 }
 
 static int _SaveStr(Compiler* compiler, String val) {
     int offset = GetOffset();
+
+    for (int i = 0; i < offset; i++) {
+        Value* constantRaw = compiler->Interpreter->Constants[i];
+        String constantStr = RunesStrToString((Rune*) constantRaw->Value.Opaque);
+        if (ValueIsStr(constantRaw) && strcmp(constantStr, val) == 0) {
+            return i;
+        }
+        free(constantStr);
+    }
+
     PushArray(
         Value*,
         compiler->Interpreter->Constants, 
@@ -78,29 +106,33 @@ static int _SaveStr(Compiler* compiler, String val) {
         NewStrValue(compiler->Interpreter, val), 
         NULL
     );
+
     return offset;
 }
 
-static int _GetConstant(Compiler* compiler, String str) {
-    // FLG_NOTFOUND if not found
-    for (int i = 0; i < compiler->Interpreter->ConstantC; i++) {
+static int _SaveConstantValue(Compiler* compiler, Value* val) {
+    int offset = GetOffset();
+    // Search if the constant already exists
+    for (int i = 0; i < offset; i++) {
         Value* constant = compiler->Interpreter->Constants[i];
-        if (constant == NULL) continue;
-        
-        String constantStr = ValueToString(constant);
-        if (constantStr != NULL && strcmp(constantStr, str) == 0) {
-            free(constantStr);
+        if (ValueIsEqual(constant, val)) {
             return i;
         }
-        if (constantStr != NULL) {
-            free(constantStr);
-        }
     }
-    return FLG_NOTFOUND;
+
+    PushArray(
+        Value*,
+        compiler->Interpreter->Constants, 
+        compiler->Interpreter->ConstantC, 
+        val, 
+        NULL
+    );
+    
+    return offset;
 }
 
 static Value* _GetConstantValue(Compiler* compiler, int offset) {
-    if (offset == FLG_NOTFOUND) {
+    if (offset < 0 || offset >= compiler->Interpreter->ConstantC) {
         return NULL;
     }
     return compiler->Interpreter->Constants[offset];
@@ -248,63 +280,33 @@ static void _Identifier(Compiler* compiler, UserFunction* uf, Scope* scope, Stri
 
 static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node, bool evalOnly) {
     Value* lhs = NULL, *rhs = NULL, *val = NULL;
+    int offset = 0;
     switch (node->Type) {
         case AST_NAME: {
             _Identifier(compiler, uf, scope, node->Value, node->Position);
             break;
         }
         case AST_INT: {
-            int offset = _GetConstant(compiler, node->Value);
-            if (offset == FLG_NOTFOUND) {
-                long long val = strtoll(node->Value, NULL, 10);
-                if (val > INT_MAX || val < INT_MIN) {
-                    offset = _SaveNum(compiler, (double)val);
-                } else {
-                    offset = _SaveInt(compiler, (int)val);
-                }
+            long long lld = strtoll(node->Value, NULL, 10);
+            if (lld > INT_MAX || lld < INT_MIN) {
+                offset = _SaveNum(compiler, (double)lld);
+            } else {
+                offset = _SaveInt(compiler, (int)lld);
             }
-
             val = _GetConstantValue(compiler, offset);
-
-            if (!evalOnly) _EmitConst(
-                compiler, 
-                uf, 
-                OP_LOAD_CONST, 
-                offset
-            );
+            if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
             break;
         }
         case AST_NUM: {
-            int offset = _GetConstant(compiler, node->Value);
-            if (offset == FLG_NOTFOUND) {
-                offset = _SaveNum(compiler, strtod(node->Value, NULL));
-            }
-
+            offset = _SaveNum(compiler, strtod(node->Value, NULL));
             val = _GetConstantValue(compiler, offset);
-
-            if (!evalOnly) _EmitConst(
-                compiler, 
-                uf, 
-                OP_LOAD_CONST, 
-                offset
-            );
+            if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
             break;
         } 
         case AST_STR: {
-            int offset = _GetConstant(compiler, node->Value);
-            if (offset == FLG_NOTFOUND) {
-                //NOTE: memory leak (AllocateString creates a char* string that is passed to _SaveStr, but _SaveStr converts it to Runes and doesn't free the original char* string)
-                offset = _SaveStr(compiler, AllocateString(node->Value));
-            }
-
+            offset = _SaveStr(compiler, node->Value);
             val = _GetConstantValue(compiler, offset);
-
-            if (!evalOnly) _EmitConst(
-                compiler, 
-                uf, 
-                OP_LOAD_CONST, 
-                offset
-            );
+            if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
             break;
         }
         case AST_BOOL: {
@@ -633,16 +635,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoMul(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoMul(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
@@ -655,23 +657,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoDiv(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_ZERO_DIV) {
+                val = DoDiv(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "division by zero"
-                    );
-                } else if (offset == FLG_INVALID_OPERATION) {
-                    ThrowError(
-                        compiler->Parser->Lexer->Path, 
-                        compiler->Parser->Lexer->Data, 
-                        node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
@@ -685,23 +680,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoMod(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_ZERO_DIV) {
+                val = DoMod(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "modulo by zero"
-                    );
-                } else if (offset == FLG_INVALID_OPERATION) {
-                    ThrowError(
-                        compiler->Parser->Lexer->Path, 
-                        compiler->Parser->Lexer->Data, 
-                        node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
@@ -715,16 +703,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _ExpressionMain(compiler, uf, scope, node->A, true);
                 rhs = _ExpressionMain(compiler, uf, scope, node->B, true);
-                int offset = DoAdd(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoAdd(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
@@ -738,16 +726,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoSub(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoSub(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
@@ -761,16 +749,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoLShift(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoLShift(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
@@ -784,20 +772,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoRShift(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoRShift(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_RSHFT);
@@ -807,20 +794,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoLT(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoLT(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_LT);
@@ -830,20 +816,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoLTE(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoLTE(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_LTE);
@@ -853,20 +838,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoGT(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoGT(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_GT);
@@ -876,20 +860,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoGTE(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoGTE(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_GTE);
@@ -899,20 +882,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoEQ(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoEQ(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_EQ);
@@ -922,20 +904,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoNE(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoNE(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_NE);
@@ -945,21 +926,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoAnd(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoAnd(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_AND);
@@ -969,17 +948,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoOr(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoOr(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
@@ -993,21 +971,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoXor(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoXor(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_XOR);

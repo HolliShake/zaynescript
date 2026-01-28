@@ -836,6 +836,17 @@ long CoerceToI64(Value* value);
 double CoerceToNum(Value* value);
 
 /**
+ * @brief Coerces a value to a boolean.
+ * 
+ * Converts a runtime value to a boolean, following standard truthiness
+ * rules. Behavior depends on the value's type.
+ * 
+ * @param value The value to coerce.
+ * @return The boolean representation.
+ */
+bool CoerceToBool(Value* value);
+
+/**
  * @brief Coerces a value to an Environment.
  * 
  * Extracts the Environment pointer from a value. The value must be

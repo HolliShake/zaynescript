@@ -76,6 +76,16 @@ Interpreter* CreateInterpreter() {
     free(message); \
     break; } \
 
+#define RaiseError(errorValue) { \
+    if (catched) { \
+        JmpFrwd(PeekEH()); \
+        PoppEH(); \
+        Push(errorValue); \
+        break; \
+    } \
+    InterpreterPanic(ValueToString(errorValue)); \
+    break; } \
+
 static int _ReadInt32(uint8_t* codes, int alignStart) {
     int offset = 0;
     offset |= codes[alignStart + 0] << 24;
@@ -461,284 +471,160 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             case OP_MUL: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoMul(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (*) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoMul(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_DIV: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoDiv(interpreter, lhs, rhs, &res);
-                if (flg == FLG_ZERO_DIV) 
-                    HandleError(
-                        "zero division error"
-                    )
-                else if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (/) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res =  DoDiv(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_MOD: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoMod(interpreter, lhs, rhs, &res);
-                if (flg == FLG_ZERO_DIV) 
-                    HandleError(
-                        "zero division error"
-                    )
-                else if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (%%) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoMod(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_POSTINC: {
                 // bot [obj, key, val] top
-                rhs = Popp(); // old value
-                res = NULL;
-                flg = DoInc(interpreter, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (++) for type %s", 
-                        ValueTypeOf(rhs)
-                    );
+                lhs = Popp(); // old value
+                res = DoInc(interpreter, lhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
-                Push(rhs);
+                Push(lhs);
                 break;
             }
             case OP_INC: {
-                lhs = Popp();
-                res = NULL;
-                flg = DoInc(interpreter, lhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (++) for type %s", 
-                        ValueTypeOf(lhs)
-                    );
+                rhs = Popp();
+                res = DoInc(interpreter, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_ADD: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoAdd(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (+) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoAdd(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_POSTDEC: {
                 // bot [obj, key, val] top
-                rhs = Popp(); // old value
-                res = NULL;
-                flg = DoDec(interpreter, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (--) for type %s", 
-                        ValueTypeOf(rhs)
-                    );
+                lhs = Popp(); // old value
+                res = DoDec(interpreter, lhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
-                Push(rhs);
+                Push(lhs);
                 break;
             }
             case OP_DEC: {
-                lhs = Popp();
-                res = NULL;
-                flg = DoDec(interpreter, lhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (--) for type %s", 
-                        ValueTypeOf(lhs)
-                    );
+                rhs = Popp();
+                res = DoDec(interpreter, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_SUB: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoSub(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (-) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoSub(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_LSHFT: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoLShift(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (<<) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoLShift(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_RSHFT: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoRShift(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (>>) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoRShift(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_LT: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoLT(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (<) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoLT(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_LTE: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoLTE(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (<=) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoLTE(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_GT: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoGT(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (>) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoGT(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_GTE: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoGTE(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (>=) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoGTE(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_EQ: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoEQ(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (==) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoEQ(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_NE: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoNE(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (!=) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoNE(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_AND: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoAnd(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (and) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoAnd(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_OR: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoOr(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (or) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoOr(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_XOR: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoXor(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (xor) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoXor(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
@@ -818,7 +704,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             case OP_JUMP_IF_FALSE_OR_POP: {
                 offset = _ReadInt32(uf->Codes, ip);
                 val    = Peek();
-                if (!ValueToBool(val)) {
+                if (!CoerceToBool(val)) {
                     JmpFrwd(offset);
                 } else {
                     Popp();
@@ -829,7 +715,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             case OP_JUMP_IF_TRUE_OR_POP: {
                 offset = _ReadInt32(uf->Codes, ip);
                 val    = Peek();
-                if (ValueToBool(val)) {
+                if (CoerceToBool(val)) {
                     JmpFrwd(offset);
                 } else {
                     Popp();
@@ -840,7 +726,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             case OP_POP_JUMP_IF_FALSE: {
                 offset = _ReadInt32(uf->Codes, ip);
                 val    = Popp();
-                if (ValueToBool(val) == false) {
+                if (CoerceToBool(val) == false) {
                     JmpFrwd(offset);
                 } else {
                     Forward(4);

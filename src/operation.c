@@ -431,9 +431,8 @@ int DoNeg(Interpreter* interp, Value* val, Value** out) {
     return FLG_SUCCESS;
 }
 
-int DoMul(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoMul(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
     
     if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
         long resultNum = CoerceToI64(lhs) * CoerceToI64(rhs);
@@ -445,39 +444,24 @@ int DoMul(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (*): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-    return offset;
+    return result;
 }
 
-int DoDiv(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoDiv(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
     
     // Check for division by zero
     if ((ValueIsInt(rhs) && CoerceToI64(rhs) == 0) || 
         (ValueIsNum(rhs) && CoerceToNum(rhs) == 0.0)) {
-        return FLG_ZERO_DIV;
+        return NewErrorValue(interp, "division by zero");
     }
     
     if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
@@ -490,39 +474,24 @@ int DoDiv(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (/): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-    return offset;
+    return result;
 }
 
-int DoMod(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoMod(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
     
     // Check for modulo by zero
     if ((ValueIsInt(rhs) && CoerceToI64(rhs) == 0) || 
         (ValueIsNum(rhs) && CoerceToNum(rhs) == 0.0)) {
-        return FLG_ZERO_DIV;
+        return NewErrorValue(interp, "modulo by zero");
     }
     
     if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
@@ -535,32 +504,18 @@ int DoMod(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (%%): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-    return offset;
+    return result;
 }
 
-int DoInc(Interpreter* interp, Value* val, Value** out) {
+Value* DoInc(Interpreter* interp, Value* val) {
     Value* result = NULL;
     int offset    = GetOffset();
 
@@ -574,34 +529,19 @@ int DoInc(Interpreter* interp, Value* val, Value** out) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else {
+        String errMsg = FormatString(
+            "invalid operand for operator (++): %s", ValueTypeOf(val)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants,
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-    return offset;
+    return result;
 }
 
-int DoAdd(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoAdd(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
 
     if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
         long resultNum = CoerceToI64(lhs) + CoerceToI64(rhs);
@@ -628,33 +568,18 @@ int DoAdd(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         free(lhsStr);
         free(rhsStr);
         free(resultStr);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (+): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoDec(Interpreter* interp, Value* val, Value** out) {
+Value* DoDec(Interpreter* interp, Value* val) {
     Value* result = NULL;
     int offset    = GetOffset();
 
@@ -668,34 +593,19 @@ int DoDec(Interpreter* interp, Value* val, Value** out) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else {
+        String errMsg = FormatString(
+            "invalid operand for operator (--): %s", ValueTypeOf(val)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants,
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-    return offset;
+    return result;
 }
 
-int DoSub(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoSub(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
 
     if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
         long resultNum = CoerceToI64(lhs) - CoerceToI64(rhs);
@@ -707,68 +617,37 @@ int DoSub(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (-): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoLShift(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoLShift(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
 
     if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
         long resultNum = CoerceToI64(lhs) << CoerceToI64(rhs);
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (<<): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoRShift(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoRShift(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
     int offset    = GetOffset();
 
@@ -777,392 +656,154 @@ int DoRShift(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (>>): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoLT(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoLT(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
 
     if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
         int comparison = CoerceToNum(lhs) < CoerceToNum(rhs);
         result = comparison ? interp->True : interp->False;
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (<): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoLTE(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoLTE(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
 
     if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
         int comparison = CoerceToNum(lhs) <= CoerceToNum(rhs);
         result = comparison ? interp->True : interp->False;
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (<=): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoGT(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoGT(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
 
     if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
         int comparison = CoerceToNum(lhs) > CoerceToNum(rhs);
         result = comparison ? interp->True : interp->False;
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (>): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoGTE(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoGTE(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
 
     if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
         int comparison = CoerceToNum(lhs) >= CoerceToNum(rhs);
         result = comparison ? interp->True : interp->False;
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (>=): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoEQ(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
-    Value* result = NULL;
-    int offset    = GetOffset();
-
-    // Check if both are numbers (int or num)
-    if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
-        int comparison = CoerceToNum(lhs) == CoerceToNum(rhs);
-        result = comparison ? interp->True : interp->False;
-    }
-    // Check if both are booleans
-    else if (ValueIsBool(lhs) && ValueIsBool(rhs)) {
-        int comparison = lhs->Value.I32 == rhs->Value.I32;
-        result = comparison ? interp->True : interp->False;
-    }
-    // Check if both are null
-    else if (ValueIsNull(lhs) && ValueIsNull(rhs)) {
-        result = interp->True;
-    }
-    // Check if both are strings
-    else if (ValueIsStr(lhs) && ValueIsStr(rhs)) {
-        Rune* lhsRunes = (Rune*) lhs->Value.Opaque;
-        Rune* rhsRunes = (Rune*) rhs->Value.Opaque;
-        
-        // Compare rune by rune
-        int i = 0;
-        int equal = 1;
-        while (lhsRunes[i] != 0 || rhsRunes[i] != 0) {
-            if (lhsRunes[i] != rhsRunes[i]) {
-                equal = 0;
-                break;
-            }
-            i++;
-        }
-        result = equal ? interp->True : interp->False;
-    }
-    // Different types are not equal
-    else {
-        result = interp->False;
-    }
-
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+Value* DoEQ(Interpreter* interp, Value* lhs, Value* rhs) {
+    return ValueIsEqual(lhs, rhs) ? interp->True : interp->False;
 }
 
-int DoNE(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
-    Value* result = NULL;
-    int offset    = GetOffset();
-
-    // Check if both are numbers (int or num)
-    if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
-        int comparison = CoerceToNum(lhs) != CoerceToNum(rhs);
-        result = comparison ? interp->True : interp->False;
-    }
-    // Check if both are booleans
-    else if (ValueIsBool(lhs) && ValueIsBool(rhs)) {
-        int comparison = lhs->Value.I32 != rhs->Value.I32;
-        result = comparison ? interp->True : interp->False;
-    }
-    // Check if both are null
-    else if (ValueIsNull(lhs) && ValueIsNull(rhs)) {
-        result = interp->False;
-    }
-    // Check if both are strings
-    else if (ValueIsStr(lhs) && ValueIsStr(rhs)) {
-        Rune* lhsRunes = (Rune*) lhs->Value.Opaque;
-        Rune* rhsRunes = (Rune*) rhs->Value.Opaque;
-        
-        // Compare rune by rune
-        int i = 0;
-        int equal = 1;
-        while (lhsRunes[i] != 0 || rhsRunes[i] != 0) {
-            if (lhsRunes[i] != rhsRunes[i]) {
-                equal = 0;
-                break;
-            }
-            i++;
-        }
-        result = equal ? interp->False : interp->True;
-    }
-    // Different types are not equal
-    else {
-        result = interp->True;
-    }
-
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+Value* DoNE(Interpreter* interp, Value* lhs, Value* rhs) {
+    return !ValueIsEqual(lhs, rhs) ? interp->True : interp->False;
 }
 
-int DoAnd(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
-    int offset    = interp->ConstantC;
+Value* DoAnd(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
 
     // Bitwise AND only works on integers
     if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
         int resultValue = lhs->Value.I32 & rhs->Value.I32;
         result = NewIntValue(interp, resultValue);
+    } else if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
+        long long resultValue = (int)CoerceToI64(lhs) & (int)CoerceToI64(rhs);
+        result = NewNumValue(interp, resultValue);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (&): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoOr(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
-    int offset    = interp->ConstantC;
+Value* DoOr(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
 
     // Bitwise OR only works on integers
     if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
         int resultValue = lhs->Value.I32 | rhs->Value.I32;
         result = NewIntValue(interp, resultValue);
+    } else if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
+        long long resultValue = (int)CoerceToI64(lhs) | (int)CoerceToI64(rhs);
+        result = NewNumValue(interp, resultValue);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (|): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoXor(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
-    int offset    = interp->ConstantC;
+Value* DoXor(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
 
     // Bitwise XOR only works on integers
     if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
         int resultValue = lhs->Value.I32 ^ rhs->Value.I32;
         result = NewIntValue(interp, resultValue);
+    } else if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
+        long long resultValue = (int)CoerceToI64(lhs) ^ (int)CoerceToI64(rhs);
+        result = NewNumValue(interp, resultValue);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (^): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
 int DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int offset, bool closure, Value** out) {

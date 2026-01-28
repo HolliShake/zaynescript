@@ -191,37 +191,6 @@ String ValueTypeOf(Value* value) {
     }
 }
 
-bool ValueToBool(Value* value) {
-    switch (value->Type) {
-        case VLT_ERROR:
-            return false;
-        case VLT_INT:
-            return value->Value.I32 != 0;
-        case VLT_NUM:
-            return value->Value.Num != 0.0;
-        case VLT_STR:
-            return strlen(value->Value.Opaque) > 0;
-        case VLT_BOOL:
-            return !!(value->Value.I32);
-        case VLT_NULL:
-            return false;
-        case VLT_USER_FUNCTION:
-        case VLT_NATV_FUNCTION:
-        case VLT_ENVIRONMENT:
-            return true;
-        case VLT_ARRAY:
-            return (CoerceToArray(value)->Count > 0);
-        case VLT_OBJECT:
-            return (CoerceToHashMap(value)->Count > 0);
-        case VLT_CLASS:
-        case VLT_CLASS_INSTANCE:
-            return true;
-        default:
-            printf("ValueToBool: Unknown value type: %d\n", value->Type);
-            return false;
-    }
-}
-
 bool ValueIsInt(Value* value) {
     return value->Type == VLT_INT;
 }
@@ -272,4 +241,31 @@ bool ValueIsClass(Value* value) {
 
 bool ValueIsClassInstance(Value* value) {
     return value->Type == VLT_CLASS_INSTANCE;
+}
+
+bool ValueIsEqual(Value* a, Value* b) {
+    if (a == b) return true;
+    else if (ValueIsNum(a) && ValueIsNum(b)) {
+        return CoerceToI64(a) == CoerceToI64(b);
+    } else if (ValueIsStr(a) && ValueIsStr(b)) {
+        Rune* lhsRunes = (Rune*) a->Value.Opaque;
+        Rune* rhsRunes = (Rune*) b->Value.Opaque;
+        // Compare rune by rune
+        int i = 0;
+        int equal = 1;
+        while (lhsRunes[i] != 0 || rhsRunes[i] != 0) {
+            if (lhsRunes[i] != rhsRunes[i]) {
+                equal = 0;
+                break;
+            }
+            i++;
+        }
+        return equal;
+    } else if (ValueIsBool(a) && ValueIsBool(b)) {
+        return CoerceToBool(a) == CoerceToBool(b);
+    } else if (ValueIsNull(a) && ValueIsNull(b)) {
+        return true;
+    } else {
+        return false;
+    }
 }
