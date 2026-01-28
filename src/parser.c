@@ -20,6 +20,25 @@ Parser* CreateParser(Lexer* lexer) {
 
 #define ACCEPTT(t) _AcceptTokenT(parser, t)
 
+static String _GetTokenTypeName(TokenKind type) {
+    switch (type) {
+        case TK_KEY:
+            return "keyword";
+        case TK_IDN:
+            return "identifier";
+        case TK_INT:
+            return "integer";
+        case TK_NUM:
+            return "number";
+        case TK_STR:
+            return "string";
+        case TK_EOF:
+            return "end of file";
+        default:
+            return "unknown";
+    }
+}
+
 static int _CheckTokenV(Parser* parser, String value) {
     return strcmp(parser->Next.Value, value) == 0 && (
         parser->Next.Type == TK_IDN ||
@@ -53,7 +72,7 @@ static void _AcceptTokenT(Parser* parser, TokenKind type) {
         return;
     }
     char message[256];
-    snprintf(message, sizeof(message), "expected token type %d, got %d", type, parser->Next.Type);
+    snprintf(message, sizeof(message), "expected token type %s, got %s", _GetTokenTypeName(type), _GetTokenTypeName(parser->Next.Type));
     ThrowError(
         parser->Lexer->Path, 
         parser->Lexer->Data, 
