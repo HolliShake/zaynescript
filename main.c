@@ -38,38 +38,6 @@ String ReadInternalFile(String path) {
     return buffer;
 }
 
-int RunSingleTest(const char* testPath) {
-    Interpreter* interpreter = CreateInterpreter();
-    
-    String fileContent = ReadInternalFile(testPath);
-    if (!fileContent) {
-        FreeInterpreter(interpreter);
-        return EXIT_FAILURE;
-    }
-    
-    Rune* data = StringToRunes(fileContent);
-    free(fileContent);
-    
-    Lexer* lexer = CreateLexer(testPath, data);
-    Parser* parser = CreateParser(lexer);
-    Compiler* compiler = CreateCompiler(interpreter, parser);
-    Value* compiled = Compile(compiler);
-    
-    int result = EXIT_SUCCESS;
-    if (compiled) {
-        Interpret(interpreter, compiled);
-    } else {
-        result = EXIT_FAILURE;
-    }
-    
-    FreeLexer(lexer);
-    FreeParser(parser);
-    FreeInterpreter(interpreter);
-    free(data);
-    
-    return result;
-}
-
 #ifdef _WIN32
 int RunTestInProcess(const char* testPath, const char* exePath) {
     STARTUPINFOA si;

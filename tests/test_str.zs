@@ -4,8 +4,10 @@ import {println, scan, parseNum} from "core:io";
 "A";
 "B";
 "C";
+1;
+2;
+3;
+4;
 
-println("A" + "B");
 
-var x = parseNum(scan("input> "));
-println(x);
+var x = scan("input> ");

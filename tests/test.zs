@@ -3,8 +3,9 @@ import "core:math";
 
 var x = parseNum(scan("input> "));
 
-println("Hello", 123, x);
-
+"asdasd";
+println("Hello", x);
+"World";
 var counter = 0;
 
 fn a() {

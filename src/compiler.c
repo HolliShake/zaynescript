@@ -1,10 +1,9 @@
 #include "./compiler.h"
 
 #define PushArray(type, array, count, val, defaultValue) do { \
-    (array)[(count)] = val; \
-    count++; \
+    (array)[count++] = val; \
     (array) = Reallocate((array), sizeof(type) * ((count) + 1)); \
-    (array)[(count)] = (defaultValue); \
+    (array)[count] = (defaultValue); \
 } while(0)
 
 #define GetOffset() (compiler->Interpreter->ConstantC)
@@ -56,6 +55,7 @@ static int _SaveInt(Compiler* compiler, int val) {
     }
 
     Value* newValue = NewIntValue(compiler->Interpreter, val);
+
     PushArray(
         Value*,
         compiler->Interpreter->Constants, 
@@ -78,6 +78,7 @@ static int _SaveNum(Compiler* compiler, double val) {
     }
 
     Value* newValue = NewNumValue(compiler->Interpreter, val);
+
     PushArray(
         Value*,
         compiler->Interpreter->Constants, 
@@ -91,18 +92,21 @@ static int _SaveNum(Compiler* compiler, double val) {
 
 static int _SaveStr(Compiler* compiler, String val) {
     int offset = GetOffset();
-
     for (int i = 0; i < offset; i++) {
         Value* constantRaw = compiler->Interpreter->Constants[i];
-        String constantStr = RunesStrToString((Rune*) constantRaw->Value.Opaque);
+        if (!ValueIsStr(constantRaw)) {
+            continue;
+        }
+        String constantStr = ValueToString(constantRaw);
         bool isEqual = strcmp(constantStr, val) == 0;
         free(constantStr);
-        if (ValueIsStr(constantRaw) && isEqual) {
+        if (isEqual) {
             return i;
         }
     }
 
     Value* newValue = NewStrValue(compiler->Interpreter, val);
+
     PushArray(
         Value*,
         compiler->Interpreter->Constants, 
@@ -138,7 +142,7 @@ static int _SaveConstantValue(Compiler* compiler, Value* val) {
 
 static Value* _GetConstantValue(Compiler* compiler, int offset) {
     if (offset < 0 || offset >= compiler->Interpreter->ConstantC) {
-        Panic("Constant offset out of bounds");
+        Panic("Constant offset out of bounds %d (max %d)\n", offset, compiler->Interpreter->ConstantC);
     }
     return compiler->Interpreter->Constants[offset];
 }
@@ -311,7 +315,6 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
         case AST_STR: {
             offset = _SaveStr(compiler, node->Value);
             val = _GetConstantValue(compiler, offset);
-            printf("Saved \"\"%s\" at offset %d\n", node->Value, offset);
             if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
             break;
         }
@@ -576,7 +579,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                         argc++;
                         argCount = argCount->Next;
                     }
-
+                    
                     // Emit arguments in reverse order
                     Ast** argArray = Allocate(sizeof(Ast*) * argc);
                     int i = 0;
@@ -719,11 +722,9 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     );
                 }
                 offset = _SaveConstantValue(compiler, val);
-                printf("Constant ADD folded %s to offset %d\n", ValueToString(val), offset);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_ADD);
