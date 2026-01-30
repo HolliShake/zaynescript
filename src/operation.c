@@ -34,7 +34,7 @@ static int _GetConstantOffset(Interpreter* interp, Value* value) {
     }
     free(valueStr);
     BAD:;
-    return FLG_NOTFOUND;
+    return -1;
 }
 
 static void _DupTop(Interpreter* interp) {
@@ -51,26 +51,11 @@ bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
         // Handle array methods or attributes
         Array* array = CoerceToArray(obj);
 
-        if (ValueIsNum(method)) {
-            long idx = (long) CoerceToI64(method);
-            if (idx < 0 || idx >= array->Count) {
-                free(key);
-                return interp->Null;
-            }
-            free(key);
-            return array->Items[idx];
-        }
-
         // Check prototype chain
         UserClass* cls = CoerceToUserClass(interp->Array);
 
         while (cls != NULL) {
             if (ClassHasMember(cls, key, false, true)) {
-                Value* member = ClassGetMember(
-                    cls, 
-                    key, 
-                    false
-                );
                 free(key);
                 return true;
             }
@@ -81,22 +66,11 @@ bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
         // Handle object methods or attributes
         HashMap* map = CoerceToHashMap(obj);
 
-        if (HashMapContains(map, key)) {
-            Value* val = HashMapGet(map, key);
-            free(key);
-            return val;
-        }
-
         // Check prototype chain
         UserClass* cls = NULL;
 
         while (cls != NULL) {
             if (ClassHasMember(cls, key, false, true)) {
-                Value* member = ClassGetMember(
-                    cls, 
-                    key, 
-                    false
-                );
                 free(key);
                 return true;
             }
@@ -109,11 +83,6 @@ bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
 
         while (cls != NULL) {
             if (ClassHasMember(cls, key, false, true)) {
-                Value* member = ClassGetMember(
-                    cls, 
-                    key, 
-                    true
-                );
                 free(key);
                 return true;
             }
@@ -129,11 +98,6 @@ bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
 
         while (cls != NULL) {
             if (ClassHasMember(cls, key, false, true)) {
-                Value* member = ClassGetMember(
-                    cls, 
-                    key, 
-                    false
-                );
                 free(key);
                 return true;
             }
@@ -147,17 +111,20 @@ bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
     return false;
 }
 
-Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool forMethodCall) {
-    String key = ValueToString(attr);
+Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* index, bool forMethodCall) {
+    String key = ValueToString(index);
     if (ValueIsArray(obj)) {
         // Handle array methods or attributes
         Array* array = CoerceToArray(obj);
 
-        if (ValueIsNum(attr)) {
-            long idx = (long) CoerceToI64(attr);
+        if (ValueIsNum(index)) {
+            long idx = (long) CoerceToI64(index);
             if (idx < 0 || idx >= array->Count) {
                 free(key);
-                return interp->Null;
+                String errMsg = FormatString("array index %ld out of bounds", idx);
+                Value* errVal = NewErrorValue(interp, errMsg);
+                free(errMsg);
+                return errVal;
             }
             free(key);
             return array->Items[idx];
@@ -168,11 +135,7 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool fo
 
         while (forMethodCall && cls != NULL) {
             if (ClassHasMember(cls, key, false, forMethodCall)) {
-                Value* member = ClassGetMember(
-                    cls, 
-                    key, 
-                    false
-                );
+                Value* member = ClassGetMember(cls, key, false);
                 free(key);
                 return member;
             }
@@ -195,11 +158,7 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool fo
 
         while (forMethodCall && cls != NULL) {
             if (ClassHasMember(cls, key, false, forMethodCall)) {
-                Value* member = ClassGetMember(
-                    cls, 
-                    key, 
-                    false
-                );
+                Value* member = ClassGetMember(cls, key, false);
                 free(key);
                 return member;
             }
@@ -213,11 +172,7 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool fo
 
         while (cls != NULL) {
             if (ClassHasMember(cls, key, true, forMethodCall)) {
-                Value* member = ClassGetMember(
-                    cls, 
-                    key, 
-                    true
-                );
+                Value* member = ClassGetMember(cls, key, true);
                 free(key);
                 return member;
             }
@@ -233,11 +188,7 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool fo
 
         while (forMethodCall && cls != NULL) {
             if (ClassHasMember(cls, key, !forMethodCall, forMethodCall)) {
-                Value* member = ClassGetMember(
-                    cls, 
-                    key, 
-                    !forMethodCall
-                );
+                Value* member = ClassGetMember(cls, key, !forMethodCall);
                 free(key);
                 return member;
             }
@@ -247,6 +198,7 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool fo
 
         // Check instance members
         Value* member = HashMapGet(instance->Members, key);
+
         if (member != NULL) {
             free(key);
             return member;
@@ -256,74 +208,78 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool fo
     return interp->Null;
 }
 
-int DoImportCore(Interpreter* interp, String moduleName, Value** out) {
-    *out = LoadCoreModule(interp, moduleName);
-    if (*out != NULL) {
-        return FLG_SUCCESS;
+Value* DoImportCore(Interpreter* interp, String moduleName) {
+    Value* result = LoadCoreModule(interp, moduleName);
+    if (result == NULL) {
+        String errMsg = FormatString("core module '%s' not found", moduleName);
+        Value* errVal = NewErrorValue(interp, errMsg);
+        free(errMsg);
+        return errVal;
     }
-    return FLG_NOTFOUND;
+    return result;
 }
 
-int DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val) {
+Value* DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val) {
     if (ValueIsArray(obj)) {
         Array* array = CoerceToArray(obj);
         long idx = (long) CoerceToI64(index);
         if (idx < 0 || idx >= array->Count) {
-            return FLG_OUT_OF_BOUNDS;
+            String errMsg = FormatString("array index %ld out of bounds", idx);
+            Value* errVal = NewErrorValue(interp, errMsg);
+            free(errMsg);
+            return errVal;
         }
         array->Items[idx] = val;
-        return FLG_SUCCESS;
     } else if (ValueIsObject(obj)) {
         HashMap* map = CoerceToHashMap(obj);
         HashMapSet(map, ValueToString(index), val);
-        return FLG_SUCCESS;
     } else if (ValueIsClassInstance(obj)) {
         ClassInstance* instance = CoerceToClassInstance(obj);
         HashMapSet(instance->Members, ValueToString(index), val);
-        return FLG_SUCCESS;
     } else if (ValueIsClass(obj)) {
         UserClass* cls = CoerceToUserClass(obj);
         HashMapSet(cls->StaticMembers, ValueToString(index), val);
-        return FLG_SUCCESS;
+    } else {
+        return NewErrorValue(interp, "invalid operation: cannot set index on non-object");
     }
-    return FLG_INVALID_OPERATION;
+    return interp->Null;
 }
 
-int DoGetIndex(Interpreter* interp, Value* obj, Value* index, Value** out) {
-    *out = GenericGetAttribute(interp, obj, index, false);
-    if (ValueIsNull(*out)) {
-        return FLG_NOTFOUND;
-    }
-    return FLG_SUCCESS;
+Value* DoGetIndex(Interpreter* interp, Value* obj, Value* index) {
+    return GenericGetAttribute(interp, obj, index, false);
 }
 
-int DoCallCtor(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* clsValue, int argc) {
+Value* DoCallCtor(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* clsValue, int argc) {
     if (clsValue == NULL) Panic("Attempted to call constructor on a null value\n");
 
     if (!ValueIsClass(clsValue)) {
-        _PopN(argc); return FLG_INVALID_OPERATION;
+        _PopN(argc);
+        return NewErrorValue(interp, "invalid operation: attempted to call constructor on non-class value");
     }
 
     UserClass* cls = CoerceToUserClass(clsValue);
 
     if (!ClassHasMember(cls, CONSTRUCTOR_NAME, false, true)) {
         if (argc != 0) {
-            return FLG_ARG_MISMATCH;
+            _PopN(argc);
+            String errMsg = FormatString("argument count mismatch: expected 0 arguments but got %d", argc);
+            Value* errVal = NewErrorValue(interp, errMsg);
+            free(errMsg);
+            return errVal;
         }
         // Push default instance, no constructor call
         ClassInstance* instance = CreateClassInstance(clsValue);
         _Push(NewClassInstanceValue(interp, instance));
-        return FLG_SUCCESS;
+        return interp->Null;
     }
 
     // Push thisArg
-    ClassInstance* instance = CreateClassInstance(clsValue);
-    Value* instanceValue = NewClassInstanceValue(interp, instance);
+    Value* instanceValue = NewClassInstanceValue(interp, CreateClassInstance(clsValue));
     _Push(instanceValue);
 
     Value* constructor = ClassGetMember(cls, CONSTRUCTOR_NAME, false);
 
-    int flg = DoCall(
+    Value* result = DoCall(
         interp, 
         rootEnvObj, 
         envObj, 
@@ -331,27 +287,32 @@ int DoCallCtor(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* cls
         ++argc
     );
     
-    if (flg == FLG_SUCCESS) {
+    if (ValueIsNull(result)) {
         _Popp(); // Pop constructor return value
         _Push(instanceValue); // Push instance as return value
     }
 
-    return flg;
+    return result;
 }
 
-int DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int argc) {
+Value* DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int argc) {
     if (fn == NULL) Panic("Attempted to call a null value\n");
 
     if (!ValueIsCallable(fn)) {
-        _PopN(argc); return FLG_INVALID_OPERATION;
+        _PopN(argc);
+        return NewErrorValue(interp, "invalid operation: attempted to call a non-callable value");
     }
 
     if (ValueIsNativeFunction(fn)) {
         NativeFunctionMeta* nFMeta = CoerceToNativeFunctionMeta(fn);
-        NativeFunction nf          = nFMeta->FuncPtr;
+        NativeFunction nativeFunc  = nFMeta->FuncPtr;
 
         if (nFMeta->Argc != VARARG && argc != nFMeta->Argc) {
-            _PopN(argc); return FLG_ARG_MISMATCH;
+            _PopN(argc); 
+            String errMsg = FormatString("argument count mismatch: expected %d arguments but got %d",  nFMeta->Argc, argc);
+            Value* errVal = NewErrorValue(interp, errMsg);
+            free(errMsg);
+            return errVal;
         }
 
         Value** args = Allocate(sizeof(Value*) * argc);
@@ -360,16 +321,12 @@ int DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int
             args[i] = _Popp();
         }
 
-        Value* res = nf(interp, argc, args);
-
-        if (ValueIsError(res)) {
-            return FLG_ERROR;
-        }
+        Value* res = nativeFunc(interp, argc, args);
 
         _Push(res);
         free(args);
         
-        return FLG_SUCCESS;
+        return ValueIsError(res) ? res : interp->Null;
     }
 
     // Call
@@ -381,7 +338,11 @@ int DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int
     }
 
     if (argc != uf->Argc) {
-        _PopN(argc); return FLG_ARG_MISMATCH;
+        _PopN(argc);
+        String errMsg = FormatString("argument count mismatch: expected %d arguments but got %d",  uf->Argc, argc);
+        Value* errVal = NewErrorValue(interp, errMsg);
+        free(errMsg);
+        return errVal;
     }
     
     Run(
@@ -390,10 +351,10 @@ int DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int
         (uf->ParentEnv != NULL ? uf->ParentEnv : rootEnvObj), 
         NewEnvironmentValue(interp, env)
     );
-    return FLG_SUCCESS;
+    return interp->Null;
 }
 
-int DoCallMethod(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* obj, Value* methodName, int argc) {
+Value* DoCallMethod(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* obj, Value* methodName, int argc) {
     if (IsMethodOfObject(interp, obj, methodName)) {
         ++argc; // add 1 for 'this'
     } else {
@@ -403,7 +364,13 @@ int DoCallMethod(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* o
     Value* method = GenericGetAttribute(interp, obj, methodName, true);
     
     if (ValueIsNull(method)) {
-        _PopN(argc); return FLG_NOTFOUND;
+        _PopN(argc); 
+        String method = ValueToString(methodName);
+        String errMsg = FormatString("method '%s' not found on object of type %s", method, ValueTypeOf(obj));
+        Value* errVal = NewErrorValue(interp, errMsg);
+        free(method);
+        free(errMsg);
+        return errVal;
     }
 
     return DoCall(
@@ -415,20 +382,35 @@ int DoCallMethod(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* o
     );
 }
 
-int DoNot(Interpreter* interp, Value* val, Value** out) {
+Value* DoNot(Interpreter* interp, Value* val) {
     bool resultBool = !CoerceToBool(val);
-    *out = resultBool ? interp->True : interp->False;
-    return FLG_SUCCESS;
+    return resultBool ? interp->True : interp->False;
 }
 
-int DoPos(Interpreter* interp, Value* val, Value** out) {
-    *out = val;
-    return FLG_SUCCESS;
+Value* DoPos(Interpreter* interp, Value* val) {
+    if (ValueIsInt(val)) {
+        return NewIntValue(interp, +CoerceToI32(val));
+    } else if (ValueIsNum(val)) {
+        return NewNumValue(interp, +CoerceToNum(val));
+    } else {
+        String errMsg = FormatString("invalid operand for operator (+): %s", ValueTypeOf(val));
+        Value* errVal = NewErrorValue(interp, errMsg);
+        free(errMsg);
+        return errVal;
+    }
 }
 
-int DoNeg(Interpreter* interp, Value* val, Value** out) {
-    *out = val;
-    return FLG_SUCCESS;
+Value* DoNeg(Interpreter* interp, Value* val) {
+    if (ValueIsInt(val)) {
+        return NewIntValue(interp, -CoerceToI32(val));
+    } else if (ValueIsNum(val)) {
+        return NewNumValue(interp, -CoerceToNum(val));
+    } else {
+        String errMsg = FormatString("invalid operand for operator (-): %s", ValueTypeOf(val));
+        Value* errVal = NewErrorValue(interp, errMsg);
+        free(errMsg);
+        return errVal;
+    }
 }
 
 Value* DoMul(Interpreter* interp, Value* lhs, Value* rhs) {
@@ -806,15 +788,11 @@ Value* DoXor(Interpreter* interp, Value* lhs, Value* rhs) {
     return result;
 }
 
-int DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int offset, bool closure, Value** out) {
+Value* DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int offset, bool closure) {
     // For closure, clone the function
     Value* fn = closure
         ? NewUserFunctionValue(interp, UserFunctionClone(CoerceToUserFunction(interp->Functions[offset])))
         : interp->Functions[offset];
-
-    if (out != NULL) {
-        *out = fn;
-    }
 
     UserFunction* uf     = CoerceToUserFunction(fn);
     Environment* rootEnv = CoerceToEnvironment(rootEnvObj);
@@ -831,7 +809,7 @@ int DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int of
     }
 
     uf->ParentEnv = rootEnvObj;
-    return FLG_SUCCESS;
+    return fn;
 }
 
 #undef PushArray

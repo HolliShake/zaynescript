@@ -51,6 +51,7 @@ Interpreter* CreateInterpreter() {
 
 #define SetVar(envObj, offset, value) EnvironmentSetLocal(CoerceToEnvironment(envObj), offset, value)
 #define GetVar(envObj, offset) EnvironmentGetLocal(CoerceToEnvironment(envObj), offset)->Value
+#define GetCap(uFunct, offset) (uFunct->Captures[offset]->Value)
 
 #define InterpreterPanic(message, ...) do { \
     fprintf(stderr, "[%s:%d]::Panic: ", __FILE__, __LINE__); \
@@ -173,12 +174,8 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
         switch (opcode) {
             case OP_IMPORT_CORE: {
                 str = _ReadString(uf->Codes, ip);
-                flg = DoImportCore(interpreter, str, &res);
-                if (flg == FLG_NOTFOUND)
-                    HandleError(
-                        "core module '%s' not found", 
-                        str
-                    );
+                res = DoImportCore(interpreter, str);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 Forward(strlen(str) + 1);
                 free(str);
@@ -186,7 +183,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             }
             case OP_LOAD_CAPTURE: {
                 offset = _ReadInt32(uf->Codes, ip);
-                val    = (uf->Captures[offset]->Value);
+                val    = GetCap(uf, offset);
                 if (val == NULL)
                     HandleError(
                         "captured variable is referenced before initialization"
@@ -345,38 +342,27 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                 val = Popp();
                 key = Popp();
                 obj = Peek();
-                flg = DoSetIndex(interpreter, obj, key, val);
-                if (flg == FLG_OUT_OF_BOUNDS) 
-                    HandleError(
-                        "index out of bounds when setting index on %s", 
-                        ValueTypeOf(obj)
-                    )
-                else if (flg == FLG_INVALID_OPERATION)
-                    HandleError(
-                        "invalid operation when setting index on %s", 
-                        ValueTypeOf(obj)
-                    );
+                res = DoSetIndex(interpreter, obj, key, val);
+                if (ValueIsError(res)) RaiseError(res);
                 break;
             }
             case OP_GET_INDEX: {
                 key = Popp();
                 obj = Popp();
-                val = NULL;
-                DoGetIndex(interpreter, obj, key, &val);
-                Push(val);
+                res = DoGetIndex(interpreter, obj, key);
+                if (ValueIsError(res)) RaiseError(res);
+                Push(res);
                 break;
             }
             case OP_LOAD_FUNCTION_CLOSURE:
             case OP_LOAD_FUNCTION: {
                 offset = _ReadInt32(uf->Codes, ip);
-                res    = NULL;
-                DoLoadFunction(
+                res    = DoLoadFunction(
                     interpreter, 
                     rootEnvObj, 
                     envObj, 
                     offset, 
-                    (opcode == OP_LOAD_FUNCTION_CLOSURE), 
-                    &res
+                    (opcode == OP_LOAD_FUNCTION_CLOSURE)
                 );
                 Push(res);
                 Forward(4);
@@ -386,86 +372,46 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                 argc = _ReadInt32(uf->Codes, ip);
                 Forward(4);
                 cls  = Popp();
-                flg  = DoCallCtor(
-                    interpreter, 
-                    rootEnvObj, 
-                    envObj, 
-                    cls, 
-                    argc
-                );
-
-                if (flg == FLG_ARG_MISMATCH)
-                    HandleError(
-                        "argument count mismatch expected %d arguments but got %d", 
-                        _GetArgc(cls), argc
-                    )
-                else if (flg == FLG_INVALID_OPERATION)
-                    HandleError(
-                        "attempted to call constructor on a non-class value of type %s", 
-                        ValueTypeOf(cls)
-                    )
-                else if (flg == FLG_ERROR) {
-                    String msg = ValueToString(Popp());
-                    HandleError("%s", msg);
-                }
+                res  = DoCallCtor(interpreter, rootEnvObj, envObj, cls, argc);
+                if (ValueIsError(res)) RaiseError(res);
                 break;
             }
             case OP_CALL: {
                 argc = _ReadInt32(uf->Codes, ip);
-                obj  = Popp();
-                flg  = DoCall(
-                    interpreter, 
-                    rootEnvObj, 
-                    envObj, 
-                    obj, 
-                    argc
-                );
-                if (flg == FLG_INVALID_OPERATION)
-                    HandleError(
-                        "attempted to call a non-callable value of type %s", 
-                        ValueTypeOf(obj)
-                    )
-                else if (flg == FLG_ARG_MISMATCH)
-                    HandleError(
-                        "argument count mismatch expected %d arguments but got %d", 
-                        _GetArgc(obj), argc
-                    )
-                else if (flg == FLG_ERROR) {
-                    String msg = ValueToString(Popp());
-                    HandleError("%s", msg);
-                }
-                    
                 Forward(4);
+                obj  = Popp();
+                res  = DoCall(interpreter, rootEnvObj, envObj, obj, argc);
+                if (ValueIsError(res)) RaiseError(res);
                 break;
             }
             case OP_CALL_METHOD: {
                 argc = _ReadInt32(uf->Codes, ip);
+                Forward(4);
                 key  = Popp(); // method
                 obj  = Popp(); // 'this' object
-                flg  = DoCallMethod(
-                    interpreter, 
-                    rootEnvObj, 
-                    envObj, 
-                    obj, 
-                    key,
-                    argc
-                );
-                if (flg == FLG_INVALID_OPERATION)
-                    HandleError(
-                        "attempted to call a non-callable value of type %s", 
-                        ValueTypeOf(obj)
-                    )
-                else if (flg == FLG_ARG_MISMATCH)
-                    HandleError(
-                        "argument count mismatch expected %d arguments but got %d", 
-                        _GetArg2(interpreter, obj, key), argc
-                    )
-                else if (flg == FLG_ERROR) {
-                    String msg = ValueToString(Popp());
-                    HandleError("%s", msg);
-                }
-                    
-                Forward(4);
+                res  = DoCallMethod(interpreter, rootEnvObj, envObj, obj, key, argc);
+                if (ValueIsError(res)) RaiseError(res);
+                break;
+            }
+            case OP_NOT: {
+                rhs = Popp();
+                res = DoNot(interpreter, rhs);
+                if (ValueIsError(res)) RaiseError(res);
+                Push(res);
+                break;
+            }
+            case OP_POS: {
+                rhs = Popp();
+                res = DoPos(interpreter, rhs);
+                if (ValueIsError(res)) RaiseError(res);
+                Push(res);
+                break;
+            }
+            case OP_NEG: {
+                rhs = Popp();
+                res = DoNeg(interpreter, rhs);
+                if (ValueIsError(res)) RaiseError(res);
+                Push(res);
                 break;
             }
             case OP_MUL: {

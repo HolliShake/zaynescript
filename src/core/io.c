@@ -49,6 +49,15 @@ static Value* _IoPrintln(Interpreter* interpeter, int argc, Value** arguments) {
 }
 
 static Value* _IoScan(Interpreter* interpreter, int argc, Value** arguments) {
+
+    if (argc != 1) {
+        return NewErrorValue(interpreter, "scan() expects exactly 1 argument");
+    }
+
+    if (!ValueIsStr(arguments[0])) {
+        return NewErrorValue(interpreter, "scan() expects a string as its argument");
+    }
+
     // Print the prompt message if provided
     if (argc > 0) {
         String prompt = ValueToString(arguments[0]);
@@ -98,7 +107,10 @@ static Value* _IoScan(Interpreter* interpreter, int argc, Value** arguments) {
 
 static Value* _IoParseNum(Interpreter* interpreter, int argc, Value** arguments) {
     if (argc != 1) {
-        return NewIntValue(interpreter, 0);
+        return NewErrorValue(interpreter, "parseNum() expects exactly 1 argument");
+    }
+    if (!ValueIsStr(arguments[0])) {
+        return NewErrorValue(interpreter, "parseNum() expects a string as its argument");
     }
     String str = ValueToString(arguments[0]);
     char* endptr;
