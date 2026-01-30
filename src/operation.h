@@ -28,12 +28,12 @@ bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method);
  * 
  * @param interp        The interpreter instance
  * @param obj           The object to retrieve the attribute from
- * @param attr          The attribute/key to retrieve
+ * @param index         The attribute/key to retrieve
  * @param forMethodCall Whether the attribute is being retrieved for a method call
  * 
  * @return The retrieved attribute value, or Null value if not found
  */
-Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool forMethodCall);
+Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* index, bool forMethodCall);
 
 /**
  * Performs import core operation.
@@ -124,9 +124,8 @@ Value* DoCallMethod(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value
  * 
  * @param interp The interpreter instance
  * @param val    The value to perform the logical NOT operation on
- * @param out    Output parameter for the result
  * 
- * @return FLG_SUCCESS
+ * @return Boolean value (True or False)
  */
 Value* DoNot(Interpreter* interp, Value* val);
 
@@ -136,21 +135,19 @@ Value* DoNot(Interpreter* interp, Value* val);
  * 
  * @param interp The interpreter instance
  * @param val    The value to perform the unary plus operation on
- * @param out    Output parameter for the result
  * 
- * @return FLG_SUCCESS
+ * @return The value unchanged
  */
 Value* DoPos(Interpreter* interp, Value* val);
 
 /**
  * Performs unary minus operation on a value.
- * Returns the value unchanged (note: implementation may need review).
+ * Negates numeric values.
  * 
  * @param interp The interpreter instance
  * @param val    The value to perform the unary minus operation on
- * @param out    Output parameter for the result
  * 
- * @return FLG_SUCCESS
+ * @return Negated numeric value, or error value for invalid operand
  */
 Value* DoNeg(Interpreter* interp, Value* val);
 
