@@ -52,6 +52,7 @@ Interpreter* CreateInterpreter() {
 #define SetVar(envObj, offset, value) EnvironmentSetLocal(CoerceToEnvironment(envObj), offset, value)
 #define GetVar(envObj, offset) EnvironmentGetLocal(CoerceToEnvironment(envObj), offset)->Value
 #define GetCap(uFunct, offset) (uFunct->Captures[offset]->Value)
+#define SetCap(uFunct, offset, value) (uFunct->Captures[offset]->Value = value)
 
 #define InterpreterPanic(message, ...) do { \
     fprintf(stderr, "[%s:%d]::Panic: ", __FILE__, __LINE__); \
@@ -107,7 +108,7 @@ static String _ReadString(uint8_t* codes, int alignStart) {
 
 static int _GetArgc(Value* fn) {
     if (ValueIsClass(fn)) {
-        UserClass* cls = CoerceToUserClass(fn);
+        Class* cls = CoerceToUserClass(fn);
         if (ClassHasMember(cls, CONSTRUCTOR_NAME, false, true)) {
             Value* constructor = ClassGetMember(cls, CONSTRUCTOR_NAME, false);
             return _GetArgc(constructor);
@@ -183,6 +184,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             }
             case OP_LOAD_CAPTURE: {
                 offset = _ReadInt32(uf->Codes, ip);
+                printf("%s Reading capture at offset %d for N at %d\n",uf->Name, offset, uf->CaptureC);
                 val    = GetCap(uf, offset);
                 if (val == NULL)
                     HandleError(
@@ -572,6 +574,12 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                 res = DoXor(interpreter, lhs, rhs);
                 if (ValueIsError(res)) RaiseError(res);
                 Push(res);
+                break;
+            }
+            case OP_STORE_CAPTURE: {
+                offset = _ReadInt32(uf->Codes, ip);
+                SetCap(uf, offset, Popp());
+                Forward(4);
                 break;
             }
             case OP_STORE_NAME: {

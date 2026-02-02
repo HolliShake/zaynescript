@@ -52,7 +52,7 @@ bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
         Array* array = CoerceToArray(obj);
 
         // Check prototype chain
-        UserClass* cls = CoerceToUserClass(interp->Array);
+        Class* cls = CoerceToUserClass(interp->Array);
 
         while (cls != NULL) {
             if (ClassHasMember(cls, key, false, true)) {
@@ -67,7 +67,7 @@ bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
         HashMap* map = CoerceToHashMap(obj);
 
         // Check prototype chain
-        UserClass* cls = NULL;
+        Class* cls = NULL;
 
         while (cls != NULL) {
             if (ClassHasMember(cls, key, false, true)) {
@@ -79,7 +79,7 @@ bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
         }
     } else if (ValueIsClass(obj)) {
         // Handle Class static functions or attributes
-        UserClass* cls = CoerceToUserClass(obj);
+        Class* cls = CoerceToUserClass(obj);
 
         while (cls != NULL) {
             if (ClassHasMember(cls, key, false, true)) {
@@ -94,7 +94,7 @@ bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
         ClassInstance* instance = CoerceToClassInstance(obj);
 
         // Check prototype chain
-        UserClass* cls = CoerceToUserClass(instance->Proto);
+        Class* cls = CoerceToUserClass(instance->Proto);
 
         while (cls != NULL) {
             if (ClassHasMember(cls, key, false, true)) {
@@ -131,7 +131,7 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* index, bool f
         }
 
         // Check prototype chain
-        UserClass* cls = CoerceToUserClass(interp->Array);
+        Class* cls = CoerceToUserClass(interp->Array);
 
         while (forMethodCall && cls != NULL) {
             if (ClassHasMember(cls, key, false, forMethodCall)) {
@@ -154,7 +154,7 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* index, bool f
         }
 
         // Check prototype chain
-        UserClass* cls = NULL;
+        Class* cls = NULL;
 
         while (forMethodCall && cls != NULL) {
             if (ClassHasMember(cls, key, false, forMethodCall)) {
@@ -168,7 +168,7 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* index, bool f
 
     } else if (ValueIsClass(obj)) {
         // Handle Class static functions or attributes
-        UserClass* cls = CoerceToUserClass(obj);
+        Class* cls = CoerceToUserClass(obj);
 
         while (cls != NULL) {
             if (ClassHasMember(cls, key, true, forMethodCall)) {
@@ -184,7 +184,7 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* index, bool f
         ClassInstance* instance = CoerceToClassInstance(obj);
 
         // Check prototype chain
-        UserClass* cls = CoerceToUserClass(instance->Proto);
+        Class* cls = CoerceToUserClass(instance->Proto);
 
         while (forMethodCall && cls != NULL) {
             if (ClassHasMember(cls, key, !forMethodCall, forMethodCall)) {
@@ -237,7 +237,7 @@ Value* DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val) {
         ClassInstance* instance = CoerceToClassInstance(obj);
         HashMapSet(instance->Members, ValueToString(index), val);
     } else if (ValueIsClass(obj)) {
-        UserClass* cls = CoerceToUserClass(obj);
+        Class* cls = CoerceToUserClass(obj);
         HashMapSet(cls->StaticMembers, ValueToString(index), val);
     } else {
         return NewErrorValue(interp, "invalid operation: cannot set index on non-object");
@@ -257,7 +257,7 @@ Value* DoCallCtor(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* 
         return NewErrorValue(interp, "invalid operation: attempted to call constructor on non-class value");
     }
 
-    UserClass* cls = CoerceToUserClass(clsValue);
+    Class* cls = CoerceToUserClass(clsValue);
 
     if (!ClassHasMember(cls, CONSTRUCTOR_NAME, false, true)) {
         if (argc != 0) {

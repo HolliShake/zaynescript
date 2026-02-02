@@ -10,4 +10,6 @@ import {println, scan, parseNum} from "core:io";
 4;
 
 
-var x = scan(2);
+var x = scan("input num 1");
+
+println(x, -1);

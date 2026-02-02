@@ -215,7 +215,7 @@ static ModuleFunction _DateClassMethods[] = {
 
 Value* LoadCoreDate(Interpreter* interpeter) {
     Value* dateModule = NewClassValue(interpeter, CreateUserClass("Date", NULL));
-    UserClass* cls = CoerceToUserClass(dateModule);
+    Class* cls = CoerceToUserClass(dateModule);
     
     // Register methods
     for (int i = 0; _DateClassMethods[i].Name != NULL; i++) {

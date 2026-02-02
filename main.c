@@ -133,6 +133,11 @@ void RunTests() {
     int passedCount = 0;
     int failedCount = 0;
     
+    // Track failed tests
+    #define MAX_FAILED_TESTS 256
+    char* failedTests[MAX_FAILED_TESTS];
+    int failedTestsCount = 0;
+    
     // Get executable path
     char exePath[512];
 #ifdef _WIN32
@@ -212,6 +217,12 @@ void RunTests() {
         } else {
             printf("  FAILED (exit code: %d)\n\n", result);
             failedCount++;
+            
+            // Store failed test name
+            if (failedTestsCount < MAX_FAILED_TESTS) {
+                failedTests[failedTestsCount] = strdup(fullPath);
+                failedTestsCount++;
+            }
         }
     }
     
@@ -219,6 +230,15 @@ void RunTests() {
     
     printf("=== Test Results ===\n");
     printf("Total: %d, Passed: %d, Failed: %d\n", testCount, passedCount, failedCount);
+    
+    // Print list of failed tests
+    if (failedTestsCount > 0) {
+        printf("\n=== Failed Tests ===\n");
+        for (int i = 0; i < failedTestsCount; i++) {
+            printf("  - %s\n", failedTests[i]);
+            free(failedTests[i]);
+        }
+    }
 }
 
 void PrintHelp() {

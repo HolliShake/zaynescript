@@ -16,14 +16,14 @@
 /**
  * Creates a new user-defined class.
  * 
- * Allocates and initializes a new UserClass structure with the specified
+ * Allocates and initializes a new Class structure with the specified
  * name and optional base class for inheritance.
  * 
  * @param name Name of the class.
  * @param base Pointer to the base class Value, or NULL if no inheritance.
- * @return Pointer to the newly created UserClass structure, or NULL on allocation failure.
+ * @return Pointer to the newly created Class structure, or NULL on allocation failure.
  */
-UserClass* CreateUserClass(String name, Value* base);
+Class* CreateUserClass(String name, Value* base);
 
 /**
  * Extends a user-defined class with a base class.
@@ -32,10 +32,10 @@ UserClass* CreateUserClass(String name, Value* base);
  * the specified class. This allows the class to inherit members from the
  * base class.
  * 
- * @param cls Pointer to the UserClass to extend.
+ * @param cls Pointer to the Class to extend.
  * @param base Pointer to the base class Value.
  */
-void ClassExtend(UserClass* cls, Value* base);
+void ClassExtend(Class* cls, Value* base);
 
 /**
  * Defines a member (static or instance) on a user-defined class.
@@ -44,12 +44,12 @@ void ClassExtend(UserClass* cls, Value* base);
  * (belonging to the class itself) or instance (belonging to instances
  * of the class).
  * 
- * @param cls Pointer to the UserClass on which to define the member.
+ * @param cls Pointer to the Class on which to define the member.
  * @param key Pointer to the Value representing the member name.
  * @param value Pointer to the Value representing the member value.
  * @param isStatic Boolean indicating whether the member is static (true) or instance (false).
  */
-void ClassDefineMember(UserClass* cls, Value* key, Value* value, bool isStatic);
+void ClassDefineMember(Class* cls, Value* key, Value* value, bool isStatic);
 
 /**
  * Defines a member (static or instance) on a user-defined class using a string key.
@@ -58,12 +58,12 @@ void ClassDefineMember(UserClass* cls, Value* key, Value* value, bool isStatic);
  * (belonging to the class itself) or instance (belonging to instances
  * of the class). This function uses a string key for the member name.
  * 
- * @param cls Pointer to the UserClass on which to define the member.
+ * @param cls Pointer to the Class on which to define the member.
  * @param key String name of the member.
  * @param value Pointer to the Value representing the member value.
  * @param isStatic Boolean indicating whether the member is static (true) or instance (false).
  */
-void ClassDefineMemberByString(UserClass* cls, String key, Value* value, bool isStatic);
+void ClassDefineMemberByString(Class* cls, String key, Value* value, bool isStatic);
 
 /**
  * Checks if a user-defined class has a specific member.
@@ -72,13 +72,13 @@ void ClassDefineMemberByString(UserClass* cls, String key, Value* value, bool is
  * either static or instance members. Optionally filters for callable
  * members only (methods).
  * 
- * @param cls Pointer to the UserClass to check.
+ * @param cls Pointer to the Class to check.
  * @param key String name of the member to look for.
  * @param isStatic Boolean indicating whether to check static (true) or instance (false) members.
  * @param callable Boolean indicating whether to check for callable members only.
  * @return true if the member exists, false otherwise.
  */
-bool ClassHasMember(UserClass* cls, String key, bool isStatic, bool callable);
+bool ClassHasMember(Class* cls, String key, bool isStatic, bool callable);
 
 /**
  * Retrieves a member (static or instance) from a user-defined class.
@@ -86,12 +86,12 @@ bool ClassHasMember(UserClass* cls, String key, bool isStatic, bool callable);
  * Looks up a member by name in the specified class, searching either
  * static or instance members.
  * 
- * @param cls Pointer to the UserClass from which to retrieve the member.
+ * @param cls Pointer to the Class from which to retrieve the member.
  * @param key String name of the member to retrieve.
  * @param isStatic Boolean indicating whether to look for a static (true) or instance (false) member.
  * @return Pointer to the Value of the member if found, or NULL if not found.
  */
-Value* ClassGetMember(UserClass* cls, String key, bool isStatic);
+Value* ClassGetMember(Class* cls, String key, bool isStatic);
 
 /**
  * Converts a user-defined class instance to its string representation.
@@ -121,9 +121,9 @@ ClassInstance* CreateClassInstance(Value* proto);
  * Generates a human-readable string representation of the class,
  * typically including the class name and type information.
  * 
- * @param cls Pointer to the UserClass to convert.
+ * @param cls Pointer to the Class to convert.
  * @return String representation of the class. Caller is responsible for freeing the returned string.
  */
-String ClassToString(UserClass* cls);
+String ClassToString(Class* cls);
 
 #endif /* CLASS_H */

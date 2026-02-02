@@ -571,10 +571,10 @@ struct scope_struct {
  */
 typedef struct user_class_struct {
     String   Name;            /**< Class name */
-    Value*   Base;            /**< Base class (must be UserClass or Nullable) */
+    Value*   Base;            /**< Base class (must be Class or Nullable) */
     HashMap* StaticMembers;   /**< Static members map */
     HashMap* InstanceMembers; /**< Instance members map */
-} UserClass;
+} Class;
 
 /**
  * @struct class_instance_struct
@@ -583,7 +583,7 @@ typedef struct user_class_struct {
  * Links to the class prototype and maintains instance-specific member values.
  */
 typedef struct class_instance_struct {
-    Value*   Proto;   /**< Prototype class (must be UserClass) */
+    Value*   Proto;   /**< Prototype class (must be Class) */
     HashMap* Members; /**< Instance members map */
 } ClassInstance;
 
@@ -902,15 +902,15 @@ UserFunction* CoerceToUserFunction(Value* value);
 NativeFunctionMeta* CoerceToNativeFunctionMeta(Value* value);
 
 /**
- * @brief Coerces a value to a UserClass.
+ * @brief Coerces a value to a Class.
  * 
- * Extracts the UserClass pointer from a value. The value must be
+ * Extracts the Class pointer from a value. The value must be
  * of type VLT_CLASS.
  * 
  * @param value The value to coerce.
- * @return Pointer to the UserClass.
+ * @return Pointer to the Class.
  */
-UserClass* CoerceToUserClass(Value* value);
+Class* CoerceToUserClass(Value* value);
 
 /**
  * @brief Coerces a value to a ClassInstance.

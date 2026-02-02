@@ -77,7 +77,7 @@ Value* NewObjectValue(Interpreter* interpreter) {
     return v;
 }
 
-Value* NewClassValue(Interpreter* interpreter, UserClass* cls) {
+Value* NewClassValue(Interpreter* interpreter, Class* cls) {
     Value* v = _CreateValue(interpreter, VLT_CLASS);
     v->Value.Opaque = cls;
     return v;

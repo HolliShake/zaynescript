@@ -43,7 +43,7 @@ static ModuleFunction _ArrayClassMethods[] = {
 
 Value* CreateArrayClass(Interpreter* interpreter) {
     Value* arrayClass = NewClassValue(interpreter, CreateUserClass("Array", NULL));
-    UserClass* cls = CoerceToUserClass(arrayClass);
+    Class* cls = CoerceToUserClass(arrayClass);
 
     // Define Array methods here (e.g., push, pop, length, etc.)
     for (int i = 0; _ArrayClassMethods[i].Name != NULL; i++) {

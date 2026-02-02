@@ -195,11 +195,11 @@ NativeFunctionMeta* CoerceToNativeFunctionMeta(Value* value) {
     Panic("Value is not a NativeFunctionMeta");
 }
 
-UserClass* CoerceToUserClass(Value* value) {
+Class* CoerceToUserClass(Value* value) {
     if (value->Type == VLT_CLASS) {
-        return (UserClass*) value->Value.Opaque;
+        return (Class*) value->Value.Opaque;
     }
-    Panic("Value is not a UserClass");
+    Panic("Value is not a Class");
 }
 
 ClassInstance* CoerceToClassInstance(Value* value) {

@@ -1,7 +1,7 @@
 #include "./class.h"
 
-UserClass* CreateUserClass(String name, Value* base) {
-    UserClass* cls = Allocate(sizeof(UserClass));
+Class* CreateUserClass(String name, Value* base) {
+    Class* cls = Allocate(sizeof(Class));
     cls->Name              = AllocateString(name);
     cls->Base              = base;
     cls->StaticMembers     = CreateHashMap(16);
@@ -9,13 +9,13 @@ UserClass* CreateUserClass(String name, Value* base) {
     return cls;
 }
 
-void ClassExtend(UserClass* cls, Value* base) {
+void ClassExtend(Class* cls, Value* base) {
     cls->Base = base;
 }
 
 extern String ValueToString(Value*);
 
-void ClassDefineMember(UserClass* cls, Value* key, Value* value, bool isStatic) {
+void ClassDefineMember(Class* cls, Value* key, Value* value, bool isStatic) {
     if (isStatic) {
         HashMapSet(cls->StaticMembers, ValueToString(key), value);
     } else {
@@ -23,7 +23,7 @@ void ClassDefineMember(UserClass* cls, Value* key, Value* value, bool isStatic) 
     }
 }
 
-void ClassDefineMemberByString(UserClass* cls, String key, Value* value, bool isStatic) {
+void ClassDefineMemberByString(Class* cls, String key, Value* value, bool isStatic) {
     if (isStatic) {
         HashMapSet(cls->StaticMembers, key, value);
     } else {
@@ -33,7 +33,7 @@ void ClassDefineMemberByString(UserClass* cls, String key, Value* value, bool is
 
 extern bool ValueIsCallable(Value*);
 
-bool ClassHasMember(UserClass* cls, String key, bool isStatic, bool callable) {
+bool ClassHasMember(Class* cls, String key, bool isStatic, bool callable) {
     // if callable is -1, ignore callable check
     HashMap* members = isStatic ? cls->StaticMembers : cls->InstanceMembers;
     Value* member    = HashMapGet(members, key);
@@ -46,12 +46,12 @@ bool ClassHasMember(UserClass* cls, String key, bool isStatic, bool callable) {
     return true;
 }
 
-Value* ClassGetMember(UserClass* cls, String key, bool isStatic) {
+Value* ClassGetMember(Class* cls, String key, bool isStatic) {
     HashMap* members = isStatic ? cls->StaticMembers : cls->InstanceMembers;
     return HashMapGet(members, key);
 }
 
-String ClassToString(UserClass* cls) {
+String ClassToString(Class* cls) {
     return cls->Name;
 }
 

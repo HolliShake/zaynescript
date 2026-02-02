@@ -60,7 +60,7 @@ static void _Free(Value* value) {
             }
             break;
         case VLT_CLASS: {
-            UserClass* classObj = CoerceToUserClass(value);
+            Class* classObj = CoerceToUserClass(value);
             if (classObj != NULL) {
                 if (classObj->StaticMembers != NULL) {
                     free(classObj->StaticMembers->Buckets);
@@ -165,7 +165,7 @@ void Mark(Value* value) {
             break;
         }
         case VLT_CLASS: {
-            UserClass* classObj = CoerceToUserClass(value);
+            Class* classObj = CoerceToUserClass(value);
             if (classObj != NULL) {
                 Mark(classObj->Base);
                 HashMap* staticMembers   = classObj->StaticMembers;

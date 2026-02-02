@@ -104,10 +104,10 @@ Value* NewObjectValue(Interpreter* interpreter);
  * @brief Creates a new class value
  * 
  * @param interpreter Pointer to the interpreter instance
- * @param cls Pointer to the UserClass structure to wrap
+ * @param cls Pointer to the Class structure to wrap
  * @return Pointer to newly allocated Value structure containing the class
  */
-Value* NewClassValue(Interpreter* interpreter, UserClass* cls);
+Value* NewClassValue(Interpreter* interpreter, Class* cls);
 
 /**
  * @brief Creates a new class instance value
