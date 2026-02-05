@@ -329,13 +329,12 @@ Value* DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, 
         return ValueIsError(res) ? res : interp->Null;
     }
 
-    // Call
-    UserFunction* uf = CoerceToUserFunction(fn);
-    Environment* env = CreateEnvironment(envObj, uf->LocalC);
-
     if (!ValueIsCallable(fn)) {
         Panic("Attempted to call a non-callable value: %s\n", ValueToString(fn));
     }
+
+    // Call
+    UserFunction* uf = CoerceToUserFunction(fn);
 
     if (argc != uf->Argc) {
         _PopN(argc);
@@ -348,8 +347,8 @@ Value* DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, 
     Run(
         interp, 
         fn, 
-        (uf->ParentEnv != NULL ? uf->ParentEnv : rootEnvObj), 
-        NewEnvironmentValue(interp, env)
+        rootEnvObj, 
+        NewEnvironmentValue(interp, CreateEnvironment((uf->ParentEnv != NULL) ? uf->ParentEnv : envObj, uf->LocalC))
     );
     return interp->Null;
 }
@@ -797,18 +796,31 @@ Value* DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int
     UserFunction* uf     = CoerceToUserFunction(fn);
     Environment* rootEnv = CoerceToEnvironment(rootEnvObj);
     Environment* loclEnv = CoerceToEnvironment(envObj);
+
+    if (closure) {
+        uf->ParentEnv = envObj;
+    }
+
     for (int i = 0; i < uf->CaptureC; i++) {
         CaptureMeta capture = uf->CaptureMetas[i];
         if (capture.IsGlobal) {
             rootEnv->Locals[capture.Src]->IsCaptured = true;
             uf->Captures[capture.Dst] = rootEnv->Locals[capture.Src];
         } else {
-            loclEnv->Locals[capture.Src]->IsCaptured = true;
-            uf->Captures[capture.Dst] = loclEnv->Locals[capture.Src];
+            // Traverse up the environment chain to find the captured variable
+            // through depth
+            int depth = 1;
+            Environment* currentEnv = loclEnv;
+            
+            while (closure && depth != capture.Depth && currentEnv != NULL) {
+                currentEnv = CoerceToEnvironment(currentEnv->Parent);    
+                depth++;
+            }
+            currentEnv->Locals[capture.Src]->IsCaptured = true;
+            uf->Captures[capture.Dst] = currentEnv->Locals[capture.Src];
         }
     }
 
-    uf->ParentEnv = rootEnvObj;
     return fn;
 }
 

@@ -167,6 +167,19 @@ Symbol* ScopeGetSymbol(Scope* scope, String name, bool recurse) {
     return NULL;
 }
 
+int ScopeGetDepthOfSymbol(Scope* scope, String name) {
+    int depth = 0;
+    while (scope != NULL) {
+        Symbol* currentSymbol = (Symbol*) HashMapGet(scope->Symbols, name);
+        if (currentSymbol != NULL) {
+            return depth;
+        }
+        scope = scope->Parent;
+        depth++;
+    }
+    return -1; // Not found
+}
+
 bool ScopeHasCapture(Scope* scope, String name) {
     while (scope != NULL) {
         Symbol* symbol = (Symbol*) HashMapGet(scope->Captures, name);

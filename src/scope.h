@@ -179,6 +179,21 @@ void ScopeSetSymbol(Scope* scope, String name, bool isGlobal, bool isLocalToFn, 
 Symbol* ScopeGetSymbol(Scope* scope, String name, bool recurse);
 
 /**
+ * @brief Gets the depth of a symbol in the scope chain
+ * 
+ * Traverses up the scope chain to find how many levels deep the specified symbol
+ * is located. The depth is counted from the starting scope (depth 0) upwards through
+ * parent scopes. This is useful for determining variable shadowing levels or closure
+ * capture distances.
+ * 
+ * @param scope Pointer to the scope to start searching from
+ * @param name The name of the symbol to search for
+ * @return The depth level where the symbol is found (0 = current scope, 1 = parent, etc.),
+ *         or -1 if the symbol is not found in any parent scope
+ */
+int ScopeGetDepthOfSymbol(Scope* scope, String name);
+
+/**
  * @brief Checks if a scope has a captured variable with a given name
  * 
  * Searches the scope's capture table for a variable with the specified name.

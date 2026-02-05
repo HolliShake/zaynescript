@@ -250,11 +250,13 @@ static void _Identifier(Compiler* compiler, UserFunction* uf, Scope* scope, Stri
     if (ScopeInside(scope, SCOPE_FUNCTION_CLOSURE) && !ScopeIsLocalToFnClosure(scope, name)) {
         int captureOffset = 0;
         if (!ScopeHasCapture(scope, name)) {
+            // Depth
+            int depth = ScopeGetDepthOfSymbol(scope, name);
             captureOffset = UserFunctionAddCapture(
                 uf, 
                 symbol->IsGlobal, 
-                symbol->Offset, 
-                captureOffset
+                depth,
+                symbol->Offset
             );
             ScopeSetCapture(
                 scope, 
@@ -1064,11 +1066,12 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
                 if (ScopeInside(scope, SCOPE_FUNCTION_CLOSURE) && !ScopeIsLocalToFnClosure(scope, lhs->Value)) {
                     int captureOffset = 0;
                     if (!ScopeHasCapture(scope, lhs->Value)) {
+                        int depth = ScopeGetDepthOfSymbol(scope, lhs->Value);
                         captureOffset = UserFunctionAddCapture(
                             uf, 
                             symbol->IsGlobal, 
-                            symbol->Offset, 
-                            captureOffset
+                            depth,
+                            symbol->Offset
                         );
                         ScopeSetCapture(
                             scope, 
@@ -1210,11 +1213,12 @@ static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
                 if (ScopeInside(scope, SCOPE_FUNCTION_CLOSURE) && !ScopeIsLocalToFnClosure(scope, lhs->Value)) {
                     int captureOffset = 0;
                     if (!ScopeHasCapture(scope, lhs->Value)) {
+                        int depth = ScopeGetDepthOfSymbol(scope, lhs->Value);
                         captureOffset = UserFunctionAddCapture(
                             uf, 
                             symbol->IsGlobal, 
-                            symbol->Offset, 
-                            captureOffset
+                            depth,
+                            symbol->Offset
                         );
                         ScopeSetCapture(
                             scope, 

@@ -161,6 +161,7 @@ bool CoerceToBool(Value* value) {
 }
 
 Environment* CoerceToEnvironment(Value* value) {
+    if (value == NULL) return NULL;
     if (value->Type == VLT_ENVIRONMENT) {
         return (Environment*) value->Value.Opaque;
     }
@@ -168,6 +169,7 @@ Environment* CoerceToEnvironment(Value* value) {
 }
 
 HashMap* CoerceToHashMap(Value* value) {
+    if (value == NULL) return NULL;
     if (value->Type == VLT_OBJECT) {
         return (HashMap*) value->Value.Opaque;
     }
@@ -175,6 +177,7 @@ HashMap* CoerceToHashMap(Value* value) {
 }
 
 Array* CoerceToArray(Value* value) {
+    if (value == NULL) return NULL;
     if (value->Type == VLT_ARRAY) {
         return (Array*) value->Value.Opaque;
     }
@@ -182,6 +185,7 @@ Array* CoerceToArray(Value* value) {
 }
 
 UserFunction* CoerceToUserFunction(Value* value) {
+    if (value == NULL) return NULL;
     if (value->Type == VLT_USER_FUNCTION) {
         return (UserFunction*) value->Value.Opaque;
     }
@@ -189,6 +193,7 @@ UserFunction* CoerceToUserFunction(Value* value) {
 }
 
 NativeFunctionMeta* CoerceToNativeFunctionMeta(Value* value) {
+    if (value == NULL) return NULL;
     if (value->Type == VLT_NATV_FUNCTION) {
         return (NativeFunctionMeta*) value->Value.Opaque;
     }
@@ -196,6 +201,7 @@ NativeFunctionMeta* CoerceToNativeFunctionMeta(Value* value) {
 }
 
 Class* CoerceToUserClass(Value* value) {
+    if (value == NULL) return NULL;
     if (value->Type == VLT_CLASS) {
         return (Class*) value->Value.Opaque;
     }
@@ -203,6 +209,7 @@ Class* CoerceToUserClass(Value* value) {
 }
 
 ClassInstance* CoerceToClassInstance(Value* value) {
+    if (value == NULL) return NULL;
     if (value->Type == VLT_CLASS_INSTANCE) {
         return (ClassInstance*) value->Value.Opaque;
     }

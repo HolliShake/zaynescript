@@ -184,7 +184,6 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             }
             case OP_LOAD_CAPTURE: {
                 offset = _ReadInt32(uf->Codes, ip);
-                printf("%s Reading capture at offset %d for N at %d\n",uf->Name, offset, uf->CaptureC);
                 val    = GetCap(uf, offset);
                 if (val == NULL)
                     HandleError(

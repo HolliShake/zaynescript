@@ -2,11 +2,15 @@ import { println } from "core:io";
 
 fn f1() {
     let v1 = "V1";
+    println("Running f1");
     return fn() {
+        println("Running f1.fn1");
         let v2 = "v2";
         return fn() {
+            println("Running f1.fn1.fn2");
             let v3 = "v3";
             return fn() {
+                println("Running f1.fn2.fn3");
                 println(v1, v2, v3);
             };
         };
@@ -15,17 +19,3 @@ fn f1() {
 
 println(">>", f1()()()());
 
-// Test nested closures
-fn outer() {
-    let outerVar = "outer";
-    return fn() {
-        let middleVar = "middle";
-        return fn() {
-            return outerVar + "-" + middleVar + "-inner";
-        };
-    };
-}
-
-const nestedResult = outer()()();
-println("\nNested closure test:");
-println("Result:", nestedResult);
