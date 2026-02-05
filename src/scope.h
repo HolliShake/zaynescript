@@ -127,18 +127,6 @@ bool ScopeHasName(Scope* scope, String name);
 bool ScopeIsLocalToGlobal(Scope *scope, String name);
 
 /**
- * @brief Checks if a variable is local to a function
- * 
- * Determines whether a variable with the given name is defined in the current
- * function scope (not captured from an outer function).
- * 
- * @param scope Pointer to the scope to check
- * @param name The name of the variable to check for
- * @return true if the variable is local to the current function, false otherwise
- */
-bool ScopeIsLocalToFn(Scope* scope, String name);
-
-/**
  * @brief Checks if a variable is local to a function closure
  * 
  * Determines whether a variable with the given name is captured from an outer
@@ -148,7 +136,7 @@ bool ScopeIsLocalToFn(Scope* scope, String name);
  * @param name The name of the variable to check for
  * @return true if the variable is captured in a closure, false otherwise
  */
-bool ScopeIsLocalToFnClosure(Scope* scope, String name);
+bool ScopeIsLocalToFn(Scope* scope, String name);
 
 /**
  * @brief Sets a symbol in a scope

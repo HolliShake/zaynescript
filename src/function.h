@@ -32,12 +32,11 @@ int UserFunctionEmitLocal(UserFunction* userFunction);
  * Adds a captured variable to the user function.
  *
  * @param userFunction Pointer to the user function to add the captured variable to.
- * @param isGlobal Whether the captured variable is global.
  * @param depth The depth of the captured variable's scope relative to the closure.
  * @param sourceOffset The source offset of the captured variable.
  * @return The offset of the captured variable.
  */
-int UserFunctionAddCapture(UserFunction* userFunction, bool isGlobal, int depth, int sourceOffset);
+int UserFunctionAddCapture(UserFunction* userFunction, int depth, int sourceOffset);
 
 /**
  * Converts a user function structure to its string representation.

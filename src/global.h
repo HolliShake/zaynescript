@@ -455,7 +455,6 @@ typedef enum opcode_enum {
  * including whether it's global and the source/destination indices.
  */
 typedef struct capture_meta_struct {
-    bool IsGlobal; /**< True if capturing a global variable */
     int  Depth;    /**< Depth of the captured variable's scope relative to the closure */
     int  Src;      /**< Source index */
     int  Dst;      /**< Destination index */
@@ -530,7 +529,6 @@ typedef enum scope_type_enum {
     SCOPE_GLOBAL,           /**< Global scope */
     SCOPE_CLASS ,           /**< Class scope */
     SCOPE_FUNCTION,         /**< Function body scope */
-    SCOPE_FUNCTION_CLOSURE, /**< Function closure scope */
     SCOPE_BLOCK,            /**< Generic block scope */
     SCOPE_TRY_BLOCK,        /**< Try block scope */
     SCOPE_LOOP,             /**< Loop scope */

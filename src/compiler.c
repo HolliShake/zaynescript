@@ -236,26 +236,12 @@ static void _Identifier(Compiler* compiler, UserFunction* uf, Scope* scope, Stri
 
     Symbol* symbol = ScopeGetSymbol(scope, name, true);
 
-    if (symbol->IsGlobal) {
-        // Global variable
-        _EmitArg(
-            compiler, 
-            uf, 
-            OP_LOAD_NAME,
-            symbol->Offset
-        );
-        return;
-    }
-
-    if (ScopeInside(scope, SCOPE_FUNCTION_CLOSURE) && !ScopeIsLocalToFnClosure(scope, name)) {
+    if (ScopeInside(scope, SCOPE_FUNCTION) && !ScopeIsLocalToFn(scope, name)) {
         int captureOffset = 0;
         if (!ScopeHasCapture(scope, name)) {
-            // Depth
-            int depth = ScopeGetDepthOfSymbol(scope, name);
             captureOffset = UserFunctionAddCapture(
                 uf, 
-                symbol->IsGlobal, 
-                depth,
+                ScopeGetDepthOfSymbol(scope, name),
                 symbol->Offset
             );
             ScopeSetCapture(
@@ -267,8 +253,7 @@ static void _Identifier(Compiler* compiler, UserFunction* uf, Scope* scope, Stri
                 captureOffset
             );
         } else {
-            Symbol* captureSymbol = ScopeGetCapture(scope, name, false);
-            captureOffset = captureSymbol->Offset;
+            captureOffset = ScopeGetCapture(scope, name, true)->Offset;
         }
 
         // Capture the variable
@@ -443,7 +428,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             break;
         }
         case AST_FUNCTION: {
-            Scope* fnScope = CreateScope(SCOPE_FUNCTION_CLOSURE, scope);
+            Scope* fnScope = CreateScope(SCOPE_FUNCTION, scope);
             Ast* params = node->B;
             Ast* body   = node->C;
 
@@ -1054,53 +1039,40 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
                     "cannot reassign constant variable"
                 );
             }
-            if (symbol->IsGlobal) {
-                // Global variable
-                _EmitArg(
-                    compiler, 
-                    uf, 
-                    OP_STORE_NAME,
-                    symbol->Offset
-                );
-            } else {
-                if (ScopeInside(scope, SCOPE_FUNCTION_CLOSURE) && !ScopeIsLocalToFnClosure(scope, lhs->Value)) {
-                    int captureOffset = 0;
-                    if (!ScopeHasCapture(scope, lhs->Value)) {
-                        int depth = ScopeGetDepthOfSymbol(scope, lhs->Value);
-                        captureOffset = UserFunctionAddCapture(
-                            uf, 
-                            symbol->IsGlobal, 
-                            depth,
-                            symbol->Offset
-                        );
-                        ScopeSetCapture(
-                            scope, 
-                            lhs->Value, 
-                            false, 
-                            true, 
-                            false, 
-                            captureOffset
-                        );
-                    } else {
-                        Symbol* captureSymbol = ScopeGetCapture(scope, lhs->Value, false);
-                        captureOffset = captureSymbol->Offset;
-                    }
-
-                    // Capture the variable
-                    _EmitArg(
-                        compiler, 
+            if (ScopeInside(scope, SCOPE_FUNCTION) && !ScopeIsLocalToFn(scope, lhs->Value)) {
+                int captureOffset = 0;
+                if (!ScopeHasCapture(scope, lhs->Value)) {
+                    captureOffset = UserFunctionAddCapture(
                         uf, 
-                        OP_STORE_CAPTURE,
+                        ScopeGetDepthOfSymbol(scope, lhs->Value),
+                        symbol->Offset
+                    );
+                    ScopeSetCapture(
+                        scope, 
+                        lhs->Value, 
+                        false, 
+                        true, 
+                        false, 
                         captureOffset
                     );
                 } else {
-                    _EmitArg(
-                        compiler, 
-                        uf, 
-                        OP_STORE_LOCAL,
-                        symbol->Offset
-                    );
+                    captureOffset = ScopeGetCapture(scope, lhs->Value, true)->Offset;
                 }
+
+                // Capture the variable
+                _EmitArg(
+                    compiler, 
+                    uf, 
+                    OP_STORE_CAPTURE,
+                    captureOffset
+                );
+            } else {
+                _EmitArg(
+                    compiler, 
+                    uf, 
+                    OP_STORE_LOCAL,
+                    symbol->Offset
+                );
             }
             break;
         }
@@ -1184,6 +1156,7 @@ static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
             if (postfix) {
                 _Emit(compiler, uf, OP_ROT2);
             }
+
             if (!ScopeHasName(scope, lhs->Value)) {
                 ThrowError(
                     compiler->Parser->Lexer->Path, 
@@ -1192,7 +1165,9 @@ static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
                     "variable not found"
                 );
             }
+
             Symbol* symbol = ScopeGetSymbol(scope, lhs->Value, true);
+
             if (symbol->IsConstant) {
                 ThrowError(
                     compiler->Parser->Lexer->Path, 
@@ -1201,53 +1176,41 @@ static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
                     "cannot reassign constant variable"
                 );
             }
-            if (symbol->IsGlobal) {
-                // Global variable
-                _EmitArg(
-                    compiler, 
-                    uf, 
-                    OP_STORE_NAME,
-                    symbol->Offset
-                );
-            } else {
-                if (ScopeInside(scope, SCOPE_FUNCTION_CLOSURE) && !ScopeIsLocalToFnClosure(scope, lhs->Value)) {
-                    int captureOffset = 0;
-                    if (!ScopeHasCapture(scope, lhs->Value)) {
-                        int depth = ScopeGetDepthOfSymbol(scope, lhs->Value);
-                        captureOffset = UserFunctionAddCapture(
-                            uf, 
-                            symbol->IsGlobal, 
-                            depth,
-                            symbol->Offset
-                        );
-                        ScopeSetCapture(
-                            scope, 
-                            lhs->Value, 
-                            false, 
-                            true, 
-                            false, 
-                            captureOffset
-                        );
-                    } else {
-                        Symbol* captureSymbol = ScopeGetCapture(scope, lhs->Value, false);
-                        captureOffset = captureSymbol->Offset;
-                    }
 
-                    // Capture the variable
-                    _EmitArg(
-                        compiler, 
+            if (ScopeInside(scope, SCOPE_FUNCTION) && !ScopeIsLocalToFn(scope, lhs->Value)) {
+                int captureOffset = 0;
+                if (!ScopeHasCapture(scope, lhs->Value)) {
+                    captureOffset = UserFunctionAddCapture(
                         uf, 
-                        OP_STORE_CAPTURE,
+                        ScopeGetDepthOfSymbol(scope, lhs->Value),
+                        symbol->Offset
+                    );
+                    ScopeSetCapture(
+                        scope, 
+                        lhs->Value, 
+                        false, 
+                        true, 
+                        false, 
                         captureOffset
                     );
                 } else {
-                    _EmitArg(
-                        compiler, 
-                        uf, 
-                        OP_STORE_LOCAL,
-                        symbol->Offset
-                    );
+                    captureOffset = ScopeGetCapture(scope, lhs->Value, true)->Offset;
                 }
+
+                // Capture the variable
+                _EmitArg(
+                    compiler, 
+                    uf, 
+                    OP_STORE_CAPTURE,
+                    captureOffset
+                );
+            } else {
+                _EmitArg(
+                    compiler, 
+                    uf, 
+                    OP_STORE_LOCAL,
+                    symbol->Offset
+                );
             }
             break;
         }
@@ -1599,7 +1562,7 @@ static void _VarDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope
 }
 
 static void _LetDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
-    if (!(ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_FUNCTION_CLOSURE) || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
+    if (!(ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
         ThrowError(
             compiler->Parser->Lexer->Path, 
             compiler->Parser->Lexer->Data, 
@@ -1633,7 +1596,7 @@ static void _LetDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope
 }
 
 static void _ConstDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
-    if (!(ScopeIs(scope, SCOPE_GLOBAL) || ScopeIs(scope, SCOPE_FUNCTION_CLOSURE) || ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
+    if (!(ScopeIs(scope, SCOPE_GLOBAL) || ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
         ThrowError(
             compiler->Parser->Lexer->Path, 
             compiler->Parser->Lexer->Data, 
@@ -1915,7 +1878,7 @@ static void _BreakStatement(Compiler* compiler, UserFunction* uf, Scope* scope, 
 }
 
 static void _ReturnStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
-    if (!ScopeInside(scope, SCOPE_FUNCTION) && !ScopeInside(scope, SCOPE_FUNCTION_CLOSURE)) {
+    if (!ScopeInside(scope, SCOPE_FUNCTION)) {
         ThrowError(
             compiler->Parser->Lexer->Path, 
             compiler->Parser->Lexer->Data, 

@@ -60,6 +60,7 @@ Interpreter* CreateInterpreter() {
     fprintf(stderr, "\n"); \
     ForceGarbageCollect(interpreter); \
     FreeInterpreter(interpreter); \
+    fprintf(stderr, "Program exited with panic.\n"); \
     exit(EXIT_FAILURE); \
 } while(0)
 

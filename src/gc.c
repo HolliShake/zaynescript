@@ -114,14 +114,14 @@ static void _Free(Value* value) {
                     free(uf->Codes);
                     uf->Codes = NULL;
                 }
-                for (int i = 0; i < uf->CaptureC; i++) {
-                    // Captured environment cells are freed by their original environment
-                    EnvCell* cell = uf->Captures[i];
-                    if (cell != NULL) {
-                        cell->Value = NULL;
-                        free(cell);
-                    }
-                }
+                // for (int i = 0; i < uf->CaptureC; i++) {
+                //     // Captured environment cells are freed by their original environment
+                //     EnvCell* cell = uf->Captures[i];
+                //     if (cell != NULL) {
+                //         cell->Value = NULL;
+                //         free(cell);
+                //     }
+                // }
                 free(uf->CaptureMetas);
                 free(uf->Captures);
                 //NOTE: memory leak (UserFunction Name is allocated but not freed here)

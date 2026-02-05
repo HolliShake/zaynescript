@@ -54,10 +54,9 @@ int UserFunctionEmitLocal(UserFunction* userFunction) {
     return userFunction->LocalC++;
 }
 
-int UserFunctionAddCapture(UserFunction* userFunction, bool isGlobal, int depth, int sourceOffset) {
+int UserFunctionAddCapture(UserFunction* userFunction, int depth, int sourceOffset) {
     int offset = userFunction->CaptureC;
     CaptureMeta capture;
-    capture.IsGlobal = isGlobal;
     capture.Depth    = depth;
     capture.Src      = sourceOffset;
     capture.Dst      = offset; // The destination offset is determined by the current capture count

@@ -343,12 +343,16 @@ Value* DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, 
         free(errMsg);
         return errVal;
     }
+
+    if (uf->ParentEnv == NULL) {
+        Panic("User function '%s' has null ParentEnv\n", uf->Name != NULL ? uf->Name : "<anonymous>");
+    }
     
     Run(
         interp, 
         fn, 
         rootEnvObj, 
-        NewEnvironmentValue(interp, CreateEnvironment((uf->ParentEnv != NULL) ? uf->ParentEnv : envObj, uf->LocalC))
+        NewEnvironmentValue(interp, CreateEnvironment(uf->ParentEnv, uf->LocalC))
     );
     return interp->Null;
 }
@@ -797,28 +801,21 @@ Value* DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int
     Environment* rootEnv = CoerceToEnvironment(rootEnvObj);
     Environment* loclEnv = CoerceToEnvironment(envObj);
 
-    if (closure) {
-        uf->ParentEnv = envObj;
-    }
+    if (uf->ParentEnv == NULL) uf->ParentEnv = envObj;
 
     for (int i = 0; i < uf->CaptureC; i++) {
         CaptureMeta capture = uf->CaptureMetas[i];
-        if (capture.IsGlobal) {
-            rootEnv->Locals[capture.Src]->IsCaptured = true;
-            uf->Captures[capture.Dst] = rootEnv->Locals[capture.Src];
-        } else {
-            // Traverse up the environment chain to find the captured variable
-            // through depth
-            int depth = 1;
-            Environment* currentEnv = loclEnv;
-            
-            while (closure && depth != capture.Depth && currentEnv != NULL) {
-                currentEnv = CoerceToEnvironment(currentEnv->Parent);    
-                depth++;
-            }
-            currentEnv->Locals[capture.Src]->IsCaptured = true;
-            uf->Captures[capture.Dst] = currentEnv->Locals[capture.Src];
+        // Traverse up the environment chain to find the captured variable
+        // through depth
+        int depth = 1;
+        Environment* currentEnv = loclEnv;
+        
+        while (depth != capture.Depth && currentEnv != NULL) {
+            currentEnv = CoerceToEnvironment(currentEnv->Parent);    
+            depth++;
         }
+        currentEnv->Locals[capture.Src]->IsCaptured = true;
+        uf->Captures[capture.Dst] = currentEnv->Locals[capture.Src];
     }
 
     return fn;
