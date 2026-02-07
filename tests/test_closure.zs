@@ -83,7 +83,7 @@ println("Triple 5:", triple(5)); // Triple 5: 15
 fn makeAdders() {
     let adders = [];
     println("Called");
-    for (i := 0; i < 3; i = i + 1) {
+    for (i := 0; i < 3; i++) {
         println(i);
         adders.push(fn(x) {
             println("x>", x, i);
@@ -142,3 +142,11 @@ fn objectCapture() {
 var modifier = objectCapture();
 println("Modified:", modifier(50)); // Modified: 150
 println("Modified:", modifier(-30)); // Modified: 120
+
+
+fn fact(n) {
+    if (n <= 1) return 1;
+    return n * fact(n - 1);
+}
+
+println(">>", fact(5));

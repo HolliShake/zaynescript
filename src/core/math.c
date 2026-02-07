@@ -53,28 +53,28 @@ MATH_FUNC_2(Min, fmin)
 MATH_FUNC_2(Hypot, hypot)
 
 static ModuleFunction _MathModuleFunctions[] = {
-    { .Name = "abs",   .Argc = 1, .CFunction = (NativeFunction) _MathAbs,   .Value = NULL },
-    { .Name = "acos",  .Argc = 1, .CFunction = (NativeFunction) _MathAcos,  .Value = NULL },
-    { .Name = "asin",  .Argc = 1, .CFunction = (NativeFunction) _MathAsin,  .Value = NULL },
-    { .Name = "atan",  .Argc = 1, .CFunction = (NativeFunction) _MathAtan,  .Value = NULL },
-    { .Name = "atan2", .Argc = 2, .CFunction = (NativeFunction) _MathAtan2, .Value = NULL },
-    { .Name = "ceil",  .Argc = 1, .CFunction = (NativeFunction) _MathCeil,  .Value = NULL },
-    { .Name = "cos",   .Argc = 1, .CFunction = (NativeFunction) _MathCos,   .Value = NULL },
-    { .Name = "cosh",  .Argc = 1, .CFunction = (NativeFunction) _MathCosh,  .Value = NULL },
-    { .Name = "exp",   .Argc = 1, .CFunction = (NativeFunction) _MathExp,   .Value = NULL },
-    { .Name = "floor", .Argc = 1, .CFunction = (NativeFunction) _MathFloor, .Value = NULL },
-    { .Name = "hypot", .Argc = 2, .CFunction = (NativeFunction) _MathHypot, .Value = NULL },
-    { .Name = "log",   .Argc = 1, .CFunction = (NativeFunction) _MathLog,   .Value = NULL },
-    { .Name = "log10", .Argc = 1, .CFunction = (NativeFunction) _MathLog10, .Value = NULL },
-    { .Name = "max",   .Argc = 2, .CFunction = (NativeFunction) _MathMax,   .Value = NULL },
-    { .Name = "min",   .Argc = 2, .CFunction = (NativeFunction) _MathMin,   .Value = NULL },
-    { .Name = "pow",   .Argc = 2, .CFunction = (NativeFunction) _MathPow,   .Value = NULL },
-    { .Name = "round", .Argc = 1, .CFunction = (NativeFunction) _MathRound, .Value = NULL },
-    { .Name = "sin",   .Argc = 1, .CFunction = (NativeFunction) _MathSin,   .Value = NULL },
-    { .Name = "sinh",  .Argc = 1, .CFunction = (NativeFunction) _MathSinh,  .Value = NULL },
-    { .Name = "sqrt",  .Argc = 1, .CFunction = (NativeFunction) _MathSqrt,  .Value = NULL },
-    { .Name = "tan",   .Argc = 1, .CFunction = (NativeFunction) _MathTan,   .Value = NULL },
-    { .Name = "tanh",  .Argc = 1, .CFunction = (NativeFunction) _MathTanh,  .Value = NULL },
+    { .Name = "abs",   .Argc = 1, .CFunction = (NativeFunctionCallback) _MathAbs,   .Value = NULL },
+    { .Name = "acos",  .Argc = 1, .CFunction = (NativeFunctionCallback) _MathAcos,  .Value = NULL },
+    { .Name = "asin",  .Argc = 1, .CFunction = (NativeFunctionCallback) _MathAsin,  .Value = NULL },
+    { .Name = "atan",  .Argc = 1, .CFunction = (NativeFunctionCallback) _MathAtan,  .Value = NULL },
+    { .Name = "atan2", .Argc = 2, .CFunction = (NativeFunctionCallback) _MathAtan2, .Value = NULL },
+    { .Name = "ceil",  .Argc = 1, .CFunction = (NativeFunctionCallback) _MathCeil,  .Value = NULL },
+    { .Name = "cos",   .Argc = 1, .CFunction = (NativeFunctionCallback) _MathCos,   .Value = NULL },
+    { .Name = "cosh",  .Argc = 1, .CFunction = (NativeFunctionCallback) _MathCosh,  .Value = NULL },
+    { .Name = "exp",   .Argc = 1, .CFunction = (NativeFunctionCallback) _MathExp,   .Value = NULL },
+    { .Name = "floor", .Argc = 1, .CFunction = (NativeFunctionCallback) _MathFloor, .Value = NULL },
+    { .Name = "hypot", .Argc = 2, .CFunction = (NativeFunctionCallback) _MathHypot, .Value = NULL },
+    { .Name = "log",   .Argc = 1, .CFunction = (NativeFunctionCallback) _MathLog,   .Value = NULL },
+    { .Name = "log10", .Argc = 1, .CFunction = (NativeFunctionCallback) _MathLog10, .Value = NULL },
+    { .Name = "max",   .Argc = 2, .CFunction = (NativeFunctionCallback) _MathMax,   .Value = NULL },
+    { .Name = "min",   .Argc = 2, .CFunction = (NativeFunctionCallback) _MathMin,   .Value = NULL },
+    { .Name = "pow",   .Argc = 2, .CFunction = (NativeFunctionCallback) _MathPow,   .Value = NULL },
+    { .Name = "round", .Argc = 1, .CFunction = (NativeFunctionCallback) _MathRound, .Value = NULL },
+    { .Name = "sin",   .Argc = 1, .CFunction = (NativeFunctionCallback) _MathSin,   .Value = NULL },
+    { .Name = "sinh",  .Argc = 1, .CFunction = (NativeFunctionCallback) _MathSinh,  .Value = NULL },
+    { .Name = "sqrt",  .Argc = 1, .CFunction = (NativeFunctionCallback) _MathSqrt,  .Value = NULL },
+    { .Name = "tan",   .Argc = 1, .CFunction = (NativeFunctionCallback) _MathTan,   .Value = NULL },
+    { .Name = "tanh",  .Argc = 1, .CFunction = (NativeFunctionCallback) _MathTanh,  .Value = NULL },
     { .Name = NULL }
 };
 
@@ -85,11 +85,12 @@ Value* LoadCoreMath(Interpreter* interpreter) {
     for (int i = 0; _MathModuleFunctions[i].Name != NULL; i++) {
         ModuleFunction func = _MathModuleFunctions[i];
         String name = AllocateString((String)func.Name);
+        String hKey = AllocateString((String)func.Name);
         
         if (func.Value != NULL) {
-            HashMapSet(map, name, func.Value);
+            HashMapSet(map, hKey, func.Value);
         } else {
-            HashMapSet(map, name, NewNativeFunctionValue(interpreter, 
+            HashMapSet(map, hKey, NewNativeFunctionValue(interpreter, 
                 CreateNativeFunctionMeta(
                     (const String) name,
                     func.Argc,

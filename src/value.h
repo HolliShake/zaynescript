@@ -70,10 +70,10 @@ Value* NewUserFunctionValue(Interpreter* interpreter, UserFunction* userFunction
  * @brief Creates a new native function value
  * 
  * @param interpreter Pointer to the interpreter instance
- * @param nativeFunctionMeta Pointer to the NativeFunctionMeta structure to wrap
+ * @param nativeFunctionMeta Pointer to the NativeFunction structure to wrap
  * @return Pointer to newly allocated Value structure containing the native function
  */
-Value* NewNativeFunctionValue(Interpreter* interpreter, NativeFunctionMeta* nativeFunctionMeta);
+Value* NewNativeFunctionValue(Interpreter* interpreter, NativeFunction* nativeFunctionMeta);
 
 /**
  * @brief Creates a new environment value

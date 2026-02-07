@@ -329,7 +329,7 @@ int main(int argc, char** argv) {
 
     FreeLexer(lexer);
     FreeParser(parser);
-    //NOTE: memory leak (The compiler instance is allocated but never freed)
+    FreeCompiler(compiler);
     FreeInterpreter(interpreter);
     free(data);
     printf("Program Finished!\n");

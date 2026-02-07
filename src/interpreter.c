@@ -44,6 +44,7 @@ Interpreter* CreateInterpreter() {
     printf("Stack [%d items]: [ ", interpreter->StackC); \
     for (int i = 0; i < interpreter->StackC; i++) { \
         if (i > 0) printf(", "); \
+        //NOTE: memory leak (ValueToString returns a new string that is not freed) \
         printf("%s", ValueToString(interpreter->Stacks[i])); \
     } \
     printf(" ]\n"); \
@@ -117,7 +118,7 @@ static int _GetArgc(Value* fn) {
             return 0;
         }
     } else if (ValueIsNativeFunction(fn)) {
-        NativeFunctionMeta* nFMeta = CoerceToNativeFunctionMeta(fn);
+        NativeFunction* nFMeta = CoerceToNativeFunctionMeta(fn);
         return nFMeta->Argc;
     } else if (ValueIsUserFunction(fn)) {
         UserFunction* uf = CoerceToUserFunction(fn);
@@ -296,6 +297,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                 for (int i = 0; i < size; i++) {
                     key = Popp();
                     val = Popp();
+                    //NOTE: memory leak (ValueToString returns a new string. If HashMapSet updates an existing key, this new string is not freed by HashMapSet)
                     HashMapSet(map, ValueToString(key), val);
                 }
                 Push(obj);

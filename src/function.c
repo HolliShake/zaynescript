@@ -125,15 +125,23 @@ String UserFunctionToString(UserFunction* userFunction) {
     }
 }
 
-NativeFunctionMeta* CreateNativeFunctionMeta(const String name, int argc, NativeFunction funcPtr) {
-    NativeFunctionMeta* meta = Allocate(sizeof(NativeFunctionMeta));
+void FreeUserFunction(UserFunction* userFunction) {
+    if (userFunction->Name != NULL) free(userFunction->Name);
+    free(userFunction->CaptureMetas);
+    free(userFunction->Captures);
+    free(userFunction->Codes);
+    free(userFunction);
+}
+
+NativeFunction* CreateNativeFunctionMeta(const String name, int argc, NativeFunctionCallback funcPtr) {
+    NativeFunction* meta = Allocate(sizeof(NativeFunction));
     meta->Name    = name;
     meta->Argc    = argc;
     meta->FuncPtr = funcPtr;
     return meta;
 }
 
-String NativeFunctionMetaToString(NativeFunctionMeta* meta) {
+String NativeFunctionMetaToString(NativeFunction* meta) {
     // fmt: native function %name ($1, $2) {} if argc != -1 else native function %name (...$n) {}
     
     if (meta->Argc == -1) {
@@ -183,4 +191,9 @@ String NativeFunctionMetaToString(NativeFunctionMeta* meta) {
         free(args);
         return buffer;
     }
+}
+
+void FreeNativeFunction(NativeFunction* nativeFunction) {
+    if (nativeFunction->Name != NULL) free(nativeFunction->Name);
+    free(nativeFunction);
 }

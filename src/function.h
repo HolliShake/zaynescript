@@ -47,21 +47,35 @@ int UserFunctionAddCapture(UserFunction* userFunction, int depth, int sourceOffs
 String UserFunctionToString(UserFunction* userFunction);
 
 /**
+ * Frees a User Defined function
+ * 
+ * @param userFunction Pointer to the UserFunction structure 
+ */
+void FreeUserFunction(UserFunction* userFunction);
+
+/**
  * Creates a new native function metadata structure.
  *
  * @param name The name of the native function.
  * @param argc The number of arguments the native function takes.
  * @param funcPtr Pointer to the native function implementation.
- * @return Pointer to the newly created NativeFunctionMeta structure, or NULL on failure.
+ * @return Pointer to the newly created NativeFunction structure, or NULL on failure.
  */
-NativeFunctionMeta* CreateNativeFunctionMeta(const String name, int argc, NativeFunction funcPtr);
+NativeFunction* CreateNativeFunctionMeta(const String name, int argc, NativeFunctionCallback funcPtr);
 
 /**
  * Converts a native function metadata structure to its string representation.
  *
- * @param meta Pointer to the NativeFunctionMeta structure.
+ * @param meta Pointer to the NativeFunction structure.
  * @return String representation of the native function metadata.
  */
-String NativeFunctionMetaToString(NativeFunctionMeta* meta);
+String NativeFunctionMetaToString(NativeFunction* meta);
+
+/**
+ * Frees a native function
+ * 
+ * @param nativeFunction Pointer to the NativeFunction structure 
+ */
+void FreeNativeFunction(NativeFunction* nativeFunction);
 
 #endif

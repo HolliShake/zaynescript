@@ -53,7 +53,7 @@ Value* NewUserFunctionValue(Interpreter* interpreter, UserFunction* userFunction
     return v;
 }
 
-Value* NewNativeFunctionValue(Interpreter* interpreter, NativeFunctionMeta* nativeFunctionMeta) {
+Value* NewNativeFunctionValue(Interpreter* interpreter, NativeFunction* nativeFunctionMeta) {
     Value* v = _CreateValue(interpreter, VLT_NATV_FUNCTION);
     v->Value.Opaque = nativeFunctionMeta;
     return v;

@@ -304,8 +304,8 @@ Value* DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, 
     }
 
     if (ValueIsNativeFunction(fn)) {
-        NativeFunctionMeta* nFMeta = CoerceToNativeFunctionMeta(fn);
-        NativeFunction nativeFunc  = nFMeta->FuncPtr;
+        NativeFunction* nFMeta = CoerceToNativeFunctionMeta(fn);
+        NativeFunctionCallback nativeFunc  = nFMeta->FuncPtr;
 
         if (nFMeta->Argc != VARARG && argc != nFMeta->Argc) {
             _PopN(argc); 
@@ -793,9 +793,7 @@ Value* DoXor(Interpreter* interp, Value* lhs, Value* rhs) {
 
 Value* DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int offset, bool closure) {
     // For closure, clone the function
-    Value* fn = closure
-        ? NewUserFunctionValue(interp, UserFunctionClone(CoerceToUserFunction(interp->Functions[offset])))
-        : interp->Functions[offset];
+    Value* fn = NewUserFunctionValue(interp, UserFunctionClone(CoerceToUserFunction(interp->Functions[offset])));
 
     UserFunction* uf     = CoerceToUserFunction(fn);
     Environment* rootEnv = CoerceToEnvironment(rootEnvObj);
@@ -814,8 +812,9 @@ Value* DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int
             currentEnv = CoerceToEnvironment(currentEnv->Parent);    
             depth++;
         }
-        currentEnv->Locals[capture.Src]->IsCaptured = true;
+    
         uf->Captures[capture.Dst] = currentEnv->Locals[capture.Src];
+        currentEnv->Locals[capture.Src]->IsCaptured = true;
     }
 
     return fn;

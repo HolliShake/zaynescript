@@ -1543,6 +1543,7 @@ static void _VarDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope
         }
 
         int offset = UserFunctionEmitLocal(uf);
+        printf("%s := %d\n", declarations->Value, offset);
 
         _EmitArg(compiler, uf, OP_STORE_NAME, offset);
 
@@ -2025,6 +2026,10 @@ Value* Compile(Compiler* compiler) {
     Value* value = _Program(compiler, program);
     FreeAst(program);
     return value;
+}
+
+void FreeCompiler(Compiler* compiler) {
+    free(compiler);
 }
 
 #undef PushArray

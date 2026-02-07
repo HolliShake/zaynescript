@@ -93,41 +93,20 @@ static void _Free(Value* value) {
         }
         case VLT_ENVIRONMENT: {
             Environment* env = CoerceToEnvironment(value);
-            if (env != NULL) {
-                env->Parent = NULL;
-                for (int i = 0; i < env->LocalC; i++) {
-                    if (env->Locals[i] != NULL && !(env->Locals[i]->IsCaptured)) {
-                        // Do not free cells that are captured by closures
-                        env->Locals[i]->Value = NULL;
-                        free(env->Locals[i]);
-                    }
-                }
-                free(env);
-                value->Value.Opaque = NULL;
-            }
+            FreeEnvironment(env);
+            value->Value.Opaque = NULL;
             break;
         }
         case VLT_USER_FUNCTION: {
             UserFunction* uf = CoerceToUserFunction(value);
-            if (uf != NULL) {
-                if (uf->Codes != NULL) {
-                    free(uf->Codes);
-                    uf->Codes = NULL;
-                }
-                // for (int i = 0; i < uf->CaptureC; i++) {
-                //     // Captured environment cells are freed by their original environment
-                //     EnvCell* cell = uf->Captures[i];
-                //     if (cell != NULL) {
-                //         cell->Value = NULL;
-                //         free(cell);
-                //     }
-                // }
-                free(uf->CaptureMetas);
-                free(uf->Captures);
-                //NOTE: memory leak (UserFunction Name is allocated but not freed here)
-                free(uf);
-                value->Value.Opaque = NULL;
-            }
+            FreeUserFunction(uf);
+            value->Value.Opaque = NULL;
+            break;
+        }
+        case VLT_NATV_FUNCTION: {
+            NativeFunction* nf = CoerceToNativeFunctionMeta(value);
+            FreeNativeFunction(nf);
+            value->Value.Opaque = NULL;
             break;
         }
         default:

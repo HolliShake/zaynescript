@@ -192,12 +192,12 @@ UserFunction* CoerceToUserFunction(Value* value) {
     Panic("Value is not a UserFunction");
 }
 
-NativeFunctionMeta* CoerceToNativeFunctionMeta(Value* value) {
+NativeFunction* CoerceToNativeFunctionMeta(Value* value) {
     if (value == NULL) return NULL;
     if (value->Type == VLT_NATV_FUNCTION) {
-        return (NativeFunctionMeta*) value->Value.Opaque;
+        return (NativeFunction*) value->Value.Opaque;
     }
-    Panic("Value is not a NativeFunctionMeta");
+    Panic("Value is not a NativeFunction");
 }
 
 Class* CoerceToUserClass(Value* value) {

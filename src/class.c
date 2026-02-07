@@ -17,8 +17,10 @@ extern String ValueToString(Value*);
 
 void ClassDefineMember(Class* cls, Value* key, Value* value, bool isStatic) {
     if (isStatic) {
+        //NOTE: memory leak (ValueToString returns a new string. If HashMapSet updates an existing key, this new string is not freed by HashMapSet)
         HashMapSet(cls->StaticMembers, ValueToString(key), value);
     } else {
+        //NOTE: memory leak (ValueToString returns a new string. If HashMapSet updates an existing key, this new string is not freed by HashMapSet)
         HashMapSet(cls->InstanceMembers, ValueToString(key), value);
     }
 }

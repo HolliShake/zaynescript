@@ -588,12 +588,12 @@ typedef struct class_instance_struct {
 
 /**
  * @struct interpreter_struct
- * @brief Forward declaration of Interpreter structure for NativeFunction typedef.
+ * @brief Forward declaration of Interpreter structure for NativeFunctionCallback typedef.
  */
 typedef struct interpreter_struct Interpreter;
 
 /**
- * @typedef NativeFunction
+ * @typedef NativeFunctionCallback
  * @brief Function pointer type for native functions.
  * 
  * Native functions are implemented in C and callable from the interpreted
@@ -605,7 +605,7 @@ typedef struct interpreter_struct Interpreter;
  * @param arguments Array of argument values.
  * @return Value* The return value of the function.
  */
-typedef Value* (*NativeFunction)(Interpreter* interpreter, int argc, Value** arguments);
+typedef Value* (*NativeFunctionCallback)(Interpreter* interpreter, int argc, Value** arguments);
 
 /**
  * @struct native_function_struct
@@ -617,8 +617,8 @@ typedef Value* (*NativeFunction)(Interpreter* interpreter, int argc, Value** arg
 typedef struct native_function_struct {
     String         Name;    /**< Function name */
     int            Argc;    /**< Expected argument count */
-    NativeFunction FuncPtr; /**< Pointer to the C function */
-} NativeFunctionMeta;
+    NativeFunctionCallback FuncPtr; /**< Pointer to the C function */
+} NativeFunction;
 
 /**
  * @struct module_function_struct
@@ -631,7 +631,7 @@ typedef struct native_function_struct {
 typedef struct module_function_struct {
     const String    Name;      /**< Export name */
     int             Argc;      /**< Argument count (for functions) */
-    NativeFunction  CFunction; /**< C function pointer (if is NativeFunction) */
+    NativeFunctionCallback  CFunction; /**< C function pointer (if is NativeFunctionCallback) */
     Value*          Value;     /**< Exported value (if not function) */
 } ModuleFunction;
 
@@ -890,15 +890,15 @@ Array* CoerceToArray(Value* value);
 UserFunction* CoerceToUserFunction(Value* value);
 
 /**
- * @brief Coerces a value to a NativeFunctionMeta.
+ * @brief Coerces a value to a NativeFunction.
  * 
- * Extracts the NativeFunctionMeta pointer from a value. The value must be
+ * Extracts the NativeFunction pointer from a value. The value must be
  * of type VLT_NATV_FUNCTION.
  * 
  * @param value The value to coerce.
- * @return Pointer to the NativeFunctionMeta.
+ * @return Pointer to the NativeFunction.
  */
-NativeFunctionMeta* CoerceToNativeFunctionMeta(Value* value);
+NativeFunction* CoerceToNativeFunctionMeta(Value* value);
 
 /**
  * @brief Coerces a value to a Class.

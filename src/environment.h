@@ -42,4 +42,11 @@ void EnvironmentSetLocal(Environment* environment, int offset, Value* value);
  */
 EnvCell* EnvironmentGetLocal(Environment* environment, int offset);
 
+/**
+ * Frees Environment
+ * 
+ * @param environment Pointer to the Environment Structure 
+ */
+void FreeEnvironment(Environment* environment);
+
 #endif
