@@ -284,7 +284,8 @@ Value* DoCallCtor(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* 
         rootEnvObj, 
         envObj, 
         constructor, 
-        ++argc
+        ++argc,
+        true
     );
     
     if (ValueIsNull(result)) {
@@ -295,7 +296,7 @@ Value* DoCallCtor(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* 
     return result;
 }
 
-Value* DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int argc) {
+Value* DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int argc, bool withThis) {
     if (fn == NULL) Panic("Attempted to call a null value\n");
 
     if (!ValueIsCallable(fn)) {
@@ -317,7 +318,13 @@ Value* DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, 
 
         Value** args = Allocate(sizeof(Value*) * argc);
 
-        for (int i = 0; i < argc; i++) {
+        int end = 0;
+        if (withThis) {
+            end = 1;
+            args[0] = _Popp();
+        }
+
+        for (int i = argc - 1; i >= end; i--) {
             args[i] = _Popp();
         }
 
@@ -358,7 +365,8 @@ Value* DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, 
 }
 
 Value* DoCallMethod(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* obj, Value* methodName, int argc) {
-    if (IsMethodOfObject(interp, obj, methodName)) {
+    bool withThis = IsMethodOfObject(interp, obj, methodName);
+    if (withThis) {
         ++argc; // add 1 for 'this'
     } else {
         _Popp(); // pop 'this'
@@ -381,7 +389,8 @@ Value* DoCallMethod(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value
         rootEnvObj, 
         envObj, 
         method, 
-        argc
+        argc,
+        withThis
     );
 }
 

@@ -11,7 +11,7 @@ var counter = 0;
 fn a() {
     let x = 2;
     b();
-    println(x);
+    println("Called", x);
 }
 
 fn b() {
@@ -28,7 +28,7 @@ fn b() {
         println(yy);
         yy = yy + 1;
     }
-    println("Done");
+    println("Done b");
 }
 
 a();

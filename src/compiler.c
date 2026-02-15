@@ -434,25 +434,43 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
 
             UserFunction* fn = CreateUserFunction(NULL, 0);
 
+            // First, count parameters and collect them
             int paramc = 0;
-            while (params != NULL) {
-                if (ScopeHasLocal(fnScope, params->Value)) {
+            Ast* paramCount = params;
+            while (paramCount != NULL) {
+                paramc++;
+                paramCount = paramCount->Next;
+            }
+
+            // Create array to store parameters in reverse
+            Ast** paramArray = Allocate(sizeof(Ast*) * paramc);
+            int i = 0;
+            Ast* param = params;
+            while (param != NULL) {
+                paramArray[i++] = param;
+                param = param->Next;
+            }
+
+            // Process parameters in reverse order
+            for (int j = paramc - 1; j >= 0; j--) {
+                Ast* currentParam = paramArray[j];
+                if (ScopeHasLocal(fnScope, currentParam->Value)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
-                        params->Position, 
+                        currentParam->Position, 
                         "duplicate parameter name"
                     );
                 }
 
                 int offset = UserFunctionEmitLocal(fn);
 
-                ScopeSetSymbol(fnScope, params->Value, false, true, false, offset);
+                ScopeSetSymbol(fnScope, currentParam->Value, false, true, false, offset);
 
                 _EmitArg(compiler, fn, OP_STORE_LOCAL, offset);
-                paramc++;
-                params = params->Next;
             }
+
+            free(paramArray);
 
             fn->Argc = paramc;
 
@@ -530,23 +548,12 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     Ast* att = objc->B;
 
                     // Count arguments first
-                    Ast* argCount = args;
-                    while (argCount != NULL) {
+                    Ast* arg = args;
+                    while (arg != NULL) {
                         argc++;
-                        argCount = argCount->Next;
+                        _Expression(compiler, uf, scope, arg);
+                        arg = arg->Next;
                     }
-
-                    // Emit arguments in reverse order
-                    Ast** argArray = Allocate(sizeof(Ast*) * argc);
-                    int i = 0;
-                    while (args != NULL) {
-                        argArray[i++] = args;
-                        args = args->Next;
-                    }
-                    for (int j = argc - 1; j >= 0; j--) {
-                        _Expression(compiler, uf, scope, argArray[j]);
-                    }
-                    free(argArray);
 
                     _Expression(compiler, uf, scope, obj); // must be in Stack
                     _Emit(compiler, uf, OP_DUPTOP); // duplicate for 'this'
@@ -561,24 +568,12 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 }
                 default: {
                     // Count arguments first
-                    Ast* argCount = args;
-                    while (argCount != NULL) {
+                    Ast* arg = args;
+                    while (arg != NULL) {
                         argc++;
-                        argCount = argCount->Next;
+                        _Expression(compiler, uf, scope, arg);
+                        arg = arg->Next;
                     }
-                    
-                    // Emit arguments in reverse order
-                    Ast** argArray = Allocate(sizeof(Ast*) * argc);
-                    int i = 0;
-                    while (args != NULL) {
-                        argArray[i++] = args;
-                        args = args->Next;
-                    }
-                    for (int j = argc - 1; j >= 0; j--) {
-                        _Expression(compiler, uf, scope, argArray[j]);
-                    }
-                    free(argArray);
-
                     _Expression(compiler, uf, scope, objc);
                     _EmitArg(compiler, uf, OP_CALL, argc);
                     break;
@@ -1305,36 +1300,54 @@ static void _ClassDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope
 
                 UserFunction* fn = CreateUserFunction(AllocateString(fnName->Value), 0);
 
+                // First, count parameters
                 int paramc = 0;
+                Ast* paramCount = params;
+                while (paramCount != NULL) {
+                    paramc++;
+                    paramCount = paramCount->Next;
+                }
 
+                // Create array to store parameters in reverse
+                Ast** paramArray = Allocate(sizeof(Ast*) * paramc);
+                int i = 0;
+                Ast* param = params;
+                while (param != NULL) {
+                    paramArray[i++] = param;
+                    param = param->Next;
+                }
+
+                int add = 0;
                 if (!isStatic) {
                     // Emit 'this' as the first parameter
                     int offset = UserFunctionEmitLocal(fn);
                     ScopeSetSymbol(fnScope, KEY_THIS, false, true, false, offset);
                     _EmitArg(compiler, fn, OP_STORE_LOCAL, offset);
-                    paramc++;
+                    add++;
                 }
 
-                while (params != NULL) {
-                    if (ScopeHasLocal(fnScope, params->Value)) {
+                // Process parameters in reverse order
+                for (int j = paramc - 1; j >= 0; j--) {
+                    Ast* currentParam = paramArray[j];
+                    if (ScopeHasLocal(fnScope, currentParam->Value)) {
                         ThrowError(
                             compiler->Parser->Lexer->Path, 
                             compiler->Parser->Lexer->Data, 
-                            params->Position, 
+                            currentParam->Position, 
                             "duplicate parameter name"
                         );
                     }
 
                     int offset = UserFunctionEmitLocal(fn);
 
-                    ScopeSetSymbol(fnScope, params->Value, false, true, false, offset);
+                    ScopeSetSymbol(fnScope, currentParam->Value, false, true, false, offset);
 
                     _EmitArg(compiler, fn, OP_STORE_LOCAL, offset);
-                    paramc++;
-                    params = params->Next;
                 }
 
-                fn->Argc = paramc;
+                free(paramArray);
+
+                fn->Argc = paramc + add;
 
                 while (body != NULL) {
                     _Statement(compiler, fn, fnScope, body);

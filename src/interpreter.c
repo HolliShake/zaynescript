@@ -384,7 +384,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                 argc = _ReadInt32(uf->Codes, ip);
                 Forward(4);
                 obj  = Popp();
-                res  = DoCall(interpreter, rootEnvObj, envObj, obj, argc);
+                res  = DoCall(interpreter, rootEnvObj, envObj, obj, argc, false);
                 if (ValueIsError(res)) RaiseError(res);
                 break;
             }

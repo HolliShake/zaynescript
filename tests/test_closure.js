@@ -1,15 +1,17 @@
-import { println } from "core:io";
+function println(...args) {
+    console.log(...args);
+}
 
-fn f1() {
+function f1() {
     let v1 = "V1";
     println("Running f1");
-    return fn() {
+    return function() {
         println("Running f1.fn1");
         let v2 = "v2";
-        return fn() {
+        return function() {
             println("Running f1.fn1.fn2");
             let v3 = "v3";
-            return fn() {
+            return function() {
                 println("Running f1.fn2.fn3");
                 println(v1, v2, v3);
             };
@@ -27,9 +29,9 @@ fn f1() {
 println(">>", f1()()()());
 
 // Test: Closure with mutable captured variable
-fn counter() {
+function counter() {
     let count = 0;
-    return fn() {
+    return function() {
         count = count + 1;
         return count;
     };
@@ -43,15 +45,15 @@ println("Counter:", c1()); // Counter: 2
 println("Counter:", c1()); // Counter: 3
 
 // Test: Multiple closures sharing same outer scope
-fn makeCounters() {
+function makeCounters() {
     let shared = 0;
-    let increment = fn() {
+    let increment = function() {
         shared = shared + 1;
     };
-    let decrement = fn() {
+    let decrement = function() {
         shared = shared - 1;
     };
-    let getCount = fn() {
+    let getCount = function() {
         return shared;
     };
     return [increment, decrement, getCount];
@@ -68,8 +70,8 @@ dec();
 println("Shared count:", get()); // Shared count: 1
 
 // Test: Closure with parameters
-fn multiplier(factor) {
-    return fn(value) {
+function multiplier(factor) {
+    return function(value) {
         return value * factor;
     };
 }
@@ -80,12 +82,12 @@ println("Double 5:", double(5)); // Double 5: 10
 println("Triple 5:", triple(5)); // Triple 5: 15
 
 // Test: Closure returning closure with captured loop variable
-fn makeAdders() {
+function makeAdders() {
     let adders = [];
     println("Called");
-    for (i := 0; i < 3; i++) {
+    for (let i = 0; i < 3; i++) {
         println(i);
-        adders.push(fn(x) {
+        adders.push(function(x) {
             println("x>", x, i);
             return x + i;
         });
@@ -118,10 +120,10 @@ println(fn1(2));
 println("Adder results:", fn1(10), fn2(11), fn3(12));
 
 // Test: Deep closure nesting with multiple captures
-fn outer(a) {
-    return fn(b) {
-        return fn(c) {
-            return fn(d) {
+function outer(a) {
+    return function(b) {
+        return function(c) {
+            return function(d) {
                 return a + b + c + d;
             };
         };
@@ -131,9 +133,9 @@ fn outer(a) {
 println("Nested sum:", outer(1)(2)(3)(4)); // Nested sum: 10
 
 // Test: Closure modifying captured object
-fn objectCapture() {
+function objectCapture() {
     let obj = { value: 100 };
-    return fn(delta) {
+    return function(delta) {
         obj.value = obj.value + delta;
         return obj.value;
     };
@@ -143,9 +145,7 @@ var modifier = objectCapture();
 println("Modified:", modifier(50)); // Modified: 150
 println("Modified:", modifier(-30)); // Modified: 120
 
-
-fn fact(n) {
+function fact(n) {
     if (n <= 1) return 1;
     return n * fact(n - 1);
 }
-

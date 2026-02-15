@@ -97,10 +97,11 @@ Value* DoCallCtor(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* 
  * @param envObj      The current environment object
  * @param fn          The function to call
  * @param argc        Number of arguments
+ * @param withThis    Whether to include 'this' in the arguments
  * 
  * @return Null value on success, or error value on failure
  */
-Value* DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int argc);
+Value* DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int argc, bool withThis);
 
 /**
  * Performs method call operation.
