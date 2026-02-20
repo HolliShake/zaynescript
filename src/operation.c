@@ -296,6 +296,10 @@ Value* DoCallCtor(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* 
     return result;
 }
 
+#define SaveEnv(env) (interp->Envs[interp->EnvC++] = env)
+#define PopEnv()     (interp->Envs[--interp->EnvC])
+
+
 Value* DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int argc, bool withThis) {
     if (fn == NULL) Panic("Attempted to call a null value\n");
 
@@ -354,6 +358,9 @@ Value* DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, 
     if (uf->ParentEnv == NULL) {
         Panic("User function '%s' has null ParentEnv\n", uf->Name != NULL ? uf->Name : "<anonymous>");
     }
+
+    // Save current env
+    SaveEnv(envObj);
     
     Run(
         interp, 
@@ -361,6 +368,10 @@ Value* DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, 
         rootEnvObj, 
         NewEnvironmentValue(interp, CreateEnvironment(uf->ParentEnv, uf->LocalC))
     );
+
+    // Restore env
+    PopEnv();
+
     return interp->Null;
 }
 
@@ -802,13 +813,15 @@ Value* DoXor(Interpreter* interp, Value* lhs, Value* rhs) {
 
 Value* DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int offset, bool closure) {
     // For closure, clone the function
-    Value* fn = NewUserFunctionValue(interp, UserFunctionClone(CoerceToUserFunction(interp->Functions[offset])));
+    Value* fn = closure 
+        ? NewUserFunctionValue(interp, UserFunctionClone(CoerceToUserFunction(interp->Functions[offset])))
+        : interp->Functions[offset];
 
     UserFunction* uf     = CoerceToUserFunction(fn);
     Environment* rootEnv = CoerceToEnvironment(rootEnvObj);
     Environment* loclEnv = CoerceToEnvironment(envObj);
 
-    if (uf->ParentEnv == NULL) uf->ParentEnv = envObj;
+    uf->ParentEnv = envObj;
 
     for (int i = 0; i < uf->CaptureC; i++) {
         CaptureMeta capture = uf->CaptureMetas[i];

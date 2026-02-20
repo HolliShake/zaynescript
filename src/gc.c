@@ -244,6 +244,15 @@ static void _MarkStack(Interpreter* interpreter) {
     }
 }
 
+static void _MarkEnvs(Interpreter* interpreter) {
+    for (int i = 0; i < interpreter->EnvC; i++) {
+        Value* envObj = interpreter->Envs[i];
+        if (envObj != NULL) {
+            Mark(envObj);
+        }
+    }
+}
+
 static void _Sweep(Interpreter* interpreter) {
     Value** current = &interpreter->GcRoot;
     while (*current != NULL) {
@@ -267,6 +276,7 @@ void GarbageCollect(Interpreter* interpreter) {
     _MarkConstants(interpreter);
     _MarkFunctions(interpreter);
     _MarkStack(interpreter);
+    _MarkEnvs(interpreter);
     _Sweep(interpreter);
     interpreter->Allocated = 0;
 }

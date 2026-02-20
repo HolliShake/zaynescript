@@ -178,6 +178,9 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
                 ip += 4;
                 break;
             }
+            case OP_NOT: _Append(&result, "OP_NOT\n"); break;
+            case OP_POS: _Append(&result, "OP_POS\n"); break;
+            case OP_NEG: _Append(&result, "OP_NEG\n"); break;
             case OP_MUL: _Append(&result, "OP_MUL\n"); break;
             case OP_DIV: _Append(&result, "OP_DIV\n"); break;
             case OP_MOD: _Append(&result, "OP_MOD\n"); break;
@@ -250,12 +253,6 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
             case OP_POP_JUMP_IF_FALSE: {
                 int offset = _ReadOffset(uf->Codes, ip);
                 _AppendFmt(&result, "OP_POP_JUMP_IF_FALSE %d\n", offset);
-                ip += 4;
-                break;
-            }
-            case OP_POP_JUMP_IF_TRUE: {
-                int offset = _ReadOffset(uf->Codes, ip);
-                _AppendFmt(&result, "OP_POP_JUMP_IF_TRUE %d\n", offset);
                 ip += 4;
                 break;
             }

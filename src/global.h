@@ -660,6 +660,8 @@ struct interpreter_struct {
     int      FunctionC; /**< Count of functions */
     Value*   Stacks[STACK_SIZE]; /**< Execution stack */
     int      StackC;    /**< Stack pointer/count */
+    Value*   Envs[STACK_SIZE];    /**< Environment stack for variable scopes */
+    int      EnvC;     /**< Environment stack pointer */
     int      ExceptionHandlerStacks[STACK_SIZE]; /**< Stack for exception handlers */
     int      ExceptionHandlerStackC; /**< Exception handler stack pointer */
 };

@@ -238,6 +238,7 @@ static void _Identifier(Compiler* compiler, UserFunction* uf, Scope* scope, Stri
 
     if (ScopeInside(scope, SCOPE_FUNCTION) && !ScopeIsLocalToFn(scope, name)) {
         int captureOffset = 0;
+        printf(">> CAPTURE: '%s'\n", name);
         if (!ScopeHasCapture(scope, name)) {
             captureOffset = UserFunctionAddCapture(
                 uf, 
@@ -279,6 +280,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
     int offset = 0;
     switch (node->Type) {
         case AST_NAME: {
+            printf(">> NAME: '%s'\n", node->Value);d
             _Identifier(compiler, uf, scope, node->Value, node->Position);
             break;
         }
