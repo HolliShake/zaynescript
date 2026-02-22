@@ -41,9 +41,26 @@ static void _DupTop(Interpreter* interp) {
     _Push(_Peek());
 }
 
-extern void Run(Interpreter* interp, Value* fnValue, Value* rootEnvObj, Value* envObj);
+extern void Run(Interpreter* interp, Value* fnValue);
 
 extern CoreMapper _CoreModuleMappers[];
+
+void SaveRootEnv(Interpreter* interp, Value* env) {
+    interp->Envs[interp->EnvC++] = interp->CallEnv;
+    interp->RootEnv = env;
+    interp->CallEnv = env;
+}
+
+void SaveEnv(Interpreter* interp, Value* env) {
+    interp->Envs[interp->EnvC++] = interp->CallEnv;
+    interp->CallEnv = env;
+}
+
+void RestoreEnv(Interpreter* interp) {
+    Value* top = interp->Envs[interp->EnvC - 1];
+    interp->Envs[--interp->EnvC] = NULL;
+    interp->CallEnv = top;
+}
 
 bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
     String key = ValueToString(method);
@@ -249,7 +266,7 @@ Value* DoGetIndex(Interpreter* interp, Value* obj, Value* index) {
     return GenericGetAttribute(interp, obj, index, false);
 }
 
-Value* DoCallCtor(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* clsValue, int argc) {
+Value* DoCallCtor(Interpreter* interp, Value* clsValue, int argc) {
     if (clsValue == NULL) Panic("Attempted to call constructor on a null value\n");
 
     if (!ValueIsClass(clsValue)) {
@@ -281,8 +298,6 @@ Value* DoCallCtor(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* 
 
     Value* result = DoCall(
         interp, 
-        rootEnvObj, 
-        envObj, 
         constructor, 
         ++argc,
         true
@@ -296,11 +311,35 @@ Value* DoCallCtor(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* 
     return result;
 }
 
-#define SaveEnv(env) (interp->Envs[interp->EnvC++] = env)
-#define PopEnv()     (interp->Envs[--interp->EnvC])
+Value* DoCallMethod(Interpreter* interp, Value* obj, Value* methodName, int argc) {
+    bool withThis = IsMethodOfObject(interp, obj, methodName);
+    if (withThis) {
+        ++argc; // add 1 for 'this'
+    } else {
+        _Popp(); // pop 'this'
+    }
+    
+    Value* method = GenericGetAttribute(interp, obj, methodName, true);
+    
+    if (ValueIsNull(method)) {
+        _PopN(argc); 
+        String method = ValueToString(methodName);
+        String errMsg = FormatString("method '%s' not found on object of type %s", method, ValueTypeOf(obj));
+        Value* errVal = NewErrorValue(interp, errMsg);
+        free(method);
+        free(errMsg);
+        return errVal;
+    }
 
+    return DoCall(
+        interp, 
+        method, 
+        argc,
+        withThis
+    );
+}
 
-Value* DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int argc, bool withThis) {
+Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
     if (fn == NULL) Panic("Attempted to call a null value\n");
 
     if (!ValueIsCallable(fn)) {
@@ -355,54 +394,18 @@ Value* DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, 
         return errVal;
     }
 
-    if (uf->ParentEnv == NULL) {
-        Panic("User function '%s' has null ParentEnv\n", uf->Name != NULL ? uf->Name : "<anonymous>");
+    if (uf->Scope == NULL) {
+        Panic("User function '%s' has null Scope\n", uf->Name != NULL ? uf->Name : "<anonymous>");
     }
 
-    // Save current env
-    SaveEnv(envObj);
-    
-    Run(
-        interp, 
-        fn, 
-        rootEnvObj, 
-        NewEnvironmentValue(interp, CreateEnvironment(uf->ParentEnv, uf->LocalC))
-    );
-
-    // Restore env
-    PopEnv();
+    Value* env = NULL, *saveEnv = NULL;
+    env = NewEnvironmentValue(interp, CreateEnvironment(uf->Scope, uf->LocalC)), saveEnv = interp->RootEnv;
+    SaveEnv(interp, env);
+    Run(interp, fn);
+    RestoreEnv(interp);
+    interp->RootEnv = saveEnv;
 
     return interp->Null;
-}
-
-Value* DoCallMethod(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* obj, Value* methodName, int argc) {
-    bool withThis = IsMethodOfObject(interp, obj, methodName);
-    if (withThis) {
-        ++argc; // add 1 for 'this'
-    } else {
-        _Popp(); // pop 'this'
-    }
-    
-    Value* method = GenericGetAttribute(interp, obj, methodName, true);
-    
-    if (ValueIsNull(method)) {
-        _PopN(argc); 
-        String method = ValueToString(methodName);
-        String errMsg = FormatString("method '%s' not found on object of type %s", method, ValueTypeOf(obj));
-        Value* errVal = NewErrorValue(interp, errMsg);
-        free(method);
-        free(errMsg);
-        return errVal;
-    }
-
-    return DoCall(
-        interp, 
-        rootEnvObj, 
-        envObj, 
-        method, 
-        argc,
-        withThis
-    );
 }
 
 Value* DoNot(Interpreter* interp, Value* val) {
@@ -811,17 +814,17 @@ Value* DoXor(Interpreter* interp, Value* lhs, Value* rhs) {
     return result;
 }
 
-Value* DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int offset, bool closure) {
+Value* DoLoadFunction(Interpreter* interp, int offset, bool closure) {
     // For closure, clone the function
     Value* fn = closure 
         ? NewUserFunctionValue(interp, UserFunctionClone(CoerceToUserFunction(interp->Functions[offset])))
         : interp->Functions[offset];
 
     UserFunction* uf     = CoerceToUserFunction(fn);
-    Environment* rootEnv = CoerceToEnvironment(rootEnvObj);
-    Environment* loclEnv = CoerceToEnvironment(envObj);
+    Environment* rootEnv = CoerceToEnvironment(interp->RootEnv);
+    Environment* loclEnv = CoerceToEnvironment(interp->CallEnv);
 
-    uf->ParentEnv = envObj;
+    uf->Scope = interp->CallEnv;
 
     for (int i = 0; i < uf->CaptureC; i++) {
         CaptureMeta capture = uf->CaptureMetas[i];

@@ -2,7 +2,7 @@
 
 UserFunction* CreateUserFunction(String name, int argc) {
     UserFunction* userFunction  = Allocate(sizeof(UserFunction));
-    userFunction->ParentEnv     = NULL;
+    userFunction->Scope         = NULL;
     userFunction->Name          = name;
     userFunction->Codes         = Allocate(sizeof(uint8_t) * 1);
     userFunction->Codes[0]      = 255;
@@ -20,7 +20,7 @@ UserFunction* UserFunctionClone(UserFunction* userFunction) {
         userFunction->Name != NULL ? AllocateString(userFunction->Name) : NULL,
         userFunction->Argc
     );
-    clone->ParentEnv   = userFunction->ParentEnv;
+    clone->Scope       = userFunction->Scope;
     clone->CodeC       = userFunction->CodeC;
     clone->Codes       = Reallocate(
         clone->Codes,

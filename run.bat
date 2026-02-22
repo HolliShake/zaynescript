@@ -26,6 +26,13 @@ if "%1"=="--compile" (
     ) else (
         echo Error: Failed to build zscript.exe
     )
+) else if "%1"=="--dbg" (
+    if exist zscript.exe (
+        gdb -ex run -ex bt --args zscript.exe --run %2
+    ) else (
+        echo Error: Failed to build zscript.exe
+        pause
+    )
 ) else (
     if exist zscript.exe (
         zscript.exe

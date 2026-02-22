@@ -9,6 +9,31 @@
 #define OPERATION_H
 
 /**
+ * @file operation.h
+ * @brief Declarations for core operations and utilities used by the interpreter.
+ * 
+ * This file contains function declarations for operations such as method lookup,
+ * attribute access, function calls, and other core behaviors of the language.
+ */
+void SaveRootEnv(Interpreter* interp, Value* env);
+
+/**
+ * @file operation.h
+ * @brief Declarations for core operations and utilities used by the interpreter.
+ * 
+ * This file contains function declarations for operations such as method lookup,
+ * attribute access, function calls, and other core behaviors of the language.
+ */
+void SaveEnv(Interpreter* interp, Value* envObj);
+
+/**
+ * Pops the current environment from the environment stack.
+ * 
+ * @param interp The interpreter instance
+ */
+void RestoreEnv(Interpreter* interp);
+
+/**
  * Checks if a method exists on an object.
  * Searches through arrays, objects, classes, and class instances
  * by checking their prototype chains.
@@ -78,30 +103,12 @@ Value* DoGetIndex(Interpreter* interp, Value* obj, Value* index);
  * If no constructor exists, expects 0 arguments.
  * 
  * @param interp      The interpreter instance
- * @param rootEnvObj  The root environment object
- * @param envObj      The current environment object
  * @param clsValue    The class to instantiate
  * @param argc        Number of arguments
  * 
  * @return Null value on success, or error value on failure
  */
-Value* DoCallCtor(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* clsValue, int argc);
-
-/**
- * Performs function call operation.
- * Handles both native functions and user-defined functions.
- * Validates argument count and creates appropriate environment for execution.
- * 
- * @param interp      The interpreter instance
- * @param rootEnvObj  The root environment object
- * @param envObj      The current environment object
- * @param fn          The function to call
- * @param argc        Number of arguments
- * @param withThis    Whether to include 'this' in the arguments
- * 
- * @return Null value on success, or error value on failure
- */
-Value* DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int argc, bool withThis);
+Value* DoCallCtor(Interpreter* interp, Value* clsValue, int argc);
 
 /**
  * Performs method call operation.
@@ -109,15 +116,27 @@ Value* DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, 
  * Automatically handles 'this' argument for method calls.
  * 
  * @param interp      The interpreter instance
- * @param rootEnvObj  The root environment object
- * @param envObj      The current environment object
  * @param obj         The object on which the method is called
  * @param methodName  The name of the method to call
  * @param argc        Number of arguments
  * 
  * @return Null value on success, or error value on failure
  */
-Value* DoCallMethod(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* obj, Value* methodName, int argc);
+Value* DoCallMethod(Interpreter* interp,  Value* obj, Value* methodName, int argc);
+
+/**
+ * Performs function call operation.
+ * Handles both native functions and user-defined functions.
+ * Validates argument count and creates appropriate environment for execution.
+ * 
+ * @param interp      The interpreter instance
+ * @param fn          The function to call
+ * @param argc        Number of arguments
+ * @param withThis    Whether to include 'this' in the arguments
+ * 
+ * @return Null value on success, or error value on failure
+ */
+Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
 
 /**
  * Performs logical NOT operation on a value.
@@ -376,13 +395,11 @@ Value* DoXor(Interpreter* interp, Value* lhs, Value* rhs);
  * Sets up captures from root and local environments.
  * 
  * @param interp     The interpreter instance
- * @param rootEnvObj The root environment object
- * @param envObj     The local environment object
  * @param offset     The offset of the function in the functions array
  * @param closure    Whether to create a closure (clone) of the function
  * 
  * @return The loaded function value
  */
-Value* DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int offset, bool closure);
+Value* DoLoadFunction(Interpreter* interp, int offset, bool closure);
 
 #endif

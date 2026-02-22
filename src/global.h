@@ -493,7 +493,7 @@ typedef struct environment_struct {
  * count, and closure captures for a function defined in the source language.
  */
 typedef struct user_function_struct {
-    Value*       ParentEnv;    /**< The environment where the function was defined */
+    Value*       Scope;        /**< The environment where the function was defined */
     String       Name;         /**< Function name (Nullable) */
     uint8_t*     Codes;        /**< Bytecode instructions */
     int          CodeC;        /**< Size of bytecode */
@@ -648,22 +648,24 @@ typedef struct module_function_struct {
  * and null. Also maintains exception handler stack for try-catch blocks.
  */
 struct interpreter_struct {
-    Value*   Array;     /**< Built-in Array class */
-    Value*   True;      /**< Singleton 'true' value */
-    Value*   False;     /**< Singleton 'false' value */
-    Value*   Null;      /**< Singleton 'null' value */
-    Value*   GcRoot;    /**< Root of the Garbage Collector object graph */
-    int      Allocated; /**< Total allocated bytes since last GC */
-    Value**  Constants; /**< Array of constant values */
-    int      ConstantC; /**< Count of constants */
-    Value**  Functions; /**< Array of function definitions */
-    int      FunctionC; /**< Count of functions */
-    Value*   Stacks[STACK_SIZE]; /**< Execution stack */
-    int      StackC;    /**< Stack pointer/count */
-    Value*   Envs[STACK_SIZE];    /**< Environment stack for variable scopes */
-    int      EnvC;     /**< Environment stack pointer */
-    int      ExceptionHandlerStacks[STACK_SIZE]; /**< Stack for exception handlers */
-    int      ExceptionHandlerStackC; /**< Exception handler stack pointer */
+    Value*   Array;                                  /**< Built-in Array class */
+    Value*   True;                                   /**< Singleton 'true' value */
+    Value*   False;                                  /**< Singleton 'false' value */
+    Value*   Null;                                   /**< Singleton 'null' value */
+    Value*   GcRoot;                                 /**< Root of the Garbage Collector object graph */
+    Value*   RootEnv;                                /**< Root environment of the current program */
+    Value*   CallEnv;                                /**< Current execution environment */
+    int      Allocated;                              /**< Total allocated bytes since last GC */
+    Value**  Constants;                              /**< Array of constant values */
+    int      ConstantC;                              /**< Count of constants */
+    Value**  Functions;                              /**< Array of function definitions */
+    int      FunctionC;                              /**< Count of functions */
+    Value*   Stacks[STACK_SIZE];                     /**< Execution stack */
+    int      StackC;                                 /**< Stack pointer/count */
+    Value*   Envs[STACK_SIZE];                       /**< Environment stack for variable scopes */
+    int      EnvC;                                   /**< Environment stack pointer */
+    int      ExceptionHandlerStacks[STACK_SIZE];    /**< Stack for exception handlers */
+    int      ExceptionHandlerStackC;                /**< Exception handler stack pointer */
 };
 
 /**

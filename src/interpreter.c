@@ -4,6 +4,8 @@ Interpreter* CreateInterpreter() {
     Interpreter* interpreter                = Allocate(sizeof(Interpreter));
     interpreter->Allocated                  = 0;
     interpreter->GcRoot                     = NULL;
+    interpreter->RootEnv                    = NULL;
+    interpreter->CallEnv                    = NULL;
     interpreter->Array                      = CreateArrayClass(interpreter);
     interpreter->True                       = NewBoolValue(interpreter, 1);
     interpreter->False                      = NewBoolValue(interpreter, 0);
@@ -16,6 +18,8 @@ Interpreter* CreateInterpreter() {
     interpreter->Functions[0]               = NULL;
     // interpreter->Stacks[STACK_SIZE];
     interpreter->StackC                     = 0;
+    // interpreter->Envs[STACK_SIZE];
+    interpreter->EnvC                       = 0;
     // interpreter->ExceptionHandlerStacks[STACK_SIZE];
     interpreter->ExceptionHandlerStackC     = 0;
     return interpreter;
@@ -90,6 +94,8 @@ Interpreter* CreateInterpreter() {
     InterpreterPanic(ValueToString(errorValue)); \
     break; } \
 
+int TOP_ENV = -1;
+
 static int _ReadInt32(uint8_t* codes, int alignStart) {
     int offset = 0;
     offset |= codes[alignStart + 0] << 24;
@@ -135,7 +141,7 @@ static int _GetArg2(Interpreter* interp, Value* obj, Value* methodName)  {
     return _GetArgc(method);
 }
 
-void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* envObj) {
+void Run(Interpreter* interpreter, Value* fnValue) {
     UserFunction* uf = CoerceToUserFunction(fnValue);
     uint8_t opcode   = 0;
     Value* lhs       = NULL;
@@ -165,8 +171,6 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
 
         if (interpreter->Allocated >= GC_THRESHOLD) {
             Mark(fnValue);
-            Mark(rootEnvObj);
-            Mark(envObj);
             GarbageCollect(interpreter);
         }
 
@@ -197,7 +201,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             }
             case OP_LOAD_NAME: {
                 offset = _ReadInt32(uf->Codes, ip);
-                val    = GetVar(rootEnvObj, offset);
+                val    = GetVar(interpreter->RootEnv, offset);
                 if (val == NULL)
                     HandleError(
                         "variable is referenced before initialization"
@@ -208,7 +212,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             }
             case OP_LOAD_LOCAL: {
                 offset = _ReadInt32(uf->Codes, ip);
-                val    = GetVar(envObj, offset);
+                val    = GetVar(interpreter->CallEnv, offset);
                 if (val == NULL)
                     HandleError(
                         "variable is referenced before initialization"
@@ -363,8 +367,6 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                 offset = _ReadInt32(uf->Codes, ip);
                 res    = DoLoadFunction(
                     interpreter, 
-                    rootEnvObj, 
-                    envObj, 
                     offset, 
                     (opcode == OP_LOAD_FUNCTION_CLOSURE)
                 );
@@ -376,7 +378,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                 argc = _ReadInt32(uf->Codes, ip);
                 Forward(4);
                 cls  = Popp();
-                res  = DoCallCtor(interpreter, rootEnvObj, envObj, cls, argc);
+                res  = DoCallCtor(interpreter, cls, argc);
                 if (ValueIsError(res)) RaiseError(res);
                 break;
             }
@@ -384,7 +386,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                 argc = _ReadInt32(uf->Codes, ip);
                 Forward(4);
                 obj  = Popp();
-                res  = DoCall(interpreter, rootEnvObj, envObj, obj, argc, false);
+                res  = DoCall(interpreter, obj, argc, false);
                 if (ValueIsError(res)) RaiseError(res);
                 break;
             }
@@ -393,7 +395,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                 Forward(4);
                 key  = Popp(); // method
                 obj  = Popp(); // 'this' object
-                res  = DoCallMethod(interpreter, rootEnvObj, envObj, obj, key, argc);
+                res  = DoCallMethod(interpreter, obj, key, argc);
                 if (ValueIsError(res)) RaiseError(res);
                 break;
             }
@@ -586,13 +588,13 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             }
             case OP_STORE_NAME: {
                 offset = _ReadInt32(uf->Codes, ip);
-                SetVar(rootEnvObj, offset, Popp());
+                SetVar(interpreter->RootEnv, offset, Popp());
                 Forward(4);
                 break;
             }
             case OP_STORE_LOCAL: {
                 offset = _ReadInt32(uf->Codes, ip);
-                SetVar(envObj, offset, Popp());
+                SetVar(interpreter->CallEnv, offset, Popp());
                 Forward(4);
                 break;
             }
@@ -712,9 +714,12 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
 
 void _RunProgram(Interpreter* interpreter, Value* fnValue) {
     UserFunction* uf = CoerceToUserFunction(fnValue);
-    Environment* env = CreateEnvironment(NULL, uf->LocalC);
-    Value* envObj    = NewEnvironmentValue(interpreter, env);
-    Run(interpreter, fnValue, envObj, envObj);
+    Value* env = NULL, *saveEnv = NULL;
+    env = saveEnv = NewEnvironmentValue(interpreter, CreateEnvironment(NULL, uf->LocalC));
+    SaveRootEnv(interpreter, env);
+    Run(interpreter, fnValue);
+    RestoreEnv(interpreter);
+    interpreter->RootEnv = saveEnv;
     if (interpreter->StackC != 1) {
         InterpreterPanic(
             "internal error: stack not cleaned up after function '%s' execution, expected 1 value on stack but got %d values", 

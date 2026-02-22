@@ -202,7 +202,7 @@ void Mark(Value* value) {
         case VLT_USER_FUNCTION: {
             UserFunction* uf = CoerceToUserFunction(value);
             if (uf != NULL) {
-                Mark(uf->ParentEnv);
+                Mark(uf->Scope);
                 for (int i = 0; i < uf->CaptureC; i++) {
                     EnvCell* cell = uf->Captures[i];
                     if (cell != NULL && cell->Value != NULL) {
@@ -273,6 +273,8 @@ void GarbageCollect(Interpreter* interpreter) {
     Mark(interpreter->True);
     Mark(interpreter->False);
     Mark(interpreter->Null);
+    Mark(interpreter->RootEnv);
+    Mark(interpreter->CallEnv);
     _MarkConstants(interpreter);
     _MarkFunctions(interpreter);
     _MarkStack(interpreter);
