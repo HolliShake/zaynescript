@@ -6,6 +6,8 @@
  */
 
 #include "./global.h"
+#include "./environment.h"
+#include "./function.h"
 
 #ifndef GC_H
 #define GC_H

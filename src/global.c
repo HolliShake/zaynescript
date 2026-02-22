@@ -129,7 +129,39 @@ double CoerceToNum(Value* value) {
     }
 }
 
+bool CoerceToBool(Value* value) {
+    switch (value->Type) {
+        case VLT_ERROR:
+            return false;
+        case VLT_INT:
+            return value->Value.I32 != 0;
+        case VLT_NUM:
+            return value->Value.Num != 0.0;
+        case VLT_STR:
+            return strlen(value->Value.Opaque) > 0;
+        case VLT_BOOL:
+            return !!(value->Value.I32);
+        case VLT_NULL:
+            return false;
+        case VLT_USER_FUNCTION:
+        case VLT_NATV_FUNCTION:
+        case VLT_ENVIRONMENT:
+            return true;
+        case VLT_ARRAY:
+            return (CoerceToArray(value)->Count > 0);
+        case VLT_OBJECT:
+            return (CoerceToHashMap(value)->Count > 0);
+        case VLT_CLASS:
+        case VLT_CLASS_INSTANCE:
+            return true;
+        default:
+            printf("CoerceToBool: Unknown value type: %d\n", value->Type);
+            return false;
+    }
+}
+
 Environment* CoerceToEnvironment(Value* value) {
+    if (value == NULL) return NULL;
     if (value->Type == VLT_ENVIRONMENT) {
         return (Environment*) value->Value.Opaque;
     }
@@ -137,6 +169,7 @@ Environment* CoerceToEnvironment(Value* value) {
 }
 
 HashMap* CoerceToHashMap(Value* value) {
+    if (value == NULL) return NULL;
     if (value->Type == VLT_OBJECT) {
         return (HashMap*) value->Value.Opaque;
     }
@@ -144,6 +177,7 @@ HashMap* CoerceToHashMap(Value* value) {
 }
 
 Array* CoerceToArray(Value* value) {
+    if (value == NULL) return NULL;
     if (value->Type == VLT_ARRAY) {
         return (Array*) value->Value.Opaque;
     }
@@ -151,27 +185,31 @@ Array* CoerceToArray(Value* value) {
 }
 
 UserFunction* CoerceToUserFunction(Value* value) {
+    if (value == NULL) return NULL;
     if (value->Type == VLT_USER_FUNCTION) {
         return (UserFunction*) value->Value.Opaque;
     }
     Panic("Value is not a UserFunction");
 }
 
-NativeFunctionMeta* CoerceToNativeFunctionMeta(Value* value) {
+NativeFunction* CoerceToNativeFunctionMeta(Value* value) {
+    if (value == NULL) return NULL;
     if (value->Type == VLT_NATV_FUNCTION) {
-        return (NativeFunctionMeta*) value->Value.Opaque;
+        return (NativeFunction*) value->Value.Opaque;
     }
-    Panic("Value is not a NativeFunctionMeta");
+    Panic("Value is not a NativeFunction");
 }
 
-UserClass* CoerceToUserClass(Value* value) {
+Class* CoerceToUserClass(Value* value) {
+    if (value == NULL) return NULL;
     if (value->Type == VLT_CLASS) {
-        return (UserClass*) value->Value.Opaque;
+        return (Class*) value->Value.Opaque;
     }
-    Panic("Value is not a UserClass");
+    Panic("Value is not a Class");
 }
 
 ClassInstance* CoerceToClassInstance(Value* value) {
+    if (value == NULL) return NULL;
     if (value->Type == VLT_CLASS_INSTANCE) {
         return (ClassInstance*) value->Value.Opaque;
     }

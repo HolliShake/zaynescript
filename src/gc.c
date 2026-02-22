@@ -60,7 +60,7 @@ static void _Free(Value* value) {
             }
             break;
         case VLT_CLASS: {
-            UserClass* classObj = CoerceToUserClass(value);
+            Class* classObj = CoerceToUserClass(value);
             if (classObj != NULL) {
                 if (classObj->StaticMembers != NULL) {
                     free(classObj->StaticMembers->Buckets);
@@ -93,41 +93,20 @@ static void _Free(Value* value) {
         }
         case VLT_ENVIRONMENT: {
             Environment* env = CoerceToEnvironment(value);
-            if (env != NULL) {
-                env->Parent = NULL;
-                for (int i = 0; i < env->LocalC; i++) {
-                    if (env->Locals[i] != NULL && !(env->Locals[i]->IsCaptured)) {
-                        // Do not free cells that are captured by closures
-                        env->Locals[i]->Value = NULL;
-                        free(env->Locals[i]);
-                    }
-                }
-                free(env);
-                value->Value.Opaque = NULL;
-            }
+            FreeEnvironment(env);
+            value->Value.Opaque = NULL;
             break;
         }
         case VLT_USER_FUNCTION: {
             UserFunction* uf = CoerceToUserFunction(value);
-            if (uf != NULL) {
-                if (uf->Codes != NULL) {
-                    free(uf->Codes);
-                    uf->Codes = NULL;
-                }
-                for (int i = 0; i < uf->CaptureC; i++) {
-                    // Captured environment cells are freed by their original environment
-                    EnvCell* cell = uf->Captures[i];
-                    if (cell != NULL) {
-                        cell->Value = NULL;
-                        free(cell);
-                    }
-                }
-                free(uf->CaptureMetas);
-                free(uf->Captures);
-                //NOTE: memory leak (UserFunction Name is allocated but not freed here)
-                free(uf);
-                value->Value.Opaque = NULL;
-            }
+            FreeUserFunction(uf);
+            value->Value.Opaque = NULL;
+            break;
+        }
+        case VLT_NATV_FUNCTION: {
+            NativeFunction* nf = CoerceToNativeFunctionMeta(value);
+            FreeNativeFunction(nf);
+            value->Value.Opaque = NULL;
             break;
         }
         default:
@@ -165,7 +144,7 @@ void Mark(Value* value) {
             break;
         }
         case VLT_CLASS: {
-            UserClass* classObj = CoerceToUserClass(value);
+            Class* classObj = CoerceToUserClass(value);
             if (classObj != NULL) {
                 Mark(classObj->Base);
                 HashMap* staticMembers   = classObj->StaticMembers;
@@ -223,7 +202,7 @@ void Mark(Value* value) {
         case VLT_USER_FUNCTION: {
             UserFunction* uf = CoerceToUserFunction(value);
             if (uf != NULL) {
-                Mark(uf->ParentEnv);
+                Mark(uf->Scope);
                 for (int i = 0; i < uf->CaptureC; i++) {
                     EnvCell* cell = uf->Captures[i];
                     if (cell != NULL && cell->Value != NULL) {
@@ -265,6 +244,15 @@ static void _MarkStack(Interpreter* interpreter) {
     }
 }
 
+static void _MarkEnvs(Interpreter* interpreter) {
+    for (int i = 0; i < interpreter->EnvC; i++) {
+        Value* envObj = interpreter->Envs[i];
+        if (envObj != NULL) {
+            Mark(envObj);
+        }
+    }
+}
+
 static void _Sweep(Interpreter* interpreter) {
     Value** current = &interpreter->GcRoot;
     while (*current != NULL) {
@@ -285,9 +273,12 @@ void GarbageCollect(Interpreter* interpreter) {
     Mark(interpreter->True);
     Mark(interpreter->False);
     Mark(interpreter->Null);
+    Mark(interpreter->RootEnv);
+    Mark(interpreter->CallEnv);
     _MarkConstants(interpreter);
     _MarkFunctions(interpreter);
     _MarkStack(interpreter);
+    _MarkEnvs(interpreter);
     _Sweep(interpreter);
     interpreter->Allocated = 0;
 }

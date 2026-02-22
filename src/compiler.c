@@ -1,10 +1,9 @@
 #include "./compiler.h"
 
 #define PushArray(type, array, count, val, defaultValue) do { \
-    (array)[(count)] = val; \
-    count++; \
+    (array)[count++] = val; \
     (array) = Reallocate((array), sizeof(type) * ((count) + 1)); \
-    (array)[(count)] = (defaultValue); \
+    (array)[count] = (defaultValue); \
 } while(0)
 
 #define GetOffset() (compiler->Interpreter->ConstantC)
@@ -47,61 +46,103 @@ static int _SaveFunction(Compiler* compiler, Value* fn) {
 
 static int _SaveInt(Compiler* compiler, int val) {
     int offset = GetOffset();
+
+    for (int i = 0; i < offset; i++) {
+        Value* constantRaw = compiler->Interpreter->Constants[i];
+        if (ValueIsInt(constantRaw) && CoerceToI32(constantRaw) == val) {
+            return i;
+        }
+    }
+
+    Value* newValue = NewIntValue(compiler->Interpreter, val);
+
     PushArray(
         Value*,
         compiler->Interpreter->Constants, 
         compiler->Interpreter->ConstantC, 
-        NewIntValue(compiler->Interpreter, val), 
+        newValue, 
         NULL
     );
+
     return offset;
 }
 
 static int _SaveNum(Compiler* compiler, double val) {
     int offset = GetOffset();
+
+    for (int i = 0; i < offset; i++) {
+        Value* constantRaw = compiler->Interpreter->Constants[i];
+        if (ValueIsNum(constantRaw) && CoerceToNum(constantRaw) == val) {
+            return i;
+        }
+    }
+
+    Value* newValue = NewNumValue(compiler->Interpreter, val);
+
     PushArray(
         Value*,
         compiler->Interpreter->Constants, 
         compiler->Interpreter->ConstantC, 
-        NewNumValue(compiler->Interpreter, val), 
+        newValue, 
         NULL
     );
+
     return offset;
 }
 
 static int _SaveStr(Compiler* compiler, String val) {
     int offset = GetOffset();
+    for (int i = 0; i < offset; i++) {
+        Value* constantRaw = compiler->Interpreter->Constants[i];
+        if (!ValueIsStr(constantRaw)) {
+            continue;
+        }
+        String constantStr = ValueToString(constantRaw);
+        bool isEqual = strcmp(constantStr, val) == 0;
+        free(constantStr);
+        if (isEqual) {
+            return i;
+        }
+    }
+
+    Value* newValue = NewStrValue(compiler->Interpreter, val);
+
     PushArray(
         Value*,
         compiler->Interpreter->Constants, 
         compiler->Interpreter->ConstantC, 
-        NewStrValue(compiler->Interpreter, val), 
+        newValue, 
         NULL
     );
+
     return offset;
 }
 
-static int _GetConstant(Compiler* compiler, String str) {
-    // FLG_NOTFOUND if not found
-    for (int i = 0; i < compiler->Interpreter->ConstantC; i++) {
+static int _SaveConstantValue(Compiler* compiler, Value* val) {
+    int offset = GetOffset();
+    
+    // Search if the constant already exists
+    for (int i = 0; i < offset; i++) {
         Value* constant = compiler->Interpreter->Constants[i];
-        if (constant == NULL) continue;
-        
-        String constantStr = ValueToString(constant);
-        if (constantStr != NULL && strcmp(constantStr, str) == 0) {
-            free(constantStr);
+        if (ValueIsEqual(constant, val)) {
             return i;
         }
-        if (constantStr != NULL) {
-            free(constantStr);
-        }
     }
-    return FLG_NOTFOUND;
+
+    PushArray(
+        Value*,
+        compiler->Interpreter->Constants, 
+        compiler->Interpreter->ConstantC, 
+        val, 
+        NULL
+    );
+    
+    return offset;
 }
 
 static Value* _GetConstantValue(Compiler* compiler, int offset) {
-    if (offset == FLG_NOTFOUND) {
-        return NULL;
+    if (offset < 0 || offset >= compiler->Interpreter->ConstantC) {
+        Panic("Constant offset out of bounds %d (max %d)\n", offset, compiler->Interpreter->ConstantC);
     }
     return compiler->Interpreter->Constants[offset];
 }
@@ -195,25 +236,13 @@ static void _Identifier(Compiler* compiler, UserFunction* uf, Scope* scope, Stri
 
     Symbol* symbol = ScopeGetSymbol(scope, name, true);
 
-    if (symbol->IsGlobal) {
-        // Global variable
-        _EmitArg(
-            compiler, 
-            uf, 
-            OP_LOAD_NAME,
-            symbol->Offset
-        );
-        return;
-    }
-
-    if (ScopeInside(scope, SCOPE_FUNCTION_CLOSURE) && !ScopeIsLocalToFnClosure(scope, name)) {
+    if (ScopeInside(scope, SCOPE_FUNCTION) && !ScopeIsLocalToFn(scope, name)) {
         int captureOffset = 0;
         if (!ScopeHasCapture(scope, name)) {
             captureOffset = UserFunctionAddCapture(
                 uf, 
-                symbol->IsGlobal, 
-                symbol->Offset, 
-                captureOffset
+                ScopeGetDepthOfSymbol(scope, name),
+                symbol->Offset
             );
             ScopeSetCapture(
                 scope, 
@@ -224,8 +253,7 @@ static void _Identifier(Compiler* compiler, UserFunction* uf, Scope* scope, Stri
                 captureOffset
             );
         } else {
-            Symbol* captureSymbol = ScopeGetCapture(scope, name, false);
-            captureOffset = captureSymbol->Offset;
+            captureOffset = ScopeGetCapture(scope, name, true)->Offset;
         }
 
         // Capture the variable
@@ -248,63 +276,33 @@ static void _Identifier(Compiler* compiler, UserFunction* uf, Scope* scope, Stri
 
 static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node, bool evalOnly) {
     Value* lhs = NULL, *rhs = NULL, *val = NULL;
+    int offset = 0;
     switch (node->Type) {
         case AST_NAME: {
             _Identifier(compiler, uf, scope, node->Value, node->Position);
             break;
         }
         case AST_INT: {
-            int offset = _GetConstant(compiler, node->Value);
-            if (offset == FLG_NOTFOUND) {
-                long long val = strtoll(node->Value, NULL, 10);
-                if (val > INT_MAX || val < INT_MIN) {
-                    offset = _SaveNum(compiler, (double)val);
-                } else {
-                    offset = _SaveInt(compiler, (int)val);
-                }
+            long long lld = strtoll(node->Value, NULL, 10);
+            if (lld > INT_MAX || lld < INT_MIN) {
+                offset = _SaveNum(compiler, (double)lld);
+            } else {
+                offset = _SaveInt(compiler, (int)lld);
             }
-
             val = _GetConstantValue(compiler, offset);
-
-            if (!evalOnly) _EmitConst(
-                compiler, 
-                uf, 
-                OP_LOAD_CONST, 
-                offset
-            );
+            if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
             break;
         }
         case AST_NUM: {
-            int offset = _GetConstant(compiler, node->Value);
-            if (offset == FLG_NOTFOUND) {
-                offset = _SaveNum(compiler, strtod(node->Value, NULL));
-            }
-
+            offset = _SaveNum(compiler, strtod(node->Value, NULL));
             val = _GetConstantValue(compiler, offset);
-
-            if (!evalOnly) _EmitConst(
-                compiler, 
-                uf, 
-                OP_LOAD_CONST, 
-                offset
-            );
+            if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
             break;
         } 
         case AST_STR: {
-            int offset = _GetConstant(compiler, node->Value);
-            if (offset == FLG_NOTFOUND) {
-                //NOTE: memory leak (AllocateString creates a char* string that is passed to _SaveStr, but _SaveStr converts it to Runes and doesn't free the original char* string)
-                offset = _SaveStr(compiler, AllocateString(node->Value));
-            }
-
+            offset = _SaveStr(compiler, node->Value);
             val = _GetConstantValue(compiler, offset);
-
-            if (!evalOnly) _EmitConst(
-                compiler, 
-                uf, 
-                OP_LOAD_CONST, 
-                offset
-            );
+            if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
             break;
         }
         case AST_BOOL: {
@@ -430,31 +428,49 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             break;
         }
         case AST_FUNCTION: {
-            Scope* fnScope = CreateScope(SCOPE_FUNCTION_CLOSURE, scope);
+            Scope* fnScope = CreateScope(SCOPE_FUNCTION, scope);
             Ast* params = node->B;
             Ast* body   = node->C;
 
             UserFunction* fn = CreateUserFunction(NULL, 0);
 
+            // First, count parameters and collect them
             int paramc = 0;
-            while (params != NULL) {
-                if (ScopeHasLocal(fnScope, params->Value)) {
+            Ast* paramCount = params;
+            while (paramCount != NULL) {
+                paramc++;
+                paramCount = paramCount->Next;
+            }
+
+            // Create array to store parameters in reverse
+            Ast** paramArray = Allocate(sizeof(Ast*) * paramc);
+            int i = 0;
+            Ast* param = params;
+            while (param != NULL) {
+                paramArray[i++] = param;
+                param = param->Next;
+            }
+
+            // Process parameters in reverse order
+            for (int j = paramc - 1; j >= 0; j--) {
+                Ast* currentParam = paramArray[j];
+                if (ScopeHasLocal(fnScope, currentParam->Value)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
-                        params->Position, 
+                        currentParam->Position, 
                         "duplicate parameter name"
                     );
                 }
 
                 int offset = UserFunctionEmitLocal(fn);
 
-                ScopeSetSymbol(fnScope, params->Value, false, true, false, offset);
+                ScopeSetSymbol(fnScope, currentParam->Value, false, true, false, offset);
 
                 _EmitArg(compiler, fn, OP_STORE_LOCAL, offset);
-                paramc++;
-                params = params->Next;
             }
+
+            free(paramArray);
 
             fn->Argc = paramc;
 
@@ -532,23 +548,12 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     Ast* att = objc->B;
 
                     // Count arguments first
-                    Ast* argCount = args;
-                    while (argCount != NULL) {
+                    Ast* arg = args;
+                    while (arg != NULL) {
                         argc++;
-                        argCount = argCount->Next;
+                        _Expression(compiler, uf, scope, arg);
+                        arg = arg->Next;
                     }
-
-                    // Emit arguments in reverse order
-                    Ast** argArray = Allocate(sizeof(Ast*) * argc);
-                    int i = 0;
-                    while (args != NULL) {
-                        argArray[i++] = args;
-                        args = args->Next;
-                    }
-                    for (int j = argc - 1; j >= 0; j--) {
-                        _Expression(compiler, uf, scope, argArray[j]);
-                    }
-                    free(argArray);
 
                     _Expression(compiler, uf, scope, obj); // must be in Stack
                     _Emit(compiler, uf, OP_DUPTOP); // duplicate for 'this'
@@ -563,24 +568,12 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 }
                 default: {
                     // Count arguments first
-                    Ast* argCount = args;
-                    while (argCount != NULL) {
+                    Ast* arg = args;
+                    while (arg != NULL) {
                         argc++;
-                        argCount = argCount->Next;
+                        _Expression(compiler, uf, scope, arg);
+                        arg = arg->Next;
                     }
-
-                    // Emit arguments in reverse order
-                    Ast** argArray = Allocate(sizeof(Ast*) * argc);
-                    int i = 0;
-                    while (args != NULL) {
-                        argArray[i++] = args;
-                        args = args->Next;
-                    }
-                    for (int j = argc - 1; j >= 0; j--) {
-                        _Expression(compiler, uf, scope, argArray[j]);
-                    }
-                    free(argArray);
-
                     _Expression(compiler, uf, scope, objc);
                     _EmitArg(compiler, uf, OP_CALL, argc);
                     break;
@@ -633,16 +626,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoMul(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoMul(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
@@ -655,23 +648,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoDiv(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_ZERO_DIV) {
+                val = DoDiv(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "division by zero"
-                    );
-                } else if (offset == FLG_INVALID_OPERATION) {
-                    ThrowError(
-                        compiler->Parser->Lexer->Path, 
-                        compiler->Parser->Lexer->Data, 
-                        node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
@@ -685,23 +671,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoMod(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_ZERO_DIV) {
+                val = DoMod(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "modulo by zero"
-                    );
-                } else if (offset == FLG_INVALID_OPERATION) {
-                    ThrowError(
-                        compiler->Parser->Lexer->Path, 
-                        compiler->Parser->Lexer->Data, 
-                        node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
@@ -715,20 +694,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _ExpressionMain(compiler, uf, scope, node->A, true);
                 rhs = _ExpressionMain(compiler, uf, scope, node->B, true);
-                int offset = DoAdd(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoAdd(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_ADD);
@@ -738,16 +716,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoSub(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoSub(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
@@ -761,16 +739,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoLShift(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoLShift(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
@@ -784,20 +762,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoRShift(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoRShift(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_RSHFT);
@@ -807,20 +784,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoLT(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoLT(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_LT);
@@ -830,20 +806,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoLTE(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoLTE(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_LTE);
@@ -853,20 +828,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoGT(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoGT(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_GT);
@@ -876,20 +850,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoGTE(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoGTE(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_GTE);
@@ -899,20 +872,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoEQ(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoEQ(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_EQ);
@@ -922,20 +894,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoNE(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoNE(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_NE);
@@ -945,21 +916,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoAnd(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoAnd(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_AND);
@@ -969,17 +938,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoOr(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoOr(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
@@ -993,21 +961,19 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);
                 rhs = _Expression(compiler, uf, scope, node->B);
-                int offset = DoXor(compiler->Interpreter, lhs, rhs, NULL);
-                if (offset == FLG_INVALID_OPERATION) {
+                val = DoXor(compiler->Interpreter, lhs, rhs);
+                if (ValueIsError(val)) {
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
                         node->Position, 
-                        "invalid operation"
+                        ValueToString(val)
                     );
                 }
-
-                val = _GetConstantValue(compiler, offset);
+                offset = _SaveConstantValue(compiler, val);
                 if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
                 break;
             }
-
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
             _Emit(compiler, uf, OP_XOR);
@@ -1068,52 +1034,40 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
                     "cannot reassign constant variable"
                 );
             }
-            if (symbol->IsGlobal) {
-                // Global variable
-                _EmitArg(
-                    compiler, 
-                    uf, 
-                    OP_STORE_NAME,
-                    symbol->Offset
-                );
-            } else {
-                if (ScopeInside(scope, SCOPE_FUNCTION_CLOSURE) && !ScopeIsLocalToFnClosure(scope, lhs->Value)) {
-                    int captureOffset = 0;
-                    if (!ScopeHasCapture(scope, lhs->Value)) {
-                        captureOffset = UserFunctionAddCapture(
-                            uf, 
-                            symbol->IsGlobal, 
-                            symbol->Offset, 
-                            captureOffset
-                        );
-                        ScopeSetCapture(
-                            scope, 
-                            lhs->Value, 
-                            false, 
-                            true, 
-                            false, 
-                            captureOffset
-                        );
-                    } else {
-                        Symbol* captureSymbol = ScopeGetCapture(scope, lhs->Value, false);
-                        captureOffset = captureSymbol->Offset;
-                    }
-
-                    // Capture the variable
-                    _EmitArg(
-                        compiler, 
+            if (ScopeInside(scope, SCOPE_FUNCTION) && !ScopeIsLocalToFn(scope, lhs->Value)) {
+                int captureOffset = 0;
+                if (!ScopeHasCapture(scope, lhs->Value)) {
+                    captureOffset = UserFunctionAddCapture(
                         uf, 
-                        OP_STORE_CAPTURE,
+                        ScopeGetDepthOfSymbol(scope, lhs->Value),
+                        symbol->Offset
+                    );
+                    ScopeSetCapture(
+                        scope, 
+                        lhs->Value, 
+                        false, 
+                        true, 
+                        false, 
                         captureOffset
                     );
                 } else {
-                    _EmitArg(
-                        compiler, 
-                        uf, 
-                        OP_STORE_LOCAL,
-                        symbol->Offset
-                    );
+                    captureOffset = ScopeGetCapture(scope, lhs->Value, true)->Offset;
                 }
+
+                // Capture the variable
+                _EmitArg(
+                    compiler, 
+                    uf, 
+                    OP_STORE_CAPTURE,
+                    captureOffset
+                );
+            } else {
+                _EmitArg(
+                    compiler, 
+                    uf, 
+                    OP_STORE_LOCAL,
+                    symbol->Offset
+                );
             }
             break;
         }
@@ -1197,6 +1151,7 @@ static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
             if (postfix) {
                 _Emit(compiler, uf, OP_ROT2);
             }
+
             if (!ScopeHasName(scope, lhs->Value)) {
                 ThrowError(
                     compiler->Parser->Lexer->Path, 
@@ -1205,7 +1160,9 @@ static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
                     "variable not found"
                 );
             }
+
             Symbol* symbol = ScopeGetSymbol(scope, lhs->Value, true);
+
             if (symbol->IsConstant) {
                 ThrowError(
                     compiler->Parser->Lexer->Path, 
@@ -1214,52 +1171,41 @@ static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
                     "cannot reassign constant variable"
                 );
             }
-            if (symbol->IsGlobal) {
-                // Global variable
-                _EmitArg(
-                    compiler, 
-                    uf, 
-                    OP_STORE_NAME,
-                    symbol->Offset
-                );
-            } else {
-                if (ScopeInside(scope, SCOPE_FUNCTION_CLOSURE) && !ScopeIsLocalToFnClosure(scope, lhs->Value)) {
-                    int captureOffset = 0;
-                    if (!ScopeHasCapture(scope, lhs->Value)) {
-                        captureOffset = UserFunctionAddCapture(
-                            uf, 
-                            symbol->IsGlobal, 
-                            symbol->Offset, 
-                            captureOffset
-                        );
-                        ScopeSetCapture(
-                            scope, 
-                            lhs->Value, 
-                            false, 
-                            true, 
-                            false, 
-                            captureOffset
-                        );
-                    } else {
-                        Symbol* captureSymbol = ScopeGetCapture(scope, lhs->Value, false);
-                        captureOffset = captureSymbol->Offset;
-                    }
 
-                    // Capture the variable
-                    _EmitArg(
-                        compiler, 
+            if (ScopeInside(scope, SCOPE_FUNCTION) && !ScopeIsLocalToFn(scope, lhs->Value)) {
+                int captureOffset = 0;
+                if (!ScopeHasCapture(scope, lhs->Value)) {
+                    captureOffset = UserFunctionAddCapture(
                         uf, 
-                        OP_STORE_CAPTURE,
+                        ScopeGetDepthOfSymbol(scope, lhs->Value),
+                        symbol->Offset
+                    );
+                    ScopeSetCapture(
+                        scope, 
+                        lhs->Value, 
+                        false, 
+                        true, 
+                        false, 
                         captureOffset
                     );
                 } else {
-                    _EmitArg(
-                        compiler, 
-                        uf, 
-                        OP_STORE_LOCAL,
-                        symbol->Offset
-                    );
+                    captureOffset = ScopeGetCapture(scope, lhs->Value, true)->Offset;
                 }
+
+                // Capture the variable
+                _EmitArg(
+                    compiler, 
+                    uf, 
+                    OP_STORE_CAPTURE,
+                    captureOffset
+                );
+            } else {
+                _EmitArg(
+                    compiler, 
+                    uf, 
+                    OP_STORE_LOCAL,
+                    symbol->Offset
+                );
             }
             break;
         }
@@ -1354,36 +1300,54 @@ static void _ClassDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope
 
                 UserFunction* fn = CreateUserFunction(AllocateString(fnName->Value), 0);
 
+                // First, count parameters
                 int paramc = 0;
+                Ast* paramCount = params;
+                while (paramCount != NULL) {
+                    paramc++;
+                    paramCount = paramCount->Next;
+                }
 
+                // Create array to store parameters in reverse
+                Ast** paramArray = Allocate(sizeof(Ast*) * paramc);
+                int i = 0;
+                Ast* param = params;
+                while (param != NULL) {
+                    paramArray[i++] = param;
+                    param = param->Next;
+                }
+
+                int add = 0;
                 if (!isStatic) {
                     // Emit 'this' as the first parameter
                     int offset = UserFunctionEmitLocal(fn);
                     ScopeSetSymbol(fnScope, KEY_THIS, false, true, false, offset);
                     _EmitArg(compiler, fn, OP_STORE_LOCAL, offset);
-                    paramc++;
+                    add++;
                 }
 
-                while (params != NULL) {
-                    if (ScopeHasLocal(fnScope, params->Value)) {
+                // Process parameters in reverse order
+                for (int j = paramc - 1; j >= 0; j--) {
+                    Ast* currentParam = paramArray[j];
+                    if (ScopeHasLocal(fnScope, currentParam->Value)) {
                         ThrowError(
                             compiler->Parser->Lexer->Path, 
                             compiler->Parser->Lexer->Data, 
-                            params->Position, 
+                            currentParam->Position, 
                             "duplicate parameter name"
                         );
                     }
 
                     int offset = UserFunctionEmitLocal(fn);
 
-                    ScopeSetSymbol(fnScope, params->Value, false, true, false, offset);
+                    ScopeSetSymbol(fnScope, currentParam->Value, false, true, false, offset);
 
                     _EmitArg(compiler, fn, OP_STORE_LOCAL, offset);
-                    paramc++;
-                    params = params->Next;
                 }
 
-                fn->Argc = paramc;
+                free(paramArray);
+
+                fn->Argc = paramc + add;
 
                 while (body != NULL) {
                     _Statement(compiler, fn, fnScope, body);
@@ -1592,6 +1556,7 @@ static void _VarDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope
         }
 
         int offset = UserFunctionEmitLocal(uf);
+        printf("%s := %d\n", declarations->Value, offset);
 
         _EmitArg(compiler, uf, OP_STORE_NAME, offset);
 
@@ -1611,7 +1576,7 @@ static void _VarDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope
 }
 
 static void _LetDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
-    if (!(ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_FUNCTION_CLOSURE) || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
+    if (!(ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
         ThrowError(
             compiler->Parser->Lexer->Path, 
             compiler->Parser->Lexer->Data, 
@@ -1645,7 +1610,7 @@ static void _LetDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope
 }
 
 static void _ConstDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
-    if (!(ScopeIs(scope, SCOPE_GLOBAL) || ScopeIs(scope, SCOPE_FUNCTION_CLOSURE) || ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
+    if (!(ScopeIs(scope, SCOPE_GLOBAL) || ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
         ThrowError(
             compiler->Parser->Lexer->Path, 
             compiler->Parser->Lexer->Data, 
@@ -1927,7 +1892,7 @@ static void _BreakStatement(Compiler* compiler, UserFunction* uf, Scope* scope, 
 }
 
 static void _ReturnStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
-    if (!ScopeInside(scope, SCOPE_FUNCTION) && !ScopeInside(scope, SCOPE_FUNCTION_CLOSURE)) {
+    if (!ScopeInside(scope, SCOPE_FUNCTION)) {
         ThrowError(
             compiler->Parser->Lexer->Path, 
             compiler->Parser->Lexer->Data, 
@@ -2074,6 +2039,10 @@ Value* Compile(Compiler* compiler) {
     Value* value = _Program(compiler, program);
     FreeAst(program);
     return value;
+}
+
+void FreeCompiler(Compiler* compiler) {
+    free(compiler);
 }
 
 #undef PushArray

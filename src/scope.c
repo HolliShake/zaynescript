@@ -125,29 +125,6 @@ bool ScopeIsLocalToFn(Scope* scope, String name) {
     return false;
 }
 
-bool ScopeIsLocalToFnClosure(Scope* scope, String name) {
-    Scope* current = scope;
-    while (current != NULL) {
-        if (HashMapContains(current->Symbols, name)) {
-            // Found the symbol, now check if we're inside a function scope
-            Scope* check = current;
-            while (check != NULL) {
-                if (check->Type == SCOPE_FUNCTION_CLOSURE) {
-                    return true;
-                }
-                check = check->Parent;
-            }
-            return false;
-        }
-        if (current->Type == SCOPE_FUNCTION_CLOSURE) {
-            // We've reached a function boundary without finding the symbol
-            return false;
-        }
-        current = current->Parent;
-    }
-    return false;
-}
-
 void ScopeSetSymbol(Scope* scope, String name, bool isGlobal, bool isLocalToFn, bool isConstant, int offset) {
     String key = AllocateString(name);
     Symbol* symbol = CreateSymbol(key, isGlobal, isLocalToFn, isConstant, offset);
@@ -167,13 +144,29 @@ Symbol* ScopeGetSymbol(Scope* scope, String name, bool recurse) {
     return NULL;
 }
 
+int ScopeGetDepthOfSymbol(Scope* scope, String name) {
+    int depth = 0;
+    while (scope != NULL) {
+        Symbol* currentSymbol = (Symbol*) HashMapGet(scope->Symbols, name);
+        if (currentSymbol != NULL) {
+            return depth;
+        }
+        if (scope->Type == SCOPE_FUNCTION || scope->Type == SCOPE_GLOBAL) {
+            depth++;
+        }
+        scope = scope->Parent;
+    }
+    Panic("Not found!");
+    return -1; // Not found
+}
+
 bool ScopeHasCapture(Scope* scope, String name) {
     while (scope != NULL) {
         Symbol* symbol = (Symbol*) HashMapGet(scope->Captures, name);
         if (symbol != NULL) {
             return true;
         }
-        if (scope->Type == SCOPE_FUNCTION_CLOSURE) {
+        if (scope->Type == SCOPE_FUNCTION) {
             return false;
         }
         scope = scope->Parent;
@@ -182,7 +175,7 @@ bool ScopeHasCapture(Scope* scope, String name) {
 }
 
 void ScopeSetCapture(Scope* scope, String name, bool isGlobal, bool isLocalToFn, bool isConstant, int offset) {
-    Scope* closureScope = ScopeGetFirst(scope, SCOPE_FUNCTION_CLOSURE);
+    Scope* closureScope = ScopeGetFirst(scope, SCOPE_FUNCTION);
     if (closureScope == NULL) {
         return;
     }
@@ -197,7 +190,7 @@ Symbol* ScopeGetCapture(Scope* scope, String name, bool recurse) {
         if (symbol != NULL) {
             return symbol;
         }
-        if (scope->Type == SCOPE_FUNCTION_CLOSURE) {
+        if (scope->Type == SCOPE_FUNCTION) {
             return NULL;
         }
         if (!recurse) {

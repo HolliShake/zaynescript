@@ -127,18 +127,6 @@ bool ScopeHasName(Scope* scope, String name);
 bool ScopeIsLocalToGlobal(Scope *scope, String name);
 
 /**
- * @brief Checks if a variable is local to a function
- * 
- * Determines whether a variable with the given name is defined in the current
- * function scope (not captured from an outer function).
- * 
- * @param scope Pointer to the scope to check
- * @param name The name of the variable to check for
- * @return true if the variable is local to the current function, false otherwise
- */
-bool ScopeIsLocalToFn(Scope* scope, String name);
-
-/**
  * @brief Checks if a variable is local to a function closure
  * 
  * Determines whether a variable with the given name is captured from an outer
@@ -148,7 +136,7 @@ bool ScopeIsLocalToFn(Scope* scope, String name);
  * @param name The name of the variable to check for
  * @return true if the variable is captured in a closure, false otherwise
  */
-bool ScopeIsLocalToFnClosure(Scope* scope, String name);
+bool ScopeIsLocalToFn(Scope* scope, String name);
 
 /**
  * @brief Sets a symbol in a scope
@@ -177,6 +165,21 @@ void ScopeSetSymbol(Scope* scope, String name, bool isGlobal, bool isLocalToFn, 
  * @return Pointer to the symbol if found, NULL otherwise
  */
 Symbol* ScopeGetSymbol(Scope* scope, String name, bool recurse);
+
+/**
+ * @brief Gets the depth of a symbol in the scope chain
+ * 
+ * Traverses up the scope chain to find how many levels deep the specified symbol
+ * is located. The depth is counted from the starting scope (depth 0) upwards through
+ * parent scopes. This is useful for determining variable shadowing levels or closure
+ * capture distances.
+ * 
+ * @param scope Pointer to the scope to start searching from
+ * @param name The name of the symbol to search for
+ * @return The depth level where the symbol is found (0 = current scope, 1 = parent, etc.),
+ *         or -1 if the symbol is not found in any parent scope
+ */
+int ScopeGetDepthOfSymbol(Scope* scope, String name);
 
 /**
  * @brief Checks if a scope has a captured variable with a given name

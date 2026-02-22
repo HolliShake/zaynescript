@@ -198,16 +198,16 @@ static Value* _DateToString(Interpreter* interpreter, int argc, Value** argument
 
 static ModuleFunction _DateClassMethods[] = {
     // Date class
-    { .Name = CONSTRUCTOR_NAME, .Argc = VARARG, .CFunction = (NativeFunction) _DateInit,  .Value = NULL },
-    { .Name = "getFullYear",    .Argc = 1,      .CFunction = (NativeFunction) _DateGetFullYear, .Value = NULL },
-    { .Name = "getMonth",       .Argc = 1,      .CFunction = (NativeFunction) _DateGetMonth,    .Value = NULL },
-    { .Name = "getDate",        .Argc = 1,      .CFunction = (NativeFunction) _DateGetDate,     .Value = NULL },
-    { .Name = "getDay",         .Argc = 1,      .CFunction = (NativeFunction) _DateGetDay,      .Value = NULL },
-    { .Name = "getHours",       .Argc = 1,      .CFunction = (NativeFunction) _DateGetHours,    .Value = NULL },
-    { .Name = "getMinutes",     .Argc = 1,      .CFunction = (NativeFunction) _DateGetMinutes,  .Value = NULL },
-    { .Name = "getSeconds",     .Argc = 1,      .CFunction = (NativeFunction) _DateGetSeconds,  .Value = NULL },
-    { .Name = "getTime",        .Argc = 1,      .CFunction = (NativeFunction) _DateGetTime,     .Value = NULL },
-    { .Name = "toString",       .Argc = 1,      .CFunction = (NativeFunction) _DateToString,    .Value = NULL },
+    { .Name = CONSTRUCTOR_NAME, .Argc = VARARG, .CFunction = (NativeFunctionCallback) _DateInit,  .Value = NULL },
+    { .Name = "getFullYear",    .Argc = 1,      .CFunction = (NativeFunctionCallback) _DateGetFullYear, .Value = NULL },
+    { .Name = "getMonth",       .Argc = 1,      .CFunction = (NativeFunctionCallback) _DateGetMonth,    .Value = NULL },
+    { .Name = "getDate",        .Argc = 1,      .CFunction = (NativeFunctionCallback) _DateGetDate,     .Value = NULL },
+    { .Name = "getDay",         .Argc = 1,      .CFunction = (NativeFunctionCallback) _DateGetDay,      .Value = NULL },
+    { .Name = "getHours",       .Argc = 1,      .CFunction = (NativeFunctionCallback) _DateGetHours,    .Value = NULL },
+    { .Name = "getMinutes",     .Argc = 1,      .CFunction = (NativeFunctionCallback) _DateGetMinutes,  .Value = NULL },
+    { .Name = "getSeconds",     .Argc = 1,      .CFunction = (NativeFunctionCallback) _DateGetSeconds,  .Value = NULL },
+    { .Name = "getTime",        .Argc = 1,      .CFunction = (NativeFunctionCallback) _DateGetTime,     .Value = NULL },
+    { .Name = "toString",       .Argc = 1,      .CFunction = (NativeFunctionCallback) _DateToString,    .Value = NULL },
     // end of module functions
     { .Name = NULL }
 };
@@ -215,14 +215,16 @@ static ModuleFunction _DateClassMethods[] = {
 
 Value* LoadCoreDate(Interpreter* interpeter) {
     Value* dateModule = NewClassValue(interpeter, CreateUserClass("Date", NULL));
-    UserClass* cls = CoerceToUserClass(dateModule);
+    Class* cls = CoerceToUserClass(dateModule);
     
     // Register methods
     for (int i = 0; _DateClassMethods[i].Name != NULL; i++) {
         ModuleFunction* func = &_DateClassMethods[i];
         if (func->CFunction) {
-            NativeFunctionMeta* meta = CreateNativeFunctionMeta(func->Name, func->Argc, func->CFunction);
-            ClassDefineMemberByString(cls, func->Name, NewNativeFunctionValue(interpeter, meta), false);
+            String name = AllocateString(func->Name);
+            String hKey = AllocateString(func->Name);
+            NativeFunction* meta = CreateNativeFunctionMeta(name, func->Argc, func->CFunction);
+            ClassDefineMemberByString(cls, hKey, NewNativeFunctionValue(interpeter, meta), false);
         }
     }
     

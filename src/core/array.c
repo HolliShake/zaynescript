@@ -35,25 +35,26 @@ static Value* _ArrayLength(Interpreter* interpreter, int argc, Value** arguments
 
 static ModuleFunction _ArrayClassMethods[] = {
     // Array class
-    { .Name = "push",   .Argc = 2, .CFunction = (NativeFunction) _ArrayPush  , .Value = NULL },
-    { .Name = "length", .Argc = 1, .CFunction = (NativeFunction) _ArrayLength, .Value = NULL },
+    { .Name = "push",   .Argc = 2, .CFunction = (NativeFunctionCallback) _ArrayPush  , .Value = NULL },
+    { .Name = "length", .Argc = 1, .CFunction = (NativeFunctionCallback) _ArrayLength, .Value = NULL },
     // end of module functions
     { .Name = NULL }
 };
 
 Value* CreateArrayClass(Interpreter* interpreter) {
     Value* arrayClass = NewClassValue(interpreter, CreateUserClass("Array", NULL));
-    UserClass* cls = CoerceToUserClass(arrayClass);
+    Class* cls = CoerceToUserClass(arrayClass);
 
     // Define Array methods here (e.g., push, pop, length, etc.)
     for (int i = 0; _ArrayClassMethods[i].Name != NULL; i++) {
         ModuleFunction func = _ArrayClassMethods[i];
         String name = AllocateString(func.Name);
+        String hKey = AllocateString(func.Name);
         
         if (func.CFunction != NULL) {
             ClassDefineMemberByString(
                 cls, 
-                name, 
+                hKey, 
                 NewNativeFunctionValue(interpreter, 
                     CreateNativeFunctionMeta(
                         (const String) name,

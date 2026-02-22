@@ -455,7 +455,7 @@ typedef enum opcode_enum {
  * including whether it's global and the source/destination indices.
  */
 typedef struct capture_meta_struct {
-    bool IsGlobal; /**< True if capturing a global variable */
+    int  Depth;    /**< Depth of the captured variable's scope relative to the closure */
     int  Src;      /**< Source index */
     int  Dst;      /**< Destination index */
 } CaptureMeta;
@@ -470,6 +470,7 @@ typedef struct capture_meta_struct {
 typedef struct envcell_struct {
     Value* Value;      /**< Pointer to the value stored in the cell */
     bool   IsCaptured; /**< True if this cell is captured by a closure */
+    int    RefCount;   /**< Reference count for captured variables (optional, can be used for optimizations) */
 } EnvCell;
 
 /**
@@ -493,7 +494,7 @@ typedef struct environment_struct {
  * count, and closure captures for a function defined in the source language.
  */
 typedef struct user_function_struct {
-    Value*       ParentEnv;    /**< The environment where the function was defined */
+    Value*       Scope;        /**< The environment where the function was defined */
     String       Name;         /**< Function name (Nullable) */
     uint8_t*     Codes;        /**< Bytecode instructions */
     int          CodeC;        /**< Size of bytecode */
@@ -529,7 +530,6 @@ typedef enum scope_type_enum {
     SCOPE_GLOBAL,           /**< Global scope */
     SCOPE_CLASS ,           /**< Class scope */
     SCOPE_FUNCTION,         /**< Function body scope */
-    SCOPE_FUNCTION_CLOSURE, /**< Function closure scope */
     SCOPE_BLOCK,            /**< Generic block scope */
     SCOPE_TRY_BLOCK,        /**< Try block scope */
     SCOPE_LOOP,             /**< Loop scope */
@@ -571,10 +571,10 @@ struct scope_struct {
  */
 typedef struct user_class_struct {
     String   Name;            /**< Class name */
-    Value*   Base;            /**< Base class (must be UserClass or Nullable) */
+    Value*   Base;            /**< Base class (must be Class or Nullable) */
     HashMap* StaticMembers;   /**< Static members map */
     HashMap* InstanceMembers; /**< Instance members map */
-} UserClass;
+} Class;
 
 /**
  * @struct class_instance_struct
@@ -583,18 +583,18 @@ typedef struct user_class_struct {
  * Links to the class prototype and maintains instance-specific member values.
  */
 typedef struct class_instance_struct {
-    Value*   Proto;   /**< Prototype class (must be UserClass) */
+    Value*   Proto;   /**< Prototype class (must be Class) */
     HashMap* Members; /**< Instance members map */
 } ClassInstance;
 
 /**
  * @struct interpreter_struct
- * @brief Forward declaration of Interpreter structure for NativeFunction typedef.
+ * @brief Forward declaration of Interpreter structure for NativeFunctionCallback typedef.
  */
 typedef struct interpreter_struct Interpreter;
 
 /**
- * @typedef NativeFunction
+ * @typedef NativeFunctionCallback
  * @brief Function pointer type for native functions.
  * 
  * Native functions are implemented in C and callable from the interpreted
@@ -606,7 +606,7 @@ typedef struct interpreter_struct Interpreter;
  * @param arguments Array of argument values.
  * @return Value* The return value of the function.
  */
-typedef Value* (*NativeFunction)(Interpreter* interpreter, int argc, Value** arguments);
+typedef Value* (*NativeFunctionCallback)(Interpreter* interpreter, int argc, Value** arguments);
 
 /**
  * @struct native_function_struct
@@ -618,8 +618,8 @@ typedef Value* (*NativeFunction)(Interpreter* interpreter, int argc, Value** arg
 typedef struct native_function_struct {
     String         Name;    /**< Function name */
     int            Argc;    /**< Expected argument count */
-    NativeFunction FuncPtr; /**< Pointer to the C function */
-} NativeFunctionMeta;
+    NativeFunctionCallback FuncPtr; /**< Pointer to the C function */
+} NativeFunction;
 
 /**
  * @struct module_function_struct
@@ -632,7 +632,7 @@ typedef struct native_function_struct {
 typedef struct module_function_struct {
     const String    Name;      /**< Export name */
     int             Argc;      /**< Argument count (for functions) */
-    NativeFunction  CFunction; /**< C function pointer (if is NativeFunction) */
+    NativeFunctionCallback  CFunction; /**< C function pointer (if is NativeFunctionCallback) */
     Value*          Value;     /**< Exported value (if not function) */
 } ModuleFunction;
 
@@ -649,20 +649,24 @@ typedef struct module_function_struct {
  * and null. Also maintains exception handler stack for try-catch blocks.
  */
 struct interpreter_struct {
-    Value*   Array;     /**< Built-in Array class */
-    Value*   True;      /**< Singleton 'true' value */
-    Value*   False;     /**< Singleton 'false' value */
-    Value*   Null;      /**< Singleton 'null' value */
-    Value*   GcRoot;    /**< Root of the Garbage Collector object graph */
-    int      Allocated; /**< Total allocated bytes since last GC */
-    Value**  Constants; /**< Array of constant values */
-    int      ConstantC; /**< Count of constants */
-    Value**  Functions; /**< Array of function definitions */
-    int      FunctionC; /**< Count of functions */
-    Value*   Stacks[STACK_SIZE]; /**< Execution stack */
-    int      StackC;    /**< Stack pointer/count */
-    int      ExceptionHandlerStacks[STACK_SIZE]; /**< Stack for exception handlers */
-    int      ExceptionHandlerStackC; /**< Exception handler stack pointer */
+    Value*   Array;                                  /**< Built-in Array class */
+    Value*   True;                                   /**< Singleton 'true' value */
+    Value*   False;                                  /**< Singleton 'false' value */
+    Value*   Null;                                   /**< Singleton 'null' value */
+    Value*   GcRoot;                                 /**< Root of the Garbage Collector object graph */
+    Value*   RootEnv;                                /**< Root environment of the current program */
+    Value*   CallEnv;                                /**< Current execution environment */
+    int      Allocated;                              /**< Total allocated bytes since last GC */
+    Value**  Constants;                              /**< Array of constant values */
+    int      ConstantC;                              /**< Count of constants */
+    Value**  Functions;                              /**< Array of function definitions */
+    int      FunctionC;                              /**< Count of functions */
+    Value*   Stacks[STACK_SIZE];                     /**< Execution stack */
+    int      StackC;                                 /**< Stack pointer/count */
+    Value*   Envs[STACK_SIZE];                       /**< Environment stack for variable scopes */
+    int      EnvC;                                   /**< Environment stack pointer */
+    int      ExceptionHandlerStacks[STACK_SIZE];    /**< Stack for exception handlers */
+    int      ExceptionHandlerStackC;                /**< Exception handler stack pointer */
 };
 
 /**
@@ -836,6 +840,17 @@ long CoerceToI64(Value* value);
 double CoerceToNum(Value* value);
 
 /**
+ * @brief Coerces a value to a boolean.
+ * 
+ * Converts a runtime value to a boolean, following standard truthiness
+ * rules. Behavior depends on the value's type.
+ * 
+ * @param value The value to coerce.
+ * @return The boolean representation.
+ */
+bool CoerceToBool(Value* value);
+
+/**
  * @brief Coerces a value to an Environment.
  * 
  * Extracts the Environment pointer from a value. The value must be
@@ -880,26 +895,26 @@ Array* CoerceToArray(Value* value);
 UserFunction* CoerceToUserFunction(Value* value);
 
 /**
- * @brief Coerces a value to a NativeFunctionMeta.
+ * @brief Coerces a value to a NativeFunction.
  * 
- * Extracts the NativeFunctionMeta pointer from a value. The value must be
+ * Extracts the NativeFunction pointer from a value. The value must be
  * of type VLT_NATV_FUNCTION.
  * 
  * @param value The value to coerce.
- * @return Pointer to the NativeFunctionMeta.
+ * @return Pointer to the NativeFunction.
  */
-NativeFunctionMeta* CoerceToNativeFunctionMeta(Value* value);
+NativeFunction* CoerceToNativeFunctionMeta(Value* value);
 
 /**
- * @brief Coerces a value to a UserClass.
+ * @brief Coerces a value to a Class.
  * 
- * Extracts the UserClass pointer from a value. The value must be
+ * Extracts the Class pointer from a value. The value must be
  * of type VLT_CLASS.
  * 
  * @param value The value to coerce.
- * @return Pointer to the UserClass.
+ * @return Pointer to the Class.
  */
-UserClass* CoerceToUserClass(Value* value);
+Class* CoerceToUserClass(Value* value);
 
 /**
  * @brief Coerces a value to a ClassInstance.

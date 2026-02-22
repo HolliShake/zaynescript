@@ -2,7 +2,7 @@
 
 UserFunction* CreateUserFunction(String name, int argc) {
     UserFunction* userFunction  = Allocate(sizeof(UserFunction));
-    userFunction->ParentEnv     = NULL;
+    userFunction->Scope         = NULL;
     userFunction->Name          = name;
     userFunction->Codes         = Allocate(sizeof(uint8_t) * 1);
     userFunction->Codes[0]      = 255;
@@ -20,7 +20,7 @@ UserFunction* UserFunctionClone(UserFunction* userFunction) {
         userFunction->Name != NULL ? AllocateString(userFunction->Name) : NULL,
         userFunction->Argc
     );
-    clone->ParentEnv   = userFunction->ParentEnv;
+    clone->Scope       = userFunction->Scope;
     clone->CodeC       = userFunction->CodeC;
     clone->Codes       = Reallocate(
         clone->Codes,
@@ -54,12 +54,12 @@ int UserFunctionEmitLocal(UserFunction* userFunction) {
     return userFunction->LocalC++;
 }
 
-int UserFunctionAddCapture(UserFunction* userFunction, bool isGlobal, int src, int dst) {
+int UserFunctionAddCapture(UserFunction* userFunction, int depth, int sourceOffset) {
     int offset = userFunction->CaptureC;
     CaptureMeta capture;
-    capture.IsGlobal = isGlobal;
-    capture.Src      = src;
-    capture.Dst      = dst;
+    capture.Depth    = depth;
+    capture.Src      = sourceOffset;
+    capture.Dst      = offset; // The destination offset is determined by the current capture count
     userFunction->CaptureMetas[userFunction->CaptureC++] = capture;
     userFunction->CaptureMetas = Reallocate(
         userFunction->CaptureMetas, 
@@ -125,15 +125,30 @@ String UserFunctionToString(UserFunction* userFunction) {
     }
 }
 
-NativeFunctionMeta* CreateNativeFunctionMeta(const String name, int argc, NativeFunction funcPtr) {
-    NativeFunctionMeta* meta = Allocate(sizeof(NativeFunctionMeta));
+void FreeUserFunction(UserFunction* userFunction) {
+    for (int i = 0; i < userFunction->CaptureC; i++) {
+        EnvCell* capture = userFunction->Captures[i];
+        if (capture != NULL && --capture->RefCount <= 0) {
+            printf("Free ENV!\n");
+            free(capture);
+        }
+    }
+    if (userFunction->Name != NULL) free(userFunction->Name);
+    free(userFunction->CaptureMetas);
+    free(userFunction->Captures);
+    free(userFunction->Codes);
+    free(userFunction);
+}
+
+NativeFunction* CreateNativeFunctionMeta(const String name, int argc, NativeFunctionCallback funcPtr) {
+    NativeFunction* meta = Allocate(sizeof(NativeFunction));
     meta->Name    = name;
     meta->Argc    = argc;
     meta->FuncPtr = funcPtr;
     return meta;
 }
 
-String NativeFunctionMetaToString(NativeFunctionMeta* meta) {
+String NativeFunctionMetaToString(NativeFunction* meta) {
     // fmt: native function %name ($1, $2) {} if argc != -1 else native function %name (...$n) {}
     
     if (meta->Argc == -1) {
@@ -183,4 +198,9 @@ String NativeFunctionMetaToString(NativeFunctionMeta* meta) {
         free(args);
         return buffer;
     }
+}
+
+void FreeNativeFunction(NativeFunction* nativeFunction) {
+    if (nativeFunction->Name != NULL) free(nativeFunction->Name);
+    free(nativeFunction);
 }

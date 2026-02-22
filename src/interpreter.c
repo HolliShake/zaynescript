@@ -4,6 +4,8 @@ Interpreter* CreateInterpreter() {
     Interpreter* interpreter                = Allocate(sizeof(Interpreter));
     interpreter->Allocated                  = 0;
     interpreter->GcRoot                     = NULL;
+    interpreter->RootEnv                    = NULL;
+    interpreter->CallEnv                    = NULL;
     interpreter->Array                      = CreateArrayClass(interpreter);
     interpreter->True                       = NewBoolValue(interpreter, 1);
     interpreter->False                      = NewBoolValue(interpreter, 0);
@@ -16,6 +18,8 @@ Interpreter* CreateInterpreter() {
     interpreter->Functions[0]               = NULL;
     // interpreter->Stacks[STACK_SIZE];
     interpreter->StackC                     = 0;
+    // interpreter->Envs[STACK_SIZE];
+    interpreter->EnvC                       = 0;
     // interpreter->ExceptionHandlerStacks[STACK_SIZE];
     interpreter->ExceptionHandlerStackC     = 0;
     return interpreter;
@@ -44,6 +48,7 @@ Interpreter* CreateInterpreter() {
     printf("Stack [%d items]: [ ", interpreter->StackC); \
     for (int i = 0; i < interpreter->StackC; i++) { \
         if (i > 0) printf(", "); \
+        //NOTE: memory leak (ValueToString returns a new string that is not freed) \
         printf("%s", ValueToString(interpreter->Stacks[i])); \
     } \
     printf(" ]\n"); \
@@ -51,6 +56,8 @@ Interpreter* CreateInterpreter() {
 
 #define SetVar(envObj, offset, value) EnvironmentSetLocal(CoerceToEnvironment(envObj), offset, value)
 #define GetVar(envObj, offset) EnvironmentGetLocal(CoerceToEnvironment(envObj), offset)->Value
+#define GetCap(uFunct, offset) (uFunct->Captures[offset]->Value)
+#define SetCap(uFunct, offset, value) (uFunct->Captures[offset]->Value = value)
 
 #define InterpreterPanic(message, ...) do { \
     fprintf(stderr, "[%s:%d]::Panic: ", __FILE__, __LINE__); \
@@ -58,6 +65,7 @@ Interpreter* CreateInterpreter() {
     fprintf(stderr, "\n"); \
     ForceGarbageCollect(interpreter); \
     FreeInterpreter(interpreter); \
+    fprintf(stderr, "Program exited with panic.\n"); \
     exit(EXIT_FAILURE); \
 } while(0)
 
@@ -75,6 +83,18 @@ Interpreter* CreateInterpreter() {
     InterpreterPanic(message); \
     free(message); \
     break; } \
+
+#define RaiseError(errorValue) { \
+    if (catched) { \
+        JmpFrwd(PeekEH()); \
+        PoppEH(); \
+        Push(errorValue); \
+        break; \
+    } \
+    InterpreterPanic(ValueToString(errorValue)); \
+    break; } \
+
+int TOP_ENV = -1;
 
 static int _ReadInt32(uint8_t* codes, int alignStart) {
     int offset = 0;
@@ -96,7 +116,7 @@ static String _ReadString(uint8_t* codes, int alignStart) {
 
 static int _GetArgc(Value* fn) {
     if (ValueIsClass(fn)) {
-        UserClass* cls = CoerceToUserClass(fn);
+        Class* cls = CoerceToUserClass(fn);
         if (ClassHasMember(cls, CONSTRUCTOR_NAME, false, true)) {
             Value* constructor = ClassGetMember(cls, CONSTRUCTOR_NAME, false);
             return _GetArgc(constructor);
@@ -104,7 +124,7 @@ static int _GetArgc(Value* fn) {
             return 0;
         }
     } else if (ValueIsNativeFunction(fn)) {
-        NativeFunctionMeta* nFMeta = CoerceToNativeFunctionMeta(fn);
+        NativeFunction* nFMeta = CoerceToNativeFunctionMeta(fn);
         return nFMeta->Argc;
     } else if (ValueIsUserFunction(fn)) {
         UserFunction* uf = CoerceToUserFunction(fn);
@@ -121,7 +141,7 @@ static int _GetArg2(Interpreter* interp, Value* obj, Value* methodName)  {
     return _GetArgc(method);
 }
 
-void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* envObj) {
+void Run(Interpreter* interpreter, Value* fnValue) {
     UserFunction* uf = CoerceToUserFunction(fnValue);
     uint8_t opcode   = 0;
     Value* lhs       = NULL;
@@ -151,8 +171,6 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
 
         if (interpreter->Allocated >= GC_THRESHOLD) {
             Mark(fnValue);
-            Mark(rootEnvObj);
-            Mark(envObj);
             GarbageCollect(interpreter);
         }
 
@@ -163,12 +181,8 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
         switch (opcode) {
             case OP_IMPORT_CORE: {
                 str = _ReadString(uf->Codes, ip);
-                flg = DoImportCore(interpreter, str, &res);
-                if (flg == FLG_NOTFOUND)
-                    HandleError(
-                        "core module '%s' not found", 
-                        str
-                    );
+                res = DoImportCore(interpreter, str);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 Forward(strlen(str) + 1);
                 free(str);
@@ -176,7 +190,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             }
             case OP_LOAD_CAPTURE: {
                 offset = _ReadInt32(uf->Codes, ip);
-                val    = (uf->Captures[offset]->Value);
+                val    = GetCap(uf, offset);
                 if (val == NULL)
                     HandleError(
                         "captured variable is referenced before initialization"
@@ -187,7 +201,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             }
             case OP_LOAD_NAME: {
                 offset = _ReadInt32(uf->Codes, ip);
-                val    = GetVar(rootEnvObj, offset);
+                val    = GetVar(interpreter->RootEnv, offset);
                 if (val == NULL)
                     HandleError(
                         "variable is referenced before initialization"
@@ -198,7 +212,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             }
             case OP_LOAD_LOCAL: {
                 offset = _ReadInt32(uf->Codes, ip);
-                val    = GetVar(envObj, offset);
+                val    = GetVar(interpreter->CallEnv, offset);
                 if (val == NULL)
                     HandleError(
                         "variable is referenced before initialization"
@@ -287,6 +301,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                 for (int i = 0; i < size; i++) {
                     key = Popp();
                     val = Popp();
+                    //NOTE: memory leak (ValueToString returns a new string. If HashMapSet updates an existing key, this new string is not freed by HashMapSet)
                     HashMapSet(map, ValueToString(key), val);
                 }
                 Push(obj);
@@ -335,38 +350,25 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                 val = Popp();
                 key = Popp();
                 obj = Peek();
-                flg = DoSetIndex(interpreter, obj, key, val);
-                if (flg == FLG_OUT_OF_BOUNDS) 
-                    HandleError(
-                        "index out of bounds when setting index on %s", 
-                        ValueTypeOf(obj)
-                    )
-                else if (flg == FLG_INVALID_OPERATION)
-                    HandleError(
-                        "invalid operation when setting index on %s", 
-                        ValueTypeOf(obj)
-                    );
+                res = DoSetIndex(interpreter, obj, key, val);
+                if (ValueIsError(res)) RaiseError(res);
                 break;
             }
             case OP_GET_INDEX: {
                 key = Popp();
                 obj = Popp();
-                val = NULL;
-                DoGetIndex(interpreter, obj, key, &val);
-                Push(val);
+                res = DoGetIndex(interpreter, obj, key);
+                if (ValueIsError(res)) RaiseError(res);
+                Push(res);
                 break;
             }
             case OP_LOAD_FUNCTION_CLOSURE:
             case OP_LOAD_FUNCTION: {
                 offset = _ReadInt32(uf->Codes, ip);
-                res    = NULL;
-                DoLoadFunction(
+                res    = DoLoadFunction(
                     interpreter, 
-                    rootEnvObj, 
-                    envObj, 
                     offset, 
-                    (opcode == OP_LOAD_FUNCTION_CLOSURE), 
-                    &res
+                    (opcode == OP_LOAD_FUNCTION_CLOSURE)
                 );
                 Push(res);
                 Forward(4);
@@ -376,381 +378,223 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
                 argc = _ReadInt32(uf->Codes, ip);
                 Forward(4);
                 cls  = Popp();
-                flg  = DoCallCtor(
-                    interpreter, 
-                    rootEnvObj, 
-                    envObj, 
-                    cls, 
-                    argc
-                );
-
-                if (flg == FLG_ARG_MISMATCH)
-                    HandleError(
-                        "argument count mismatch expected %d arguments but got %d", 
-                        _GetArgc(cls), argc
-                    )
-                else if (flg == FLG_INVALID_OPERATION)
-                    HandleError(
-                        "attempted to call constructor on a non-class value of type %s", 
-                        ValueTypeOf(cls)
-                    )
-                else if (flg == FLG_ERROR) {
-                    String msg = ValueToString(Popp());
-                    HandleError("%s", msg);
-                }
+                res  = DoCallCtor(interpreter, cls, argc);
+                if (ValueIsError(res)) RaiseError(res);
                 break;
             }
             case OP_CALL: {
                 argc = _ReadInt32(uf->Codes, ip);
-                obj  = Popp();
-                flg  = DoCall(
-                    interpreter, 
-                    rootEnvObj, 
-                    envObj, 
-                    obj, 
-                    argc
-                );
-                if (flg == FLG_INVALID_OPERATION)
-                    HandleError(
-                        "attempted to call a non-callable value of type %s", 
-                        ValueTypeOf(obj)
-                    )
-                else if (flg == FLG_ARG_MISMATCH)
-                    HandleError(
-                        "argument count mismatch expected %d arguments but got %d", 
-                        _GetArgc(obj), argc
-                    )
-                else if (flg == FLG_ERROR) {
-                    String msg = ValueToString(Popp());
-                    HandleError("%s", msg);
-                }
-                    
                 Forward(4);
+                obj  = Popp();
+                res  = DoCall(interpreter, obj, argc, false);
+                if (ValueIsError(res)) RaiseError(res);
                 break;
             }
             case OP_CALL_METHOD: {
                 argc = _ReadInt32(uf->Codes, ip);
+                Forward(4);
                 key  = Popp(); // method
                 obj  = Popp(); // 'this' object
-                flg  = DoCallMethod(
-                    interpreter, 
-                    rootEnvObj, 
-                    envObj, 
-                    obj, 
-                    key,
-                    argc
-                );
-                if (flg == FLG_INVALID_OPERATION)
-                    HandleError(
-                        "attempted to call a non-callable value of type %s", 
-                        ValueTypeOf(obj)
-                    )
-                else if (flg == FLG_ARG_MISMATCH)
-                    HandleError(
-                        "argument count mismatch expected %d arguments but got %d", 
-                        _GetArg2(interpreter, obj, key), argc
-                    )
-                else if (flg == FLG_ERROR) {
-                    String msg = ValueToString(Popp());
-                    HandleError("%s", msg);
-                }
-                    
-                Forward(4);
+                res  = DoCallMethod(interpreter, obj, key, argc);
+                if (ValueIsError(res)) RaiseError(res);
+                break;
+            }
+            case OP_NOT: {
+                rhs = Popp();
+                res = DoNot(interpreter, rhs);
+                if (ValueIsError(res)) RaiseError(res);
+                Push(res);
+                break;
+            }
+            case OP_POS: {
+                rhs = Popp();
+                res = DoPos(interpreter, rhs);
+                if (ValueIsError(res)) RaiseError(res);
+                Push(res);
+                break;
+            }
+            case OP_NEG: {
+                rhs = Popp();
+                res = DoNeg(interpreter, rhs);
+                if (ValueIsError(res)) RaiseError(res);
+                Push(res);
                 break;
             }
             case OP_MUL: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoMul(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (*) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoMul(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_DIV: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoDiv(interpreter, lhs, rhs, &res);
-                if (flg == FLG_ZERO_DIV) 
-                    HandleError(
-                        "zero division error"
-                    )
-                else if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (/) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res =  DoDiv(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_MOD: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoMod(interpreter, lhs, rhs, &res);
-                if (flg == FLG_ZERO_DIV) 
-                    HandleError(
-                        "zero division error"
-                    )
-                else if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (%%) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoMod(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_POSTINC: {
                 // bot [obj, key, val] top
-                rhs = Popp(); // old value
-                res = NULL;
-                flg = DoInc(interpreter, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (++) for type %s", 
-                        ValueTypeOf(rhs)
-                    );
+                lhs = Popp(); // old value
+                res = DoInc(interpreter, lhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
-                Push(rhs);
+                Push(lhs);
                 break;
             }
             case OP_INC: {
-                lhs = Popp();
-                res = NULL;
-                flg = DoInc(interpreter, lhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (++) for type %s", 
-                        ValueTypeOf(lhs)
-                    );
+                rhs = Popp();
+                res = DoInc(interpreter, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_ADD: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoAdd(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (+) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoAdd(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_POSTDEC: {
                 // bot [obj, key, val] top
-                rhs = Popp(); // old value
-                res = NULL;
-                flg = DoDec(interpreter, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (--) for type %s", 
-                        ValueTypeOf(rhs)
-                    );
+                lhs = Popp(); // old value
+                res = DoDec(interpreter, lhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
-                Push(rhs);
+                Push(lhs);
                 break;
             }
             case OP_DEC: {
-                lhs = Popp();
-                res = NULL;
-                flg = DoDec(interpreter, lhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (--) for type %s", 
-                        ValueTypeOf(lhs)
-                    );
+                rhs = Popp();
+                res = DoDec(interpreter, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_SUB: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoSub(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (-) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoSub(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_LSHFT: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoLShift(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (<<) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoLShift(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_RSHFT: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoRShift(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (>>) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoRShift(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_LT: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoLT(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (<) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoLT(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_LTE: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoLTE(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (<=) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoLTE(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_GT: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoGT(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (>) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoGT(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_GTE: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoGTE(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (>=) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoGTE(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_EQ: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoEQ(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (==) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoEQ(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_NE: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoNE(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (!=) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoNE(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_AND: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoAnd(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (and) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoAnd(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_OR: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoOr(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (or) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoOr(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
                 break;
             }
             case OP_XOR: {
                 rhs = Popp();
                 lhs = Popp();
-                res = NULL;
-                flg = DoXor(interpreter, lhs, rhs, &res);
-                if (flg == FLG_INVALID_OPERATION) 
-                    HandleError(
-                        "invalid operation (xor) for type %s and %s", 
-                        ValueTypeOf(lhs), 
-                        ValueTypeOf(rhs)
-                    );
+                res = DoXor(interpreter, lhs, rhs);
+                if (ValueIsError(res)) RaiseError(res);
                 Push(res);
+                break;
+            }
+            case OP_STORE_CAPTURE: {
+                offset = _ReadInt32(uf->Codes, ip);
+                SetCap(uf, offset, Popp());
+                Forward(4);
                 break;
             }
             case OP_STORE_NAME: {
                 offset = _ReadInt32(uf->Codes, ip);
-                SetVar(rootEnvObj, offset, Popp());
+                SetVar(interpreter->RootEnv, offset, Popp());
                 Forward(4);
                 break;
             }
             case OP_STORE_LOCAL: {
                 offset = _ReadInt32(uf->Codes, ip);
-                SetVar(envObj, offset, Popp());
+                SetVar(interpreter->CallEnv, offset, Popp());
                 Forward(4);
                 break;
             }
@@ -818,7 +662,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             case OP_JUMP_IF_FALSE_OR_POP: {
                 offset = _ReadInt32(uf->Codes, ip);
                 val    = Peek();
-                if (!ValueToBool(val)) {
+                if (!CoerceToBool(val)) {
                     JmpFrwd(offset);
                 } else {
                     Popp();
@@ -829,7 +673,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             case OP_JUMP_IF_TRUE_OR_POP: {
                 offset = _ReadInt32(uf->Codes, ip);
                 val    = Peek();
-                if (ValueToBool(val)) {
+                if (CoerceToBool(val)) {
                     JmpFrwd(offset);
                 } else {
                     Popp();
@@ -840,7 +684,7 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
             case OP_POP_JUMP_IF_FALSE: {
                 offset = _ReadInt32(uf->Codes, ip);
                 val    = Popp();
-                if (ValueToBool(val) == false) {
+                if (CoerceToBool(val) == false) {
                     JmpFrwd(offset);
                 } else {
                     Forward(4);
@@ -870,9 +714,12 @@ void Run(Interpreter* interpreter, Value* fnValue, Value* rootEnvObj, Value* env
 
 void _RunProgram(Interpreter* interpreter, Value* fnValue) {
     UserFunction* uf = CoerceToUserFunction(fnValue);
-    Environment* env = CreateEnvironment(NULL, uf->LocalC);
-    Value* envObj    = NewEnvironmentValue(interpreter, env);
-    Run(interpreter, fnValue, envObj, envObj);
+    Value* env = NULL, *saveEnv = NULL;
+    env = saveEnv = NewEnvironmentValue(interpreter, CreateEnvironment(NULL, uf->LocalC));
+    SaveRootEnv(interpreter, env);
+    Run(interpreter, fnValue);
+    RestoreEnv(interpreter);
+    interpreter->RootEnv = saveEnv;
     if (interpreter->StackC != 1) {
         InterpreterPanic(
             "internal error: stack not cleaned up after function '%s' execution, expected 1 value on stack but got %d values", 

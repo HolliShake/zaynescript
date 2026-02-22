@@ -34,16 +34,33 @@ static int _GetConstantOffset(Interpreter* interp, Value* value) {
     }
     free(valueStr);
     BAD:;
-    return FLG_NOTFOUND;
+    return -1;
 }
 
 static void _DupTop(Interpreter* interp) {
     _Push(_Peek());
 }
 
-extern void Run(Interpreter* interp, Value* fnValue, Value* rootEnvObj, Value* envObj);
+extern void Run(Interpreter* interp, Value* fnValue);
 
 extern CoreMapper _CoreModuleMappers[];
+
+void SaveRootEnv(Interpreter* interp, Value* env) {
+    interp->Envs[interp->EnvC++] = interp->CallEnv;
+    interp->RootEnv = env;
+    interp->CallEnv = env;
+}
+
+void SaveEnv(Interpreter* interp, Value* env) {
+    interp->Envs[interp->EnvC++] = interp->CallEnv;
+    interp->CallEnv = env;
+}
+
+void RestoreEnv(Interpreter* interp) {
+    Value* top = interp->Envs[interp->EnvC - 1];
+    interp->Envs[--interp->EnvC] = NULL;
+    interp->CallEnv = top;
+}
 
 bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
     String key = ValueToString(method);
@@ -51,26 +68,11 @@ bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
         // Handle array methods or attributes
         Array* array = CoerceToArray(obj);
 
-        if (ValueIsNum(method)) {
-            long idx = (long) CoerceToI64(method);
-            if (idx < 0 || idx >= array->Count) {
-                free(key);
-                return interp->Null;
-            }
-            free(key);
-            return array->Items[idx];
-        }
-
         // Check prototype chain
-        UserClass* cls = CoerceToUserClass(interp->Array);
+        Class* cls = CoerceToUserClass(interp->Array);
 
         while (cls != NULL) {
             if (ClassHasMember(cls, key, false, true)) {
-                Value* member = ClassGetMember(
-                    cls, 
-                    key, 
-                    false
-                );
                 free(key);
                 return true;
             }
@@ -81,22 +83,11 @@ bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
         // Handle object methods or attributes
         HashMap* map = CoerceToHashMap(obj);
 
-        if (HashMapContains(map, key)) {
-            Value* val = HashMapGet(map, key);
-            free(key);
-            return val;
-        }
-
         // Check prototype chain
-        UserClass* cls = NULL;
+        Class* cls = NULL;
 
         while (cls != NULL) {
             if (ClassHasMember(cls, key, false, true)) {
-                Value* member = ClassGetMember(
-                    cls, 
-                    key, 
-                    false
-                );
                 free(key);
                 return true;
             }
@@ -105,15 +96,10 @@ bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
         }
     } else if (ValueIsClass(obj)) {
         // Handle Class static functions or attributes
-        UserClass* cls = CoerceToUserClass(obj);
+        Class* cls = CoerceToUserClass(obj);
 
         while (cls != NULL) {
             if (ClassHasMember(cls, key, false, true)) {
-                Value* member = ClassGetMember(
-                    cls, 
-                    key, 
-                    true
-                );
                 free(key);
                 return true;
             }
@@ -125,15 +111,10 @@ bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
         ClassInstance* instance = CoerceToClassInstance(obj);
 
         // Check prototype chain
-        UserClass* cls = CoerceToUserClass(instance->Proto);
+        Class* cls = CoerceToUserClass(instance->Proto);
 
         while (cls != NULL) {
             if (ClassHasMember(cls, key, false, true)) {
-                Value* member = ClassGetMember(
-                    cls, 
-                    key, 
-                    false
-                );
                 free(key);
                 return true;
             }
@@ -147,32 +128,31 @@ bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
     return false;
 }
 
-Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool forMethodCall) {
-    String key = ValueToString(attr);
+Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* index, bool forMethodCall) {
+    String key = ValueToString(index);
     if (ValueIsArray(obj)) {
         // Handle array methods or attributes
         Array* array = CoerceToArray(obj);
 
-        if (ValueIsNum(attr)) {
-            long idx = (long) CoerceToI64(attr);
+        if (ValueIsNum(index)) {
+            long idx = (long) CoerceToI64(index);
             if (idx < 0 || idx >= array->Count) {
                 free(key);
-                return interp->Null;
+                String errMsg = FormatString("array index %ld out of bounds", idx);
+                Value* errVal = NewErrorValue(interp, errMsg);
+                free(errMsg);
+                return errVal;
             }
             free(key);
             return array->Items[idx];
         }
 
         // Check prototype chain
-        UserClass* cls = CoerceToUserClass(interp->Array);
+        Class* cls = CoerceToUserClass(interp->Array);
 
         while (forMethodCall && cls != NULL) {
             if (ClassHasMember(cls, key, false, forMethodCall)) {
-                Value* member = ClassGetMember(
-                    cls, 
-                    key, 
-                    false
-                );
+                Value* member = ClassGetMember(cls, key, false);
                 free(key);
                 return member;
             }
@@ -191,15 +171,11 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool fo
         }
 
         // Check prototype chain
-        UserClass* cls = NULL;
+        Class* cls = NULL;
 
         while (forMethodCall && cls != NULL) {
             if (ClassHasMember(cls, key, false, forMethodCall)) {
-                Value* member = ClassGetMember(
-                    cls, 
-                    key, 
-                    false
-                );
+                Value* member = ClassGetMember(cls, key, false);
                 free(key);
                 return member;
             }
@@ -209,15 +185,11 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool fo
 
     } else if (ValueIsClass(obj)) {
         // Handle Class static functions or attributes
-        UserClass* cls = CoerceToUserClass(obj);
+        Class* cls = CoerceToUserClass(obj);
 
         while (cls != NULL) {
             if (ClassHasMember(cls, key, true, forMethodCall)) {
-                Value* member = ClassGetMember(
-                    cls, 
-                    key, 
-                    true
-                );
+                Value* member = ClassGetMember(cls, key, true);
                 free(key);
                 return member;
             }
@@ -229,15 +201,11 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool fo
         ClassInstance* instance = CoerceToClassInstance(obj);
 
         // Check prototype chain
-        UserClass* cls = CoerceToUserClass(instance->Proto);
+        Class* cls = CoerceToUserClass(instance->Proto);
 
         while (forMethodCall && cls != NULL) {
             if (ClassHasMember(cls, key, !forMethodCall, forMethodCall)) {
-                Value* member = ClassGetMember(
-                    cls, 
-                    key, 
-                    !forMethodCall
-                );
+                Value* member = ClassGetMember(cls, key, !forMethodCall);
                 free(key);
                 return member;
             }
@@ -247,6 +215,7 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool fo
 
         // Check instance members
         Value* member = HashMapGet(instance->Members, key);
+
         if (member != NULL) {
             free(key);
             return member;
@@ -256,145 +225,95 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* attr, bool fo
     return interp->Null;
 }
 
-int DoImportCore(Interpreter* interp, String moduleName, Value** out) {
-    *out = LoadCoreModule(interp, moduleName);
-    if (*out != NULL) {
-        return FLG_SUCCESS;
+Value* DoImportCore(Interpreter* interp, String moduleName) {
+    Value* result = LoadCoreModule(interp, moduleName);
+    if (result == NULL) {
+        String errMsg = FormatString("core module '%s' not found", moduleName);
+        Value* errVal = NewErrorValue(interp, errMsg);
+        free(errMsg);
+        return errVal;
     }
-    return FLG_NOTFOUND;
+    return result;
 }
 
-int DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val) {
+Value* DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val) {
     if (ValueIsArray(obj)) {
         Array* array = CoerceToArray(obj);
         long idx = (long) CoerceToI64(index);
         if (idx < 0 || idx >= array->Count) {
-            return FLG_OUT_OF_BOUNDS;
+            String errMsg = FormatString("array index %ld out of bounds", idx);
+            Value* errVal = NewErrorValue(interp, errMsg);
+            free(errMsg);
+            return errVal;
         }
         array->Items[idx] = val;
-        return FLG_SUCCESS;
     } else if (ValueIsObject(obj)) {
         HashMap* map = CoerceToHashMap(obj);
         HashMapSet(map, ValueToString(index), val);
-        return FLG_SUCCESS;
     } else if (ValueIsClassInstance(obj)) {
         ClassInstance* instance = CoerceToClassInstance(obj);
         HashMapSet(instance->Members, ValueToString(index), val);
-        return FLG_SUCCESS;
     } else if (ValueIsClass(obj)) {
-        UserClass* cls = CoerceToUserClass(obj);
+        Class* cls = CoerceToUserClass(obj);
         HashMapSet(cls->StaticMembers, ValueToString(index), val);
-        return FLG_SUCCESS;
+    } else {
+        return NewErrorValue(interp, "invalid operation: cannot set index on non-object");
     }
-    return FLG_INVALID_OPERATION;
+    return interp->Null;
 }
 
-int DoGetIndex(Interpreter* interp, Value* obj, Value* index, Value** out) {
-    *out = GenericGetAttribute(interp, obj, index, false);
-    if (ValueIsNull(*out)) {
-        return FLG_NOTFOUND;
-    }
-    return FLG_SUCCESS;
+Value* DoGetIndex(Interpreter* interp, Value* obj, Value* index) {
+    return GenericGetAttribute(interp, obj, index, false);
 }
 
-int DoCallCtor(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* clsValue, int argc) {
+Value* DoCallCtor(Interpreter* interp, Value* clsValue, int argc) {
     if (clsValue == NULL) Panic("Attempted to call constructor on a null value\n");
 
     if (!ValueIsClass(clsValue)) {
-        _PopN(argc); return FLG_INVALID_OPERATION;
+        _PopN(argc);
+        return NewErrorValue(interp, "invalid operation: attempted to call constructor on non-class value");
     }
 
-    UserClass* cls = CoerceToUserClass(clsValue);
+    Class* cls = CoerceToUserClass(clsValue);
 
     if (!ClassHasMember(cls, CONSTRUCTOR_NAME, false, true)) {
         if (argc != 0) {
-            return FLG_ARG_MISMATCH;
+            _PopN(argc);
+            String errMsg = FormatString("argument count mismatch: expected 0 arguments but got %d", argc);
+            Value* errVal = NewErrorValue(interp, errMsg);
+            free(errMsg);
+            return errVal;
         }
         // Push default instance, no constructor call
         ClassInstance* instance = CreateClassInstance(clsValue);
         _Push(NewClassInstanceValue(interp, instance));
-        return FLG_SUCCESS;
+        return interp->Null;
     }
 
     // Push thisArg
-    ClassInstance* instance = CreateClassInstance(clsValue);
-    Value* instanceValue = NewClassInstanceValue(interp, instance);
+    Value* instanceValue = NewClassInstanceValue(interp, CreateClassInstance(clsValue));
     _Push(instanceValue);
 
     Value* constructor = ClassGetMember(cls, CONSTRUCTOR_NAME, false);
 
-    int flg = DoCall(
+    Value* result = DoCall(
         interp, 
-        rootEnvObj, 
-        envObj, 
         constructor, 
-        ++argc
+        ++argc,
+        true
     );
     
-    if (flg == FLG_SUCCESS) {
+    if (ValueIsNull(result)) {
         _Popp(); // Pop constructor return value
         _Push(instanceValue); // Push instance as return value
     }
 
-    return flg;
+    return result;
 }
 
-int DoCall(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* fn, int argc) {
-    if (fn == NULL) Panic("Attempted to call a null value\n");
-
-    if (!ValueIsCallable(fn)) {
-        _PopN(argc); return FLG_INVALID_OPERATION;
-    }
-
-    if (ValueIsNativeFunction(fn)) {
-        NativeFunctionMeta* nFMeta = CoerceToNativeFunctionMeta(fn);
-        NativeFunction nf          = nFMeta->FuncPtr;
-
-        if (nFMeta->Argc != VARARG && argc != nFMeta->Argc) {
-            _PopN(argc); return FLG_ARG_MISMATCH;
-        }
-
-        Value** args = Allocate(sizeof(Value*) * argc);
-
-        for (int i = 0; i < argc; i++) {
-            args[i] = _Popp();
-        }
-
-        Value* res = nf(interp, argc, args);
-
-        if (ValueIsError(res)) {
-            return FLG_ERROR;
-        }
-
-        _Push(res);
-        free(args);
-        
-        return FLG_SUCCESS;
-    }
-
-    // Call
-    UserFunction* uf = CoerceToUserFunction(fn);
-    Environment* env = CreateEnvironment(envObj, uf->LocalC);
-
-    if (!ValueIsCallable(fn)) {
-        Panic("Attempted to call a non-callable value: %s\n", ValueToString(fn));
-    }
-
-    if (argc != uf->Argc) {
-        _PopN(argc); return FLG_ARG_MISMATCH;
-    }
-    
-    Run(
-        interp, 
-        fn, 
-        (uf->ParentEnv != NULL ? uf->ParentEnv : rootEnvObj), 
-        NewEnvironmentValue(interp, env)
-    );
-    return FLG_SUCCESS;
-}
-
-int DoCallMethod(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* obj, Value* methodName, int argc) {
-    if (IsMethodOfObject(interp, obj, methodName)) {
+Value* DoCallMethod(Interpreter* interp, Value* obj, Value* methodName, int argc) {
+    bool withThis = IsMethodOfObject(interp, obj, methodName);
+    if (withThis) {
         ++argc; // add 1 for 'this'
     } else {
         _Popp(); // pop 'this'
@@ -403,37 +322,125 @@ int DoCallMethod(Interpreter* interp, Value* rootEnvObj, Value* envObj, Value* o
     Value* method = GenericGetAttribute(interp, obj, methodName, true);
     
     if (ValueIsNull(method)) {
-        _PopN(argc); return FLG_NOTFOUND;
+        _PopN(argc); 
+        String method = ValueToString(methodName);
+        String errMsg = FormatString("method '%s' not found on object of type %s", method, ValueTypeOf(obj));
+        Value* errVal = NewErrorValue(interp, errMsg);
+        free(method);
+        free(errMsg);
+        return errVal;
     }
 
     return DoCall(
         interp, 
-        rootEnvObj, 
-        envObj, 
         method, 
-        argc
+        argc,
+        withThis
     );
 }
 
-int DoNot(Interpreter* interp, Value* val, Value** out) {
+Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
+    if (fn == NULL) Panic("Attempted to call a null value\n");
+
+    if (!ValueIsCallable(fn)) {
+        _PopN(argc);
+        return NewErrorValue(interp, "invalid operation: attempted to call a non-callable value");
+    }
+
+    if (ValueIsNativeFunction(fn)) {
+        NativeFunction* nFMeta = CoerceToNativeFunctionMeta(fn);
+        NativeFunctionCallback nativeFunc  = nFMeta->FuncPtr;
+
+        if (nFMeta->Argc != VARARG && argc != nFMeta->Argc) {
+            _PopN(argc); 
+            String errMsg = FormatString("argument count mismatch: expected %d arguments but got %d",  nFMeta->Argc, argc);
+            Value* errVal = NewErrorValue(interp, errMsg);
+            free(errMsg);
+            return errVal;
+        }
+
+        Value** args = Allocate(sizeof(Value*) * argc);
+
+        int end = 0;
+        if (withThis) {
+            end = 1;
+            args[0] = _Popp();
+        }
+
+        for (int i = argc - 1; i >= end; i--) {
+            args[i] = _Popp();
+        }
+
+        Value* res = nativeFunc(interp, argc, args);
+
+        _Push(res);
+        free(args);
+        
+        return ValueIsError(res) ? res : interp->Null;
+    }
+
+    if (!ValueIsCallable(fn)) {
+        Panic("Attempted to call a non-callable value: %s\n", ValueToString(fn));
+    }
+
+    // Call
+    UserFunction* uf = CoerceToUserFunction(fn);
+
+    if (argc != uf->Argc) {
+        _PopN(argc);
+        String errMsg = FormatString("argument count mismatch: expected %d arguments but got %d",  uf->Argc, argc);
+        Value* errVal = NewErrorValue(interp, errMsg);
+        free(errMsg);
+        return errVal;
+    }
+
+    if (uf->Scope == NULL) {
+        Panic("User function '%s' has null Scope\n", uf->Name != NULL ? uf->Name : "<anonymous>");
+    }
+
+    Value* env = NULL, *saveEnv = NULL;
+    env = NewEnvironmentValue(interp, CreateEnvironment(uf->Scope, uf->LocalC)), saveEnv = interp->RootEnv;
+    SaveEnv(interp, env);
+    Run(interp, fn);
+    RestoreEnv(interp);
+    interp->RootEnv = saveEnv;
+
+    return interp->Null;
+}
+
+Value* DoNot(Interpreter* interp, Value* val) {
     bool resultBool = !CoerceToBool(val);
-    *out = resultBool ? interp->True : interp->False;
-    return FLG_SUCCESS;
+    return resultBool ? interp->True : interp->False;
 }
 
-int DoPos(Interpreter* interp, Value* val, Value** out) {
-    *out = val;
-    return FLG_SUCCESS;
+Value* DoPos(Interpreter* interp, Value* val) {
+    if (ValueIsInt(val)) {
+        return NewIntValue(interp, +CoerceToI32(val));
+    } else if (ValueIsNum(val)) {
+        return NewNumValue(interp, +CoerceToNum(val));
+    } else {
+        String errMsg = FormatString("invalid operand for operator (+): %s", ValueTypeOf(val));
+        Value* errVal = NewErrorValue(interp, errMsg);
+        free(errMsg);
+        return errVal;
+    }
 }
 
-int DoNeg(Interpreter* interp, Value* val, Value** out) {
-    *out = val;
-    return FLG_SUCCESS;
+Value* DoNeg(Interpreter* interp, Value* val) {
+    if (ValueIsInt(val)) {
+        return NewIntValue(interp, -CoerceToI32(val));
+    } else if (ValueIsNum(val)) {
+        return NewNumValue(interp, -CoerceToNum(val));
+    } else {
+        String errMsg = FormatString("invalid operand for operator (-): %s", ValueTypeOf(val));
+        Value* errVal = NewErrorValue(interp, errMsg);
+        free(errMsg);
+        return errVal;
+    }
 }
 
-int DoMul(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoMul(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
     
     if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
         long resultNum = CoerceToI64(lhs) * CoerceToI64(rhs);
@@ -445,39 +452,24 @@ int DoMul(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (*): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-    return offset;
+    return result;
 }
 
-int DoDiv(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoDiv(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
     
     // Check for division by zero
     if ((ValueIsInt(rhs) && CoerceToI64(rhs) == 0) || 
         (ValueIsNum(rhs) && CoerceToNum(rhs) == 0.0)) {
-        return FLG_ZERO_DIV;
+        return NewErrorValue(interp, "division by zero");
     }
     
     if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
@@ -490,39 +482,24 @@ int DoDiv(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (/): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-    return offset;
+    return result;
 }
 
-int DoMod(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoMod(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
     
     // Check for modulo by zero
     if ((ValueIsInt(rhs) && CoerceToI64(rhs) == 0) || 
         (ValueIsNum(rhs) && CoerceToNum(rhs) == 0.0)) {
-        return FLG_ZERO_DIV;
+        return NewErrorValue(interp, "modulo by zero");
     }
     
     if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
@@ -535,32 +512,18 @@ int DoMod(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (%%): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-    return offset;
+    return result;
 }
 
-int DoInc(Interpreter* interp, Value* val, Value** out) {
+Value* DoInc(Interpreter* interp, Value* val) {
     Value* result = NULL;
     int offset    = GetOffset();
 
@@ -574,34 +537,19 @@ int DoInc(Interpreter* interp, Value* val, Value** out) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else {
+        String errMsg = FormatString(
+            "invalid operand for operator (++): %s", ValueTypeOf(val)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants,
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-    return offset;
+    return result;
 }
 
-int DoAdd(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoAdd(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
 
     if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
         long resultNum = CoerceToI64(lhs) + CoerceToI64(rhs);
@@ -628,33 +576,18 @@ int DoAdd(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         free(lhsStr);
         free(rhsStr);
         free(resultStr);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (+): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoDec(Interpreter* interp, Value* val, Value** out) {
+Value* DoDec(Interpreter* interp, Value* val) {
     Value* result = NULL;
     int offset    = GetOffset();
 
@@ -668,34 +601,19 @@ int DoDec(Interpreter* interp, Value* val, Value** out) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else {
+        String errMsg = FormatString(
+            "invalid operand for operator (--): %s", ValueTypeOf(val)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants,
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-    return offset;
+    return result;
 }
 
-int DoSub(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoSub(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
 
     if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
         long resultNum = CoerceToI64(lhs) - CoerceToI64(rhs);
@@ -707,68 +625,37 @@ int DoSub(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (-): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoLShift(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoLShift(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
 
     if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
         long resultNum = CoerceToI64(lhs) << CoerceToI64(rhs);
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (<<): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoRShift(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoRShift(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
     int offset    = GetOffset();
 
@@ -777,420 +664,190 @@ int DoRShift(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (>>): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoLT(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoLT(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
 
     if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
         int comparison = CoerceToNum(lhs) < CoerceToNum(rhs);
         result = comparison ? interp->True : interp->False;
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (<): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoLTE(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoLTE(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
 
     if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
         int comparison = CoerceToNum(lhs) <= CoerceToNum(rhs);
         result = comparison ? interp->True : interp->False;
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (<=): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoGT(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoGT(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
 
     if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
         int comparison = CoerceToNum(lhs) > CoerceToNum(rhs);
         result = comparison ? interp->True : interp->False;
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (>): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoGTE(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
+Value* DoGTE(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
 
     if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
         int comparison = CoerceToNum(lhs) >= CoerceToNum(rhs);
         result = comparison ? interp->True : interp->False;
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (>=): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoEQ(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
-    Value* result = NULL;
-    int offset    = GetOffset();
-
-    // Check if both are numbers (int or num)
-    if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
-        int comparison = CoerceToNum(lhs) == CoerceToNum(rhs);
-        result = comparison ? interp->True : interp->False;
-    }
-    // Check if both are booleans
-    else if (ValueIsBool(lhs) && ValueIsBool(rhs)) {
-        int comparison = lhs->Value.I32 == rhs->Value.I32;
-        result = comparison ? interp->True : interp->False;
-    }
-    // Check if both are null
-    else if (ValueIsNull(lhs) && ValueIsNull(rhs)) {
-        result = interp->True;
-    }
-    // Check if both are strings
-    else if (ValueIsStr(lhs) && ValueIsStr(rhs)) {
-        Rune* lhsRunes = (Rune*) lhs->Value.Opaque;
-        Rune* rhsRunes = (Rune*) rhs->Value.Opaque;
-        
-        // Compare rune by rune
-        int i = 0;
-        int equal = 1;
-        while (lhsRunes[i] != 0 || rhsRunes[i] != 0) {
-            if (lhsRunes[i] != rhsRunes[i]) {
-                equal = 0;
-                break;
-            }
-            i++;
-        }
-        result = equal ? interp->True : interp->False;
-    }
-    // Different types are not equal
-    else {
-        result = interp->False;
-    }
-
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+Value* DoEQ(Interpreter* interp, Value* lhs, Value* rhs) {
+    return ValueIsEqual(lhs, rhs) ? interp->True : interp->False;
 }
 
-int DoNE(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
-    Value* result = NULL;
-    int offset    = GetOffset();
-
-    // Check if both are numbers (int or num)
-    if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
-        int comparison = CoerceToNum(lhs) != CoerceToNum(rhs);
-        result = comparison ? interp->True : interp->False;
-    }
-    // Check if both are booleans
-    else if (ValueIsBool(lhs) && ValueIsBool(rhs)) {
-        int comparison = lhs->Value.I32 != rhs->Value.I32;
-        result = comparison ? interp->True : interp->False;
-    }
-    // Check if both are null
-    else if (ValueIsNull(lhs) && ValueIsNull(rhs)) {
-        result = interp->False;
-    }
-    // Check if both are strings
-    else if (ValueIsStr(lhs) && ValueIsStr(rhs)) {
-        Rune* lhsRunes = (Rune*) lhs->Value.Opaque;
-        Rune* rhsRunes = (Rune*) rhs->Value.Opaque;
-        
-        // Compare rune by rune
-        int i = 0;
-        int equal = 1;
-        while (lhsRunes[i] != 0 || rhsRunes[i] != 0) {
-            if (lhsRunes[i] != rhsRunes[i]) {
-                equal = 0;
-                break;
-            }
-            i++;
-        }
-        result = equal ? interp->False : interp->True;
-    }
-    // Different types are not equal
-    else {
-        result = interp->True;
-    }
-
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+Value* DoNE(Interpreter* interp, Value* lhs, Value* rhs) {
+    return !ValueIsEqual(lhs, rhs) ? interp->True : interp->False;
 }
 
-int DoAnd(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
-    int offset    = interp->ConstantC;
+Value* DoAnd(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
 
     // Bitwise AND only works on integers
     if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
         int resultValue = lhs->Value.I32 & rhs->Value.I32;
         result = NewIntValue(interp, resultValue);
+    } else if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
+        long long resultValue = (int)CoerceToI64(lhs) & (int)CoerceToI64(rhs);
+        result = NewNumValue(interp, resultValue);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (&): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoOr(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
-    int offset    = interp->ConstantC;
+Value* DoOr(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
 
     // Bitwise OR only works on integers
     if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
         int resultValue = lhs->Value.I32 | rhs->Value.I32;
         result = NewIntValue(interp, resultValue);
+    } else if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
+        long long resultValue = (int)CoerceToI64(lhs) | (int)CoerceToI64(rhs);
+        result = NewNumValue(interp, resultValue);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (|): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoXor(Interpreter* interp, Value* lhs, Value* rhs, Value** out) {
-    int offset    = interp->ConstantC;
+Value* DoXor(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
 
     // Bitwise XOR only works on integers
     if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
         int resultValue = lhs->Value.I32 ^ rhs->Value.I32;
         result = NewIntValue(interp, resultValue);
+    } else if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
+        long long resultValue = (int)CoerceToI64(lhs) ^ (int)CoerceToI64(rhs);
+        result = NewNumValue(interp, resultValue);
+    } else {
+        String errMsg = FormatString(
+            "invalid operands for operator (^): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+        );
+        result = NewErrorValue(interp, errMsg);
+        free(errMsg);
     }
 
-    if (result == NULL) {
-        return FLG_INVALID_OPERATION;
-    }
-    
-    if (out != NULL) {
-        *out = result;
-        return offset;
-    }
-
-    if (_GetConstantOffset(interp, result) != FLG_NOTFOUND) {
-        return _GetConstantOffset(interp, result);
-    }
-
-    PushArray(
-        Value*,
-        interp->Constants, 
-        interp->ConstantC, 
-        result, 
-        NULL
-    );
-
-    return offset;
+    return result;
 }
 
-int DoLoadFunction(Interpreter* interp, Value* rootEnvObj, Value* envObj, int offset, bool closure, Value** out) {
+Value* DoLoadFunction(Interpreter* interp, int offset, bool closure) {
     // For closure, clone the function
-    Value* fn = closure
-        ? NewUserFunctionValue(interp, UserFunctionClone(CoerceToUserFunction(interp->Functions[offset])))
-        : interp->Functions[offset];
-
-    if (out != NULL) {
-        *out = fn;
+    Value*        fn = interp->Functions[offset];
+    UserFunction* uf = CoerceToUserFunction(fn);
+    uf->Scope = interp->CallEnv;
+    
+    if (closure) {
+        fn = NewUserFunctionValue(interp, UserFunctionClone(uf));
+        uf = CoerceToUserFunction(fn);
+        uf->Scope = interp->CallEnv;
     }
 
-    UserFunction* uf     = CoerceToUserFunction(fn);
-    Environment* rootEnv = CoerceToEnvironment(rootEnvObj);
-    Environment* loclEnv = CoerceToEnvironment(envObj);
+    Environment* rootEnv = CoerceToEnvironment(interp->RootEnv);
+    Environment* loclEnv = CoerceToEnvironment(interp->CallEnv);
+
+
     for (int i = 0; i < uf->CaptureC; i++) {
         CaptureMeta capture = uf->CaptureMetas[i];
-        if (capture.IsGlobal) {
-            rootEnv->Locals[capture.Src]->IsCaptured = true;
-            uf->Captures[capture.Dst] = rootEnv->Locals[capture.Src];
-        } else {
-            loclEnv->Locals[capture.Src]->IsCaptured = true;
-            uf->Captures[capture.Dst] = loclEnv->Locals[capture.Src];
+        // Traverse up the environment chain to find the captured variable
+        // through depth
+        int depth = 1;
+        Environment* currentEnv = loclEnv;
+        
+        while (depth != capture.Depth && currentEnv != NULL) {
+            currentEnv = CoerceToEnvironment(currentEnv->Parent);    
+            depth++;
         }
+    
+        uf->Captures[capture.Dst] = currentEnv->Locals[capture.Src];
+        currentEnv->Locals[capture.Src]->IsCaptured = true;
+        currentEnv->Locals[capture.Src]->RefCount++;
     }
 
-    uf->ParentEnv = rootEnvObj;
-    return FLG_SUCCESS;
+    return fn;
 }
 
 #undef PushArray

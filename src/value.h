@@ -70,10 +70,10 @@ Value* NewUserFunctionValue(Interpreter* interpreter, UserFunction* userFunction
  * @brief Creates a new native function value
  * 
  * @param interpreter Pointer to the interpreter instance
- * @param nativeFunctionMeta Pointer to the NativeFunctionMeta structure to wrap
+ * @param nativeFunctionMeta Pointer to the NativeFunction structure to wrap
  * @return Pointer to newly allocated Value structure containing the native function
  */
-Value* NewNativeFunctionValue(Interpreter* interpreter, NativeFunctionMeta* nativeFunctionMeta);
+Value* NewNativeFunctionValue(Interpreter* interpreter, NativeFunction* nativeFunctionMeta);
 
 /**
  * @brief Creates a new environment value
@@ -104,10 +104,10 @@ Value* NewObjectValue(Interpreter* interpreter);
  * @brief Creates a new class value
  * 
  * @param interpreter Pointer to the interpreter instance
- * @param cls Pointer to the UserClass structure to wrap
+ * @param cls Pointer to the Class structure to wrap
  * @return Pointer to newly allocated Value structure containing the class
  */
-Value* NewClassValue(Interpreter* interpreter, UserClass* cls);
+Value* NewClassValue(Interpreter* interpreter, Class* cls);
 
 /**
  * @brief Creates a new class instance value
@@ -133,14 +133,6 @@ String ValueToString(Value* value);
  * @return String representing the type of the value
  */
 String ValueTypeOf(Value* value);
-
-/**
- * @brief Converts a value to a boolean representation
- * 
- * @param value Pointer to the Value to convert
- * @return Boolean representation of the value
- */
-bool ValueToBool(Value* value);
 
 /**
  * @brief Checks if a value is an integer type
@@ -245,5 +237,14 @@ bool ValueIsClass(Value* value);
  * @return true if the value is a class instance, false otherwise
  */
 bool ValueIsClassInstance(Value* value);
+
+/**
+ * @brief Compares two values for equality
+ * 
+ * @param a Pointer to the first Value
+ * @param b Pointer to the second Value
+ * @return true if the values are equal, false otherwise
+ */
+bool ValueIsEqual(Value* a, Value* b);
 
 #endif

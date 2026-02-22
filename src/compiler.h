@@ -40,4 +40,11 @@ Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
  */
 Value* Compile(Compiler* compiler);
 
+/**
+ * Frees the compiler instance and any associated resources.
+ * Cleans up memory allocated for the compiler and its internal structures.
+ * @param compiler Pointer to the compiler instance to free.
+ */
+void FreeCompiler(Compiler* compiler);
+
 #endif /* COMPILER_H */
