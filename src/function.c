@@ -126,13 +126,13 @@ String UserFunctionToString(UserFunction* userFunction) {
 }
 
 void FreeUserFunction(UserFunction* userFunction) {
-    for (int i = 0; i < userFunction->CaptureC; i++) {
-        EnvCell* capture = userFunction->Captures[i];
-        if (capture != NULL && --capture->RefCount <= 0) {
-            printf("Free ENV!\n");
-            free(capture);
-        }
-    }
+    // for (int i = 0; i < userFunction->CaptureC; i++) {
+    //     EnvCell* capture = userFunction->Captures[i];
+    //     if (capture != NULL && (--capture->RefCount) <= 0) {
+    //         free(capture);
+    //         userFunction->Captures[i] = NULL;
+    //     }
+    // }
     if (userFunction->Name != NULL) free(userFunction->Name);
     free(userFunction->CaptureMetas);
     free(userFunction->Captures);

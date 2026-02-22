@@ -398,12 +398,11 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
         Panic("User function '%s' has null Scope\n", uf->Name != NULL ? uf->Name : "<anonymous>");
     }
 
-    Value* env = NULL, *saveEnv = NULL;
-    env = NewEnvironmentValue(interp, CreateEnvironment(uf->Scope, uf->LocalC)), saveEnv = interp->RootEnv;
+    Value* env = NULL;
+    env = NewEnvironmentValue(interp, CreateEnvironment(uf->Scope, uf->LocalC));
     SaveEnv(interp, env);
     Run(interp, fn);
     RestoreEnv(interp);
-    interp->RootEnv = saveEnv;
 
     return interp->Null;
 }
@@ -843,8 +842,8 @@ Value* DoLoadFunction(Interpreter* interp, int offset, bool closure) {
         }
     
         uf->Captures[capture.Dst] = currentEnv->Locals[capture.Src];
-        currentEnv->Locals[capture.Src]->IsCaptured = true;
-        currentEnv->Locals[capture.Src]->RefCount++;
+        uf->Captures[capture.Dst]->IsCaptured = true;
+        uf->Captures[capture.Dst]->RefCount++;
     }
 
     return fn;

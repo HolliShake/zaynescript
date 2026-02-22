@@ -714,12 +714,12 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 
 void _RunProgram(Interpreter* interpreter, Value* fnValue) {
     UserFunction* uf = CoerceToUserFunction(fnValue);
-    Value* env = NULL, *saveEnv = NULL;
-    env = saveEnv = NewEnvironmentValue(interpreter, CreateEnvironment(NULL, uf->LocalC));
+    Value* env = NULL, *saveGbl = NULL;
+    env = saveGbl = NewEnvironmentValue(interpreter, CreateEnvironment(NULL, uf->LocalC));
     SaveRootEnv(interpreter, env);
     Run(interpreter, fnValue);
     RestoreEnv(interpreter);
-    interpreter->RootEnv = saveEnv;
+    interpreter->RootEnv = saveGbl;
     if (interpreter->StackC != 1) {
         InterpreterPanic(
             "internal error: stack not cleaned up after function '%s' execution, expected 1 value on stack but got %d values", 
