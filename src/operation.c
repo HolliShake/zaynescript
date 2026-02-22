@@ -816,15 +816,19 @@ Value* DoXor(Interpreter* interp, Value* lhs, Value* rhs) {
 
 Value* DoLoadFunction(Interpreter* interp, int offset, bool closure) {
     // For closure, clone the function
-    Value* fn = closure 
-        ? NewUserFunctionValue(interp, UserFunctionClone(CoerceToUserFunction(interp->Functions[offset])))
-        : interp->Functions[offset];
+    Value*        fn = interp->Functions[offset];
+    UserFunction* uf = CoerceToUserFunction(fn);
+    uf->Scope = interp->CallEnv;
+    
+    if (closure) {
+        fn = NewUserFunctionValue(interp, UserFunctionClone(uf));
+        uf = CoerceToUserFunction(fn);
+        uf->Scope = interp->CallEnv;
+    }
 
-    UserFunction* uf     = CoerceToUserFunction(fn);
     Environment* rootEnv = CoerceToEnvironment(interp->RootEnv);
     Environment* loclEnv = CoerceToEnvironment(interp->CallEnv);
 
-    uf->Scope = interp->CallEnv;
 
     for (int i = 0; i < uf->CaptureC; i++) {
         CaptureMeta capture = uf->CaptureMetas[i];
