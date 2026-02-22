@@ -1,6 +1,28 @@
 
 import { println} from "core:io";
 
+class Animal {
+    fn greet() {
+        println("From animal!");
+    }
+}
 
+class Dog (Animal) {
+    fn init() {
+        println(this);
+    }
 
-println("Hello World!");;
+    fn t() {
+        this.greet();
+        return this;
+    }
+}
+
+const dg = new Dog();
+println(dg);
+
+const a = [18];
+a.push(19);
+
+println(a, dg.t());
+

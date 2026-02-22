@@ -844,6 +844,7 @@ Value* DoLoadFunction(Interpreter* interp, int offset, bool closure) {
     
         uf->Captures[capture.Dst] = currentEnv->Locals[capture.Src];
         currentEnv->Locals[capture.Src]->IsCaptured = true;
+        currentEnv->Locals[capture.Src]->RefCount++;
     }
 
     return fn;

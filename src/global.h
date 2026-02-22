@@ -470,6 +470,7 @@ typedef struct capture_meta_struct {
 typedef struct envcell_struct {
     Value* Value;      /**< Pointer to the value stored in the cell */
     bool   IsCaptured; /**< True if this cell is captured by a closure */
+    int    RefCount;   /**< Reference count for captured variables (optional, can be used for optimizations) */
 } EnvCell;
 
 /**
