@@ -284,11 +284,9 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
         }
         case AST_INT: {
             long long lld = strtoll(node->Value, NULL, 10);
-            if (lld > INT_MAX || lld < INT_MIN) {
-                offset = _SaveNum(compiler, (double)lld);
-            } else {
-                offset = _SaveInt(compiler, (int)lld);
-            }
+            offset = (lld > INT_MAX || lld < INT_MIN) 
+                ? _SaveNum(compiler, (double)lld)
+                : _SaveInt(compiler, (int)lld);
             val = _GetConstantValue(compiler, offset);
             if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
             break;
