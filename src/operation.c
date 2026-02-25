@@ -138,7 +138,7 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* index, bool f
             long idx = (long) CoerceToI64(index);
             if (idx < 0 || idx >= array->Count) {
                 free(key);
-                String errMsg = FormatString("array index %ld out of bounds", idx);
+                String errMsg = FormatString("%s: array index %ld out of bounds", INDEX_ERROR, idx);
                 Value* errVal = NewErrorValue(interp, errMsg);
                 free(errMsg);
                 return errVal;
@@ -228,7 +228,7 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* index, bool f
 Value* DoImportCore(Interpreter* interp, String moduleName) {
     Value* result = LoadCoreModule(interp, moduleName);
     if (result == NULL) {
-        String errMsg = FormatString("core module '%s' not found", moduleName);
+        String errMsg = FormatString("%s: core module '%s' not found", IMPORT_ERROR, moduleName);
         Value* errVal = NewErrorValue(interp, errMsg);
         free(errMsg);
         return errVal;
@@ -241,7 +241,7 @@ Value* DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val) {
         Array* array = CoerceToArray(obj);
         long idx = (long) CoerceToI64(index);
         if (idx < 0 || idx >= array->Count) {
-            String errMsg = FormatString("array index %ld out of bounds", idx);
+            String errMsg = FormatString("%s: array index %ld out of bounds", INDEX_ERROR, idx);
             Value* errVal = NewErrorValue(interp, errMsg);
             free(errMsg);
             return errVal;
@@ -257,7 +257,7 @@ Value* DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val) {
         Class* cls = CoerceToUserClass(obj);
         HashMapSet(cls->StaticMembers, ValueToString(index), val);
     } else {
-        return NewErrorValue(interp, "invalid operation: cannot set index on non-object");
+        return NewErrorFValue(interp, "%s: cannot set index on non-object", TYPE_ERROR);
     }
     return interp->Null;
 }
@@ -271,7 +271,7 @@ Value* DoCallCtor(Interpreter* interp, Value* clsValue, int argc) {
 
     if (!ValueIsClass(clsValue)) {
         _PopN(argc);
-        return NewErrorValue(interp, "invalid operation: attempted to call constructor on non-class value");
+        return NewErrorFValue(interp, "%s: attempted to call constructor on non-class value", TYPE_ERROR);
     }
 
     Class* cls = CoerceToUserClass(clsValue);
@@ -279,7 +279,7 @@ Value* DoCallCtor(Interpreter* interp, Value* clsValue, int argc) {
     if (!ClassHasMember(cls, CONSTRUCTOR_NAME, false, true)) {
         if (argc != 0) {
             _PopN(argc);
-            String errMsg = FormatString("argument count mismatch: expected 0 arguments but got %d", argc);
+            String errMsg = FormatString("%s: argument count mismatch, expected 0 arguments but got %d", ARGUMENT_ERROR, argc);
             Value* errVal = NewErrorValue(interp, errMsg);
             free(errMsg);
             return errVal;
@@ -324,7 +324,7 @@ Value* DoCallMethod(Interpreter* interp, Value* obj, Value* methodName, int argc
     if (ValueIsNull(method)) {
         _PopN(argc); 
         String method = ValueToString(methodName);
-        String errMsg = FormatString("method '%s' not found on object of type %s", method, ValueTypeOf(obj));
+        String errMsg = FormatString("%s: method '%s' not found on object of type %s", ATTRIBUTE_ERROR, method, ValueTypeOf(obj));
         Value* errVal = NewErrorValue(interp, errMsg);
         free(method);
         free(errMsg);
@@ -344,7 +344,7 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
 
     if (!ValueIsCallable(fn)) {
         _PopN(argc);
-        return NewErrorValue(interp, "invalid operation: attempted to call a non-callable value");
+        return NewErrorFValue(interp, "%s: invalid operation: attempted to call a non-callable value", TYPE_ERROR);
     }
 
     if (ValueIsNativeFunction(fn)) {
@@ -353,7 +353,7 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
 
         if (nFMeta->Argc != VARARG && argc != nFMeta->Argc) {
             _PopN(argc); 
-            String errMsg = FormatString("argument count mismatch: expected %d arguments but got %d",  nFMeta->Argc, argc);
+            String errMsg = FormatString("%s: argument count mismatch: expected %d arguments but got %d", ARGUMENT_ERROR, nFMeta->Argc, argc);
             Value* errVal = NewErrorValue(interp, errMsg);
             free(errMsg);
             return errVal;
@@ -388,7 +388,7 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
 
     if (argc != uf->Argc) {
         _PopN(argc);
-        String errMsg = FormatString("argument count mismatch: expected %d arguments but got %d",  uf->Argc, argc);
+        String errMsg = FormatString("%s: argument count mismatch: expected %d arguments but got %d", ARGUMENT_ERROR, uf->Argc, argc);
         Value* errVal = NewErrorValue(interp, errMsg);
         free(errMsg);
         return errVal;
@@ -418,7 +418,7 @@ Value* DoPos(Interpreter* interp, Value* val) {
     } else if (ValueIsNum(val)) {
         return NewNumValue(interp, +CoerceToNum(val));
     } else {
-        String errMsg = FormatString("invalid operand for operator (+): %s", ValueTypeOf(val));
+        String errMsg = FormatString("%s: invalid operand for operator (+): %s", TYPE_ERROR, ValueTypeOf(val));
         Value* errVal = NewErrorValue(interp, errMsg);
         free(errMsg);
         return errVal;
@@ -431,7 +431,7 @@ Value* DoNeg(Interpreter* interp, Value* val) {
     } else if (ValueIsNum(val)) {
         return NewNumValue(interp, -CoerceToNum(val));
     } else {
-        String errMsg = FormatString("invalid operand for operator (-): %s", ValueTypeOf(val));
+        String errMsg = FormatString("%s: invalid operand for operator (-): %s", TYPE_ERROR, ValueTypeOf(val));
         Value* errVal = NewErrorValue(interp, errMsg);
         free(errMsg);
         return errVal;
@@ -453,7 +453,7 @@ Value* DoMul(Interpreter* interp, Value* lhs, Value* rhs) {
             : NewNumValue(interp, resultNum);
     } else {
         String errMsg = FormatString(
-            "invalid operands for operator (*): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+            "%s: invalid operands for operator (*): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
         );
         result = NewErrorValue(interp, errMsg);
         free(errMsg);
@@ -468,7 +468,7 @@ Value* DoDiv(Interpreter* interp, Value* lhs, Value* rhs) {
     // Check for division by zero
     if ((ValueIsInt(rhs) && CoerceToI64(rhs) == 0) || 
         (ValueIsNum(rhs) && CoerceToNum(rhs) == 0.0)) {
-        return NewErrorValue(interp, "division by zero");
+        return NewErrorFValue(interp, "%s: division by zero", ZERO_DIVISION_ERROR);
     }
     
     if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
@@ -483,7 +483,7 @@ Value* DoDiv(Interpreter* interp, Value* lhs, Value* rhs) {
             : NewNumValue(interp, resultNum);
     } else {
         String errMsg = FormatString(
-            "invalid operands for operator (/): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+            "%s: invalid operands for operator (/): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
         );
         result = NewErrorValue(interp, errMsg);
         free(errMsg);
@@ -498,7 +498,7 @@ Value* DoMod(Interpreter* interp, Value* lhs, Value* rhs) {
     // Check for modulo by zero
     if ((ValueIsInt(rhs) && CoerceToI64(rhs) == 0) || 
         (ValueIsNum(rhs) && CoerceToNum(rhs) == 0.0)) {
-        return NewErrorValue(interp, "modulo by zero");
+        return NewErrorFValue(interp, "%s: modulo by zero", ZERO_DIVISION_ERROR);
     }
     
     if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
@@ -513,7 +513,7 @@ Value* DoMod(Interpreter* interp, Value* lhs, Value* rhs) {
             : NewNumValue(interp, resultNum);
     } else {
         String errMsg = FormatString(
-            "invalid operands for operator (%%): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+            "%s: invalid operands for operator (%%): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
         );
         result = NewErrorValue(interp, errMsg);
         free(errMsg);
@@ -538,7 +538,7 @@ Value* DoInc(Interpreter* interp, Value* val) {
             : NewNumValue(interp, resultNum);
     } else {
         String errMsg = FormatString(
-            "invalid operand for operator (++): %s", ValueTypeOf(val)
+            "%s: invalid operand for operator (++): %s", TYPE_ERROR, ValueTypeOf(val)
         );
         result = NewErrorValue(interp, errMsg);
         free(errMsg);
@@ -577,7 +577,7 @@ Value* DoAdd(Interpreter* interp, Value* lhs, Value* rhs) {
         free(resultStr);
     } else {
         String errMsg = FormatString(
-            "invalid operands for operator (+): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+            "%s: invalid operands for operator (+): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
         );
         result = NewErrorValue(interp, errMsg);
         free(errMsg);
@@ -602,7 +602,7 @@ Value* DoDec(Interpreter* interp, Value* val) {
             : NewNumValue(interp, resultNum);
     } else {
         String errMsg = FormatString(
-            "invalid operand for operator (--): %s", ValueTypeOf(val)
+            "%s: invalid operand for operator (--): %s", TYPE_ERROR, ValueTypeOf(val)
         );
         result = NewErrorValue(interp, errMsg);
         free(errMsg);
@@ -626,7 +626,7 @@ Value* DoSub(Interpreter* interp, Value* lhs, Value* rhs) {
             : NewNumValue(interp, resultNum);
     } else {
         String errMsg = FormatString(
-            "invalid operands for operator (-): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+            "%s: invalid operands for operator (-): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
         );
         result = NewErrorValue(interp, errMsg);
         free(errMsg);
@@ -645,7 +645,7 @@ Value* DoLShift(Interpreter* interp, Value* lhs, Value* rhs) {
             : NewNumValue(interp, resultNum);
     } else {
         String errMsg = FormatString(
-            "invalid operands for operator (<<): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+            "%s: invalid operands for operator (<<): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
         );
         result = NewErrorValue(interp, errMsg);
         free(errMsg);
@@ -665,7 +665,7 @@ Value* DoRShift(Interpreter* interp, Value* lhs, Value* rhs) {
             : NewNumValue(interp, resultNum);
     } else {
         String errMsg = FormatString(
-            "invalid operands for operator (>>): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+            "%s: invalid operands for operator (>>): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
         );
         result = NewErrorValue(interp, errMsg);
         free(errMsg);
@@ -682,7 +682,7 @@ Value* DoLT(Interpreter* interp, Value* lhs, Value* rhs) {
         result = comparison ? interp->True : interp->False;
     } else {
         String errMsg = FormatString(
-            "invalid operands for operator (<): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+            "%s: invalid operands for operator (<): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
         );
         result = NewErrorValue(interp, errMsg);
         free(errMsg);
@@ -699,7 +699,7 @@ Value* DoLTE(Interpreter* interp, Value* lhs, Value* rhs) {
         result = comparison ? interp->True : interp->False;
     } else {
         String errMsg = FormatString(
-            "invalid operands for operator (<=): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+            "%s: invalid operands for operator (<=): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
         );
         result = NewErrorValue(interp, errMsg);
         free(errMsg);
@@ -716,7 +716,7 @@ Value* DoGT(Interpreter* interp, Value* lhs, Value* rhs) {
         result = comparison ? interp->True : interp->False;
     } else {
         String errMsg = FormatString(
-            "invalid operands for operator (>): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+            "%s: invalid operands for operator (>): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
         );
         result = NewErrorValue(interp, errMsg);
         free(errMsg);
@@ -733,7 +733,7 @@ Value* DoGTE(Interpreter* interp, Value* lhs, Value* rhs) {
         result = comparison ? interp->True : interp->False;
     } else {
         String errMsg = FormatString(
-            "invalid operands for operator (>=): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+            "%s: invalid operands for operator (>=): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
         );
         result = NewErrorValue(interp, errMsg);
         free(errMsg);
@@ -762,7 +762,7 @@ Value* DoAnd(Interpreter* interp, Value* lhs, Value* rhs) {
         result = NewNumValue(interp, resultValue);
     } else {
         String errMsg = FormatString(
-            "invalid operands for operator (&): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+            "%s: invalid operands for operator (&): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
         );
         result = NewErrorValue(interp, errMsg);
         free(errMsg);
@@ -783,7 +783,7 @@ Value* DoOr(Interpreter* interp, Value* lhs, Value* rhs) {
         result = NewNumValue(interp, resultValue);
     } else {
         String errMsg = FormatString(
-            "invalid operands for operator (|): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+            "%s: invalid operands for operator (|): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
         );
         result = NewErrorValue(interp, errMsg);
         free(errMsg);
@@ -804,7 +804,7 @@ Value* DoXor(Interpreter* interp, Value* lhs, Value* rhs) {
         result = NewNumValue(interp, resultValue);
     } else {
         String errMsg = FormatString(
-            "invalid operands for operator (^): %s and %s", ValueTypeOf(lhs), ValueTypeOf(rhs)
+            "%s: invalid operands for operator (^): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
         );
         result = NewErrorValue(interp, errMsg);
         free(errMsg);
@@ -827,7 +827,6 @@ Value* DoLoadFunction(Interpreter* interp, int offset, bool closure) {
 
     Environment* rootEnv = CoerceToEnvironment(interp->RootEnv);
     Environment* loclEnv = CoerceToEnvironment(interp->CallEnv);
-
 
     for (int i = 0; i < uf->CaptureC; i++) {
         CaptureMeta capture = uf->CaptureMetas[i];

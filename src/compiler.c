@@ -338,7 +338,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     "'this' can only be used inside class methods"
                 );
             }
-            _Identifier(compiler, uf, scope, "this", node->Position);
+            _Identifier(compiler, uf, scope, KEY_THIS, node->Position);
             break;
         }
         case AST_LIST_LITERAL: {

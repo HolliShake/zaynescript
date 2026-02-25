@@ -1,6 +1,7 @@
 #include "./array.h"
 
 Value* _ArrayPush(Interpreter* interpreter, int argc, Value** arguments) {
+    // Reserve 1 arg for thisArg"
     if (argc != 2) {
         return NewErrorValue(interpreter, "Array.push expects 1 argument");
     }
@@ -19,6 +20,7 @@ Value* _ArrayPush(Interpreter* interpreter, int argc, Value** arguments) {
 }
 
 static Value* _ArrayLength(Interpreter* interpreter, int argc, Value** arguments) {
+    // Reserve 1 arg for thisArg"
     if (argc != 1) {
         return NewErrorValue(interpreter, "Array.length expects no arguments");
     }

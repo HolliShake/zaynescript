@@ -497,7 +497,7 @@ typedef struct user_function_struct {
     Value*       Scope;        /**< The environment where the function was defined */
     String       Name;         /**< Function name (Nullable) */
     uint8_t*     Codes;        /**< Bytecode instructions */
-    int          CodeC;        /**< Size of bytecode */
+    size_t       CodeC;        /**< Size of bytecode */
     int          Argc;         /**< Argument count */
     int          LocalC;       /**< Local variable count */
     CaptureMeta* CaptureMetas; /**< Array of capture metadata */

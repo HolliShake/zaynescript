@@ -56,7 +56,7 @@ const msg = "Hello";
 try {
     let x = 2;
     try {
-        2 + msg;
+        2.23 + msg;
         println("Exec??");
     } catch (err) {
         println("inside >>", err);

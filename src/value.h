@@ -14,6 +14,16 @@
 Value* NewErrorValue(Interpreter* interpreter, String message);
 
 /**
+ * @brief Creates a new error value with formatted message
+ * 
+ * @param interpreter Pointer to the interpreter instance
+ * @param fmt Format string for the error message
+ * @param ... Additional arguments for formatting the message
+ * @return Pointer to newly allocated Value structure containing the error message
+ */
+Value* NewErrorFValue(Interpreter* interpreter, String fmt, ...);
+
+/**
  * @brief Creates a new 32-bit integer value
  * 
  * @param interpreter Pointer to the interpreter instance

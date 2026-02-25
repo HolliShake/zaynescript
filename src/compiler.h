@@ -8,6 +8,7 @@
  */
 
 #include "./global.h"
+#include "./keyword.h"
 #include "./operation.h"
 #include "./parser.h"
 #include "./value.h"
