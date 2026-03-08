@@ -4,6 +4,7 @@ EnvCell* CreateEnvCell(Value* value) {
     EnvCell* envCell    = Allocate(sizeof(EnvCell));
     envCell->Value      = value;
     envCell->IsCaptured = false;
+    envCell->RefCount   = 1;
     return envCell;
 }
 
@@ -33,10 +34,11 @@ void FreeEnvironment(Environment* environment) {
     environment->Parent = NULL;
     // Uninitialize
     for (int i = 0; i < environment->LocalC; i++) {
-        //NOTE: memory leak (EnvCells that are captured are not freed. Since Environment is only freed when unreachable (and thus capturing UserFunctions are also unreachable), these cells should be freed)
-        if (environment->Locals[i] != NULL && !(environment->Locals[i]->IsCaptured)) {
+        if (environment->Locals[i] != NULL) {
             environment->Locals[i]->Value = NULL;
-            free(environment->Locals[i]);
+            if (--environment->Locals[i]->RefCount <= 0) {
+                free(environment->Locals[i]);
+            }
         }
     }
     free(environment->Locals);

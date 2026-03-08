@@ -149,3 +149,4 @@ fn fact(n) {
     return n * fact(n - 1);
 }
 
+println(fact(5));

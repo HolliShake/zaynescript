@@ -839,7 +839,7 @@ Value* DoLoadFunction(Interpreter* interp, int offset, bool closure) {
             currentEnv = CoerceToEnvironment(currentEnv->Parent);    
             depth++;
         }
-    
+        
         uf->Captures[capture.Dst] = currentEnv->Locals[capture.Src];
         uf->Captures[capture.Dst]->IsCaptured = true;
         uf->Captures[capture.Dst]->RefCount++;

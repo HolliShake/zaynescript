@@ -42,11 +42,10 @@ UserFunction* UserFunctionClone(UserFunction* userFunction) {
         clone->Captures,
         sizeof(EnvCell*) * (userFunction->CaptureC + 1)
     );
-    memcpy(
-        clone->Captures,
-        userFunction->Captures,
-        sizeof(EnvCell*) * userFunction->CaptureC
-    );
+    // Initialize Captures to NULL - they will be set up in DoLoadFunction
+    for (int i = 0; i < userFunction->CaptureC; i++) {
+        clone->Captures[i] = NULL;
+    }
     return clone;
 }
 
@@ -126,13 +125,12 @@ String UserFunctionToString(UserFunction* userFunction) {
 }
 
 void FreeUserFunction(UserFunction* userFunction) {
-    // for (int i = 0; i < userFunction->CaptureC; i++) {
-    //     EnvCell* capture = userFunction->Captures[i];
-    //     if (capture != NULL && (--capture->RefCount) <= 0) {
-    //         free(capture);
-    //         userFunction->Captures[i] = NULL;
-    //     }
-    // }
+    for (int i = 0; i < userFunction->CaptureC; i++) {
+        EnvCell* capture =  userFunction->Captures[i];
+        if (capture != NULL && --capture->RefCount <= 0) {
+            free(capture);
+        }
+    }
     if (userFunction->Name != NULL) free(userFunction->Name);
     free(userFunction->CaptureMetas);
     free(userFunction->Captures);
