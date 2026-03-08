@@ -2,6 +2,7 @@
 
 Interpreter* CreateInterpreter() {
     Interpreter* interpreter                = Allocate(sizeof(Interpreter));
+    interpreter->Imports                    = CreateHashMap(16);
     interpreter->Allocated                  = 0;
     interpreter->GcRoot                     = NULL;
     interpreter->RootEnv                    = NULL;
@@ -143,12 +144,49 @@ static int _PeekTry(Interpreter* interpreter) {
 
 #define isCatched() (interpreter->ExceptionHandlerStackC != 0)
 
+#define JumpToError(ip, addr) (*ip = addr)
+
+#define DumpTraceBack(uf, ip) do { \
+    for (int i = 0; i < uf->LineC; i++) { \
+        fprintf(stderr, "[%s:%d] == %d\n", uf->Lines[i].Path, uf->Lines[i].Line, ip); \
+    } \
+    fprintf(stderr, "\n"); \
+} while (0) \
+
+static LineInfo _GetLineFromPc(UserFunction* uf, size_t pc) {
+    if (uf->LineC == 0) {
+        goto BAD;
+    }
+    
+    int low = 0;
+    int high = uf->LineC - 1;
+    
+    while (low <= high) {
+        int mid = low + (high - low) / 2;
+        if (uf->Lines[mid].Pc == pc) {
+            return uf->Lines[mid];
+        } else if (uf->Lines[mid].Pc < pc) {
+            low = mid + 1;
+        } else {
+            high = mid - 1;
+        }
+    }
+    
+    // If exact match not found, return the line for the closest lower PC
+    if (high >= 0) {
+        return uf->Lines[high];
+    }
+    BAD:;
+    return (LineInfo) { };
+}
+
 static void _Error(Interpreter* interpreter, UserFunction* uf, size_t* ip, const String type, String message) {
-    String fmt = FormatString("%s: %s", type, message);
+    LineInfo line = _GetLineFromPc(uf, *ip);
+    String fmt = FormatString("[%s:%d]::%s: %s", line.Path, line.Line, type, message);
     free(message);
     Value* err = NewErrorValue(interpreter, fmt);
     if (isCatched()) {
-        *ip = _PeekTry(interpreter);
+        JumpToError(ip, _PeekTry(interpreter));
         _PoppTry(interpreter);
         Push(err);
         return;
@@ -156,16 +194,15 @@ static void _Error(Interpreter* interpreter, UserFunction* uf, size_t* ip, const
     InterpreterPanic(ValueToString(err));
 }
 
-static void _RaiseError(Interpreter* interpreter, UserFunction* uf, size_t* ip, String message /*must be freeable*/) {
-    Value* err = NewErrorValue(interpreter, message);
-    free(message);
+static void _RaiseError(Interpreter* interpreter, UserFunction* uf, size_t* ip, Value* error) {
     if (isCatched()) {
-        *ip = _PeekTry(interpreter);
+        JumpToError(ip, _PeekTry(interpreter));
         _PoppTry(interpreter);
-        Push(err);
+        Push(error);
         return;
     }
-    InterpreterPanic(ValueToString(err));
+    LineInfo line = _GetLineFromPc(uf, *ip);
+    InterpreterPanic(FormatString("[%s:%d]::%s", line.Path, line.Line, ValueToString(error)));
 }
 
 static void _ReferenceError(Interpreter* interpreter, UserFunction* uf, size_t* ip, String message) {
@@ -219,7 +256,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 str = _ReadString(uf->Codes, ip);
                 res = DoImportCore(interpreter, str);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -387,7 +424,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 obj = Peek();
                 res = DoSetIndex(interpreter, obj, key, val);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 break;
@@ -397,7 +434,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 obj = Popp();
                 res = DoGetIndex(interpreter, obj, key);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -421,7 +458,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 cls  = Popp();
                 res  = DoCallCtor(interpreter, cls, argc);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 break;
@@ -432,7 +469,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 obj  = Popp();
                 res  = DoCall(interpreter, obj, argc, false);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 break;
@@ -444,7 +481,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 obj  = Popp(); // 'this' object
                 res  = DoCallMethod(interpreter, obj, key, argc);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 break;
@@ -453,7 +490,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 rhs = Popp();
                 res = DoNot(interpreter, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -463,7 +500,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 rhs = Popp();
                 res = DoPos(interpreter, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -473,7 +510,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 rhs = Popp();
                 res = DoNeg(interpreter, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -484,7 +521,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 lhs = Popp();
                 res = DoMul(interpreter, lhs, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -495,7 +532,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 lhs = Popp();
                 res =  DoDiv(interpreter, lhs, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -506,7 +543,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 lhs = Popp();
                 res = DoMod(interpreter, lhs, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -517,7 +554,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 lhs = Popp(); // old value
                 res = DoInc(interpreter, lhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -528,7 +565,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 rhs = Popp();
                 res = DoInc(interpreter, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -539,7 +576,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 lhs = Popp();
                 res = DoAdd(interpreter, lhs, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -550,7 +587,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 lhs = Popp(); // old value
                 res = DoDec(interpreter, lhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -561,7 +598,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 rhs = Popp();
                 res = DoDec(interpreter, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -572,7 +609,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 lhs = Popp();
                 res = DoSub(interpreter, lhs, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -583,7 +620,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 lhs = Popp();
                 res = DoLShift(interpreter, lhs, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -594,7 +631,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 lhs = Popp();
                 res = DoRShift(interpreter, lhs, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -605,7 +642,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 lhs = Popp();
                 res = DoLT(interpreter, lhs, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -616,7 +653,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 lhs = Popp();
                 res = DoLTE(interpreter, lhs, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -627,7 +664,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 lhs = Popp();
                 res = DoGT(interpreter, lhs, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -638,7 +675,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 lhs = Popp();
                 res = DoGTE(interpreter, lhs, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -649,7 +686,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 lhs = Popp();
                 res = DoEQ(interpreter, lhs, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -660,7 +697,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 lhs = Popp();
                 res = DoNE(interpreter, lhs, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -671,7 +708,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 lhs = Popp();
                 res = DoAnd(interpreter, lhs, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -682,7 +719,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 lhs = Popp();
                 res = DoOr(interpreter, lhs, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);
@@ -693,7 +730,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 lhs = Popp();
                 res = DoXor(interpreter, lhs, rhs);
                 if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, ValueToString(res));
+                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
                 Push(res);

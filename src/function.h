@@ -13,6 +13,15 @@
 UserFunction* CreateUserFunction(String name, int argc);
 
 /**
+ * Creates a new main user function.
+ *
+ * @param name The name of the function.
+ * @param argc The number of arguments the function takes.
+ * @return Pointer to the newly created UserFunction structure, or NULL on failure.
+ */
+UserFunction* CreateMainUserFunction(String name, int argc);
+
+/**
  * Clones an existing user function.
  *
  * @param userFunction Pointer to the user function to clone.

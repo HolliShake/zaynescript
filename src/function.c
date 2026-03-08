@@ -17,6 +17,23 @@ UserFunction* CreateUserFunction(String name, int argc) {
     return userFunction;
 }
 
+UserFunction* CreateMainUserFunction(String name, int argc) {
+    UserFunction* userFunction  = Allocate(sizeof(UserFunction));
+    userFunction->Scope         = NULL;
+    userFunction->Name          = name;
+    userFunction->Codes         = Allocate(sizeof(uint8_t) * 1);
+    userFunction->Codes[0]      = 255;
+    userFunction->CodeC         = 0;
+    userFunction->Lines        = Allocate(sizeof(LineInfo) * 1);
+    userFunction->LineC        = 0;
+    userFunction->Argc          = argc;
+    userFunction->LocalC        = 0;
+    userFunction->CaptureMetas  = Allocate(sizeof(CaptureMeta) * 1);
+    userFunction->CaptureC      = 0;
+    userFunction->Captures      = Allocate(sizeof(EnvCell*) * 1);
+    return userFunction;
+}
+
 UserFunction* UserFunctionClone(UserFunction* userFunction) {
     UserFunction* clone = CreateUserFunction(
         userFunction->Name != NULL ? AllocateString(userFunction->Name) : NULL,
@@ -137,6 +154,7 @@ void FreeUserFunction(UserFunction* userFunction) {
     free(userFunction->CaptureMetas);
     free(userFunction->Captures);
     free(userFunction->Codes);
+    free(userFunction->Lines);
     free(userFunction);
 }
 

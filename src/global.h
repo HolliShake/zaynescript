@@ -495,6 +495,7 @@ typedef struct environment_struct {
  */
 typedef struct line_info_struct {
     String Path; /**< Path to the source file */
+    int    Pc;   /**< Program counter */
     int    Line; /**< Line number in the source file */
 } LineInfo;
 
@@ -663,6 +664,7 @@ typedef struct module_function_struct {
  * and null. Also maintains exception handler stack for try-catch blocks.
  */
 struct interpreter_struct {
+    HashMap* Imports;                                /**< Imports map */
     Value*   Array;                                  /**< Built-in Array class */
     Value*   True;                                   /**< Singleton 'true' value */
     Value*   False;                                  /**< Singleton 'false' value */
@@ -692,6 +694,7 @@ struct interpreter_struct {
  */
 typedef struct compiler_struct {
     Interpreter* Interpreter; /**< Pointer to the interpreter */
+    String       ModulePath;  /**< Path to the module */
     Parser*      Parser;      /**< Pointer to the parser */
 } Compiler;
 

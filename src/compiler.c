@@ -15,6 +15,14 @@ Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser) {
     return compiler;
 }
 
+static void _InitModule(Compiler* compiler) {
+    compiler->ModulePath = AllocateString(compiler->Parser->Lexer->Path);
+}
+
+static String _GetModule(Compiler* compiler) {
+    return compiler->ModulePath;
+}
+
 static bool _IsAstConstant(Compiler* compiler, Ast* node) {
     switch (node->Type) {
         case AST_INT:
@@ -184,14 +192,15 @@ static void _EmitArg(Compiler* compiler, UserFunction* uf, OpcodeEnum opcode, in
     _EmitConst(compiler, uf, opcode, index);
 }
 
-static void _EmitLine(Compiler* compiler, UserFunction* uf, int line) {
+static void _EmitLine(Compiler* compiler, UserFunction* uf, Position pos) {
     PushArray(
         LineInfo,
         uf->Lines, 
         uf->LineC, 
         ((LineInfo) { 
-            .Path = compiler->Parser->Lexer->Path,
-            .Line = line
+            .Path = _GetModule(compiler),
+            .Pc   = uf->CodeC,
+            .Line = pos.LineStart
         }), 
         ((LineInfo) {})
     );
@@ -270,6 +279,7 @@ static void _Identifier(Compiler* compiler, UserFunction* uf, Scope* scope, Stri
         }
 
         // Capture the variable
+        _EmitLine(compiler, uf, pos);
         _EmitArg(
             compiler, 
             uf, 
@@ -279,6 +289,7 @@ static void _Identifier(Compiler* compiler, UserFunction* uf, Scope* scope, Stri
         return;
     }
     
+    _EmitLine(compiler, uf, pos);
     _EmitArg(
         compiler, 
         uf, 
@@ -301,19 +312,28 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 ? _SaveNum(compiler, (double)lld)
                 : _SaveInt(compiler, (int)lld);
             val = _GetConstantValue(compiler, offset);
-            if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+            if (!evalOnly) {
+                _EmitLine(compiler, uf, node->Position);
+                _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+            }
             break;
         }
         case AST_NUM: {
             offset = _SaveNum(compiler, strtod(node->Value, NULL));
             val = _GetConstantValue(compiler, offset);
-            if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+            if (!evalOnly) {
+                _EmitLine(compiler, uf, node->Position);
+                _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+            }
             break;
         } 
         case AST_STR: {
             offset = _SaveStr(compiler, node->Value);
             val = _GetConstantValue(compiler, offset);
-            if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+            if (!evalOnly) {
+                _EmitLine(compiler, uf, node->Position);
+                _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+            }
             break;
         }
         case AST_BOOL: {
@@ -324,22 +344,28 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 val = compiler->Interpreter->False;
             }
 
-            if (!evalOnly) _EmitArg(
-                compiler, 
-                uf, 
-                OP_LOAD_BOOL,
-                val == compiler->Interpreter->True ? 1 : 0
-            );
+            if (!evalOnly) {
+                _EmitLine(compiler, uf, node->Position);
+                _EmitArg(
+                    compiler, 
+                    uf, 
+                    OP_LOAD_BOOL,
+                    val == compiler->Interpreter->True ? 1 : 0
+                );
+            }
             break;
         }
         case AST_NULL: {
             val = compiler->Interpreter->Null;
 
-            if (!evalOnly) _Emit(
-                compiler, 
-                uf, 
-                OP_LOAD_NULL
-            );
+            if (!evalOnly) {
+                _EmitLine(compiler, uf, node->Position);
+                _Emit(
+                    compiler, 
+                    uf, 
+                    OP_LOAD_NULL
+                );
+            }
             break;
         }
         case AST_THIS: {
@@ -363,24 +389,32 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     case AST_SPREAD: {
                         if (!hasSpread) {
                             // Emit array with number if elements
+                            _EmitLine(compiler, uf, node->Position);
                             _EmitArg(compiler, uf, OP_ARRAY_MAKE, count);
                         }
                         count = 0;
                         hasSpread = true;
                         _Expression(compiler, uf, scope, elements->A);
+                        _EmitLine(compiler, uf, node->Position);
                         _Emit(compiler, uf, OP_ARRAY_EXTEND);
                         break;
                     }
                     default: {
                         if (!hasSpread) ++count;
                         _Expression(compiler, uf, scope, elements);
-                        if (hasSpread) _Emit(compiler, uf, OP_ARRAY_PUSH);
+                        if (hasSpread) {
+                            _EmitLine(compiler, uf, node->Position);
+                            _Emit(compiler, uf, OP_ARRAY_PUSH);
+                        }
                         break;
                     }
                 }
                 elements = elements->Next;
             }
-            if (!hasSpread) _EmitArg(compiler, uf, OP_ARRAY_MAKE, count);
+            if (!hasSpread) {
+                _EmitLine(compiler, uf, node->Position);
+                _EmitArg(compiler, uf, OP_ARRAY_MAKE, count);
+            }
             break;
         }
         case AST_OBJECT_LITERAL: {
@@ -392,11 +426,13 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     case AST_SPREAD: {
                         if (!hasSpread) {
                             // Emit object with number if pairs
+                            _EmitLine(compiler, uf, node->Position);
                             _EmitArg(compiler, uf, OP_OBJECT_MAKE, count);
                         }
                         count = 0;
                         hasSpread = true;
                         _Expression(compiler, uf, scope, properties->A);
+                        _EmitLine(compiler, uf, node->Position);
                         _Emit(compiler, uf, OP_OBJECT_EXTEND);
                         break;
                     }
@@ -405,8 +441,12 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                         k = properties;
                         v = properties;
                         _Expression(compiler, uf, scope, v);
+                        _EmitLine(compiler, uf, node->Position);
                         _EmitString(compiler, uf, OP_LOAD_STRING, k->Value);
-                        if (hasSpread) _Emit(compiler, uf, OP_SET_INDEX);
+                        if (hasSpread) {
+                            _EmitLine(compiler, uf, node->Position);
+                            _Emit(compiler, uf, OP_SET_INDEX);
+                        }
                         break;
                     }
                     case AST_OBJECT_KEY_VAL: {
@@ -414,9 +454,12 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                         k = properties->A;
                         v = k->B;
                         _Expression(compiler, uf, scope, v);
+                        _EmitLine(compiler, uf, node->Position);
                         _EmitString(compiler, uf, OP_LOAD_STRING, k->Value);
                         if (hasSpread) {
+                            _EmitLine(compiler, uf, node->Position);
                             _Emit(compiler, uf, OP_ROT2);
+                            _EmitLine(compiler, uf, node->Position);
                             _Emit(compiler, uf, OP_SET_INDEX);
                         }
                         break;
@@ -434,6 +477,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             }
             if (!hasSpread) {
                 // Emit object with number if pairs
+                _EmitLine(compiler, uf, node->Position);
                 _EmitArg(compiler, uf, OP_OBJECT_MAKE, count);
             }
             break;
@@ -477,7 +521,8 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 int offset = UserFunctionEmitLocal(fn);
 
                 ScopeSetSymbol(fnScope, currentParam->Value, false, true, false, offset);
-
+                
+                _EmitLine(compiler, fn, currentParam->Position);
                 _EmitArg(compiler, fn, OP_STORE_LOCAL, offset);
             }
 
@@ -490,19 +535,22 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 body = body->Next;
             }
 
+            _EmitLine(compiler, fn, node->Position);
             _Emit(compiler, fn, OP_LOAD_NULL);
+            _EmitLine(compiler, fn, node->Position);
             _Emit(compiler, fn, OP_RETURN);
 
             // Create the function
             Value* fnValue = NewUserFunctionValue(compiler->Interpreter, fn);
             int funcOffset = _SaveFunction(compiler, fnValue);
 
+            _EmitLine(compiler, uf, node->Position);
             _EmitArg(compiler, uf, OP_LOAD_FUNCTION_CLOSURE, funcOffset);
             FreeScope(fnScope);
             break;
         }
         case AST_ALLOCATION: {
-            Ast* cls      = node->A;
+            Ast* cls       = node->A;
             Ast* arguments = node->B;
 
             int argc = 0;
@@ -527,6 +575,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             free(argArray);
 
             _Expression(compiler, uf, scope, cls);
+            _EmitLine(compiler, uf, node->Position);
             _EmitArg(compiler, uf, OP_CALL_CTOR, argc);
             break;
         }
@@ -534,7 +583,9 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             Ast* objc = node->A;
             Ast* attr = node->B;
             _Expression(compiler, uf, scope, objc);
+            _EmitLine(compiler, uf, node->Position);
             _EmitString(compiler, uf, OP_LOAD_STRING, attr->Value);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_GET_INDEX);
             break;
         }
@@ -543,6 +594,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             Ast* indx = node->B;
             _Expression(compiler, uf, scope, objc);
             _Expression(compiler, uf, scope, indx);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_GET_INDEX);
             break;
         }
@@ -567,13 +619,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     }
 
                     _Expression(compiler, uf, scope, obj); // must be in Stack
+                    _EmitLine(compiler, uf, node->Position);
                     _Emit(compiler, uf, OP_DUPTOP); // duplicate for 'this'
                     if (objc->Type == AST_MEMBER) {
+                        _EmitLine(compiler, uf, node->Position);
                         _EmitString(compiler, uf, OP_LOAD_STRING, att->Value);
                     } else {
                         _Expression(compiler, uf, scope, att);
                     }
                     
+                    _EmitLine(compiler, uf, node->Position);
                     _EmitArg(compiler, uf, OP_CALL_METHOD, argc);
                     break;
                 }
@@ -586,6 +641,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                         arg = arg->Next;
                     }
                     _Expression(compiler, uf, scope, objc);
+                    _EmitLine(compiler, uf, node->Position);
                     _EmitArg(compiler, uf, OP_CALL, argc);
                     break;
                 }
@@ -594,41 +650,50 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
         }
         case AST_LOGICAL_NOT: {
             _Expression(compiler, uf, scope, node->A);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_NOT);
             break;
         }
         case AST_POSITIVE: {
             _Expression(compiler, uf, scope, node->A);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_POS);
             break;
         }
         case AST_NEGATIVE: {
             _Expression(compiler, uf, scope, node->A);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_NEG);
             break;
         }
         case AST_POST_INC: {
             _AssignOpRhs(compiler, uf, scope, node->A, true);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_POSTINC);
             _AssignOpLhs(compiler, uf, scope, node->A, true);
             break;
         }
         case AST_POST_DEC: {
             _AssignOpRhs(compiler, uf, scope, node->A, true);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_POSTDEC);
             _AssignOpLhs(compiler, uf, scope, node->A, true);
             break;
         }
         case AST_PRE_INC: {
             _AssignOpRhs(compiler, uf, scope, node->A, false);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_INC);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_DUPTOP);
             _AssignOpLhs(compiler, uf, scope, node->A, false);
             break;
         }
         case AST_PRE_DEC: {
             _AssignOpRhs(compiler, uf, scope, node->A, false);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_DEC);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_DUPTOP);
             _AssignOpLhs(compiler, uf, scope, node->A, false);
             break;
@@ -647,11 +712,15 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     );
                 }
                 offset = _SaveConstantValue(compiler, val);
-                if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                if (!evalOnly) {
+                    _EmitLine(compiler, uf, node->Position);
+                    _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                }
                 break;
             }
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_MUL);
             break;
         }
@@ -669,12 +738,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     );
                 }
                 offset = _SaveConstantValue(compiler, val);
-                if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                if (!evalOnly) {
+                    _EmitLine(compiler, uf, node->Position);
+                    _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                }
                 break;
             }
 
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_DIV);
             break;
         }
@@ -692,12 +765,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     );
                 }
                 offset = _SaveConstantValue(compiler, val);
-                if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                if (!evalOnly) {
+                    _EmitLine(compiler, uf, node->Position);
+                    _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                }
                 break;
             }
 
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_MOD);
             break;
         }
@@ -715,11 +792,15 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     );
                 }
                 offset = _SaveConstantValue(compiler, val);
-                if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                if (!evalOnly) {
+                    _EmitLine(compiler, uf, node->Position);
+                    _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                }
                 break;
             }
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_ADD);
             break;
         }
@@ -737,12 +818,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     );
                 }
                 offset = _SaveConstantValue(compiler, val);
-                if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                if (!evalOnly) {
+                    _EmitLine(compiler, uf, node->Position);
+                    _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                }
                 break;
             }
 
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_SUB);
             break;
         }
@@ -760,12 +845,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     );
                 }
                 offset = _SaveConstantValue(compiler, val);
-                if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                if (!evalOnly) {
+                    _EmitLine(compiler, uf, node->Position);
+                    _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                }
                 break;
             }
 
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_LSHFT);
             break;
         }
@@ -783,11 +872,15 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     );
                 }
                 offset = _SaveConstantValue(compiler, val);
-                if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                if (!evalOnly) {
+                    _EmitLine(compiler, uf, node->Position);
+                    _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                }
                 break;
             }
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_RSHFT);
             break;
         }
@@ -805,11 +898,15 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     );
                 }
                 offset = _SaveConstantValue(compiler, val);
-                if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                if (!evalOnly) {
+                    _EmitLine(compiler, uf, node->Position);
+                    _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                }
                 break;
             }
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_LT);
             break;
         }
@@ -827,11 +924,15 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     );
                 }
                 offset = _SaveConstantValue(compiler, val);
-                if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                if (!evalOnly) {
+                    _EmitLine(compiler, uf, node->Position);
+                    _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                }
                 break;
             }
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_LTE);
             break;
         }
@@ -849,11 +950,15 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     );
                 }
                 offset = _SaveConstantValue(compiler, val);
-                if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                if (!evalOnly) {
+                    _EmitLine(compiler, uf, node->Position);
+                    _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                }
                 break;
             }
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_GT);
             break;
         }
@@ -871,11 +976,15 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     );
                 }
                 offset = _SaveConstantValue(compiler, val);
-                if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                if (!evalOnly) {
+                    _EmitLine(compiler, uf, node->Position);
+                    _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                }
                 break;
             }
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_GTE);
             break;
         }
@@ -893,11 +1002,15 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     );
                 }
                 offset = _SaveConstantValue(compiler, val);
-                if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                if (!evalOnly) {
+                    _EmitLine(compiler, uf, node->Position);
+                    _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                }
                 break;
             }
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_EQ);
             break;
         }
@@ -915,11 +1028,15 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     );
                 }
                 offset = _SaveConstantValue(compiler, val);
-                if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                if (!evalOnly) {
+                    _EmitLine(compiler, uf, node->Position);
+                    _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                }
                 break;
             }
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_NE);
             break;
         }
@@ -937,11 +1054,15 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     );
                 }
                 offset = _SaveConstantValue(compiler, val);
-                if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                if (!evalOnly) {
+                    _EmitLine(compiler, uf, node->Position);
+                    _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                }
                 break;
             }
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_AND);
             break;
         }
@@ -959,12 +1080,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     );
                 }
                 offset = _SaveConstantValue(compiler, val);
-                if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                if (!evalOnly) {
+                    _EmitLine(compiler, uf, node->Position);
+                    _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                }
                 break;
             }
 
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_OR);
             break;
         }
@@ -982,16 +1107,21 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     );
                 }
                 offset = _SaveConstantValue(compiler, val);
-                if (!evalOnly) _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                if (!evalOnly) {
+                    _EmitLine(compiler, uf, node->Position);
+                    _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+                }
                 break;
             }
             lhs = _Expression(compiler, uf, scope, node->A);
             rhs = _Expression(compiler, uf, scope, node->B);
+            _EmitLine(compiler, uf, node->Position);
             _Emit(compiler, uf, OP_XOR);
             break;
         }
         case AST_LAND: {
             _Expression(compiler, uf, scope, node->A);
+            _EmitLine(compiler, uf, node->Position);
             int jumpOffset = _EmitJumpTo(compiler, uf, OP_JUMP_IF_FALSE_OR_POP);
             _Expression(compiler, uf, scope, node->B);
             _JumpToLabel(compiler, uf, jumpOffset);
@@ -999,6 +1129,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
         }
         case AST_LOR: {
             _Expression(compiler, uf, scope, node->A);
+            _EmitLine(compiler, uf, node->Position);
             int jumpOffset = _EmitJumpTo(compiler, uf, OP_JUMP_IF_TRUE_OR_POP);
             _Expression(compiler, uf, scope, node->B);
             _JumpToLabel(compiler, uf, jumpOffset);
@@ -1027,6 +1158,7 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
     switch (lhs->Type) {
         case AST_NAME: {
             _Expression(compiler, uf, scope, rhs);
+            _EmitLine(compiler, uf, lhs->Position);
             _Emit(compiler, uf, OP_DUPTOP);
             if (!ScopeHasName(scope, lhs->Value)) {
                 ThrowError(
@@ -1066,6 +1198,7 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
                 }
 
                 // Capture the variable
+                _EmitLine(compiler, uf, lhs->Position);
                 _EmitArg(
                     compiler, 
                     uf, 
@@ -1073,6 +1206,7 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
                     captureOffset
                 );
             } else {
+                _EmitLine(compiler, uf, lhs->Position);
                 _EmitArg(
                     compiler, 
                     uf, 
@@ -1087,8 +1221,10 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
             Ast* obj = lhs->A;
             Ast* att = lhs->B;
             _Expression(compiler, uf, scope, obj);
+            _EmitLine(compiler, uf, lhs->Position);
             _EmitString(compiler, uf, OP_LOAD_STRING, att->Value);
             _Expression(compiler, uf, scope, rhs);
+            _EmitLine(compiler, uf, lhs->Position);
             _Emit(compiler, uf, OP_DUPTOP);
             _Emit(compiler, uf, OP_ROT4);
             _Emit(compiler, uf, OP_SET_INDEX);
@@ -1102,9 +1238,13 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
             _Expression(compiler, uf, scope, obj);
             _Expression(compiler, uf, scope, idx);
             _Expression(compiler, uf, scope, rhs);
+            _EmitLine(compiler, uf, lhs->Position);
             _Emit(compiler, uf, OP_DUPTOP);
+            _EmitLine(compiler, uf, lhs->Position);
             _Emit(compiler, uf, OP_ROT4);
+            _EmitLine(compiler, uf, lhs->Position);
             _Emit(compiler, uf, OP_SET_INDEX);
+            _EmitLine(compiler, uf, lhs->Position);
             _Emit(compiler, uf, OP_POPTOP); // Pops object
             break;
         }
@@ -1131,7 +1271,9 @@ static void _AssignOpRhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
             Ast* att = rhs->B;
             _Expression(compiler, uf, scope, obj);
             _Expression(compiler, uf, scope, att);
+            _EmitLine(compiler, uf, rhs->Position);
             _Emit(compiler, uf, OP_DUP2);
+            _EmitLine(compiler, uf, rhs->Position);
             _Emit(compiler, uf, OP_GET_INDEX);
             break;
         }
@@ -1140,8 +1282,11 @@ static void _AssignOpRhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
             Ast* obj = rhs->A;
             Ast* att = rhs->B;
             _Expression(compiler, uf, scope, obj);
+            _EmitLine(compiler, uf, rhs->Position);
             _EmitString(compiler, uf, OP_LOAD_STRING, att->Value);
+            _EmitLine(compiler, uf, rhs->Position);
             _Emit(compiler, uf, OP_DUP2);
+            _EmitLine(compiler, uf, rhs->Position);
             _Emit(compiler, uf, OP_GET_INDEX);
             break;
         }
@@ -1160,6 +1305,7 @@ static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
     switch (lhs->Type) {
         case AST_NAME: {
             if (postfix) {
+                _EmitLine(compiler, uf, lhs->Position);
                 _Emit(compiler, uf, OP_ROT2);
             }
 
@@ -1204,6 +1350,7 @@ static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
                 }
 
                 // Capture the variable
+                _EmitLine(compiler, uf, lhs->Position);
                 _EmitArg(
                     compiler, 
                     uf, 
@@ -1211,6 +1358,7 @@ static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
                     captureOffset
                 );
             } else {
+                _EmitLine(compiler, uf, lhs->Position);
                 _EmitArg(
                     compiler, 
                     uf, 
@@ -1229,8 +1377,11 @@ static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
             // bot [obj, key, val, old] top
             // after rotate4:
             // bot [old, obj, key, val] top
+            _EmitLine(compiler, uf, lhs->Position);
             _Emit(compiler, uf, OP_ROT4);
+            _EmitLine(compiler, uf, lhs->Position);
             _Emit(compiler, uf, OP_SET_INDEX);
+            _EmitLine(compiler, uf, lhs->Position);
             _Emit(compiler, uf, OP_POPTOP); // Pops object
             break;
         }
@@ -1275,10 +1426,12 @@ static void _ClassDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope
 
     int nameOffset = symbol->Offset;
 
+    _EmitLine(compiler, uf, className->Position);
     _EmitString(compiler, uf, OP_CLASS_MAKE, className->Value);
 
     if (super != NULL) {
         _Expression(compiler, uf, scope, super);
+        _EmitLine(compiler, uf, super->Position);
         _Emit(compiler, uf, OP_CLASS_EXTEND);
     }
 
@@ -1290,6 +1443,7 @@ static void _ClassDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope
                 Ast* propName = actualBody->A;
                 Ast* propVal  = actualBody->B;
                 _Expression(compiler, uf, scope, propVal);
+                _EmitLine(compiler, uf, propVal->Position);
                 _EmitString(compiler, uf, OP_LOAD_STRING, propName->Value);
 
                 if (ScopeHasLocal(classScope, propName->Value)) {
@@ -1333,6 +1487,7 @@ static void _ClassDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope
                     // Emit 'this' as the first parameter
                     int offset = UserFunctionEmitLocal(fn);
                     ScopeSetSymbol(fnScope, KEY_THIS, false, true, false, offset);
+                    _EmitLine(compiler, fn, node->Position);
                     _EmitArg(compiler, fn, OP_STORE_LOCAL, offset);
                     add++;
                 }
@@ -1353,6 +1508,7 @@ static void _ClassDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope
 
                     ScopeSetSymbol(fnScope, currentParam->Value, false, true, false, offset);
 
+                    _EmitLine(compiler, fn, currentParam->Position);
                     _EmitArg(compiler, fn, OP_STORE_LOCAL, offset);
                 }
 
@@ -1364,15 +1520,19 @@ static void _ClassDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope
                     _Statement(compiler, fn, fnScope, body);
                     body = body->Next;
                 }
-
+                
+                _EmitLine(compiler, fn, node->Position);
                 _Emit(compiler, fn, OP_LOAD_NULL);
+                _EmitLine(compiler, fn, node->Position);
                 _Emit(compiler, fn, OP_RETURN);
 
                 // Create the function
                 Value* fnValue = NewUserFunctionValue(compiler->Interpreter, fn);
                 int funcOffset = _SaveFunction(compiler, fnValue);
 
+                _EmitLine(compiler, uf, node->Position);
                 _EmitArg(compiler, uf, OP_LOAD_FUNCTION, funcOffset);
+                _EmitLine(compiler, uf, node->Position);
                 _EmitString(compiler, uf, OP_LOAD_STRING, fnName->Value);
 
                 if (ScopeHasLocal(classScope, fnName->Value)) {
@@ -1396,9 +1556,11 @@ static void _ClassDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope
                 );
             }
         }
+        _EmitLine(compiler, uf, body->Position);
         _Emit(compiler, uf, isStatic ? OP_CLASS_DEFINE_STATIC_MEMBER : OP_CLASS_DEFINE_INSTANCE_MEMBER);
         body = body->Next;
     }
+    _EmitLine(compiler, uf, node->Position);
     _EmitArg(compiler, uf, OP_STORE_NAME, nameOffset);
     FreeScope(classScope);
 }
@@ -1449,6 +1611,7 @@ static void _FunctionDeclaration(Compiler* compiler, UserFunction* uf, Scope* sc
 
         ScopeSetSymbol(fnScope, params->Value, false, true, false, offset);
 
+        _EmitLine(compiler, fn, params->Position);
         _EmitArg(compiler, fn, OP_STORE_LOCAL, offset);
         paramc++;
         params = params->Next;
@@ -1461,14 +1624,18 @@ static void _FunctionDeclaration(Compiler* compiler, UserFunction* uf, Scope* sc
         body = body->Next;
     }
 
+    _EmitLine(compiler, fn, node->Position);
     _Emit(compiler, fn, OP_LOAD_NULL);
+    _EmitLine(compiler, fn, node->Position);
     _Emit(compiler, fn, OP_RETURN);
 
     // Create the function
     Value* fnValue = NewUserFunctionValue(compiler->Interpreter, fn);
     int funcOffset = _SaveFunction(compiler, fnValue);
 
+    _EmitLine(compiler, uf, node->Position);
     _EmitArg(compiler, uf, OP_LOAD_FUNCTION, funcOffset);
+    _EmitLine(compiler, uf, node->Position);
     _EmitArg(compiler, uf, OP_STORE_NAME, nameOffset);
     FreeScope(fnScope);
 }
@@ -1497,9 +1664,11 @@ static void _ImportStatement(Compiler* compiler, UserFunction* uf, Scope* scope,
     }
 
     if (StringStartsWith(moduleName->Value, "core:")) {
+        _EmitLine(compiler, uf, moduleName->Position);
         _EmitString(compiler, uf, OP_IMPORT_CORE, moduleName->Value + 5);
         if (imports == NULL) {
             // store as object
+            _EmitLine(compiler, uf, moduleName->Position);
             _Emit(compiler, uf, OP_DUPTOP);
 
             if (ScopeHasLocal(scope, moduleName->Value + 5)) {
@@ -1513,6 +1682,7 @@ static void _ImportStatement(Compiler* compiler, UserFunction* uf, Scope* scope,
 
             int offset = UserFunctionEmitLocal(uf);
             ScopeSetSymbol(scope, moduleName->Value + 5, true, true, true, offset);
+            _EmitLine(compiler, uf, moduleName->Position);
             _EmitArg(compiler, uf, OP_STORE_NAME, offset);
         }
     } else {
@@ -1527,6 +1697,7 @@ static void _ImportStatement(Compiler* compiler, UserFunction* uf, Scope* scope,
     while (imports != NULL) {
         String attributeName = imports->Value;
 
+        _EmitLine(compiler, uf, imports->Position);
         _EmitString(compiler, uf, OP_OBJECT_PLUCK_ATTRIBUTE, attributeName);
 
         if (ScopeHasLocal(scope, attributeName)) {
@@ -1539,6 +1710,7 @@ static void _ImportStatement(Compiler* compiler, UserFunction* uf, Scope* scope,
         }
 
         int offset = UserFunctionEmitLocal(uf);
+        _EmitLine(compiler, uf, imports->Position);
         _EmitArg(compiler, uf, OP_STORE_NAME, offset);
         ScopeSetSymbol(scope, attributeName, true, true, false, offset);
 
@@ -1546,6 +1718,7 @@ static void _ImportStatement(Compiler* compiler, UserFunction* uf, Scope* scope,
     }
 
     // Pop the module object
+    _EmitLine(compiler, uf, node->Position);
     _Emit(compiler, uf, OP_POPTOP);
 }
 
@@ -1563,12 +1736,13 @@ static void _VarDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope
         if (declarations->B != NULL) {
             _Expression(compiler, uf, scope, declarations->B);
         } else {
+            _EmitLine(compiler, uf, declarations->Position);
             _Emit(compiler, uf, OP_LOAD_NULL);
         }
 
         int offset = UserFunctionEmitLocal(uf);
-        printf("%s := %d\n", declarations->Value, offset);
 
+        _EmitLine(compiler, uf, declarations->Position);
         _EmitArg(compiler, uf, OP_STORE_NAME, offset);
 
         if (ScopeHasLocal(scope, declarations->Value)) {
@@ -1600,10 +1774,12 @@ static void _LocalDeclarationStatement(Compiler* compiler, UserFunction* uf, Sco
         if (declarations->B != NULL) {
             _Expression(compiler, uf, scope, declarations->B);
         } else {
+            _EmitLine(compiler, uf, declarations->Position);
             _Emit(compiler, uf, OP_LOAD_NULL);
         }
         
         int offset = UserFunctionEmitLocal(uf);
+        _EmitLine(compiler, uf, declarations->Position);
         _EmitArg(compiler, uf, OP_STORE_LOCAL, offset);
 
         if (ScopeHasLocal(scope, declarations->Value)) {
@@ -1634,10 +1810,12 @@ static void _ConstDeclarationStatement(Compiler* compiler, UserFunction* uf, Sco
         if (declarations->B != NULL) {
             _Expression(compiler, uf, scope, declarations->B);
         } else {
+            _EmitLine(compiler, uf, declarations->Position);
             _Emit(compiler, uf, OP_LOAD_NULL);
         }
 
         int offset = UserFunctionEmitLocal(uf);
+        _EmitLine(compiler, uf, declarations->Position);
         _EmitArg(compiler, uf, ScopeIs(scope, SCOPE_GLOBAL) ? OP_STORE_NAME : OP_STORE_LOCAL, offset);
 
         if (ScopeHasLocal(scope, declarations->Value)) {
@@ -1668,6 +1846,7 @@ static void _InitializerConditionMutator(Compiler* compiler, UserFunction* uf, S
         }
         int offset = UserFunctionEmitLocal(uf);
         ScopeSetSymbol(scope, lhs->Value, false, true, false, offset);
+        _EmitLine(compiler, uf, lhs->Position);
         _EmitArg(compiler, uf, OP_STORE_LOCAL, offset);
         return;
     }
@@ -1695,8 +1874,10 @@ static void _IfStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
     } else {
         _Expression(compiler, uf, useScope, condition);
     }
+    _EmitLine(compiler, uf, node->Position);
     int jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
     _Statement(compiler, uf, useScope, thenBranch);
+    _EmitLine(compiler, uf, node->Position);
     int jumpEndIfOffset = _EmitJumpTo(compiler, uf, OP_JUMP);
     _JumpToLabel(compiler, uf, jumpOffset);
     if (elseBranch != NULL) {
@@ -1728,6 +1909,7 @@ static void _ForStatement(Compiler* compiler, UserFunction* uf, Scope* scope, As
     int jumpOffset = -1;
     if (condition != NULL) {
         _Expression(compiler, uf, loopScope, condition);
+        _EmitLine(compiler, uf, condition->Position);
         jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
     }
 
@@ -1739,6 +1921,7 @@ static void _ForStatement(Compiler* compiler, UserFunction* uf, Scope* scope, As
             _JumpToLabel(compiler, uf, loopScope->ContinueJumps[i]);
         }
         _Expression(compiler, uf, loopScope, mutator);
+        _EmitLine(compiler, uf, mutator->Position);
         _Emit(compiler, uf, OP_POPTOP);
     } else {
         // continues to jump to forStart if has no mutator
@@ -1747,6 +1930,7 @@ static void _ForStatement(Compiler* compiler, UserFunction* uf, Scope* scope, As
         }
     }
 
+    _EmitLine(compiler, uf, node->Position);
     _JumpToAbsoluteLabel(compiler, uf, _EmitJumpTo(compiler, uf, OP_ABSOLUTE_JUMP), forStart);
 
     // breaks
@@ -1780,6 +1964,7 @@ static void _WhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope, 
         _Expression(compiler, uf, loopScope, condition);
     }
 
+    _EmitLine(compiler, uf, condition->Position);
     int jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
     _Statement(compiler, uf, loopScope, thenBranch);
 
@@ -1789,6 +1974,7 @@ static void _WhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope, 
             _JumpToLabel(compiler, uf, loopScope->ContinueJumps[i]);
         }
         _Expression(compiler, uf, loopScope, mutator);
+        _EmitLine(compiler, uf, mutator->Position);
         _Emit(compiler, uf, OP_POPTOP);
     } else {
         // continues to jump to whileStart if has no mutator
@@ -1797,6 +1983,7 @@ static void _WhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope, 
         }
     }
 
+    _EmitLine(compiler, uf, node->Position);
     _JumpToAbsoluteLabel(compiler, uf, _EmitJumpTo(compiler, uf, OP_ABSOLUTE_JUMP), whileStart);
     _JumpToLabel(compiler, uf, jumpOffset);
     FreeScope(loopScope);
@@ -1809,7 +1996,9 @@ static void _DoWhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope
     int doStart     = uf->CodeC;
     _Statement(compiler, uf, loopScope, thenBranch);
     _Expression(compiler, uf, scope, condition);
+    _EmitLine(compiler, uf, condition->Position);
     int jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
+    _EmitLine(compiler, uf, node->Position);
     _JumpToAbsoluteLabel(compiler, uf, _EmitJumpTo(compiler, uf, OP_ABSOLUTE_JUMP), doStart);
     // breaks
     for (int i = 0; i < loopScope->BreakJumpC; i++) {
@@ -1828,15 +2017,18 @@ static void _TryCatch(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* n
     Ast* catchBlock = node->C;
     int targetOffset = -1, skipCatchOffset = -1;
     // Try begin
+    _EmitLine(compiler, uf, node->Position);
     targetOffset = _EmitJumpTo(compiler, uf, OP_SETUP_TRY);
     Scope* tryScope = CreateScope(SCOPE_TRY_BLOCK, scope);
     while (tryBlock != NULL) {
         _Statement(compiler, uf, tryScope, tryBlock);
         tryBlock = tryBlock->Next;
     }
+    _EmitLine(compiler, uf, node->Position);
     _Emit(compiler, uf, OP_POP_TRY);
     FreeScope(tryScope);
     // Try end
+    _EmitLine(compiler, uf, node->Position);
     skipCatchOffset = _EmitJumpTo(compiler, uf, OP_JUMP);
     // Catch begin, Jump here if encounters an error
     _JumpToLabel(compiler, uf, targetOffset);
@@ -1844,6 +2036,7 @@ static void _TryCatch(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* n
     // Store error object
     int offset = UserFunctionEmitLocal(uf);
     ScopeSetSymbol(catchScope, catchParam->Value, false, true, false, offset);
+    _EmitLine(compiler, uf, catchParam->Position);
     _EmitArg(compiler, uf, OP_STORE_LOCAL, offset);
     while (catchBlock != NULL) {
         _Statement(compiler, uf, catchScope, catchBlock);
@@ -1876,9 +2069,16 @@ static void _ContinueStatement(Compiler* compiler, UserFunction* uf, Scope* scop
     if (ScopeInside(scope, SCOPE_TRY_BLOCK)) {
         int n = ScopeCountNested(scope, SCOPE_TRY_BLOCK);
         // Pop try blocks until we exit the try block
-        if (n == 1) _Emit(compiler, uf, OP_POP_TRY);
-        else _EmitArg(compiler, uf, OP_POPN_TRY, n);
+        if (n == 1) {
+            _EmitLine(compiler, uf, node->Position);
+            _Emit(compiler, uf, OP_POP_TRY);
+        }
+        else {
+            _EmitLine(compiler, uf, node->Position);
+            _EmitArg(compiler, uf, OP_POPN_TRY, n);
+        }
     }
+    _EmitLine(compiler, uf, node->Position);
     int offset = _EmitJumpTo(compiler, uf, OP_JUMP);
     ScopeAddContinueJump(scope, offset);
 }
@@ -1895,9 +2095,16 @@ static void _BreakStatement(Compiler* compiler, UserFunction* uf, Scope* scope, 
     if (ScopeInside(scope, SCOPE_TRY_BLOCK)) {
         int n = ScopeCountNested(scope, SCOPE_TRY_BLOCK);
         // Pop try blocks until we exit the try block
-        if (n == 1) _Emit(compiler, uf, OP_POP_TRY);
-        else _EmitArg(compiler, uf, OP_POPN_TRY, n);
+        if (n == 1) {
+            _EmitLine(compiler, uf, node->Position);
+            _Emit(compiler, uf, OP_POP_TRY);
+        }
+        else {
+            _EmitLine(compiler, uf, node->Position);
+            _EmitArg(compiler, uf, OP_POPN_TRY, n);
+        }
     }
+    _EmitLine(compiler, uf, node->Position);
     int offset = _EmitJumpTo(compiler, uf, OP_JUMP);
     ScopeAddBreakJump(scope, offset);
 }
@@ -1920,16 +2127,24 @@ static void _ReturnStatement(Compiler* compiler, UserFunction* uf, Scope* scope,
     if (ScopeInside(scope, SCOPE_TRY_BLOCK)) {
         int n = ScopeCountNested(scope, SCOPE_TRY_BLOCK);
         // Pop try blocks until we exit the try block
-        if (n == 1) _Emit(compiler, uf, OP_POP_TRY);
-        else _EmitArg(compiler, uf, OP_POPN_TRY, n);
+        if (n == 1) {
+            _EmitLine(compiler, uf, node->Position);
+            _Emit(compiler, uf, OP_POP_TRY);
+        }
+        else {
+            _EmitLine(compiler, uf, node->Position);
+            _EmitArg(compiler, uf, OP_POPN_TRY, n);
+        }
     }
 
     if (node->A != NULL) _Expression(compiler, uf, scope, node->A);
+    _EmitLine(compiler, uf, node->Position);
     _Emit(compiler, uf, OP_RETURN);
 }
 
 static void _ExpressionStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
     Value* val = _Expression(compiler, uf, scope, node->A);
+    _EmitLine(compiler, uf, node->Position);
     _Emit(compiler, uf, OP_POPTOP);
 }
 
@@ -2024,8 +2239,9 @@ static void _Statement(Compiler* compiler, UserFunction* userFunction, Scope* sc
 }
 
 static Value* _Program(Compiler* compiler, Ast* node) {
+    _InitModule(compiler);
     Scope* scope = CreateScope(SCOPE_GLOBAL, NULL);
-    UserFunction* uf = CreateUserFunction(AllocateString("main"), 0);
+    UserFunction* uf = CreateMainUserFunction(_GetModule(compiler), 0);
 
     Value* value = NewUserFunctionValue(compiler->Interpreter, uf);
     _SaveFunction(compiler, value);
@@ -2037,7 +2253,9 @@ static Value* _Program(Compiler* compiler, Ast* node) {
         current = current->Next;
     }
 
+    _EmitLine(compiler, uf, node->Position);
     _Emit(compiler, uf, OP_LOAD_NULL);
+    _EmitLine(compiler, uf, node->Position);
     _Emit(compiler, uf, OP_RETURN);
 
     FreeScope(scope);
