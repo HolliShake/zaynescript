@@ -165,4 +165,11 @@ var y = {
 println(">>", y.val += 2);
 y["val"] += 2;
 
-println(y);
+println(y, 100 if (true == false) else 0, true ? 100 : 0);
+
+if (true) {
+    println(100);
+} else {
+    println(0);
+}
+println(true, false);

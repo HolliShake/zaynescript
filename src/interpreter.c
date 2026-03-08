@@ -307,8 +307,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 offset = _ReadInt32(uf->Codes, ip);
                 Push(
                     offset 
-                    ? interpreter->False 
-                    : interpreter->True
+                    ? interpreter->True
+                    : interpreter->False
                 );
                 Forward(4);
                 break;

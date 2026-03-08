@@ -278,6 +278,7 @@ typedef enum ast_type_enum {
     AST_XOR,          /**< Bitwise XOR (^) */
     AST_LAND,         /**< Logical AND (&&) */
     AST_LOR,          /**< Logical OR (||) */
+    AST_TERNARY,      /**< Ternary operator (condition ? true : false) */
     AST_ASSIGN,       /**< Assignment (=) */
     AST_SHORT_ASSIGN, /**< Short assignment (e.g. +=, -=) - specific type determined by operation */
     AST_MUL_ASSIGN,   /**< Multiply assignment (*=) */

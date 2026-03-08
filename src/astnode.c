@@ -119,6 +119,14 @@ Ast* AstBinary(AstType type, Ast* lhs, Ast* rhs, Position position) {
     return ast;
 }
 
+Ast* AstTernary(Ast* condition, Ast* trueBranch, Ast* falseBranch, Position position) {
+    Ast* ast = InitAst(AST_TERNARY, position);
+    ast->A   = condition;
+    ast->B   = trueBranch;
+    ast->C   = falseBranch;
+    return ast;
+}
+
 Ast* AstContinue(Position position) {
     Ast* ast = InitAst(AST_CONTINUE, position);
     return ast;

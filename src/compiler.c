@@ -351,7 +351,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                     compiler, 
                     uf, 
                     OP_LOAD_BOOL,
-                    val == compiler->Interpreter->True ? 1 : 0
+                    CoerceToBool(val)
                 );
             }
             break;
@@ -1134,6 +1134,18 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             int jumpOffset = _EmitJumpTo(compiler, uf, OP_JUMP_IF_TRUE_OR_POP);
             _Expression(compiler, uf, scope, node->B);
             _JumpToLabel(compiler, uf, jumpOffset);
+            break;
+        }
+        case AST_TERNARY: {
+            _Expression(compiler, uf, scope, node->A);
+            _EmitLine(compiler, uf, node->Position);
+            int jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
+            _Expression(compiler, uf, scope, node->B);
+            _JumpToLabel(compiler, uf, jumpOffset);
+            int jumpToEnd = _EmitJumpTo(compiler, uf, OP_JUMP);
+            _JumpToLabel(compiler, uf, jumpOffset);
+            _Expression(compiler, uf, scope, node->C);
+            _JumpToLabel(compiler, uf, jumpToEnd);
             break;
         }
         case AST_ASSIGN: {
