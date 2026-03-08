@@ -70,40 +70,69 @@ void ArrayExtend(Array *array, Array *other) {
 
 extern String ValueToString(Value* value);
 
+// StringBuffer implementation for efficient string concatenation
+typedef struct {
+    String Data;
+    size_t Capacity;
+    size_t Length;
+} StringBuffer;
+
+static void StringBuffer_Init(StringBuffer* sb, size_t initialCapacity) {
+    sb->Capacity = initialCapacity > 0 ? initialCapacity : 32;
+    sb->Data = Allocate(sb->Capacity);
+    sb->Length = 0;
+    if (sb->Data) sb->Data[0] = '\0';
+}
+
+static void StringBuffer_Append(StringBuffer* sb, String str) {
+    if (str == NULL || sb->Data == NULL) return;
+    size_t len = strlen(str);
+    if (sb->Length + len + 1 > sb->Capacity) {
+        size_t newCapacity = sb->Capacity * 2;
+        if (newCapacity < sb->Length + len + 1) {
+            newCapacity = sb->Length + len + 1 + 32;
+        }
+        sb->Data = Reallocate(sb->Data, newCapacity);
+        sb->Capacity = newCapacity;
+    }
+    strcpy(sb->Data + sb->Length, str);
+    sb->Length += len;
+}
+
 String ArrayToString(Array* array) {
     if (array == NULL) {
         return NULL;
     }
     
-    // Calculate approximate size needed for string representation
-    size_t bufferSize = 100; // Initial size for "[ ... ]"
-    for (size_t i = 0; i < array->Count; i++) {
-        bufferSize += 50; // Value + formatting
+    // Calculate approximate initial size
+    size_t initialSize = 32;
+    if (array->Count > 0) {
+        initialSize += array->Count * 16; // Estimate 16 chars per item on average
     }
     
-    String result = Allocate(bufferSize);
-    if (result == NULL) {
-        return NULL;
-    }
+    StringBuffer sb;
+    StringBuffer_Init(&sb, initialSize);
     
-    strcpy(result, "[");
-    bool first = true;
+    if (sb.Data == NULL) return NULL;
+    
+    StringBuffer_Append(&sb, "[");
     
     for (size_t i = 0; i < array->Count; i++) {
-        if (!first) {
-            strcat(result, ", ");
+        if (i > 0) {
+            StringBuffer_Append(&sb, ", ");
         }
         
         if (array->Items[i] == array) {
-            strcat(result, "[self]");
+            StringBuffer_Append(&sb, "[self]");
         } else {
-            //NOTE: memory leak (ValueToString returns a new string that is not freed)
-            strcat(result, ValueToString(array->Items[i]));
+            String valStr = ValueToString(array->Items[i]);
+            if (valStr != NULL) {
+                StringBuffer_Append(&sb, valStr);
+                free(valStr); // Fix memory leak
+            }
         }
-        
-        first = false;
     }
     
-    strcat(result, "]");
-    return result;
+    StringBuffer_Append(&sb, "]");
+    return sb.Data;
 }
