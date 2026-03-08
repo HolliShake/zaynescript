@@ -297,7 +297,7 @@ int main(int argc, char** argv) {
     // Check if --run flag is provided with a file path
     String path = NULL;
     if (argc > 2 && strcmp(argv[1], "--run") == 0) {
-        path = argv[2];
+        path = AllocateString(argv[2]);
     } else {
         // No arguments provided or invalid arguments - show help
         PrintHelp();
@@ -331,6 +331,7 @@ int main(int argc, char** argv) {
     FreeParser(parser);
     FreeCompiler(compiler);
     FreeInterpreter(interpreter);
+    free(path);
     free(data);
     printf("Program Finished!\n");
     return EXIT_SUCCESS;

@@ -1311,14 +1311,14 @@ static Ast* _ConstStatement(Parser* parser) {
     );
 }
 
-static Ast* _LetStatement(Parser* parser) {
+static Ast* _LocalStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
-    ACCEPTV_FREE(KEY_LET);
+    ACCEPTV_FREE(KEY_LOCAL);
     Ast* declarations = _DeclarationList(parser);
     ended = parser->Next.Position;
     ACCEPTV_FREE(";");
     return AstVarDeclaration(
-        AST_LET_DECLARATION,
+        AST_LOCAL_DECLARATION,
         declarations,
         MergePositions(start, ended)
     );
@@ -1705,8 +1705,8 @@ static Ast* _Statement(Parser* parser) {
         return _VarStatement(parser);
     } else if (CHECKTV(KEY_CONST)) {
         return _ConstStatement(parser);
-    } else if (CHECKTV(KEY_LET)) {
-        return _LetStatement(parser);
+    } else if (CHECKTV(KEY_LOCAL)) {
+        return _LocalStatement(parser);
     } else if (CHECKTV(KEY_IF)) {
         return _IfStatement(parser);
     } else if (CHECKTV(KEY_FOR)) {

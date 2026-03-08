@@ -149,3 +149,16 @@ function fact(n) {
     if (n <= 1) return 1;
     return n * fact(n - 1);
 }
+
+
+const obj = {
+    value: 123
+};
+
+println(obj);
+++obj["value"] + 23 - 1;
+println(obj);
+
+println(obj);
+println(obj.value++ + 23 - 1);
+println(obj, 2, 3, 2);

@@ -11,6 +11,7 @@
 #include "./class.h"
 #include "./decompiler.h"
 #include "./environment.h"
+#include "./error.h"
 #include "./function.h"
 #include "./gc.h"
 #include "./global.h"

@@ -7,6 +7,25 @@ UserFunction* CreateUserFunction(String name, int argc) {
     userFunction->Codes         = Allocate(sizeof(uint8_t) * 1);
     userFunction->Codes[0]      = 255;
     userFunction->CodeC         = 0;
+    userFunction->Lines        = Allocate(sizeof(LineInfo) * 1);
+    userFunction->LineC        = 0;
+    userFunction->Argc          = argc;
+    userFunction->LocalC        = 0;
+    userFunction->CaptureMetas  = Allocate(sizeof(CaptureMeta) * 1);
+    userFunction->CaptureC      = 0;
+    userFunction->Captures      = Allocate(sizeof(EnvCell*) * 1);
+    return userFunction;
+}
+
+UserFunction* CreateMainUserFunction(String name, int argc) {
+    UserFunction* userFunction  = Allocate(sizeof(UserFunction));
+    userFunction->Scope         = NULL;
+    userFunction->Name          = name;
+    userFunction->Codes         = Allocate(sizeof(uint8_t) * 1);
+    userFunction->Codes[0]      = 255;
+    userFunction->CodeC         = 0;
+    userFunction->Lines        = Allocate(sizeof(LineInfo) * 1);
+    userFunction->LineC        = 0;
     userFunction->Argc          = argc;
     userFunction->LocalC        = 0;
     userFunction->CaptureMetas  = Allocate(sizeof(CaptureMeta) * 1);
@@ -42,11 +61,10 @@ UserFunction* UserFunctionClone(UserFunction* userFunction) {
         clone->Captures,
         sizeof(EnvCell*) * (userFunction->CaptureC + 1)
     );
-    memcpy(
-        clone->Captures,
-        userFunction->Captures,
-        sizeof(EnvCell*) * userFunction->CaptureC
-    );
+    // Initialize Captures to NULL - they will be set up in DoLoadFunction
+    for (int i = 0; i < userFunction->CaptureC; i++) {
+        clone->Captures[i] = NULL;
+    }
     return clone;
 }
 
@@ -127,9 +145,8 @@ String UserFunctionToString(UserFunction* userFunction) {
 
 void FreeUserFunction(UserFunction* userFunction) {
     for (int i = 0; i < userFunction->CaptureC; i++) {
-        EnvCell* capture = userFunction->Captures[i];
+        EnvCell* capture =  userFunction->Captures[i];
         if (capture != NULL && --capture->RefCount <= 0) {
-            printf("Free ENV!\n");
             free(capture);
         }
     }
@@ -137,6 +154,7 @@ void FreeUserFunction(UserFunction* userFunction) {
     free(userFunction->CaptureMetas);
     free(userFunction->Captures);
     free(userFunction->Codes);
+    free(userFunction->Lines);
     free(userFunction);
 }
 

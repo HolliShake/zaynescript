@@ -17,6 +17,22 @@ Value* NewErrorValue(Interpreter* interpreter, String message) {
     return v;
 }
 
+Value* NewErrorFValue(Interpreter* interpreter, String fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    int size = vsnprintf(NULL, 0, fmt, args) + 1;
+    va_end(args);
+    String message = Allocate(size);
+    va_start(args, fmt);
+    vsnprintf(message, size, fmt, args);
+    va_end(args);
+    /***********/
+    Value* v = _CreateValue(interpreter, VLT_ERROR);
+    v->Value.Opaque = StringToRunes(message);
+    free(message);
+    return v;
+}
+
 Value* NewIntValue(Interpreter* interpreter, int value) {
     Value* v = _CreateValue(interpreter, VLT_INT);
     v->Value.I32 = value;

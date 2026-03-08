@@ -326,9 +326,9 @@ Ast* AstImport(Ast* imports, Ast* moduleName, Position position);
  * Creates an AST node representing a variable declaration.
  * 
  * Allocates and initializes an AST_VAR_DECLARATION node that represents
- * one or more variable declarations (var, let, const).
+ * one or more variable declarations (var, local, const).
  * 
- * @param type The type of the variable declaration (e.g., var, let, const).
+ * @param type The type of the variable declaration (e.g., var, local, const).
  * @param declarations Pointer to AST node containing the variable declarations.
  * @param position Source code location information.
  * @return Pointer to newly allocated AST_VAR_DECLARATION node, or NULL on allocation failure.

@@ -8,7 +8,7 @@ println("Hello", 123, x);
 var counter = 0;
 
 fn a() {
-    let x = 2;
+    local x = 2;
     b();
     println(x);
 }
@@ -54,9 +54,9 @@ println(
 const msg = "Hello";
 
 try {
-    let x = 2;
+    local x = 2;
     try {
-        2 + msg;
+        2.23 + msg;
         println("Exec??");
     } catch (err) {
         println("inside >>", err);
@@ -68,11 +68,11 @@ try {
 
 println("Dec>>");
 
-fn runnable(local) {
+fn runnable(localv) {
     println("Hello!");
     return fn() {
         const a = 2 << 2;
-        println("Word!", a, local + local);
+        println("Word!", a, localv + localv);
     };
 }
 

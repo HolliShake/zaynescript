@@ -1,5 +1,6 @@
 #include "./core/loader.h"
 #include "./environment.h"
+#include "./error.h"
 #include "./global.h"
 #include "./gc.h"
 #include "./value.h"

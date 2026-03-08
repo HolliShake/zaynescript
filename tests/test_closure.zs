@@ -1,14 +1,14 @@
 import { println } from "core:io";
 
 fn f1() {
-    let v1 = "V1";
+    local v1 = "V1";
     println("Running f1");
     return fn() {
         println("Running f1.fn1");
-        let v2 = "v2";
+        local v2 = "v2";
         return fn() {
             println("Running f1.fn1.fn2");
-            let v3 = "v3";
+            local v3 = "v3";
             return fn() {
                 println("Running f1.fn2.fn3");
                 println(v1, v2, v3);
@@ -22,13 +22,13 @@ fn f1() {
 // Running f1.fn1
 // Running f1.fn1.fn2
 // Running f1.fn2.fn3
-// V1 v2 v3
+// v1 v2 v3
 // >> null
 println(">>", f1()()()());
 
 // Test: Closure with mutable captured variable
 fn counter() {
-    let count = 0;
+    local count = 0;
     return fn() {
         count = count + 1;
         return count;
@@ -44,14 +44,14 @@ println("Counter:", c1()); // Counter: 3
 
 // Test: Multiple closures sharing same outer scope
 fn makeCounters() {
-    let shared = 0;
-    let increment = fn() {
+    local shared = 0;
+    local increment = fn() {
         shared = shared + 1;
     };
-    let decrement = fn() {
+    local decrement = fn() {
         shared = shared - 1;
     };
-    let getCount = fn() {
+    local getCount = fn() {
         return shared;
     };
     return [increment, decrement, getCount];
@@ -81,7 +81,7 @@ println("Triple 5:", triple(5)); // Triple 5: 15
 
 // Test: Closure returning closure with captured loop variable
 fn makeAdders() {
-    let adders = [];
+    local adders = [];
     println("Called");
     for (i := 0; i < 3; i++) {
         println(i);
@@ -132,7 +132,7 @@ println("Nested sum:", outer(1)(2)(3)(4)); // Nested sum: 10
 
 // Test: Closure modifying captured object
 fn objectCapture() {
-    let obj = { value: 100 };
+    local obj = { value: 100 };
     return fn(delta) {
         obj.value = obj.value + delta;
         return obj.value;
@@ -149,3 +149,4 @@ fn fact(n) {
     return n * fact(n - 1);
 }
 
+println(fact(5));
