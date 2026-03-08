@@ -184,6 +184,19 @@ static void _EmitArg(Compiler* compiler, UserFunction* uf, OpcodeEnum opcode, in
     _EmitConst(compiler, uf, opcode, index);
 }
 
+static void _EmitLine(Compiler* compiler, UserFunction* uf, int line) {
+    PushArray(
+        LineInfo,
+        uf->Lines, 
+        uf->LineC, 
+        ((LineInfo) { 
+            .Path = compiler->Parser->Lexer->Path,
+            .Line = line
+        }), 
+        ((LineInfo) {})
+    );
+}
+
 static int _EmitJumpTo(Compiler* compiler, UserFunction* uf, OpcodeEnum opcode) {
     int offset = uf->CodeC;
     _EmitConst(compiler, uf, opcode, 0);
@@ -1573,13 +1586,13 @@ static void _VarDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope
     }
 }
 
-static void _LetDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
+static void _LocalDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
     if (!(ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
         ThrowError(
             compiler->Parser->Lexer->Path, 
             compiler->Parser->Lexer->Data, 
             node->Position, 
-            "let declarations can only be used inside a function or a block"
+            "local declarations can only be used inside a function or a block"
         );
     }
     Ast* declarations = node->A;
@@ -1963,8 +1976,8 @@ static void _Statement(Compiler* compiler, UserFunction* userFunction, Scope* sc
         case AST_VAR_DECLARATION:
             _VarDeclarationStatement(compiler, userFunction, scope, node);
             break;
-        case AST_LET_DECLARATION:
-            _LetDeclarationStatement(compiler, userFunction, scope, node);
+        case AST_LOCAL_DECLARATION:
+            _LocalDeclarationStatement(compiler, userFunction, scope, node);
             break;
         case AST_CONST_DECLARATION:
             _ConstDeclarationStatement(compiler, userFunction, scope, node);

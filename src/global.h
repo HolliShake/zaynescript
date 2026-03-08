@@ -225,7 +225,7 @@ typedef enum ast_type_enum {
     AST_IMPORT,               /**< Import statement */
     AST_VAR_DECLARATION,      /**< Variable declaration (var) */
     AST_CONST_DECLARATION,    /**< Constant declaration (const) */
-    AST_LET_DECLARATION,      /**< Let declaration (let) */
+    AST_LOCAL_DECLARATION,    /**< Local declaration (local) */
     AST_CLASS,                /**< Class declaration */
     AST_CLASS_MEMBER,         /**< Class member definition */
     AST_EXPRESSION_STATEMENT, /**< Statement wrapping an expression */
@@ -487,6 +487,18 @@ typedef struct environment_struct {
 } Environment;
 
 /**
+ * @struct line_info_struct
+ * @brief Stores source location information for debugging and error reporting.
+ * 
+ * Associates bytecode or AST nodes with their original source file and line
+ * number, enabling meaningful error messages and stack traces.
+ */
+typedef struct line_info_struct {
+    String Path; /**< Path to the source file */
+    int    Line; /**< Line number in the source file */
+} LineInfo;
+
+/**
  * @struct user_function_struct
  * @brief Represents a user-defined function in the interpreter.
  * 
@@ -498,6 +510,8 @@ typedef struct user_function_struct {
     String       Name;         /**< Function name (Nullable) */
     uint8_t*     Codes;        /**< Bytecode instructions */
     size_t       CodeC;        /**< Size of bytecode */
+    LineInfo*    Lines;        /**< Line information for each instruction */
+    size_t       LineC;        /**< Count of line information */
     int          Argc;         /**< Argument count */
     int          LocalC;       /**< Local variable count */
     CaptureMeta* CaptureMetas; /**< Array of capture metadata */

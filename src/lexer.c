@@ -106,7 +106,7 @@ static Token TokenizeIdentifier(Lexer* lexer) {
         KEY_STATIC,
         KEY_CONST,
         KEY_VAR,
-        KEY_LET,
+        KEY_LOCAL,
         KEY_FN,
         KEY_ASYNC,
         KEY_AWAIT,

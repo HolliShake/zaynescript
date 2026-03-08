@@ -7,6 +7,8 @@ UserFunction* CreateUserFunction(String name, int argc) {
     userFunction->Codes         = Allocate(sizeof(uint8_t) * 1);
     userFunction->Codes[0]      = 255;
     userFunction->CodeC         = 0;
+    userFunction->Lines        = Allocate(sizeof(LineInfo) * 1);
+    userFunction->LineC        = 0;
     userFunction->Argc          = argc;
     userFunction->LocalC        = 0;
     userFunction->CaptureMetas  = Allocate(sizeof(CaptureMeta) * 1);

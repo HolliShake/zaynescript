@@ -331,6 +331,7 @@ int main(int argc, char** argv) {
     FreeParser(parser);
     FreeCompiler(compiler);
     FreeInterpreter(interpreter);
+    free(path);
     free(data);
     printf("Program Finished!\n");
     return EXIT_SUCCESS;

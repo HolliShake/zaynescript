@@ -7,7 +7,7 @@
 #define KEY_FROM     "from"
 #define KEY_CONST    "const"
 #define KEY_VAR      "var"
-#define KEY_LET      "let"
+#define KEY_LOCAL    "local"
 #define KEY_ASYNC    "async"
 #define KEY_FN       "fn"
 #define KEY_IF       "if"
