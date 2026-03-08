@@ -150,3 +150,26 @@ fn fact(n) {
 }
 
 println(fact(5));
+
+
+var x = 2;
+
+x += 2;
+
+println(x);
+
+var y = {
+    val: 0
+};
+
+println(">>", y.val += 2);
+y["val"] += 2;
+
+println(y, 100 if (true == false) else 0, true ? 100 : 0);
+
+if (true) {
+    println(100);
+} else {
+    println(0);
+}
+println(true, false);

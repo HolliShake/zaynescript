@@ -223,6 +223,20 @@ Ast* AstSingle(AstType type, Ast* operand, Position position);
 Ast* AstBinary(AstType type, Ast* lhs, Ast* rhs, Position position);
 
 /**
+ * Creates an AST node representing a ternary conditional operation.
+ * 
+ * Allocates and initializes an AST_TERNARY node that represents
+ * a ternary conditional expression (condition ? trueBranch : falseBranch).
+ * 
+ * @param condition Pointer to the condition AST node.
+ * @param trueBranch Pointer to the true branch AST node.
+ * @param falseBranch Pointer to the false branch AST node.
+ * @param position Source code location information.
+ * @return Pointer to newly allocated AST_TERNARY node, or NULL on allocation failure.
+ */
+Ast* AstTernary(Ast* condition, Ast* thenBranch, Ast* elseBranch, Position position);
+
+/**
  * Creates an AST node representing a continue statement.
  * 
  * Allocates and initializes an AST_CONTINUE node that represents

@@ -778,9 +778,83 @@ static Ast* _Logical(Parser* parser) {
     return lhs;
 }
 
+static Ast* _TernaryOrIf(Parser* parser) {
+    Ast* conditionOrTrue = _Logical(parser);
+    if (conditionOrTrue == NULL) {
+        return NULL;
+    }
+    if (CHECKTV("?")) {
+        ACCEPTV_FREE("?");
+        Ast* trueBranch = _TernaryOrIf(parser), *falseBranch = NULL;
+        if (trueBranch == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                conditionOrTrue->Position, 
+                "expected a true branch"
+            );
+        }
+        if (!CHECKTV(":")) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                parser->Next.Position, 
+                "expected a colon"
+            );
+        }
+        ACCEPTV_FREE(":");
+        falseBranch = _TernaryOrIf(parser);
+        if (falseBranch == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                conditionOrTrue->Position, 
+                "expected a false branch"
+            );
+        }
+        return AstTernary(
+            conditionOrTrue, 
+            trueBranch, 
+            falseBranch, 
+            MergePositions(conditionOrTrue->Position, falseBranch->Position)
+        );
+
+    } else if (CHECKTV(KEY_IF)) {
+        ACCEPTV_FREE(KEY_IF);
+        ACCEPTV_FREE("(");
+        Ast* condition = _TernaryOrIf(parser);
+        ACCEPTV_FREE(")");
+        if (condition == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                parser->Next.Position, 
+                "expected a condition"
+            );
+        }
+        ACCEPTV_FREE(KEY_ELSE);
+        Ast* elseBranch = _TernaryOrIf(parser);
+        if (elseBranch == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                parser->Next.Position, 
+                "expected a else branch"
+            );
+        }
+        return AstTernary(
+            condition, 
+            conditionOrTrue, 
+            elseBranch, 
+            MergePositions(conditionOrTrue->Position, elseBranch->Position)
+        );
+    }
+    return conditionOrTrue;
+}
+
 static Ast* _Assignment(Parser* parser) {
     String op = NULL;
-    Ast* lhs  = _Logical(parser), *rhs = NULL;
+    Ast* lhs  = _TernaryOrIf(parser), *rhs = NULL;
     
     if (lhs == NULL) {
         return NULL;
@@ -792,7 +866,7 @@ static Ast* _Assignment(Parser* parser) {
         //NOTE: memory leak (ACCEPTT advances to the next token, effectively discarding the current token's allocated Value string without freeing it)
         ACCEPTT(TK_SYM);
 
-        rhs = _Logical(parser);
+        rhs = _TernaryOrIf(parser);
         
         if (rhs == NULL) {
             ThrowError(
