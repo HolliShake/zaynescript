@@ -226,13 +226,23 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* index, bool f
 }
 
 Value* DoImportCore(Interpreter* interp, String moduleName) {
-    Value* result = LoadCoreModule(interp, moduleName);
+    Value* result = (Value*) HashMapGet(interp->Imports, moduleName);
+
+    if (result != NULL) {
+        return result;
+    }
+
+    result = LoadCoreModule(interp, moduleName);
+
     if (result == NULL) {
         String errMsg = FormatString("%s: core module '%s' not found", IMPORT_ERROR, moduleName);
         Value* errVal = NewErrorValue(interp, errMsg);
         free(errMsg);
         return errVal;
     }
+
+    HashMapSet(interp->Imports, moduleName, result);
+
     return result;
 }
 
