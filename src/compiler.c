@@ -243,6 +243,7 @@ static void _JumpToAbsoluteLabel(Compiler* compiler, UserFunction* uf, int sourc
 static void _Statement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node);
 
 static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* exp);
+static void _AugmentedAssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* exp, OpcodeEnum opcode);
 static void _AssignOpRhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* lhs, bool postfix);
 static void _AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* lhs, bool postfix);
 
@@ -1139,6 +1140,46 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             _AssignOp(compiler, uf, scope, node); 
             break;
         }
+        case AST_MUL_ASSIGN: {
+            _AugmentedAssignOp(compiler, uf, scope, node, OP_MUL);
+            break;
+        }
+        case AST_DIV_ASSIGN: {
+            _AugmentedAssignOp(compiler, uf, scope, node, OP_DIV);
+            break;
+        }
+        case AST_MOD_ASSIGN: {
+            _AugmentedAssignOp(compiler, uf, scope, node, OP_MOD);
+            break;
+        }
+        case AST_ADD_ASSIGN: {
+            _AugmentedAssignOp(compiler, uf, scope, node, OP_ADD);
+            break;
+        }
+        case AST_SUB_ASSIGN: {
+            _AugmentedAssignOp(compiler, uf, scope, node, OP_SUB);
+            break;
+        }
+        case AST_LSHFT_ASSIGN: {
+            _AugmentedAssignOp(compiler, uf, scope, node, OP_LSHFT);
+            break;
+        }
+        case AST_RSHFT_ASSIGN: {
+            _AugmentedAssignOp(compiler, uf, scope, node, OP_RSHFT);
+            break;
+        }
+        case AST_AND_ASSIGN: {
+            _AugmentedAssignOp(compiler, uf, scope, node, OP_AND);
+            break;
+        }
+        case AST_OR_ASSIGN: {
+            _AugmentedAssignOp(compiler, uf, scope, node, OP_OR);
+            break;
+        }
+        case AST_XOR_ASSIGN: {
+            _AugmentedAssignOp(compiler, uf, scope, node, OP_XOR);
+            break;
+        }
         default: {
             ThrowError(
                 compiler->Parser->Lexer->Path, 
@@ -1226,8 +1267,11 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
             _Expression(compiler, uf, scope, rhs);
             _EmitLine(compiler, uf, lhs->Position);
             _Emit(compiler, uf, OP_DUPTOP);
+            _EmitLine(compiler, uf, lhs->Position);
             _Emit(compiler, uf, OP_ROT4);
+            _EmitLine(compiler, uf, lhs->Position);
             _Emit(compiler, uf, OP_SET_INDEX);
+            _EmitLine(compiler, uf, lhs->Position);
             _Emit(compiler, uf, OP_POPTOP); // Pops object
             break;
         }
@@ -1240,6 +1284,143 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
             _Expression(compiler, uf, scope, rhs);
             _EmitLine(compiler, uf, lhs->Position);
             _Emit(compiler, uf, OP_DUPTOP);
+            _EmitLine(compiler, uf, lhs->Position);
+            _Emit(compiler, uf, OP_ROT4);
+            _EmitLine(compiler, uf, lhs->Position);
+            _Emit(compiler, uf, OP_SET_INDEX);
+            _EmitLine(compiler, uf, lhs->Position);
+            _Emit(compiler, uf, OP_POPTOP); // Pops object
+            break;
+        }
+        default: {
+            ThrowError(
+                compiler->Parser->Lexer->Path, 
+                compiler->Parser->Lexer->Data, 
+                exp->Position, 
+                "invalid assignment operation"
+            );
+        }
+    }
+}
+
+static void _AugmentedAssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* exp, OpcodeEnum opcode) {
+    Ast* lhs = exp->A;
+    Ast* rhs = exp->B;
+    switch (lhs->Type) {
+        case AST_NAME: {
+            _Identifier(compiler, uf, scope, lhs->Value, lhs->Position);
+            _Expression(compiler, uf, scope, rhs);
+            _EmitLine(compiler, uf, lhs->Position);
+            _Emit(compiler, uf, opcode);
+            _EmitLine(compiler, uf, lhs->Position);
+            _Emit(compiler, uf, OP_DUPTOP);
+            if (!ScopeHasName(scope, lhs->Value)) {
+                ThrowError(
+                    compiler->Parser->Lexer->Path, 
+                    compiler->Parser->Lexer->Data, 
+                    lhs->Position, 
+                    "variable not found"
+                );
+            }
+            Symbol* symbol = ScopeGetSymbol(scope, lhs->Value, true);
+            if (symbol->IsConstant) {
+                ThrowError(
+                    compiler->Parser->Lexer->Path, 
+                    compiler->Parser->Lexer->Data, 
+                    lhs->Position, 
+                    "cannot reassign constant variable"
+                );
+            }
+            if (ScopeInside(scope, SCOPE_FUNCTION) && !ScopeIsLocalToFn(scope, lhs->Value)) {
+                int captureOffset = 0;
+                if (!ScopeHasCapture(scope, lhs->Value)) {
+                    captureOffset = UserFunctionAddCapture(
+                        uf, 
+                        ScopeGetDepthOfSymbol(scope, lhs->Value),
+                        symbol->Offset
+                    );
+                    ScopeSetCapture(
+                        scope, 
+                        lhs->Value, 
+                        false, 
+                        true, 
+                        false, 
+                        captureOffset
+                    );
+                } else {
+                    captureOffset = ScopeGetCapture(scope, lhs->Value, true)->Offset;
+                }
+
+                // Capture the variable
+                _EmitLine(compiler, uf, lhs->Position);
+                _EmitArg(
+                    compiler, 
+                    uf, 
+                    OP_STORE_CAPTURE,
+                    captureOffset
+                );
+            } else {
+                _EmitLine(compiler, uf, lhs->Position);
+                _EmitArg(
+                    compiler, 
+                    uf, 
+                    OP_STORE_LOCAL,
+                    symbol->Offset
+                );
+            }
+            break;
+        }
+        case AST_MEMBER: {
+            // bot [obj, key, val] top
+            Ast* obj = lhs->A;
+            Ast* att = lhs->B;
+            // bot [obj, key] top
+            _Expression(compiler, uf, scope, obj);
+            _EmitLine(compiler, uf, lhs->Position);
+            _EmitString(compiler, uf, OP_LOAD_STRING, att->Value);
+            // bot [obj, key, obj] top
+            _EmitLine(compiler, uf, lhs->Position);
+            _Emit(compiler, uf, OP_DUP2);
+            // bot [obj, key, val] top
+            _EmitLine(compiler, uf, lhs->Position);
+            _Emit(compiler, uf, OP_GET_INDEX);
+            // bot [obj, key, val, rhs] top
+            _Expression(compiler, uf, scope, rhs);
+            _EmitLine(compiler, uf, lhs->Position);
+            _Emit(compiler, uf, opcode); // *=,/=,%=,+=,-=,<<=,>>=,&=,|=,^=
+            // bot [obj, key, val, val] top
+            _EmitLine(compiler, uf, lhs->Position);
+            _Emit(compiler, uf, OP_DUPTOP);
+            // bot [obj, key, val, val] top
+            _EmitLine(compiler, uf, lhs->Position);
+            _Emit(compiler, uf, OP_ROT4);
+            _EmitLine(compiler, uf, lhs->Position);
+            _Emit(compiler, uf, OP_SET_INDEX);
+            _EmitLine(compiler, uf, lhs->Position);
+            _Emit(compiler, uf, OP_POPTOP); // Pops object
+            break;
+        }
+        case AST_INDEX: {
+            // bot [obj, key, val] top
+            Ast* obj = lhs->A;
+            Ast* att = lhs->B;
+            // bot [obj, key] top
+            _Expression(compiler, uf, scope, obj);
+            _Expression(compiler, uf, scope, att);
+            // bot [obj, key, obj] top
+            _EmitLine(compiler, uf, lhs->Position);
+            _Emit(compiler, uf, OP_DUP2);
+            // bot [obj, key, val] top
+            _EmitLine(compiler, uf, lhs->Position);
+            _Emit(compiler, uf, OP_GET_INDEX);
+            // bot [obj, key, val, rhs] top
+            _Expression(compiler, uf, scope, rhs);
+            _EmitLine(compiler, uf, lhs->Position);
+            _Emit(compiler, uf, opcode); // *=,/=,%=,+=,-=,<<=,>>=,&=,|=,^=
+            // bot [obj, key, val, val] top
+            _EmitLine(compiler, uf, lhs->Position);
+            _Emit(compiler, uf, OP_DUPTOP);
+            // bot [obj, key, val, val] top
             _EmitLine(compiler, uf, lhs->Position);
             _Emit(compiler, uf, OP_ROT4);
             _EmitLine(compiler, uf, lhs->Position);
