@@ -70,69 +70,64 @@ void ArrayExtend(Array *array, Array *other) {
 
 extern String ValueToString(Value* value);
 
-// StringBuffer implementation for efficient string concatenation
-typedef struct {
-    String Data;
-    size_t Capacity;
-    size_t Length;
-} StringBuffer;
-
-static void StringBuffer_Init(StringBuffer* sb, size_t initialCapacity) {
-    sb->Capacity = initialCapacity > 0 ? initialCapacity : 32;
-    sb->Data = Allocate(sb->Capacity);
-    sb->Length = 0;
-    if (sb->Data) sb->Data[0] = '\0';
-}
-
-static void StringBuffer_Append(StringBuffer* sb, String str) {
-    if (str == NULL || sb->Data == NULL) return;
-    size_t len = strlen(str);
-    if (sb->Length + len + 1 > sb->Capacity) {
-        size_t newCapacity = sb->Capacity * 2;
-        if (newCapacity < sb->Length + len + 1) {
-            newCapacity = sb->Length + len + 1 + 32;
-        }
-        sb->Data = Reallocate(sb->Data, newCapacity);
-        sb->Capacity = newCapacity;
-    }
-    strcpy(sb->Data + sb->Length, str);
-    sb->Length += len;
-}
-
 String ArrayToString(Array* array) {
     if (array == NULL) {
         return NULL;
     }
     
-    // Calculate approximate initial size
-    size_t initialSize = 32;
-    if (array->Count > 0) {
-        initialSize += array->Count * 16; // Estimate 16 chars per item on average
-    }
+    // Start with reasonable initial capacity
+    size_t capacity = 32 + array->Count * 16;
+    size_t length = 0;
+    String buffer = Allocate(capacity);
     
-    StringBuffer sb;
-    StringBuffer_Init(&sb, initialSize);
+    if (buffer == NULL) return NULL;
     
-    if (sb.Data == NULL) return NULL;
-    
-    StringBuffer_Append(&sb, "[");
+    buffer[length++] = '[';
+    buffer[length] = '\0';
     
     for (size_t i = 0; i < array->Count; i++) {
         if (i > 0) {
-            StringBuffer_Append(&sb, ", ");
+            // Ensure space for ", "
+            if (length + 2 >= capacity) {
+                capacity *= 2;
+                buffer = Reallocate(buffer, capacity);
+            }
+            buffer[length++] = ',';
+            buffer[length++] = ' ';
+            buffer[length] = '\0';
         }
         
+        String valStr;
         if (array->Items[i] == array) {
-            StringBuffer_Append(&sb, "[self]");
+            valStr = "[self]";
+            size_t len = 6;
+            if (length + len + 1 >= capacity) {
+                capacity = capacity * 2 > length + len + 32 ? capacity * 2 : length + len + 32;
+                buffer = Reallocate(buffer, capacity);
+            }
+            strcpy(buffer + length, valStr);
+            length += len;
         } else {
-            String valStr = ValueToString(array->Items[i]);
+            valStr = ValueToString(array->Items[i]);
             if (valStr != NULL) {
-                StringBuffer_Append(&sb, valStr);
-                free(valStr); // Fix memory leak
+                size_t len = strlen(valStr);
+                if (length + len + 1 >= capacity) {
+                    capacity = capacity * 2 > length + len + 32 ? capacity * 2 : length + len + 32;
+                    buffer = Reallocate(buffer, capacity);
+                }
+                strcpy(buffer + length, valStr);
+                length += len;
+                free(valStr);
             }
         }
     }
     
-    StringBuffer_Append(&sb, "]");
-    return sb.Data;
+    // Ensure space for "]"
+    if (length + 2 >= capacity) {
+        buffer = Reallocate(buffer, capacity + 2);
+    }
+    buffer[length++] = ']';
+    buffer[length] = '\0';
+    
+    return buffer;
 }
