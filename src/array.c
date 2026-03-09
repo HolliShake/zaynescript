@@ -75,35 +75,59 @@ String ArrayToString(Array* array) {
         return NULL;
     }
     
-    // Calculate approximate size needed for string representation
-    size_t bufferSize = 100; // Initial size for "[ ... ]"
-    for (size_t i = 0; i < array->Count; i++) {
-        bufferSize += 50; // Value + formatting
-    }
+    // Start with reasonable initial capacity
+    size_t capacity = 32 + array->Count * 16;
+    size_t length = 0;
+    String buffer = Allocate(capacity);
     
-    String result = Allocate(bufferSize);
-    if (result == NULL) {
-        return NULL;
-    }
+    if (buffer == NULL) return NULL;
     
-    strcpy(result, "[");
-    bool first = true;
+    buffer[length++] = '[';
+    buffer[length] = '\0';
     
     for (size_t i = 0; i < array->Count; i++) {
-        if (!first) {
-            strcat(result, ", ");
+        if (i > 0) {
+            // Ensure space for ", "
+            if (length + 2 >= capacity) {
+                capacity *= 2;
+                buffer = Reallocate(buffer, capacity);
+            }
+            buffer[length++] = ',';
+            buffer[length++] = ' ';
+            buffer[length] = '\0';
         }
         
+        String valStr;
         if (array->Items[i] == array) {
-            strcat(result, "[self]");
+            valStr = "[self]";
+            size_t len = 6;
+            if (length + len + 1 >= capacity) {
+                capacity = capacity * 2 > length + len + 32 ? capacity * 2 : length + len + 32;
+                buffer = Reallocate(buffer, capacity);
+            }
+            strcpy(buffer + length, valStr);
+            length += len;
         } else {
-            //NOTE: memory leak (ValueToString returns a new string that is not freed)
-            strcat(result, ValueToString(array->Items[i]));
+            valStr = ValueToString(array->Items[i]);
+            if (valStr != NULL) {
+                size_t len = strlen(valStr);
+                if (length + len + 1 >= capacity) {
+                    capacity = capacity * 2 > length + len + 32 ? capacity * 2 : length + len + 32;
+                    buffer = Reallocate(buffer, capacity);
+                }
+                strcpy(buffer + length, valStr);
+                length += len;
+                free(valStr);
+            }
         }
-        
-        first = false;
     }
     
-    strcat(result, "]");
-    return result;
+    // Ensure space for "]"
+    if (length + 2 >= capacity) {
+        buffer = Reallocate(buffer, capacity + 2);
+    }
+    buffer[length++] = ']';
+    buffer[length] = '\0';
+    
+    return buffer;
 }
