@@ -2093,8 +2093,10 @@ static void _ForStatement(Compiler* compiler, UserFunction* uf, Scope* scope, As
         }
     }
     Ast* thenBranch = node->B;
+    bool hasLocalInitializer = false;
 
     if (initializer != NULL) {
+        hasLocalInitializer = initializer->Type == AST_SHORT_ASSIGN;
         _InitializerConditionMutator(compiler, uf, loopScope, initializer);
     }
 
@@ -2106,7 +2108,19 @@ static void _ForStatement(Compiler* compiler, UserFunction* uf, Scope* scope, As
         jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
     }
 
-    _Statement(compiler, uf, loopScope, thenBranch);
+    if (hasLocalInitializer) {
+        _EmitLine(compiler, uf, initializer->Position);
+        _Emit(compiler, uf, OP_ENTER_SCOPE);
+        if (thenBranch->Type == AST_BLOCK) {
+            // block
+        } else {
+            _Statement(compiler, uf, loopScope, thenBranch);
+        }
+        _EmitLine(compiler, uf, initializer->Position);
+        _Emit(compiler, uf, OP_EXIT_SCOPE);
+    } else {
+        _Statement(compiler, uf, loopScope, thenBranch);
+    }
 
     if (mutator != NULL) {
         // continues, but execute mutator first

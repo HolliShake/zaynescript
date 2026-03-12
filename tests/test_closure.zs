@@ -1,7 +1,7 @@
 import { println } from "core:io";
 
 fn f1() {
-    local v1 = "V1";
+    local v1 = "v1";
     println("Running f1");
     return fn() {
         println("Running f1.fn1");
