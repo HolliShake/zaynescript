@@ -2109,6 +2109,7 @@ static void _ForStatement(Compiler* compiler, UserFunction* uf, Scope* scope, As
     }
 
     if (hasLocalInitializer) {
+        Scope* localScope = CreateScope(SCOPE_BLOCK, loopScope);
         _EmitLine(compiler, uf, initializer->Position);
         _Emit(compiler, uf, OP_ENTER_SCOPE);
         if (thenBranch->Type == AST_BLOCK) {
