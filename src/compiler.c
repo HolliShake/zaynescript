@@ -2054,10 +2054,12 @@ static void _IfStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
     }
     Ast* thenBranch  = node->B;
     Ast* elseBranch  = node->C;
+    bool hasLocalInitializer = false;
 
     if (initializer != NULL && condition != NULL) {
         if (initializer->Type == AST_SHORT_ASSIGN) {
-            useScope = CreateScope(SCOPE_BLOCK, scope);
+            hasLocalInitializer = true;
+            useScope = CreateScope(SCOPE_NEW, scope);
         }
         _InitializerConditionMutator(compiler, uf, useScope, initializer);
         _Expression(compiler, uf, useScope, condition);
@@ -2069,7 +2071,25 @@ static void _IfStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
     }
     _EmitLine(compiler, uf, node->Position);
     int jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
-    _Statement(compiler, uf, useScope, thenBranch);
+    
+    if (hasLocalInitializer) {
+        _EmitLine(compiler, uf, initializer->Position);
+        _Emit(compiler, uf, OP_ENTER_SCOPE);
+        if (thenBranch->Type == AST_BLOCK) {
+            Ast* current = thenBranch->A;
+            while (current != NULL) {
+                _Statement(compiler, uf, useScope, current);
+                current = current->Next;
+            }
+        } else {
+            _Statement(compiler, uf, useScope, thenBranch);
+        }
+        _EmitLine(compiler, uf, initializer->Position);
+        _Emit(compiler, uf, OP_EXIT_SCOPE);
+    } else {
+        _Statement(compiler, uf, useScope, thenBranch);
+    }
+
     _EmitLine(compiler, uf, node->Position);
     int jumpEndIfOffset = _EmitJumpTo(compiler, uf, OP_JUMP);
     _JumpToLabel(compiler, uf, jumpOffset);
