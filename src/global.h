@@ -435,6 +435,9 @@ typedef enum opcode_enum {
     OP_SETUP_TRY,                    /**< Setup try-catch block */
     OP_POP_TRY,                      /**< Pop try block */
     OP_POPN_TRY,                     /**< Pop N items from try stack */
+    OP_ENTER_SCOPE,                  /**< Enter a new scope */
+    OP_EXIT_SCOPE,                   /**< Exit current scope */
+    OP_EXITN_SCOPE,                  /**< Exit N scopes */
     OP_JUMP_IF_FALSE_OR_POP,         /**< Jump if false or pop */
     OP_JUMP_IF_TRUE_OR_POP,          /**< Jump if true or pop */
     OP_POP_JUMP_IF_FALSE,            /**< Pop and jump if false */
@@ -547,6 +550,7 @@ typedef enum scope_type_enum {
     SCOPE_CLASS ,           /**< Class scope */
     SCOPE_FUNCTION,         /**< Function body scope */
     SCOPE_BLOCK,            /**< Generic block scope */
+    SCOPE_NEW,              /**< Scope for new block with temporary variable such as loop or catch */
     SCOPE_TRY_BLOCK,        /**< Try block scope */
     SCOPE_LOOP,             /**< Loop scope */
 } ScopeType;

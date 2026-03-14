@@ -43,6 +43,23 @@ void EnvironmentSetLocal(Environment* environment, int offset, Value* value);
 EnvCell* EnvironmentGetLocal(Environment* environment, int offset);
 
 /**
+ * EnvironmentClone - Clones an environment
+ * @envValue: The environment to clone
+ * 
+ * Return: Pointer to the newly cloned Environment structure
+ */
+Environment* EnvironmentCloneFromValue(Value* envValue);
+
+/**
+ * EnvironmentSync - Synchronizes the local variables of two environments
+ * @src: The source environment to synchronize from
+ * @dst: The destination environment to synchronize to
+ * 
+ * Return: void
+ */
+void EnvironmentSync(Environment* src, Environment* dst);
+
+/**
  * Frees Environment
  * 
  * @param environment Pointer to the Environment Structure 

@@ -227,6 +227,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
     Value* key       = NULL;
     Value* val       = NULL;
     Value* err       = NULL;
+    Environment* env = NULL;
     HashMap* map     = NULL;
     Array* array     = NULL;
     size_t ip        = 0;
@@ -813,6 +814,17 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 size = _ReadInt32(uf->Codes, ip);
                 _PopNTry(interpreter, size);
                 Forward(4);
+                break;
+            }
+            case OP_ENTER_SCOPE: {
+                SaveEnv(interpreter, interpreter->CallEnv);
+                interpreter->CallEnv = NewEnvironmentValue(interpreter, EnvironmentCloneFromValue(interpreter->CallEnv));
+                break;
+            }
+            case  OP_EXIT_SCOPE: {
+                Environment* current = CoerceToEnvironment(interpreter->CallEnv);
+                RestoreEnv(interpreter);
+                EnvironmentSync(current, CoerceToEnvironment(interpreter->CallEnv));
                 break;
             }
             case OP_JUMP_IF_FALSE_OR_POP: {

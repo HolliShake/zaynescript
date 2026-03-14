@@ -2085,6 +2085,7 @@ static void _IfStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
 
 static void _ForStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
     Scope* loopScope = CreateScope(SCOPE_LOOP, scope);
+    Scope* localScope = CreateScope(SCOPE_NEW, loopScope);
     Ast* initializer = node->A, *condition = NULL, *mutator = NULL;
     if (initializer != NULL && initializer->Next != NULL) {
         condition = initializer->Next;
@@ -2097,25 +2098,28 @@ static void _ForStatement(Compiler* compiler, UserFunction* uf, Scope* scope, As
 
     if (initializer != NULL) {
         hasLocalInitializer = initializer->Type == AST_SHORT_ASSIGN;
-        _InitializerConditionMutator(compiler, uf, loopScope, initializer);
+        _InitializerConditionMutator(compiler, uf, hasLocalInitializer ? localScope : loopScope, initializer);
     }
 
     int forStart   = uf->CodeC;
     int jumpOffset = -1;
     if (condition != NULL) {
-        _Expression(compiler, uf, loopScope, condition);
+        _Expression(compiler, uf, hasLocalInitializer ? localScope : loopScope, condition);
         _EmitLine(compiler, uf, condition->Position);
         jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
     }
 
     if (hasLocalInitializer) {
-        Scope* localScope = CreateScope(SCOPE_BLOCK, loopScope);
         _EmitLine(compiler, uf, initializer->Position);
         _Emit(compiler, uf, OP_ENTER_SCOPE);
         if (thenBranch->Type == AST_BLOCK) {
-            // block
+            Ast* current = thenBranch->A;
+            while (current != NULL) {
+                _Statement(compiler, uf, localScope, current);
+                current = current->Next;
+            }
         } else {
-            _Statement(compiler, uf, loopScope, thenBranch);
+            _Statement(compiler, uf, localScope, thenBranch);
         }
         _EmitLine(compiler, uf, initializer->Position);
         _Emit(compiler, uf, OP_EXIT_SCOPE);
@@ -2128,7 +2132,7 @@ static void _ForStatement(Compiler* compiler, UserFunction* uf, Scope* scope, As
         for (int i = 0; i < loopScope->ContinueJumpC; i++) {
             _JumpToLabel(compiler, uf, loopScope->ContinueJumps[i]);
         }
-        _Expression(compiler, uf, loopScope, mutator);
+        _Expression(compiler, uf, hasLocalInitializer ? localScope : loopScope, mutator);
         _EmitLine(compiler, uf, mutator->Position);
         _Emit(compiler, uf, OP_POPTOP);
     } else {
@@ -2152,6 +2156,7 @@ static void _ForStatement(Compiler* compiler, UserFunction* uf, Scope* scope, As
 
 static void _WhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
     Scope* loopScope = CreateScope(SCOPE_LOOP, scope);
+    Scope* localScope = CreateScope(SCOPE_NEW, loopScope);
     Ast* initializer = node->A, *condition = NULL, *mutator = NULL;
     if (initializer->Next != NULL) {
         condition = initializer->Next;
@@ -2160,28 +2165,48 @@ static void _WhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope, 
         }
     }
     Ast* thenBranch = node->B;
+    bool hasLocalInitializer = false;
+
     int whileStart  = uf->CodeC;
 
     if (initializer != NULL) {
         // use initializer as condition | condition only while statement
-        _InitializerConditionMutator(compiler, uf, loopScope, initializer);
+        hasLocalInitializer = initializer->Type == AST_SHORT_ASSIGN;
+        _InitializerConditionMutator(compiler, uf, hasLocalInitializer ? localScope : loopScope, initializer);
     }
 
     if (condition != NULL) {
         whileStart = uf->CodeC;
-        _Expression(compiler, uf, loopScope, condition);
+        _Expression(compiler, uf, hasLocalInitializer ? localScope : loopScope, condition);
     }
 
     _EmitLine(compiler, uf, condition->Position);
     int jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
-    _Statement(compiler, uf, loopScope, thenBranch);
+
+    if (hasLocalInitializer) {
+        _EmitLine(compiler, uf, initializer->Position);
+        _Emit(compiler, uf, OP_ENTER_SCOPE);
+        if (thenBranch->Type == AST_BLOCK) {
+            Ast* current = thenBranch->A;
+            while (current != NULL) {
+                _Statement(compiler, uf, localScope, current);
+                current = current->Next;
+            }
+        } else {
+            _Statement(compiler, uf, localScope, thenBranch);
+        }
+        _EmitLine(compiler, uf, initializer->Position);
+        _Emit(compiler, uf, OP_EXIT_SCOPE);
+    } else {
+        _Statement(compiler, uf, loopScope, thenBranch);
+    }
 
     if (mutator != NULL) {
         // continues, but execute mutator first
         for (int i = 0; i < loopScope->ContinueJumpC; i++) {
             _JumpToLabel(compiler, uf, loopScope->ContinueJumps[i]);
         }
-        _Expression(compiler, uf, loopScope, mutator);
+        _Expression(compiler, uf, hasLocalInitializer ? localScope : loopScope, mutator);
         _EmitLine(compiler, uf, mutator->Position);
         _Emit(compiler, uf, OP_POPTOP);
     } else {
@@ -2194,7 +2219,14 @@ static void _WhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope, 
     _EmitLine(compiler, uf, node->Position);
     _JumpToAbsoluteLabel(compiler, uf, _EmitJumpTo(compiler, uf, OP_ABSOLUTE_JUMP), whileStart);
     _JumpToLabel(compiler, uf, jumpOffset);
+
+    // breaks
+    for (int i = 0; i < loopScope->BreakJumpC; i++) {
+        _JumpToLabel(compiler, uf, loopScope->BreakJumps[i]);
+    }
+
     FreeScope(loopScope);
+    FreeScope(localScope);
 }
 
 static void _DoWhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
@@ -2286,6 +2318,17 @@ static void _ContinueStatement(Compiler* compiler, UserFunction* uf, Scope* scop
             _EmitArg(compiler, uf, OP_POPN_TRY, n);
         }
     }
+    if (ScopeInside(scope, SCOPE_NEW)) {
+        int n = ScopeCountNested(scope, SCOPE_NEW);
+        if (n == 1) {
+            _EmitLine(compiler, uf, node->Position);
+            _Emit(compiler, uf, OP_EXIT_SCOPE);
+        }
+        else {
+            _EmitLine(compiler, uf, node->Position);
+            _EmitArg(compiler, uf, OP_EXITN_SCOPE, n);
+        }
+    }
     _EmitLine(compiler, uf, node->Position);
     int offset = _EmitJumpTo(compiler, uf, OP_JUMP);
     ScopeAddContinueJump(scope, offset);
@@ -2312,6 +2355,17 @@ static void _BreakStatement(Compiler* compiler, UserFunction* uf, Scope* scope, 
             _EmitArg(compiler, uf, OP_POPN_TRY, n);
         }
     }
+    if (ScopeInside(scope, SCOPE_NEW)) {
+        int n = ScopeCountNested(scope, SCOPE_NEW);
+        if (n == 1) {
+            _EmitLine(compiler, uf, node->Position);
+            _Emit(compiler, uf, OP_EXIT_SCOPE);
+        }
+        else {
+            _EmitLine(compiler, uf, node->Position);
+            _EmitArg(compiler, uf, OP_EXITN_SCOPE, n);
+        }
+    } 
     _EmitLine(compiler, uf, node->Position);
     int offset = _EmitJumpTo(compiler, uf, OP_JUMP);
     ScopeAddBreakJump(scope, offset);
