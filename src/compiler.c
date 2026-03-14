@@ -1954,7 +1954,7 @@ static void _VarDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope
 }
 
 static void _LocalDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
-    if (!(ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
+    if (!(ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope,SCOPE_NEW) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
         ThrowError(
             compiler->Parser->Lexer->Path, 
             compiler->Parser->Lexer->Data, 
@@ -1990,7 +1990,7 @@ static void _LocalDeclarationStatement(Compiler* compiler, UserFunction* uf, Sco
 }
 
 static void _ConstDeclarationStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
-    if (!(ScopeIs(scope, SCOPE_GLOBAL) || ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
+    if (!(ScopeIs(scope, SCOPE_GLOBAL) || ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope,SCOPE_NEW) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
         ThrowError(
             compiler->Parser->Lexer->Path, 
             compiler->Parser->Lexer->Data, 
