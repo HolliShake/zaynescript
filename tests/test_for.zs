@@ -11,8 +11,6 @@ while (x := 2;x < 30) {
     println(x);
 }
 
-
-
 for (i := 1; i <= 10; i++) {
     local line = "";
     for (j := 1; j <= 10 - i; j++) {
