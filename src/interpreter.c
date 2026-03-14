@@ -821,10 +821,16 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 interpreter->CallEnv = NewEnvironmentValue(interpreter, EnvironmentCloneFromValue(interpreter->CallEnv));
                 break;
             }
-            case  OP_EXIT_SCOPE: {
+            case OP_EXIT_SCOPE: {
                 Environment* current = CoerceToEnvironment(interpreter->CallEnv);
                 RestoreEnv(interpreter);
                 EnvironmentSync(current, CoerceToEnvironment(interpreter->CallEnv));
+                break;
+            }
+            case OP_EXITN_SCOPE: {
+                size = _ReadInt32(uf->Codes, ip);
+                RestoreNthEnvAndSync(interpreter, size);
+                Forward(4);
                 break;
             }
             case OP_JUMP_IF_FALSE_OR_POP: {

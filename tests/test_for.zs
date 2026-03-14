@@ -1,4 +1,4 @@
-import { println } from "core:io";
+import { println, format } from "core:io";
  
 println(println);
 
@@ -20,4 +20,22 @@ for (i := 1; i <= 10; i++) {
         line += "*";
     }
     println(line);
+}
+
+while (x := 0; x < 10) {
+    while (y := x; y < 20; y++) {
+        println("Y:>", y);
+        if (y >= 10) break;
+    }
+    println("X:>", x);
+    if (x == 8) break;
+    x++;
+}
+
+for (i := 1; i <= 10; i++) {
+    local row = "";
+    for (j := 1; j <= 10; j++) {
+        row += format("{} \t", (i * j));
+    }
+    println(row);
 }
