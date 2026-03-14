@@ -306,6 +306,7 @@ struct ast_struct {
     AstType  Type;     /**< The type of the AST node */
     Position Position; /**< The position in the source code */
     String   Value;    /**< String value (for identifiers, literals, etc.) */
+    bool     Flag;     /**< Generic boolean flag for various uses (e.g. async functions) */
     Ast*     A;        /**< First child node (usage depends on Type) */
     Ast*     B;        /**< Second child node (usage depends on Type) */
     Ast*     C;        /**< Third child node (usage depends on Type) */

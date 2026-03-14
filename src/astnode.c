@@ -166,11 +166,12 @@ Ast* AstClass(Ast* name, Ast* super, Ast* body, Position position) {
     return ast;
 } 
 
-Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, Position position) {
-    Ast* ast = InitAst(AST_FUNCTION, position);
-    ast->A   = fnName;
-    ast->B   = parameters;
-    ast->C   = body;
+Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, bool async, Position position) {
+    Ast* ast  = InitAst(AST_FUNCTION, position);
+    ast->Flag = async;
+    ast->A    = fnName;
+    ast->B    = parameters;
+    ast->C    = body;
     return ast;
 }
 

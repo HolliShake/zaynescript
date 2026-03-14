@@ -337,11 +337,15 @@ static Ast* _FunctionExpression(Parser* parser) {
         current = current->Next;
     }
     ACCEPTV_FREE(")");
+    bool async = CHECKTV(KEY_ASYNC);
+    if (async) {
+        ACCEPTV_FREE(KEY_ASYNC);
+    }
     ACCEPTV_FREE("{");
     body  = _ListOfStatements(parser);
     ended = parser->Next.Position;
     ACCEPTV_FREE("}");
-    return AstFunction(NULL, parameters, body, MergePositions(start, ended));
+    return AstFunction(NULL, parameters, body, async, MergePositions(start, ended));
 }
 
 static Ast* _Allocation(Parser* parser) {
@@ -1244,6 +1248,10 @@ static Ast* _Function(Parser* parser) {
         current = current->Next;
     }
     ACCEPTV_FREE(")");
+    bool async = CHECKTV(KEY_ASYNC);
+    if (async) {
+        ACCEPTV_FREE(KEY_ASYNC);
+    }
     ACCEPTV_FREE("{");
     body  = _ListOfStatements(parser);
     ended = parser->Next.Position;
@@ -1252,6 +1260,7 @@ static Ast* _Function(Parser* parser) {
         fnName,
         parameters,
         body,
+        async,
         MergePositions(start, ended)
     );
 }

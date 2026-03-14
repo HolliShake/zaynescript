@@ -173,3 +173,7 @@ if (true) {
     println(0);
 }
 println(true, false);
+
+const fun = fn() async {
+    return 2;
+};

@@ -318,10 +318,11 @@ Ast* AstClass(Ast* name, Ast* super, Ast* body, Position position);
  * @param fnName Pointer to AST node containing the function name.
  * @param parameters Pointer to AST node containing the function parameters.
  * @param body Pointer to AST node containing the function body.
+ * @param async Boolean indicating if the function is asynchronous.
  * @param position Source code location information.
  * @return Pointer to newly allocated AST_FUNCTION node, or NULL on allocation failure.
  */
-Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, Position position);
+Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, bool async, Position position);
 
 /**
  * Creates an AST node representing an import statement.
