@@ -104,6 +104,7 @@ int RunTestInProcess(const char* testPath, const char* exePath) {
         while ((bytesRead = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
             buffer[bytesRead] = '\0';
             printf("  %s", buffer);
+            fflush(stdout);
         }
         
         close(pipefd[0]);

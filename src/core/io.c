@@ -50,16 +50,16 @@ static Value* _IoPrintln(Interpreter* interpeter, int argc, Value** arguments) {
 
 static Value* _IoScan(Interpreter* interpreter, int argc, Value** arguments) {
 
-    if (argc != 1) {
-        return NewErrorValue(interpreter, "scan() expects exactly 1 argument");
+    if (argc > 1) {
+        return NewErrorValue(interpreter, "scan() expects 0 or 1 argument");
     }
 
-    if (!ValueIsStr(arguments[0])) {
+    if (argc == 1 && !ValueIsStr(arguments[0])) {
         return NewErrorValue(interpreter, "scan() expects a string as its argument");
     }
 
     // Print the prompt message if provided
-    if (argc > 0) {
+    if (argc == 1) {
         String prompt = ValueToString(arguments[0]);
         printf("%s", prompt);
         fflush(stdout);
@@ -181,7 +181,7 @@ static ModuleFunction _IoModuleFunctions[] = {
     // println
     { .Name = "println",  .Argc = VARARG, .CFunction = (NativeFunctionCallback) (_IoPrintln),  .Value = NULL },
     // scan
-    { .Name = "scan",     .Argc =      1, .CFunction = (NativeFunctionCallback) (_IoScan),     .Value = NULL },
+    { .Name = "scan",     .Argc = VARARG, .CFunction = (NativeFunctionCallback) (_IoScan),     .Value = NULL },
     // parse num
     { .Name = "parseNum", .Argc =      1, .CFunction = (NativeFunctionCallback) (_IoParseNum), .Value = NULL },
     // format

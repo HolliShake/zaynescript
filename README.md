@@ -168,15 +168,56 @@ println(person.name);
 
 ### Standard Library
 
-Import modules using the `import` statement.
+ZayneScript comes with a comprehensive standard library. Import modules using the `import` statement.
+
+#### `core:io` (Input/Output)
+
+Handles basic console input and output operations.
 
 ```javascript
-import { println, scan } from "core:io";
+import { print, println, scan, parseNum, format } from "core:io";
+
+print("Enter your age: ");
+local ageStr = scan();
+local age = parseNum(ageStr);
+
+println(format("You are %d years old.", age));
+```
+
+-   **`print(...args)`**: Prints the provided arguments to standard output.
+-   **`println(...args)`**: Prints arguments followed by a newline.
+-   **`scan(prompt)`**: Reads a string from standard input, optionally displaying a prompt.
+-   **`parseNum(str)`**: Parses a string into a numeric value.
+-   **`format(fmt, ...args)`**: Formats an interpolated string.
+
+#### `core:math` (Mathematics)
+
+Provides mathematical functions and constants.
+
+```javascript
 import "core:math"; // Imports as 'math' object
 
-println("Hello World");
 println(math.sqrt(16)); // 4
+println(math.pi);       // 3.1415926535...
 ```
+
+-   **Functions**: `abs`, `acos`, `asin`, `atan`, `atan2`, `ceil`, `cos`, `cosh`, `exp`, `floor`, `hypot`, `log`, `log10`, `max`, `min`, `pow`, `round`, `sin`, `sinh`, `sqrt`, `tan`, `tanh`, `trunc`.
+-   **Constants**: `pi`, `e`.
+
+#### `Date` Module
+
+The `Date` module provides a class for working with dates and times.
+
+```javascript
+import { Date } from "Date";
+
+local now = new Date();
+println("Current Year: ", now.getFullYear());
+println(now.toString());
+```
+
+-   **Constructor methods**: `new Date(year, month, day, hours, minutes, seconds)`.
+-   **Instance methods**: `getFullYear()`, `getMonth()`, `getDate()`, `getDay()`, `getHours()`, `getMinutes()`, `getSeconds()`, `getTime()`, `toString()`.
 
 ## Project Structure
 
