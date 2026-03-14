@@ -226,6 +226,7 @@ typedef enum ast_type_enum {
     AST_VAR_DECLARATION,      /**< Variable declaration (var) */
     AST_CONST_DECLARATION,    /**< Constant declaration (const) */
     AST_LOCAL_DECLARATION,    /**< Local declaration (local) */
+    AST_EMPTY_STATEMENT,      /**<  Empty statement (;;) */
     AST_CLASS,                /**< Class declaration */
     AST_CLASS_MEMBER,         /**< Class member definition */
     AST_EXPRESSION_STATEMENT, /**< Statement wrapping an expression */

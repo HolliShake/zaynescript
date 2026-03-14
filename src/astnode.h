@@ -351,6 +351,16 @@ Ast* AstImport(Ast* imports, Ast* moduleName, Position position);
 Ast* AstVarDeclaration(AstType type, Ast* declarations, Position position);
 
 /**
+ * Creates an AST node representin empty statement and noop .
+ * 
+ * Allocates and initializes an AST_EMPTY_STMNT node that represents noop
+ * 
+ * @param position Source code location information.
+ * @return Pointer to newly allocated AST_EMPTY_STMNT node, or NULL on allocation failure.
+ */
+Ast* AstEmptyStatement(Position position);
+
+/**
  * Creates an AST node representing an if statement.
  * 
  * Allocates and initializes an AST_IF node that represents

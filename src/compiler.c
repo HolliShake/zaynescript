@@ -2048,19 +2048,19 @@ static void _InitializerConditionMutator(Compiler* compiler, UserFunction* uf, S
 
 static void _IfStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
     Scope* useScope  = scope;
-    Ast* initializer = node->A, *condition = NULL;
-    if (initializer->Next != NULL) {
-        condition = initializer->Next;
-    }
+    Ast* initializer = node->A, *condition = initializer->Next;
     Ast* thenBranch  = node->B;
     Ast* elseBranch  = node->C;
-    bool hasLocalInitializer = false;
+    bool hasLocalInitializer = (initializer != NULL && condition != NULL) && initializer->Type == AST_SHORT_ASSIGN;
 
+    if (hasLocalInitializer) {
+        useScope = CreateScope(SCOPE_NEW, scope);
+        _EmitLine(compiler, uf, initializer->Position);
+        _Emit(compiler, uf, OP_ENTER_SCOPE);
+    }
+
+    // IFSTART:;
     if (initializer != NULL && condition != NULL) {
-        if (initializer->Type == AST_SHORT_ASSIGN) {
-            hasLocalInitializer = true;
-            useScope = CreateScope(SCOPE_NEW, scope);
-        }
         _InitializerConditionMutator(compiler, uf, useScope, initializer);
         _Expression(compiler, uf, useScope, condition);
     } else if (initializer != NULL) {
@@ -2069,206 +2069,205 @@ static void _IfStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast
     } else {
         _Expression(compiler, uf, useScope, condition);
     }
+
+    // goto: ELSE
     _EmitLine(compiler, uf, node->Position);
-    int jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
+    int labelELSE = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
     
+    // THEN:;
+    _Statement(compiler, uf, useScope, thenBranch);
+
+    // exit initializer scope
     if (hasLocalInitializer) {
         _EmitLine(compiler, uf, initializer->Position);
-        _Emit(compiler, uf, OP_ENTER_SCOPE);
-        if (thenBranch->Type == AST_BLOCK) {
-            Ast* current = thenBranch->A;
-            while (current != NULL) {
-                _Statement(compiler, uf, useScope, current);
-                current = current->Next;
-            }
-        } else {
-            _Statement(compiler, uf, useScope, thenBranch);
-        }
-        _EmitLine(compiler, uf, initializer->Position);
         _Emit(compiler, uf, OP_EXIT_SCOPE);
-    } else {
-        _Statement(compiler, uf, useScope, thenBranch);
     }
 
+    // goto: ENDIF
     _EmitLine(compiler, uf, node->Position);
-    int jumpEndIfOffset = _EmitJumpTo(compiler, uf, OP_JUMP);
-    _JumpToLabel(compiler, uf, jumpOffset);
+    int labelENDIF = _EmitJumpTo(compiler, uf, OP_JUMP);
+
+    // ELSE:;
+    _JumpToLabel(compiler, uf, labelELSE);
     if (elseBranch != NULL) {
         // else branch is always in the outside scope
         _Statement(compiler, uf, scope, elseBranch);
     }
-    _JumpToLabel(compiler, uf, jumpEndIfOffset);
+
+    // ENDIF:;
+    _JumpToLabel(compiler, uf, labelENDIF);
+
     if (useScope != scope) {
         FreeScope(useScope);
     }
 }
 
 static void _ForStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
-    Scope* loopScope = CreateScope(SCOPE_LOOP, scope);
-    Scope* localScope = CreateScope(SCOPE_NEW, loopScope);
-    Ast* initializer = node->A, *condition = NULL, *mutator = NULL;
-    if (initializer != NULL && initializer->Next != NULL) {
-        condition = initializer->Next;
-        if (condition != NULL && condition->Next != NULL) {
-            mutator = condition->Next;
-        }
-    }
-    Ast* thenBranch = node->B;
-    bool hasLocalInitializer = false;
+    Scope* loopScope  = CreateScope(SCOPE_LOOP, scope);
+    Scope* localScope = CreateScope(SCOPE_NEW, loopScope), *useScope = loopScope;
+    Ast* initializer  = node->A, *condition = (initializer && initializer->Next) ? initializer->Next : NULL, *mutator = (condition && condition->Next) ? condition->Next : NULL;
+    Ast* thenBranch   = node->B;
+    bool hasLocalInitializer =  initializer != NULL && initializer->Type == AST_SHORT_ASSIGN;
 
-    if (initializer != NULL) {
-        hasLocalInitializer = initializer->Type == AST_SHORT_ASSIGN;
-        _InitializerConditionMutator(compiler, uf, hasLocalInitializer ? localScope : loopScope, initializer);
+    if (hasLocalInitializer) {
+        useScope = localScope;
+        _InitializerConditionMutator(compiler, uf, useScope, initializer);
     }
 
-    int forStart   = uf->CodeC;
-    int jumpOffset = -1;
+    // FORSTART:;
+    int labelFORSTART = uf->CodeC;
+    int labelENDFOR   = -1;
+
     if (condition != NULL) {
-        _Expression(compiler, uf, hasLocalInitializer ? localScope : loopScope, condition);
+        _Expression(compiler, uf, useScope, condition);
         _EmitLine(compiler, uf, condition->Position);
-        jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
+        labelENDFOR = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
     }
 
     if (hasLocalInitializer) {
         _EmitLine(compiler, uf, initializer->Position);
         _Emit(compiler, uf, OP_ENTER_SCOPE);
-        if (thenBranch->Type == AST_BLOCK) {
-            Ast* current = thenBranch->A;
-            while (current != NULL) {
-                _Statement(compiler, uf, localScope, current);
-                current = current->Next;
-            }
-        } else {
-            _Statement(compiler, uf, localScope, thenBranch);
-        }
+    }
+
+    // THEN:;
+    _Statement(compiler, uf, useScope, thenBranch);
+
+    // exit initializer scope
+    if (hasLocalInitializer) {
         _EmitLine(compiler, uf, initializer->Position);
         _Emit(compiler, uf, OP_EXIT_SCOPE);
-    } else {
-        _Statement(compiler, uf, loopScope, thenBranch);
     }
 
     if (mutator != NULL) {
-        // continues, but execute mutator first
+        // goto: MUTATOR
         for (int i = 0; i < loopScope->ContinueJumpC; i++) {
             _JumpToLabel(compiler, uf, loopScope->ContinueJumps[i]);
         }
-        _Expression(compiler, uf, hasLocalInitializer ? localScope : loopScope, mutator);
+        
+        // MUTATOR:;
+        _Expression(compiler, uf, useScope, mutator);
         _EmitLine(compiler, uf, mutator->Position);
         _Emit(compiler, uf, OP_POPTOP);
     } else {
-        // continues to jump to forStart if has no mutator
+        // goto: FORSTART
         for (int i = 0; i < loopScope->ContinueJumpC; i++) {
-            _JumpToAbsoluteLabel(compiler, uf, loopScope->ContinueJumps[i], forStart);
+            _JumpToAbsoluteLabel(compiler, uf, loopScope->ContinueJumps[i], labelFORSTART);
         }
     }
 
+    // goto: FORSTART
     _EmitLine(compiler, uf, node->Position);
-    _JumpToAbsoluteLabel(compiler, uf, _EmitJumpTo(compiler, uf, OP_ABSOLUTE_JUMP), forStart);
+    _JumpToAbsoluteLabel(compiler, uf, _EmitJumpTo(compiler, uf, OP_ABSOLUTE_JUMP), labelFORSTART);
 
-    // breaks
+    // ENDFOR:;
     for (int i = 0; i < loopScope->BreakJumpC; i++) {
         _JumpToLabel(compiler, uf, loopScope->BreakJumps[i]);
     }
 
-    if (jumpOffset != -1) _JumpToLabel(compiler, uf, jumpOffset);
+    if (labelENDFOR != -1) _JumpToLabel(compiler, uf, labelENDFOR);
     FreeScope(loopScope);
+    FreeScope(localScope);
 }
 
 static void _WhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
-    Scope* loopScope = CreateScope(SCOPE_LOOP, scope);
-    Scope* localScope = CreateScope(SCOPE_NEW, loopScope);
-    Ast* initializer = node->A, *condition = NULL, *mutator = NULL;
-    if (initializer->Next != NULL) {
-        condition = initializer->Next;
-        if (condition->Next != NULL) {
-            mutator = condition->Next;
-        }
-    }
-    Ast* thenBranch = node->B;
-    bool hasLocalInitializer = false;
+    Scope* loopScope  = CreateScope(SCOPE_LOOP, scope);
+    Scope* localScope = CreateScope(SCOPE_NEW, loopScope), *useScope = loopScope;
+    Ast* initializer  = node->A, *condition = (initializer && initializer->Next) ? initializer->Next : NULL, *mutator = (condition && condition->Next) ? condition->Next : NULL;
+    Ast* thenBranch   = node->B;
+    bool hasLocalInitializer =  initializer != NULL && initializer->Type == AST_SHORT_ASSIGN;
 
-    int whileStart  = uf->CodeC;
-
-    if (initializer != NULL) {
-        // use initializer as condition | condition only while statement
-        hasLocalInitializer = initializer->Type == AST_SHORT_ASSIGN;
-        _InitializerConditionMutator(compiler, uf, hasLocalInitializer ? localScope : loopScope, initializer);
+    if (hasLocalInitializer) {
+        useScope = localScope;
+        _InitializerConditionMutator(compiler, uf, useScope, initializer);
     }
+
+    // WHILESTART:;
+    int labelWHILESTART = uf->CodeC;
+    int labelENDWHILE   = -1;
 
     if (condition != NULL) {
-        whileStart = uf->CodeC;
-        _Expression(compiler, uf, hasLocalInitializer ? localScope : loopScope, condition);
+        _Expression(compiler, uf, useScope, condition);
+        _EmitLine(compiler, uf, condition->Position);
+        labelENDWHILE = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
     }
-
-    _EmitLine(compiler, uf, condition->Position);
-    int jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
 
     if (hasLocalInitializer) {
         _EmitLine(compiler, uf, initializer->Position);
         _Emit(compiler, uf, OP_ENTER_SCOPE);
-        if (thenBranch->Type == AST_BLOCK) {
-            Ast* current = thenBranch->A;
-            while (current != NULL) {
-                _Statement(compiler, uf, localScope, current);
-                current = current->Next;
-            }
-        } else {
-            _Statement(compiler, uf, localScope, thenBranch);
-        }
+    }
+
+    // THEN:;
+    _Statement(compiler, uf, useScope, thenBranch);
+
+    // exit initializer scope
+    if (hasLocalInitializer) {
         _EmitLine(compiler, uf, initializer->Position);
         _Emit(compiler, uf, OP_EXIT_SCOPE);
-    } else {
-        _Statement(compiler, uf, loopScope, thenBranch);
     }
 
     if (mutator != NULL) {
-        // continues, but execute mutator first
+        // goto: MUTATOR
         for (int i = 0; i < loopScope->ContinueJumpC; i++) {
             _JumpToLabel(compiler, uf, loopScope->ContinueJumps[i]);
         }
-        _Expression(compiler, uf, hasLocalInitializer ? localScope : loopScope, mutator);
+        
+        // MUTATOR:;
+        _Expression(compiler, uf, useScope, mutator);
         _EmitLine(compiler, uf, mutator->Position);
         _Emit(compiler, uf, OP_POPTOP);
     } else {
-        // continues to jump to whileStart if has no mutator
+        // goto: WHILESTART
         for (int i = 0; i < loopScope->ContinueJumpC; i++) {
-            _JumpToAbsoluteLabel(compiler, uf, loopScope->ContinueJumps[i], whileStart);
+            _JumpToAbsoluteLabel(compiler, uf, loopScope->ContinueJumps[i], labelWHILESTART);
         }
     }
 
+    // goto: WHILESTART
     _EmitLine(compiler, uf, node->Position);
-    _JumpToAbsoluteLabel(compiler, uf, _EmitJumpTo(compiler, uf, OP_ABSOLUTE_JUMP), whileStart);
-    _JumpToLabel(compiler, uf, jumpOffset);
+    _JumpToAbsoluteLabel(compiler, uf, _EmitJumpTo(compiler, uf, OP_ABSOLUTE_JUMP), labelWHILESTART);
 
-    // breaks
+    // ENDFOR:;
     for (int i = 0; i < loopScope->BreakJumpC; i++) {
         _JumpToLabel(compiler, uf, loopScope->BreakJumps[i]);
     }
 
+    if (labelENDWHILE != -1) _JumpToLabel(compiler, uf, labelENDWHILE);
     FreeScope(loopScope);
     FreeScope(localScope);
 }
 
 static void _DoWhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
     Scope* loopScope = CreateScope(SCOPE_LOOP, scope);
-    Ast* condition  = node->A;
-    Ast* thenBranch = node->B;
-    int doStart     = uf->CodeC;
+    Ast* condition   = node->A;
+    Ast* thenBranch  = node->B;
+
+    // DOSTART:;
+    int doStart      = uf->CodeC;
+
+    // THEN:;
     _Statement(compiler, uf, loopScope, thenBranch);
+
+    // continues
+    for (int i = 0; i < loopScope->ContinueJumpC; i++) {
+        _JumpToLabel(compiler, uf, loopScope->ContinueJumps[i]);
+    }
+
+    // CONDITION:;
     _Expression(compiler, uf, scope, condition);
+
+    // goto: ENDDO
     _EmitLine(compiler, uf, condition->Position);
-    int jumpOffset = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
+    int labelENDDO = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
+
     _EmitLine(compiler, uf, node->Position);
     _JumpToAbsoluteLabel(compiler, uf, _EmitJumpTo(compiler, uf, OP_ABSOLUTE_JUMP), doStart);
+
+    // ENDDDO:;
     // breaks
     for (int i = 0; i < loopScope->BreakJumpC; i++) {
         _JumpToLabel(compiler, uf, loopScope->BreakJumps[i]);
     }
-    // continues
-    for (int i = 0; i < loopScope->ContinueJumpC; i++) {
-        _JumpToAbsoluteLabel(compiler, uf, loopScope->ContinueJumps[i], doStart);
-    }
-    _JumpToLabel(compiler, uf, jumpOffset);
+    _JumpToLabel(compiler, uf, labelENDDO);
 }
 
 static void _TryCatch(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {
@@ -2339,16 +2338,9 @@ static void _ContinueStatement(Compiler* compiler, UserFunction* uf, Scope* scop
         }
     }
     if (ScopeInside(scope, SCOPE_NEW)) {
-        int n = ScopeCountNested(scope, SCOPE_NEW);
-        if (n == 1) {
-            _EmitLine(compiler, uf, node->Position);
-            _Emit(compiler, uf, OP_EXIT_SCOPE);
-        }
-        else {
-            _EmitLine(compiler, uf, node->Position);
-            _EmitArg(compiler, uf, OP_EXITN_SCOPE, n);
-        }
-    }
+        _EmitLine(compiler, uf, node->Position);
+        _Emit(compiler, uf, OP_EXIT_SCOPE);
+    } 
     _EmitLine(compiler, uf, node->Position);
     int offset = _EmitJumpTo(compiler, uf, OP_JUMP);
     ScopeAddContinueJump(scope, offset);
@@ -2376,15 +2368,8 @@ static void _BreakStatement(Compiler* compiler, UserFunction* uf, Scope* scope, 
         }
     }
     if (ScopeInside(scope, SCOPE_NEW)) {
-        int n = ScopeCountNested(scope, SCOPE_NEW);
-        if (n == 1) {
-            _EmitLine(compiler, uf, node->Position);
-            _Emit(compiler, uf, OP_EXIT_SCOPE);
-        }
-        else {
-            _EmitLine(compiler, uf, node->Position);
-            _EmitArg(compiler, uf, OP_EXITN_SCOPE, n);
-        }
+        _EmitLine(compiler, uf, node->Position);
+        _Emit(compiler, uf, OP_EXIT_SCOPE);
     } 
     _EmitLine(compiler, uf, node->Position);
     int offset = _EmitJumpTo(compiler, uf, OP_JUMP);
@@ -2508,6 +2493,8 @@ static void _Statement(Compiler* compiler, UserFunction* userFunction, Scope* sc
             break;
         case AST_EXPRESSION_STATEMENT:
             _ExpressionStatement(compiler, userFunction, scope, node);
+            break;
+        case AST_EMPTY_STATEMENT:
             break;
         default:
             ThrowError(

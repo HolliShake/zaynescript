@@ -2,7 +2,7 @@ import { println, format } from "core:io";
  
 println(println);
 
-for (x := 0; x < 10000; x++) {
+for (x := 0; x < 20000; x++) {
     println(x);
 }
 
@@ -39,3 +39,17 @@ for (i := 1; i <= 10; i++) {
     }
     println(row);
 }
+
+var hx = 0;
+
+do {
+    if (hx == 5) {
+        ++hx;
+        continue;
+    }
+    println(hx++);
+} while (hx < 10)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+println(hx);

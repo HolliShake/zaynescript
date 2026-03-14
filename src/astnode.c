@@ -188,6 +188,10 @@ Ast* AstVarDeclaration(AstType type, Ast* declarations, Position position) {
     return ast;
 }
 
+Ast* AstEmptyStatement(Position position) {
+    return InitAst(AST_EMPTY_STATEMENT, position);
+}
+
 Ast* AstIf(Ast* condition, Ast* thenBranch, Ast* elseBranch, Position position) {
     Ast* ast = InitAst(AST_IF, position);
     ast->A   = condition;
