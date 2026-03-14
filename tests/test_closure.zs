@@ -174,6 +174,8 @@ if (true) {
 }
 println(true, false);
 
-const fun = fn() async {
-    return 2;
+const fun = fn(a, b) async {
+    return a + b;
 };
+
+println(fun(4, 40));
