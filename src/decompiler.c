@@ -238,6 +238,14 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
                 ip += 4;
                 break;
             }
+            case OP_ENTER_SCOPE: _Append(&result, "OP_ENTER_SCOPE\n"); break;
+            case OP_EXIT_SCOPE: _Append(&result, "OP_EXIT_SCOPE\n"); break;
+            case OP_EXITN_SCOPE: {
+                int size = _ReadOffset(uf->Codes, ip);
+                _AppendFmt(&result, "OP_EXITN_SCOPE %d\n", size);
+                ip += 4;
+                break;
+            }
             case OP_JUMP_IF_FALSE_OR_POP: {
                 int offset = _ReadOffset(uf->Codes, ip);
                 _AppendFmt(&result, "OP_JUMP_IF_FALSE_OR_POP %d\n", offset);
