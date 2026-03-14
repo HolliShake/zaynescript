@@ -149,9 +149,15 @@ static Token TokenizeString(Lexer* lexer) {
     Rune quote = CurrentRune(lexer);
     Advance(lexer); // Skip opening quote
 
+    // FIX: Safely calculate maxLength by skipping escaped characters 
+    // so an escaped quote (\") doesn't end the count early!
     int maxLength = 0;
     int scan = lexer->Indx;
     while (lexer->Data[scan] != 0 && lexer->Data[scan] != quote) {
+        if (lexer->Data[scan] == '\\' && lexer->Data[scan + 1] != 0) {
+            scan++; // Skip the backslash
+            maxLength++; // Count the escaped character
+        }
         maxLength++;
         scan++;
     }
@@ -163,9 +169,11 @@ static Token TokenizeString(Lexer* lexer) {
         if (CurrentRune(lexer) == '\\') {
             Advance(lexer); // Skip escape character
             switch (CurrentRune(lexer)) {
+                case 'b': decoded[decodedLength++] = '\b'; break;
                 case 'n': decoded[decodedLength++] = '\n'; break;
                 case 't': decoded[decodedLength++] = '\t'; break;
                 case 'r': decoded[decodedLength++] = '\r'; break;
+                case 'e': decoded[decodedLength++] = '\033'; break; // The ANSI Escape!
                 case '\\': decoded[decodedLength++] = '\\'; break;
                 case '\'': decoded[decodedLength++] = '\''; break;
                 case '"': decoded[decodedLength++] = '"'; break;

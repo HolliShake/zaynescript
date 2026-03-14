@@ -35,7 +35,7 @@ static Value* _IoGenericPrint(Interpreter* interpeter, int argc, Value** argumen
         }
     }
     
-    printf("%s%s", buffer, newline ? "\n" : "");
+    printf("\033[93m%s\033[0m%s", buffer, newline ? "\n" : "");
     free(buffer);
     return interpeter->Null;
 }
@@ -175,6 +175,38 @@ static Value* _IoFormat(Interpreter* interpreter, int argc, Value** arguments) {
     return result;
 }
 
+static Value* _IoClearScreen(Interpreter* interpreter, int argc, Value** arguments) {
+    if (argc != 0) {
+        return NewErrorValue(interpreter, "clearScreen() expects 0 arguments");
+    }
+    printf("\x1B[2J\x1B[H");
+    fflush(stdout);
+    return interpreter->Null;
+}
+
+static Value* _IoSetColor(Interpreter* interpreter, int argc, Value** arguments) {
+    if (argc > 2) {
+        return NewErrorValue(interpreter, "setColor() expects 0, 1, or 2 arguments (fg, bg)");
+    }
+    
+    if (argc == 0) {
+        printf("\x1B[0m"); // reset
+        fflush(stdout);
+        return interpreter->Null;
+    }
+
+    int fg = (int) CoerceToNum(arguments[0]);
+    if (argc == 1) {
+        printf("\x1B[%dm", fg);
+    } else if (argc == 2) {
+        int bg = (int) CoerceToNum(arguments[1]);
+        printf("\x1B[%d;%dm", fg, bg);
+    }
+    
+    fflush(stdout);
+    return interpreter->Null;
+}
+
 static ModuleFunction _IoModuleFunctions[] = {
     // print
     { .Name = "print",    .Argc = VARARG, .CFunction = (NativeFunctionCallback) (_IoPrint),    .Value = NULL },
@@ -186,6 +218,10 @@ static ModuleFunction _IoModuleFunctions[] = {
     { .Name = "parseNum", .Argc =      1, .CFunction = (NativeFunctionCallback) (_IoParseNum), .Value = NULL },
     // format
     { .Name = "format",   .Argc = VARARG, .CFunction = (NativeFunctionCallback) (_IoFormat),   .Value = NULL },
+    // clearScreen
+    { .Name = "clearScreen", .Argc =   0, .CFunction = (NativeFunctionCallback) (_IoClearScreen), .Value = NULL },
+    // setColor
+    { .Name = "setColor",    .Argc = VARARG, .CFunction = (NativeFunctionCallback) (_IoSetColor), .Value = NULL },
     // end of module functions
     { .Name = NULL }
 };
