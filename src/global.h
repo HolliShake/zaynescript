@@ -927,7 +927,7 @@ UserFunction* CoerceToUserFunction(Value* value);
  * @param value The value to coerce.
  * @return Pointer to the NativeFunction.
  */
-NativeFunction* CoerceToNativeFunctionMeta(Value* value);
+NativeFunction* CoerceToNativeFunction(Value* value);
 
 /**
  * @brief Coerces a value to a Class.

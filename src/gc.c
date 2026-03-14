@@ -104,7 +104,7 @@ static void _Free(Value* value) {
             break;
         }
         case VLT_NATV_FUNCTION: {
-            NativeFunction* nf = CoerceToNativeFunctionMeta(value);
+            NativeFunction* nf = CoerceToNativeFunction(value);
             FreeNativeFunction(nf);
             value->Value.Opaque = NULL;
             break;

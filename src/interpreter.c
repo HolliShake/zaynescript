@@ -56,7 +56,7 @@ Interpreter* CreateInterpreter() {
 
 #define InterpreterPanic(message, ...) do { \
     fprintf(stderr, "[%s:%d]::Panic: ", __FILE__, __LINE__); \
-    fprintf(stderr, "%s", (char*) message); \
+    fprintf(stderr, message, ##__VA_ARGS__); \
     fprintf(stderr, "\n"); \
     ForceGarbageCollect(interpreter); \
     FreeInterpreter(interpreter); \
@@ -106,7 +106,7 @@ static int _GetArgc(Value* fn) {
             return 0;
         }
     } else if (ValueIsNativeFunction(fn)) {
-        NativeFunction* nFMeta = CoerceToNativeFunctionMeta(fn);
+        NativeFunction* nFMeta = CoerceToNativeFunction(fn);
         return nFMeta->Argc;
     } else if (ValueIsUserFunction(fn)) {
         UserFunction* uf = CoerceToUserFunction(fn);

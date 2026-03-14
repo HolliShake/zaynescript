@@ -192,7 +192,7 @@ UserFunction* CoerceToUserFunction(Value* value) {
     Panic("Value is not a UserFunction");
 }
 
-NativeFunction* CoerceToNativeFunctionMeta(Value* value) {
+NativeFunction* CoerceToNativeFunction(Value* value) {
     if (value == NULL) return NULL;
     if (value->Type == VLT_NATV_FUNCTION) {
         return (NativeFunction*) value->Value.Opaque;

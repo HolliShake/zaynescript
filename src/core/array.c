@@ -1,5 +1,50 @@
 #include "./array.h"
 
+#define Push(value) (interpreter->Stacks[interpreter->StackC++] = value)
+#define Popp()      (interpreter->Stacks[--interpreter->StackC])
+
+extern Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
+
+Value* _ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
+    // Reserve 1 arg for thisArg"
+    if (argc != 2) {
+        return NewErrorValue(interpreter, "Array.each expects 1 argument");
+    }
+
+    Value* thisArg  = arguments[0];
+    Value* callback = arguments[1];
+
+    if (!ValueIsArray(thisArg)) {
+        return NewErrorValue(interpreter, "First argument to Array.each must be an array");
+    }
+
+    if (!ValueIsCallable(callback)) {
+        return NewErrorValue(interpreter, "Second argument to Array.each must be a function");
+    }
+
+    int argNeeded = ValueIsNativeFunction(callback) ? CoerceToNativeFunction(callback)->Argc : CoerceToUserFunction(callback)->Argc;
+
+    if (argNeeded != 2 && argNeeded != VARARG) {
+        return NewErrorValue(interpreter, "Callback function for Array.each must take exactly 2 arguments (item, index)");
+    }
+
+    Array* array = CoerceToArray(thisArg);
+
+    Value* arrayVal = NewArrayValue(interpreter);
+    Array* newArray = CoerceToArray(arrayVal);
+
+    for (size_t i = 0; i < ArrayLength(array); i++) {
+        Value* item = ArrayGet(array, i);
+        Value* index = NewIntValue(interpreter, (int) i);
+        Push(index);
+        Push(item);
+        DoCall(interpreter, callback, argc, false);
+        ArrayPush(newArray, Popp());
+    }
+
+    return arrayVal;
+}
+
 Value* _ArrayPush(Interpreter* interpreter, int argc, Value** arguments) {
     // Reserve 1 arg for thisArg"
     if (argc != 2) {
@@ -37,6 +82,7 @@ static Value* _ArrayLength(Interpreter* interpreter, int argc, Value** arguments
 
 static ModuleFunction _ArrayClassMethods[] = {
     // Array class
+    { .Name = "each",   .Argc = 2, .CFunction = (NativeFunctionCallback) _ArrayEach  , .Value = NULL },
     { .Name = "push",   .Argc = 2, .CFunction = (NativeFunctionCallback) _ArrayPush  , .Value = NULL },
     { .Name = "length", .Argc = 1, .CFunction = (NativeFunctionCallback) _ArrayLength, .Value = NULL },
     // end of module functions
@@ -71,3 +117,5 @@ Value* CreateArrayClass(Interpreter* interpreter) {
 
     return arrayClass;
 }
+
+#undef PUSH

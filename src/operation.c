@@ -372,7 +372,7 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
     }
 
     if (ValueIsNativeFunction(fn)) {
-        NativeFunction* nFMeta = CoerceToNativeFunctionMeta(fn);
+        NativeFunction* nFMeta = CoerceToNativeFunction(fn);
         NativeFunctionCallback nativeFunc  = nFMeta->FuncPtr;
 
         if (nFMeta->Argc != VARARG && argc != nFMeta->Argc) {
