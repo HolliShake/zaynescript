@@ -43,6 +43,12 @@ UserFunction* UserFunctionClone(UserFunction* userFunction) {
         userFunction->Async
     );
     clone->Scope       = userFunction->Scope;
+    clone->LineC       = userFunction->LineC;
+    clone->Lines       = Reallocate(
+        clone->Lines,
+        sizeof(LineInfo) * (userFunction->LineC + 1)
+    );
+    memcpy(clone->Lines, userFunction->Lines, sizeof(LineInfo) * (userFunction->LineC + 1));
     clone->CodeC       = userFunction->CodeC;
     clone->Codes       = Reallocate(
         clone->Codes,
