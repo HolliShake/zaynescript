@@ -168,7 +168,7 @@ String ValueToString(Value* value) {
         case VLT_CLASS_INSTANCE:
             return ClassInstanceToString(CoerceToClassInstance(value));
         case VLT_NATV_FUNCTION:
-            return NativeFunctionMetaToString(CoerceToNativeFunctionMeta(value));
+            return NativeFunctionMetaToString(CoerceToNativeFunction(value));
         default:
             return AllocateString("unknown");
     }

@@ -35,7 +35,7 @@ static Value* _IoGenericPrint(Interpreter* interpeter, int argc, Value** argumen
         }
     }
     
-    printf("%s%s", buffer, newline ? "\n" : "");
+    printf("\033[93m%s\033[0m%s", buffer, newline ? "\n" : "");
     free(buffer);
     return interpeter->Null;
 }
@@ -50,16 +50,16 @@ static Value* _IoPrintln(Interpreter* interpeter, int argc, Value** arguments) {
 
 static Value* _IoScan(Interpreter* interpreter, int argc, Value** arguments) {
 
-    if (argc != 1) {
-        return NewErrorValue(interpreter, "scan() expects exactly 1 argument");
+    if (argc > 1) {
+        return NewErrorValue(interpreter, "scan() expects 0 or 1 argument");
     }
 
-    if (!ValueIsStr(arguments[0])) {
+    if (argc == 1 && !ValueIsStr(arguments[0])) {
         return NewErrorValue(interpreter, "scan() expects a string as its argument");
     }
 
     // Print the prompt message if provided
-    if (argc > 0) {
+    if (argc == 1) {
         String prompt = ValueToString(arguments[0]);
         printf("%s", prompt);
         fflush(stdout);
@@ -124,15 +124,104 @@ static Value* _IoParseNum(Interpreter* interpreter, int argc, Value** arguments)
     return NewNumValue(interpreter, num);
 }
 
+static Value* _IoFormat(Interpreter* interpreter, int argc, Value** arguments) {
+    if (argc < 1) {
+        return NewErrorValue(interpreter, "format() expects at least 1 argument");
+    }
+    if (!ValueIsStr(arguments[0])) {
+        return NewErrorValue(interpreter, "format() expects the first argument to be a string");
+    }
+
+    String formatStr = ValueToString(arguments[0]);
+    size_t formatLen = strlen(formatStr);
+
+    // Estimate initial buffer size
+    size_t bufferSize = formatLen + argc * 32;
+    char* buffer = Allocate(bufferSize);
+    size_t bufferUsed = 0;
+
+    int argIndex = 1;
+    for (size_t i = 0; i < formatLen; ) {
+        if (formatStr[i] == '{' && formatStr[i+1] == '}' && argIndex < argc) {
+            // Insert argument string
+            String argStr = ValueToString(arguments[argIndex]);
+            size_t argLen = strlen(argStr);
+
+            // Ensure buffer is large enough
+            while (bufferUsed + argLen + 1 >= bufferSize) {
+                bufferSize *= 2;
+                buffer = Reallocate(buffer, bufferSize);
+            }
+            strcpy(buffer + bufferUsed, argStr);
+            bufferUsed += argLen;
+            free(argStr);
+
+            i += 2;
+            argIndex++;
+        } else {
+            // Copy character
+            if (bufferUsed + 2 >= bufferSize) {
+                bufferSize *= 2;
+                buffer = Reallocate(buffer, bufferSize);
+            }
+            buffer[bufferUsed++] = formatStr[i++];
+        }
+    }
+    buffer[bufferUsed] = '\0';
+    free(formatStr);
+
+    Value* result = NewStrValue(interpreter, AllocateString(buffer));
+    free(buffer);
+    return result;
+}
+
+static Value* _IoClearScreen(Interpreter* interpreter, int argc, Value** arguments) {
+    if (argc != 0) {
+        return NewErrorValue(interpreter, "clearScreen() expects 0 arguments");
+    }
+    printf("\x1B[2J\x1B[H");
+    fflush(stdout);
+    return interpreter->Null;
+}
+
+static Value* _IoSetColor(Interpreter* interpreter, int argc, Value** arguments) {
+    if (argc > 2) {
+        return NewErrorValue(interpreter, "setColor() expects 0, 1, or 2 arguments (fg, bg)");
+    }
+    
+    if (argc == 0) {
+        printf("\x1B[0m"); // reset
+        fflush(stdout);
+        return interpreter->Null;
+    }
+
+    int fg = (int) CoerceToNum(arguments[0]);
+    if (argc == 1) {
+        printf("\x1B[%dm", fg);
+    } else if (argc == 2) {
+        int bg = (int) CoerceToNum(arguments[1]);
+        printf("\x1B[%d;%dm", fg, bg);
+    }
+    
+    fflush(stdout);
+    return interpreter->Null;
+}
+
 static ModuleFunction _IoModuleFunctions[] = {
     // print
-    { .Name = "print",   .Argc = VARARG, .CFunction = (NativeFunctionCallback) (_IoPrint),    .Value = NULL },
+    { .Name = "print",    .Argc = VARARG, .CFunction = (NativeFunctionCallback) (_IoPrint),    .Value = NULL },
     // println
-    { .Name = "println", .Argc = VARARG, .CFunction = (NativeFunctionCallback) (_IoPrintln),  .Value = NULL },
+    { .Name = "println",  .Argc = VARARG, .CFunction = (NativeFunctionCallback) (_IoPrintln),  .Value = NULL },
     // scan
-    { .Name = "scan",    .Argc =      1, .CFunction = (NativeFunctionCallback) (_IoScan),     .Value = NULL },
+    { .Name = "scan",     .Argc = VARARG, .CFunction = (NativeFunctionCallback) (_IoScan),     .Value = NULL },
     // parse num
-    { .Name = "parseNum", .Argc =     1, .CFunction = (NativeFunctionCallback) (_IoParseNum), .Value = NULL },
+    { .Name = "parseNum", .Argc =      1, .CFunction = (NativeFunctionCallback) (_IoParseNum), .Value = NULL },
+    // format
+    { .Name = "format",   .Argc = VARARG, .CFunction = (NativeFunctionCallback) (_IoFormat),   .Value = NULL },
+    // clearScreen
+    { .Name = "clearScreen", .Argc =   0, .CFunction = (NativeFunctionCallback) (_IoClearScreen), .Value = NULL },
+    // setColor
+    { .Name = "setColor",    .Argc = VARARG, .CFunction = (NativeFunctionCallback) (_IoSetColor), .Value = NULL },
     // end of module functions
     { .Name = NULL }
 };

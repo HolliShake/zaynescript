@@ -62,6 +62,20 @@ void RestoreEnv(Interpreter* interp) {
     interp->CallEnv = top;
 }
 
+void RestoreNthEnvAndSync(Interpreter* interp, int n) {
+    if (n < 0 || n >= interp->EnvC) {
+        // Invalid index, do nothing or handle error as needed
+        return;
+    }
+    Value* top = interp->Envs[n];
+    // Remove all environments above n
+    for (int i = interp->EnvC - 1; i > n; i--) {
+        interp->Envs[i] = NULL;
+    }
+    interp->EnvC = n + 1;
+    interp->CallEnv = top;
+}
+
 bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
     String key = ValueToString(method);
     if (ValueIsArray(obj)) {
@@ -358,7 +372,7 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
     }
 
     if (ValueIsNativeFunction(fn)) {
-        NativeFunction* nFMeta = CoerceToNativeFunctionMeta(fn);
+        NativeFunction* nFMeta = CoerceToNativeFunction(fn);
         NativeFunctionCallback nativeFunc  = nFMeta->FuncPtr;
 
         if (nFMeta->Argc != VARARG && argc != nFMeta->Argc) {

@@ -1,7 +1,7 @@
 import { println } from "core:io";
 
 fn f1() {
-    local v1 = "V1";
+    local v1 = "v1";
     println("Running f1");
     return fn() {
         println("Running f1.fn1");
@@ -173,3 +173,9 @@ if (true) {
     println(0);
 }
 println(true, false);
+
+const fun = fn(a, b) async {
+    return a + b;
+};
+
+println(fun(4, 40));

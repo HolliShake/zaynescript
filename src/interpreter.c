@@ -56,7 +56,7 @@ Interpreter* CreateInterpreter() {
 
 #define InterpreterPanic(message, ...) do { \
     fprintf(stderr, "[%s:%d]::Panic: ", __FILE__, __LINE__); \
-    fprintf(stderr, "%s", (char*) message); \
+    fprintf(stderr, message, ##__VA_ARGS__); \
     fprintf(stderr, "\n"); \
     ForceGarbageCollect(interpreter); \
     FreeInterpreter(interpreter); \
@@ -106,7 +106,7 @@ static int _GetArgc(Value* fn) {
             return 0;
         }
     } else if (ValueIsNativeFunction(fn)) {
-        NativeFunction* nFMeta = CoerceToNativeFunctionMeta(fn);
+        NativeFunction* nFMeta = CoerceToNativeFunction(fn);
         return nFMeta->Argc;
     } else if (ValueIsUserFunction(fn)) {
         UserFunction* uf = CoerceToUserFunction(fn);
@@ -227,6 +227,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
     Value* key       = NULL;
     Value* val       = NULL;
     Value* err       = NULL;
+    Environment* env = NULL;
     HashMap* map     = NULL;
     Array* array     = NULL;
     size_t ip        = 0;
@@ -812,6 +813,23 @@ void Run(Interpreter* interpreter, Value* fnValue) {
             case OP_POPN_TRY: {
                 size = _ReadInt32(uf->Codes, ip);
                 _PopNTry(interpreter, size);
+                Forward(4);
+                break;
+            }
+            case OP_ENTER_SCOPE: {
+                SaveEnv(interpreter, interpreter->CallEnv);
+                interpreter->CallEnv = NewEnvironmentValue(interpreter, EnvironmentCloneFromValue(interpreter->CallEnv));
+                break;
+            }
+            case OP_EXIT_SCOPE: {
+                Environment* current = CoerceToEnvironment(interpreter->CallEnv);
+                RestoreEnv(interpreter);
+                EnvironmentSync(current, CoerceToEnvironment(interpreter->CallEnv));
+                break;
+            }
+            case OP_EXITN_SCOPE: {
+                size = _ReadInt32(uf->Codes, ip);
+                RestoreNthEnvAndSync(interpreter, size);
                 Forward(4);
                 break;
             }

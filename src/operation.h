@@ -35,6 +35,14 @@ void SaveEnv(Interpreter* interp, Value* envObj);
 void RestoreEnv(Interpreter* interp);
 
 /**
+ * Restores the nth environment from the environment stack and synchronizes it with the current CallEnv.
+ * 
+ * @param interp The interpreter instance
+ * @param n The index of the environment to restore (0-based)
+ */
+void RestoreNthEnvAndSync(Interpreter* interp, int n);
+
+/**
  * Checks if a method exists on an object.
  * Searches through arrays, objects, classes, and class instances
  * by checking their prototype chains.

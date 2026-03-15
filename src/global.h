@@ -226,6 +226,7 @@ typedef enum ast_type_enum {
     AST_VAR_DECLARATION,      /**< Variable declaration (var) */
     AST_CONST_DECLARATION,    /**< Constant declaration (const) */
     AST_LOCAL_DECLARATION,    /**< Local declaration (local) */
+    AST_EMPTY_STATEMENT,      /**<  Empty statement (;;) */
     AST_CLASS,                /**< Class declaration */
     AST_CLASS_MEMBER,         /**< Class member definition */
     AST_EXPRESSION_STATEMENT, /**< Statement wrapping an expression */
@@ -306,6 +307,7 @@ struct ast_struct {
     AstType  Type;     /**< The type of the AST node */
     Position Position; /**< The position in the source code */
     String   Value;    /**< String value (for identifiers, literals, etc.) */
+    bool     Flag;     /**< Generic boolean flag for various uses (e.g. async functions) */
     Ast*     A;        /**< First child node (usage depends on Type) */
     Ast*     B;        /**< Second child node (usage depends on Type) */
     Ast*     C;        /**< Third child node (usage depends on Type) */
@@ -435,6 +437,9 @@ typedef enum opcode_enum {
     OP_SETUP_TRY,                    /**< Setup try-catch block */
     OP_POP_TRY,                      /**< Pop try block */
     OP_POPN_TRY,                     /**< Pop N items from try stack */
+    OP_ENTER_SCOPE,                  /**< Enter a new scope */
+    OP_EXIT_SCOPE,                   /**< Exit current scope */
+    OP_EXITN_SCOPE,                  /**< Exit N scopes */
     OP_JUMP_IF_FALSE_OR_POP,         /**< Jump if false or pop */
     OP_JUMP_IF_TRUE_OR_POP,          /**< Jump if true or pop */
     OP_POP_JUMP_IF_FALSE,            /**< Pop and jump if false */
@@ -547,6 +552,7 @@ typedef enum scope_type_enum {
     SCOPE_CLASS ,           /**< Class scope */
     SCOPE_FUNCTION,         /**< Function body scope */
     SCOPE_BLOCK,            /**< Generic block scope */
+    SCOPE_NEW,              /**< Scope for new block with temporary variable such as loop or catch */
     SCOPE_TRY_BLOCK,        /**< Try block scope */
     SCOPE_LOOP,             /**< Loop scope */
 } ScopeType;
@@ -921,7 +927,7 @@ UserFunction* CoerceToUserFunction(Value* value);
  * @param value The value to coerce.
  * @return Pointer to the NativeFunction.
  */
-NativeFunction* CoerceToNativeFunctionMeta(Value* value);
+NativeFunction* CoerceToNativeFunction(Value* value);
 
 /**
  * @brief Coerces a value to a Class.

@@ -166,11 +166,12 @@ Ast* AstClass(Ast* name, Ast* super, Ast* body, Position position) {
     return ast;
 } 
 
-Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, Position position) {
-    Ast* ast = InitAst(AST_FUNCTION, position);
-    ast->A   = fnName;
-    ast->B   = parameters;
-    ast->C   = body;
+Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, bool async, Position position) {
+    Ast* ast  = InitAst(AST_FUNCTION, position);
+    ast->Flag = async;
+    ast->A    = fnName;
+    ast->B    = parameters;
+    ast->C    = body;
     return ast;
 }
 
@@ -185,6 +186,10 @@ Ast* AstVarDeclaration(AstType type, Ast* declarations, Position position) {
     Ast* ast = InitAst(type, position);
     ast->A   = declarations;
     return ast;
+}
+
+Ast* AstEmptyStatement(Position position) {
+    return InitAst(AST_EMPTY_STATEMENT, position);
 }
 
 Ast* AstIf(Ast* condition, Ast* thenBranch, Ast* elseBranch, Position position) {
