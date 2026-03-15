@@ -103,7 +103,7 @@ int RunTestInProcess(const char* testPath, const char* exePath) {
         ssize_t bytesRead;
         while ((bytesRead = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
             buffer[bytesRead] = '\0';
-            printf("  %s", buffer);
+            printf("%s", buffer); // Removed the prepended spaces that randomly interrupt chunks and break ANSI codes
             fflush(stdout);
         }
         
@@ -198,6 +198,14 @@ void RunTests() {
         if (nameLen < 3 || strcmp(entry->d_name + nameLen - 3, ".zs") != 0) {
             continue;
         }
+
+        // Exclude interactive/long-running visualization test scripts
+        if (strcmp(entry->d_name, "test_doughnut.zs") == 0 ||
+            strcmp(entry->d_name, "test_cube.zs") == 0 ||
+            strcmp(entry->d_name, "test_star.zs") == 0 ||
+            strcmp(entry->d_name, "test_diamond.zs") == 0) {
+            continue;
+        }
         
         // Build full path with proper directory separator
         char fullPath[512];
@@ -283,6 +291,18 @@ void PrintHelp() {
 
 // Simple example using the allocator system
 int main(int argc, char** argv) {
+#ifdef _WIN32
+    // Enable ANSI escape sequence processing on Windows
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (hOut != INVALID_HANDLE_VALUE) {
+        DWORD dwMode = 0;
+        if (GetConsoleMode(hOut, &dwMode)) {
+            // ENABLE_VIRTUAL_TERMINAL_PROCESSING is 0x0004
+            SetConsoleMode(hOut, dwMode | 0x0004);
+        }
+    }
+#endif
+
     // Check if help flag is provided
     if (argc > 1 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) {
         PrintHelp();
