@@ -515,6 +515,7 @@ typedef struct line_info_struct {
 typedef struct user_function_struct {
     Value*       Scope;        /**< The environment where the function was defined */
     String       Name;         /**< Function name (Nullable) */
+    bool         Async;        /**< True if function is asynchronous */
     uint8_t*     Codes;        /**< Bytecode instructions */
     size_t       CodeC;        /**< Size of bytecode */
     LineInfo*    Lines;        /**< Line information for each instruction */

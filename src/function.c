@@ -1,14 +1,15 @@
 #include "./function.h"
 
-UserFunction* CreateUserFunction(String name, int argc) {
+UserFunction* CreateUserFunction(String name, int argc, bool async) {
     UserFunction* userFunction  = Allocate(sizeof(UserFunction));
     userFunction->Scope         = NULL;
     userFunction->Name          = name;
+    userFunction->Async         = async;
     userFunction->Codes         = Allocate(sizeof(uint8_t) * 1);
     userFunction->Codes[0]      = 255;
     userFunction->CodeC         = 0;
-    userFunction->Lines        = Allocate(sizeof(LineInfo) * 1);
-    userFunction->LineC        = 0;
+    userFunction->Lines         = Allocate(sizeof(LineInfo) * 1);
+    userFunction->LineC         = 0;
     userFunction->Argc          = argc;
     userFunction->LocalC        = 0;
     userFunction->CaptureMetas  = Allocate(sizeof(CaptureMeta) * 1);
@@ -21,6 +22,7 @@ UserFunction* CreateMainUserFunction(String name, int argc) {
     UserFunction* userFunction  = Allocate(sizeof(UserFunction));
     userFunction->Scope         = NULL;
     userFunction->Name          = name;
+    userFunction->Async         = false;
     userFunction->Codes         = Allocate(sizeof(uint8_t) * 1);
     userFunction->Codes[0]      = 255;
     userFunction->CodeC         = 0;
@@ -37,7 +39,8 @@ UserFunction* CreateMainUserFunction(String name, int argc) {
 UserFunction* UserFunctionClone(UserFunction* userFunction) {
     UserFunction* clone = CreateUserFunction(
         userFunction->Name != NULL ? AllocateString(userFunction->Name) : NULL,
-        userFunction->Argc
+        userFunction->Argc,
+        userFunction->Async
     );
     clone->Scope       = userFunction->Scope;
     clone->CodeC       = userFunction->CodeC;

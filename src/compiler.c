@@ -488,7 +488,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             Ast* params = node->B;
             Ast* body   = node->C;
 
-            UserFunction* fn = CreateUserFunction(NULL, 0);
+            UserFunction* fn = CreateUserFunction(NULL, 0, node->Flag);
 
             // First, count parameters and collect them
             int paramc = 0;
@@ -1656,7 +1656,7 @@ static void _ClassDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope
                 Ast* params = actualBody->B;
                 Ast* body   = actualBody->C;
 
-                UserFunction* fn = CreateUserFunction(AllocateString(fnName->Value), 0);
+                UserFunction* fn = CreateUserFunction(AllocateString(fnName->Value), 0, actualBody->Flag);
 
                 // First, count parameters
                 int paramc = 0;
@@ -1787,7 +1787,7 @@ static void _FunctionDeclaration(Compiler* compiler, UserFunction* uf, Scope* sc
 
     int nameOffset = symbol->Offset;
 
-    UserFunction* fn = CreateUserFunction(AllocateString(fnName->Value), 0);
+    UserFunction* fn = CreateUserFunction(AllocateString(fnName->Value), 0, node->Flag);
 
     int paramc = 0;
     while (params != NULL) {
