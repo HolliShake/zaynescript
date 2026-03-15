@@ -234,6 +234,13 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* index, bool f
             free(key);
             return member;
         }
+    } else if (ValueIsStr(obj)) {
+        Rune* rne  = (Rune*) obj->Value.Opaque;
+        long idx   = CoerceToI64(index);
+        String str =  utf_rune_to_string(rne[idx]);
+        Value* val = NewStrValue(interp, str);
+        free(key);
+        return val;
     }
     free(key);
     return interp->Null;

@@ -4,6 +4,7 @@ import { sin, cos, floor } from "core:math";
 var screen_width = 80;
 var screen_height = 22;
 
+var b_arr = [];
 var z     = [];
 
 for (i := 0; i < screen_width * screen_height; i++) {
