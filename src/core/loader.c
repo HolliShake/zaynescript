@@ -2,11 +2,13 @@
 
 
 CoreMapper _CoreModuleMappers[] = {
-    { .Name = "io"  , .Loader = LoadCoreIo   },
-    { .Name = "math", .Loader = LoadCoreMath },
-    { .Name = "Date", .Loader = LoadCoreDate },
+    { .Name = "io"   , .Loader = LoadCoreIo    },
+    { .Name = "os"   , .Loader = LoadCoreOs    },
+    { .Name = "math" , .Loader = LoadCoreMath  },
+    { .Name = "Date" , .Loader = LoadCoreDate  },
+    { .Name = "Array", .Loader = LoadCoreArray },
     // End marker
-    { .Name = NULL  , .Loader = NULL         }
+    { .Name = NULL  , .Loader = NULL           }
 };
 
 

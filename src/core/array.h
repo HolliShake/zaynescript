@@ -17,4 +17,22 @@
  */
 Value* CreateArrayClass(Interpreter* interpreter);
 
+/**
+ * @brief Initializes and loads the Array module into the interpreter.
+ * 
+ * This function creates the Array module with all its built-in functions and
+ * methods, making array operations available within the interpreter environment.
+ * 
+ * @param interpreter Pointer to the Interpreter instance where the module will be loaded.
+ *                    Must not be NULL.
+ * 
+ * @return Value* A pointer to the newly created Array module Value object. 
+ *                Returns NULL if module creation fails.
+ * 
+ * @note The returned Value should be managed by the interpreter's memory management system.
+ * 
+ * @see LoadCoreString, LoadCoreNumber (similar module loading functions)
+ */
+Value* LoadCoreArray(Interpreter* interpreter);
+
 #endif

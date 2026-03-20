@@ -1,3 +1,11 @@
+/**
+ * @file date.h
+ * @brief Core Date module interface
+ *
+ * This header file defines the interface for loading the core Date module
+ * which provides date and time functionality for the interpreter.
+ */
+
 #include "../function.h"
 #include "../global.h"
 #include "../value.h"
@@ -11,9 +19,9 @@
  * This function initializes and loads the core Date module, which provides
  * date and time functionalities for the interpreter.
  * 
- * @param interpeter The interpreter instance to load the Date module into
+ * @param  interpreter The interpreter instance to load the Date module into
  * @return Value* Pointer to the loaded core Date module, or NULL on failure
  */
-Value* LoadCoreDate(Interpreter* interpeter);
+Value* LoadCoreDate(Interpreter*  interpreter);
 
 #endif

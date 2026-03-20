@@ -213,8 +213,8 @@ static ModuleFunction _DateClassMethods[] = {
 };
 
 
-Value* LoadCoreDate(Interpreter* interpeter) {
-    Value* dateModule = NewClassValue(interpeter, CreateUserClass("Date", NULL));
+Value* LoadCoreDate(Interpreter*  interpreter) {
+    Value* dateModule = NewClassValue( interpreter, CreateUserClass("Date", NULL));
     Class* cls = CoerceToUserClass(dateModule);
     
     // Register methods
@@ -224,7 +224,7 @@ Value* LoadCoreDate(Interpreter* interpeter) {
             String name = AllocateString(func->Name);
             String hKey = AllocateString(func->Name);
             NativeFunction* meta = CreateNativeFunctionMeta(name, func->Argc, func->CFunction);
-            ClassDefineMemberByString(cls, hKey, NewNativeFunctionValue(interpeter, meta), false);
+            ClassDefineMemberByString(cls, hKey, NewNativeFunctionValue( interpreter, meta), false);
         }
     }
     

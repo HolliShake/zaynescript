@@ -164,7 +164,7 @@ String ValueToString(Value* value) {
         case VLT_OBJECT:
             return HashMapToString(CoerceToHashMap(value));
         case VLT_CLASS:
-            return AllocateString("class");
+            return FormatString("<class.%s />", CoerceToUserClass(value)->Name);
         case VLT_CLASS_INSTANCE:
             return ClassInstanceToString(CoerceToClassInstance(value));
         case VLT_NATV_FUNCTION:
