@@ -14,7 +14,7 @@
 
 static Value* _OsGetCwd(Interpreter* interpreter, int argc, Value** arguments) {
     if (argc != 0) {
-        return NewErrorValue(interpreter, "getcwd() expects exactly 0 arguments");
+        return NewErrorValue(interpreter, "getCwd() expects exactly 0 arguments");
     }
     
     char cwd[1024];
@@ -26,7 +26,7 @@ static Value* _OsGetCwd(Interpreter* interpreter, int argc, Value** arguments) {
 
 static Value* _OsGetPid(Interpreter* interpreter, int argc, Value** arguments) {
     if (argc != 0) {
-        return NewErrorValue(interpreter, "getpid() expects exactly 0 arguments");
+        return NewErrorValue(interpreter, "getPid() expects exactly 0 arguments");
     }
     
     return NewIntValue(interpreter, (int)getpid());
@@ -34,7 +34,7 @@ static Value* _OsGetPid(Interpreter* interpreter, int argc, Value** arguments) {
 
 static Value* _OsGetUser(Interpreter* interpreter, int argc, Value** arguments) {
     if (argc != 0) {
-        return NewErrorValue(interpreter, "getuser() expects exactly 0 arguments");
+        return NewErrorValue(interpreter, "getUser() expects exactly 0 arguments");
     }
     
     char username[256];
@@ -76,7 +76,7 @@ static Value* _OsSystem(Interpreter* interpreter, int argc, Value** arguments) {
 // _OsGetType remains the same as your original (it was correctly using #ifdefs)
 static Value* _OsGetType(Interpreter* interpreter, int argc, Value** arguments) {
     if (argc != 0) {
-        return NewErrorValue(interpreter, "type() expects exactly 0 arguments");
+        return NewErrorValue(interpreter, "getType() expects exactly 0 arguments");
     }
 #if defined(_WIN32)
     return NewStrValue(interpreter, "win32");
@@ -92,22 +92,22 @@ static Value* _OsGetType(Interpreter* interpreter, int argc, Value** arguments) 
 // ... Rest of your Module Loading logic remains the same ...
 
 static ModuleFunction _OsModuleFunctions[] = {
-    // getcwd
-    { .Name = "getcwd" , .Argc = 0, .CFunction = (NativeFunctionCallback) (_OsGetCwd) , .Value = NULL  },
-    // getpid
-    { .Name = "getpid" , .Argc = 0, .CFunction = (NativeFunctionCallback) (_OsGetPid) , .Value = NULL  },
-    // getuser
-    { .Name = "getuser", .Argc = 0, .CFunction = (NativeFunctionCallback) (_OsGetUser), .Value = NULL  },
+    // getCwd
+    { .Name = "getCwd" , .Argc = 0, .CFunction = (NativeFunctionCallback) (_OsGetCwd) , .Value = NULL  },
+    // getPid
+    { .Name = "getPid" , .Argc = 0, .CFunction = (NativeFunctionCallback) (_OsGetPid) , .Value = NULL  },
+    // getUser
+    { .Name = "getUser", .Argc = 0, .CFunction = (NativeFunctionCallback) (_OsGetUser), .Value = NULL  },
     // system
     { .Name = "system" , .Argc = 1, .CFunction = (NativeFunctionCallback) (_OsSystem) , .Value = NULL  },
-    // type
-    { .Name = "type"   , .Argc = 0, .CFunction = (NativeFunctionCallback) (_OsGetType), .Value = NULL  },
+    // getType
+    { .Name = "getType", .Argc = 0, .CFunction = (NativeFunctionCallback) (_OsGetType), .Value = NULL  },
     // end of module functions
     { .Name = NULL }
 };
 
-Value* LoadCoreOs(Interpreter* interpeter) {
-    Value* osModule = NewObjectValue(interpeter);
+Value* LoadCoreOs(Interpreter* interpreter) {
+    Value* osModule = NewObjectValue(interpreter);
     HashMap* osMap = CoerceToHashMap(osModule);
     
     for (int i = 0; _OsModuleFunctions[i].Name != NULL; i++) {
@@ -118,7 +118,7 @@ Value* LoadCoreOs(Interpreter* interpeter) {
         if (func.Value != NULL) {
             HashMapSet(osMap, hKey, _OsModuleFunctions[i].Value);
         } else {
-            HashMapSet(osMap, hKey, NewNativeFunctionValue(interpeter, 
+            HashMapSet(osMap, hKey, NewNativeFunctionValue(interpreter, 
                 CreateNativeFunctionMeta(
                     (const String) name,
                     func.Argc,
