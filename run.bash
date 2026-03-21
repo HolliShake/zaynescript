@@ -15,9 +15,9 @@ fi
 
 if [[ "$1" == "--release" ]]; then
     echo "Building in release mode..."
-    gcc -O3 -DNDEBUG -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c -o zscript.exe -lm -ldl -lpthread
+    gcc -O3 -DNDEBUG -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c ./libbf/*.c -o zscript.exe -lm -ldl -lpthread
 else
-    gcc -g -O3 -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c -o zscript.exe -lm -ldl -lpthread
+    gcc -g -O3 -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c ./libbf/*.c -o zscript.exe -lm -ldl -lpthread
 fi
 
 export LC_ALL=en_US.UTF-8

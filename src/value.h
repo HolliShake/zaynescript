@@ -33,6 +33,15 @@ Value* NewErrorFValue(Interpreter* interpreter, String fmt, ...);
 Value* NewIntValue(Interpreter* interpreter, int value);
 
 /**
+ * @brief Creates a new big integer value
+ * 
+ * @param interpreter Pointer to the interpreter instance
+ * @param value The big integer value to store
+ * @return Pointer to newly allocated Value structure containing the big integer
+ */
+Value* NewBigIntValue(Interpreter* interpreter, bf_t* value);
+
+/**
  * @brief Creates a new double-precision floating point number value
  * 
  * @param interpreter Pointer to the interpreter instance
@@ -40,6 +49,15 @@ Value* NewIntValue(Interpreter* interpreter, int value);
  * @return Pointer to newly allocated Value structure containing the number
  */
 Value* NewNumValue(Interpreter* interpreter, double value);
+
+/**
+ * @brief Creates a new bignum value
+ * 
+ * @param interpreter Pointer to the interpreter instance
+ * @param value The bignum value to store
+ * @return Pointer to newly allocated Value structure containing the bignum
+ */
+Value* NewBigNumValue(Interpreter* interpreter, bf_t* value);
 
 /**
  * @brief Creates a new string value

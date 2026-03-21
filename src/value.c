@@ -39,9 +39,21 @@ Value* NewIntValue(Interpreter* interpreter, int value) {
     return v;
 }
 
+Value* NewIntValue(Interpreter* interpreter, bf_t* value) {
+    Value* v = _CreateValue(interpreter, VLT_BINT);
+    v->Value.Opaque = value;
+    return v;
+}
+
 Value* NewNumValue(Interpreter* interpreter, double value) {
     Value* v = _CreateValue(interpreter, VLT_NUM);
     v->Value.Num = value;
+    return v;
+}
+
+Value* NewNumValue(Interpreter* interpreter, bf_t* value) {
+    Value* v = _CreateValue(interpreter, VLT_BNUM);
+    v->Value.Opaque = value;
     return v;
 }
 

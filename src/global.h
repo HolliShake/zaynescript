@@ -24,6 +24,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "../libbf/libbf.h"
+#include "../libbf/cutils.h"
 
 // Platform-specific includes for aligned allocation
 #if defined(_WIN32)
@@ -156,13 +158,15 @@ typedef struct position_struct {
  * Defines the lexical token categories recognized by the lexer.
  */
 typedef enum token_kind_enum {
-    TK_KEY, /**< Keyword token */
-    TK_SYM, /**< Symbol/Operator token */
-    TK_IDN, /**< Identifier token */
-    TK_INT, /**< Integer literal token */
-    TK_NUM, /**< Numeric (float) literal token */
-    TK_STR, /**< String literal token */
-    TK_EOF, /**< End-of-file token */
+    TK_KEY,  /**< Keyword token */
+    TK_SYM,  /**< Symbol/Operator token */
+    TK_IDN,  /**< Identifier token */
+    TK_INT,  /**< Integer literal token */
+    TK_BINT, /**< Big integer literal token */
+    TK_NUM,  /**< Numeric (float) literal token */
+    TK_BNUM, /**< Big numeric (float) literal token */
+    TK_STR,  /**< String literal token */
+    TK_EOF,  /**< End-of-file token */
 } TokenKind;
 
 /**
@@ -239,7 +243,9 @@ typedef enum ast_type_enum {
     // Literals
     AST_NAME,           /**< Identifier/Name */
     AST_INT,            /**< Integer literal */
+    AST_BINT,           /**< Big integer literal */
     AST_NUM,            /**< Number literal */
+    AST_BNUM,           /**< Big numeric (float) literal */
     AST_STR,            /**< String literal */
     AST_BOOL,           /**< Boolean literal */
     AST_NULL,           /**< Null literal */
@@ -329,7 +335,9 @@ struct ast_struct {
 typedef enum value_type_enum {
     VLT_ERROR,          /**< Error value */
     VLT_INT,            /**< Integer value */
+    VLT_BINT,           /**< Big integer value */
     VLT_NUM,            /**< Number value */
+    VLT_BNUM,           /**< Big numeric (float) value */
     VLT_STR,            /**< String value */
     VLT_BOOL,           /**< Boolean value */
     VLT_NULL,           /**< Null value */
@@ -672,25 +680,26 @@ typedef struct module_function_struct {
  * and null. Also maintains exception handler stack for try-catch blocks.
  */
 struct interpreter_struct {
-    HashMap* Imports;                                /**< Imports map */
-    Value*   Array;                                  /**< Built-in Array class */
-    Value*   True;                                   /**< Singleton 'true' value */
-    Value*   False;                                  /**< Singleton 'false' value */
-    Value*   Null;                                   /**< Singleton 'null' value */
-    Value*   GcRoot;                                 /**< Root of the Garbage Collector object graph */
-    Value*   RootEnv;                                /**< Root environment of the current program */
-    Value*   CallEnv;                                /**< Current execution environment */
-    int      Allocated;                              /**< Total allocated bytes since last GC */
-    Value**  Constants;                              /**< Array of constant values */
-    int      ConstantC;                              /**< Count of constants */
-    Value**  Functions;                              /**< Array of function definitions */
-    int      FunctionC;                              /**< Count of functions */
-    Value*   Stacks[STACK_SIZE];                     /**< Execution stack */
-    int      StackC;                                 /**< Stack pointer/count */
-    Value*   Envs[STACK_SIZE];                       /**< Environment stack for variable scopes */
-    int      EnvC;                                   /**< Environment stack pointer */
-    int      ExceptionHandlerStacks[STACK_SIZE];    /**< Stack for exception handlers */
-    int      ExceptionHandlerStackC;                /**< Exception handler stack pointer */
+    bf_context_t BfContext;                              /**< Context for the libbf library (memory management, etc.) */
+    HashMap*     Imports;                                /**< Imports map */
+    Value*       Array;                                  /**< Built-in Array class */
+    Value*       True;                                   /**< Singleton 'true' value */
+    Value*       False;                                  /**< Singleton 'false' value */
+    Value*       Null;                                   /**< Singleton 'null' value */
+    Value*       GcRoot;                                 /**< Root of the Garbage Collector object graph */
+    Value*       RootEnv;                                /**< Root environment of the current program */
+    Value*       CallEnv;                                /**< Current execution environment */
+    int          Allocated;                              /**< Total allocated bytes since last GC */
+    Value**      Constants;                              /**< Array of constant values */
+    int          ConstantC;                              /**< Count of constants */
+    Value**      Functions;                              /**< Array of function definitions */
+    int          FunctionC;                              /**< Count of functions */
+    Value*       Stacks[STACK_SIZE];                     /**< Execution stack */
+    int          StackC;                                 /**< Stack pointer/count */
+    Value*       Envs[STACK_SIZE];                       /**< Environment stack for variable scopes */
+    int          EnvC;                                   /**< Environment stack pointer */
+    int          ExceptionHandlerStacks[STACK_SIZE];     /**< Stack for exception handlers */
+    int          ExceptionHandlerStackC;                 /**< Exception handler stack pointer */
 };
 
 /**

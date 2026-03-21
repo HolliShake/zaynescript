@@ -2,6 +2,7 @@
 
 Interpreter* CreateInterpreter() {
     Interpreter* interpreter                = Allocate(sizeof(Interpreter));
+    bf_context_init(&(interpreter->BfContext), NULL, NULL);
     interpreter->Imports                    = CreateHashMap(16);
     interpreter->Allocated                  = 0;
     interpreter->GcRoot                     = NULL;
@@ -909,6 +910,7 @@ void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/) {
 }
 
 void FreeInterpreter(Interpreter* interpreter) {
+    bf_context_end(&interpreter->BfContext);
     free(interpreter->Constants);
     free(interpreter->Functions);
     free(interpreter);

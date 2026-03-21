@@ -104,12 +104,28 @@ static Ast* _Terminal(Parser* parser) {
             ACCEPTT(TK_INT);
             break;
         }
+        case TK_BINT: {
+            node = AstInteger(
+                parser->Next.Value, 
+                parser->Next.Position
+            );
+            ACCEPTT(TK_BINT);
+            break;
+        }
         case TK_NUM: {
             node = AstNumber(
                 parser->Next.Value, 
                 parser->Next.Position
             );
             ACCEPTT(TK_NUM);
+            break;
+        }
+        case TK_BNUM: {
+            node = AstBigNumber(
+                parser->Next.Value, 
+                parser->Next.Position
+            );
+            ACCEPTT(TK_BNUM);
             break;
         }
         case TK_STR: {

@@ -136,11 +136,29 @@ static Token TokenizeNumber(Lexer* lexer) {
         }
         Advance(lexer);
     }
+
+    if (CurrentRune(lexer) == 'e' || CurrentRune(lexer) == 'E') {
+        hasDecimal = true; // Scientific notation counts as a float
+        Advance(lexer);
+        if (CurrentRune(lexer) == '+' || CurrentRune(lexer) == '-') {
+            Advance(lexer); // Skip exponent sign
+        }
+        while (utf_is_digit(CurrentRune(lexer))) {
+            Advance(lexer);
+        }
+    }
+
+    TokenKind kind = hasDecimal ? TK_NUM : TK_INT;
+
+    if (CurrentRune(lexer) == 'n' || CurrentRune(lexer) == 'N') {
+        Advance(lexer); // Skip exponent sign
+        kind = hasDecimal ? TK_BNUM : TK_BINT; // Big numeric or big integer
+    }
     
     pos.ColmEnded = lexer->Colm;
     char* value = RunesToString(lexer->Data, start, lexer->Indx);
     
-    return MakeToken(hasDecimal ? TK_NUM : TK_INT, value, pos);
+    return MakeToken(kind, value, pos);
 }
 
 // Tokenize string literal
