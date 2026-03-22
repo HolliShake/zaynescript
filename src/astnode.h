@@ -37,6 +37,18 @@ Ast* AstName(String name, Position position);
 Ast* AstInteger(String value, Position position);
 
 /**
+ * Creates an AST node representing a big integer literal.
+ * 
+ * Allocates and initializes an AST_B
+ * INT node that represents a big integer constant in the source code.
+ * 
+ * @param value String representation of the big integer value.
+ * @param position Source code location information.
+ * @return Pointer to newly allocated AST
+ */
+Ast* AstBigInteger(String value, Position position);
+
+/**
  * Creates an AST node representing a floating-point number literal.
  * 
  * Allocates and initializes an AST_NUM node that represents a floating-point
@@ -47,6 +59,18 @@ Ast* AstInteger(String value, Position position);
  * @return Pointer to newly allocated AST_NUM node, or NULL on allocation failure.
  */
 Ast* AstNumber(String value, Position position);
+
+/**
+ * Creates an AST node representing a big number literal.
+ * 
+ * Allocates and initializes an AST_BIGNUMBER node that represents a big number
+ * constant in the source code.
+ * 
+ * @param value String representation of the big number value.
+ * @param position Source code location information.
+ * @return Pointer to newly allocated AST_BIGNUMBER node, or NULL on allocation failure.
+ */
+Ast* AstBigNumber(String value, Position position);
 
 /**
  * Creates an AST node representing a string literal.

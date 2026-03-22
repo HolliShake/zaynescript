@@ -105,7 +105,7 @@ static Ast* _Terminal(Parser* parser) {
             break;
         }
         case TK_BINT: {
-            node = AstInteger(
+            node = AstBigInteger(
                 parser->Next.Value, 
                 parser->Next.Position
             );

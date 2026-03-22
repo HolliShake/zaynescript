@@ -375,3 +375,9 @@ String FormatString(String format, ...) {
     
     return buffer;
 }
+
+String BFNumToString(bf_t* value) {
+    String str = bf_ftoa(NULL, value, 10, 0, BF_RNDZ | BF_FTOA_FORMAT_FRAC |
+                  BF_FTOA_ADD_PREFIX | BF_FTOA_JS_QUIRKS);
+    return str;
+}

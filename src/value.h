@@ -171,12 +171,28 @@ String ValueTypeOf(Value* value);
 bool ValueIsInt(Value* value);
 
 /**
+ * @brief Checks if a value is a big integer type
+ * 
+ * @param value Pointer to the Value to check
+ * @return true if the value is a big integer, false otherwise
+ */
+bool ValueIsBigInt(Value* value);
+
+/**
  * @brief Checks if a value is a numeric (double) type
  * 
  * @param value Pointer to the Value to check
  * @return true if the value is a number, false otherwise
  */
 bool ValueIsNum(Value* value);
+
+/**
+ * @brief Checks if a value is a big numeric (bignum) type
+ * 
+ * @param value Pointer to the Value to check
+ * @return true if the value is a big number, false otherwise
+ */
+bool ValueIsBigNum(Value* value);
 
 /**
  * @brief Checks if a value is a string type

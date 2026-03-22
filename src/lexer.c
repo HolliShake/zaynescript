@@ -31,7 +31,7 @@ static void SkipWhitespace(Lexer* lexer) {
 }
 
 // Helper function to create a token
-static Token MakeToken(TokenKind type, char* value, Position position) {
+static Token MakeToken(TokenKind type, String value, Position position) {
     Token token;
     token.Type = type;
     token.Value = value;
@@ -40,9 +40,9 @@ static Token MakeToken(TokenKind type, char* value, Position position) {
 }
 
 // Helper function to build string from runes
-static char* RunesToString(Rune* runes, int start, int end) {
+static String RunesToString(Rune* runes, int start, int end) {
     if (start >= end) {
-        char* empty = Allocate(1);
+        String empty = Allocate(1);
         empty[0] = '\0';
         return empty;
     }
@@ -53,8 +53,8 @@ static char* RunesToString(Rune* runes, int start, int end) {
         totalSize += utf_size_of_codepoint(runes[i]);
     }
     
-    char* result = Allocate(totalSize + 1);
-    char* ptr = result;
+    String result = Allocate(totalSize + 1);
+    String ptr = result;
     
     for (int i = start; i < end; i++) {
         unsigned char buffer[5];
@@ -79,10 +79,10 @@ static Token TokenizeIdentifier(Lexer* lexer) {
     }
     
     pos.ColmEnded = lexer->Colm;
-    char* value = RunesToString(lexer->Data, start, lexer->Indx);
+    String value = RunesToString(lexer->Data, start, lexer->Indx);
     
     // Check for keywords
-    const char* keywords[] = {
+    const String keywords[] = {
         KEY_IF,
         KEY_ELSE,
         KEY_SWITCH,
@@ -149,6 +149,7 @@ static Token TokenizeNumber(Lexer* lexer) {
     }
 
     TokenKind kind = hasDecimal ? TK_NUM : TK_INT;
+    int end = lexer->Indx;
 
     if (CurrentRune(lexer) == 'n' || CurrentRune(lexer) == 'N') {
         Advance(lexer); // Skip exponent sign
@@ -156,7 +157,7 @@ static Token TokenizeNumber(Lexer* lexer) {
     }
     
     pos.ColmEnded = lexer->Colm;
-    char* value = RunesToString(lexer->Data, start, lexer->Indx);
+    String value = RunesToString(lexer->Data, start, end);
     
     return MakeToken(kind, value, pos);
 }
@@ -212,7 +213,7 @@ static Token TokenizeString(Lexer* lexer) {
     }
 
     decoded[decodedLength] = 0;
-    char* value = RunesToString(decoded, 0, decodedLength);
+    String value = RunesToString(decoded, 0, decodedLength);
     free(decoded);
     
     if (CurrentRune(lexer) == quote) {
@@ -268,7 +269,7 @@ static Token TokenizeSymbol(Lexer* lexer) {
     }
     
     pos.ColmEnded = lexer->Colm;
-    char* value = RunesToString(lexer->Data, start, lexer->Indx);
+    String value = RunesToString(lexer->Data, start, lexer->Indx);
     
     return MakeToken(TK_SYM, value, pos);
 }
@@ -320,7 +321,7 @@ Token NextToken(Lexer* lexer) {
     
     // End of file
     if (current == 0) {
-        char* empty = Allocate(1);
+        String empty = Allocate(1);
         empty[0] = '\0';
         return MakeToken(TK_EOF, empty, pos);
     }

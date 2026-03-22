@@ -1,8 +1,18 @@
 #include "./interpreter.h" 
 
+static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
+    // libbf uses size == 0 to signal a free() operation
+    if (size == 0) {
+        free(ptr); 
+        return NULL;
+    }
+    // If ptr is NULL, realloc behaves exactly like malloc
+    return realloc(ptr, size); 
+}
+
 Interpreter* CreateInterpreter() {
     Interpreter* interpreter                = Allocate(sizeof(Interpreter));
-    bf_context_init(&(interpreter->BfContext), NULL, NULL);
+    bf_context_init(&(interpreter->BfContext), interpreter_bf_realloc, NULL);
     interpreter->Imports                    = CreateHashMap(16);
     interpreter->Allocated                  = 0;
     interpreter->GcRoot                     = NULL;

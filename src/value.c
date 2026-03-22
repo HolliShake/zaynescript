@@ -39,7 +39,7 @@ Value* NewIntValue(Interpreter* interpreter, int value) {
     return v;
 }
 
-Value* NewIntValue(Interpreter* interpreter, bf_t* value) {
+Value* NewBigIntValue(Interpreter* interpreter, bf_t* value) {
     Value* v = _CreateValue(interpreter, VLT_BINT);
     v->Value.Opaque = value;
     return v;
@@ -51,7 +51,7 @@ Value* NewNumValue(Interpreter* interpreter, double value) {
     return v;
 }
 
-Value* NewNumValue(Interpreter* interpreter, bf_t* value) {
+Value* NewBigNumValue(Interpreter* interpreter, bf_t* value) {
     Value* v = _CreateValue(interpreter, VLT_BNUM);
     v->Value.Opaque = value;
     return v;
@@ -118,12 +118,15 @@ Value* NewClassInstanceValue(Interpreter* interpreter, ClassInstance* instance) 
 }
 
 String ValueToString(Value* value) {
-    char* buffer;
+    String buffer;
     switch (value->Type) {
         case VLT_INT:
             buffer = Allocate(32);
             snprintf(buffer, 32, "%d", value->Value.I32);
             return buffer;
+        case VLT_BINT: {
+            return BFNumToString((bf_t*)value->Value.Opaque);
+        }
         case VLT_NUM:
             buffer = Allocate(64);
             // Check if the number can be represented as an integer
@@ -139,6 +142,11 @@ String ValueToString(Value* value) {
                 snprintf(buffer, 64, "%.15g", num);
             }
             return buffer;
+        case VLT_BNUM: {
+            size_t len;
+            buffer = bf_ftoa(&len, value->Value.Opaque, 10, 0, BF_RNDZ | BF_FTOA_FORMAT_FRAC);
+            return buffer;
+        }
         case VLT_ERROR:
         case VLT_STR: {
             Rune* runes = (Rune*) value->Value.Opaque;
@@ -223,8 +231,16 @@ bool ValueIsInt(Value* value) {
     return value->Type == VLT_INT;
 }
 
+bool ValueIsBigInt(Value* value) {
+    return value->Type == VLT_BINT;
+}
+
 bool ValueIsNum(Value* value) {
     return value->Type == VLT_NUM || value->Type == VLT_INT;
+}
+
+bool ValueIsBigNum(Value* value) {
+    return value->Type == VLT_BNUM || value->Type == VLT_BINT;
 }
 
 bool ValueIsStr(Value* value) {

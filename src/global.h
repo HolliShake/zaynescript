@@ -1003,4 +1003,16 @@ void ThrowError(String path, Rune* runes, Position position, String message);
  */
 String FormatString(String format, ...);
 
+/**
+ * @brief Converts a big integer value to a string.
+ * 
+ * Uses the libbf library to convert a big integer (bf_t) to its string
+ * representation. The returned string is allocated using the tracked
+ * allocation system.
+ * 
+ * @param value Pointer to the big integer value.
+ * @return String representation of the big integer.
+ */
+String BFNumToString(bf_t* value);
+
 #endif

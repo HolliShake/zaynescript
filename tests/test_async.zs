@@ -1,5 +1,5 @@
 import { println } from "core:io";
-import { type, getuser } from "core:os";
+import { getType, getUser } from "core:os";
 import { Array } from "core:Array";
 
 fn A() async {
@@ -32,7 +32,7 @@ println([1,2,3,4,5,6,7,8,9].keep(fn(i, e) {
     return e % 2 != 0;
 }));
 
-println(Array, getuser(), type());
+println(Array, getUser(), getType());
 
 
-println(1000000000000000000000000000000n);
+println(1000000000000000000000000000000221231231231242353465456456344242342342342342342n);

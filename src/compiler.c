@@ -75,30 +75,6 @@ static int _SaveInt(Compiler* compiler, int val) {
     return offset;
 }
 
-static int _SaveBInt(Compiler* compiler, bf_t* val) {
-    int offset = GetOffset();
-
-    for (int i = 0; i < offset; i++) {
-        Value* constantRaw = compiler->Interpreter->Constants[i];
-        
-        if (ValueIsInt(constantRaw) && CoerceToI32(constantRaw) == val) {
-            return i;
-        }
-    }
-
-    Value* newValue = NewBigIntValue(compiler->Interpreter, val);
-
-    PushArray(
-        Value*,
-        compiler->Interpreter->Constants, 
-        compiler->Interpreter->ConstantC, 
-        newValue, 
-        NULL
-    );
-
-    return offset;
-}
-
 static int _SaveNum(Compiler* compiler, double val) {
     int offset = GetOffset();
 
@@ -122,15 +98,14 @@ static int _SaveNum(Compiler* compiler, double val) {
     return offset;
 }
 
-static int _SaveBNum(Compiler* compiler, bf_t* val) {
+static int _SaveBigNum(Compiler* compiler, bf_t* val) {
     int offset = GetOffset();
 
     for (int i = 0; i < offset; i++) {
         Value* constantRaw = compiler->Interpreter->Constants[i];
         String constantStr = ValueToString(constantRaw);
-        size_t len;
-        String valStr = bf_ftoa(&len, val, 10, BF_PREC_INF, BF_RNDZ);
-        if (ValueIsNum(constantRaw) && strcmp(constantStr, valStr) == 0) {
+        String valStr = BFNumToString(val);
+        if (ValueIsBigNum(constantRaw) && strcmp(constantStr, valStr) == 0) {
             free(constantStr);
             free(valStr);
             return i;
@@ -376,7 +351,11 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
         case AST_BINT: {
             bf_t* num = Allocate(sizeof(bf_t));
             bf_init(&(compiler->Interpreter->BfContext), num);
-            bf_atof(num, (const char*)node->Value, NULL, 10, BF_PREC_INF, BF_RNDZ);
+            bf_atof(num, node->Value, NULL, 10, BF_PREC_INF, BF_RNDZ);
+            offset = _SaveBigNum(compiler, num);
+            _EmitLine(compiler, uf, node->Position);
+            _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+            break;
         }
         case AST_NUM: {
             offset = _SaveNum(compiler, strtod(node->Value, NULL));
