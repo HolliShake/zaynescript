@@ -1,14 +1,13 @@
-
 import { println } from "core:io";
 
 var arr = [];
 
-for (i := 0;i < 100000;i++) {
+for (i := 0;i < 1000000;i++) {
     arr.push(i);
 }
 
 println(arr);
 
-//real    0m0.376s
-//user    0m0.226s
-//sys     0m0.016s
+//real    0m3.715s
+//user    0m1.331s
+//sys     0m0.161s

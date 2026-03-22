@@ -1,9 +1,9 @@
 
 arr = []
-for i in range(100000):
+for i in range(1000000):
     arr.append(i)
 
-#print(arr)
-#real    0m0.589s
-#user    0m0.034s
-#sys     0m0.015s
+print(arr)
+#real    0m2.966s
+#user    0m0.180s
+#sys     0m0.097s
