@@ -7,8 +7,18 @@ extern String ValueToString(Value* value);
  * 
  * @param value The value to free
  */
-static void _Free(Value* value) {
+static void _Free(Interpreter* interp, Value* value) {
     switch (value->Type) {
+        case VLT_BINT:
+        case VLT_BNUM: {
+            bf_t* bf = (bf_t*) value->Value.Opaque;
+            if (bf != NULL) {
+                bf_delete(bf);
+                bf_free(&interp->BfContext, bf);
+                value->Value.Opaque = NULL;
+            }
+            break;
+        }
         case VLT_STR:
             if (value->Value.Opaque != NULL) {
                 free(value->Value.Opaque);
@@ -253,22 +263,26 @@ static void _MarkEnvs(Interpreter* interpreter) {
     }
 }
 
-static void _Sweep(Interpreter* interpreter) {
+static size_t _Sweep(Interpreter* interpreter) {
+    size_t survivors = 0;
     Value** current = &interpreter->GcRoot;
     while (*current != NULL) {
         Value* value = *current;
         if (!value->Marked) {
             Value* unreached = value;
             *current = unreached->Next;
-            _Free(unreached);
+            _Free(interpreter, unreached);
         } else {
+            ++survivors;
             value->Marked = 0;
             current = &value->Next;
         }
     }
+    return survivors;
 }
 
 void GarbageCollect(Interpreter* interpreter) {
+    // printf("GC: Starting garbage collection... Allocated = %d bytes, Threshold = %d bytes\n", interpreter->Allocated, interpreter->GcThreshold);
     Mark(interpreter->Array);
     Mark(interpreter->True);
     Mark(interpreter->False);
@@ -279,8 +293,16 @@ void GarbageCollect(Interpreter* interpreter) {
     _MarkFunctions(interpreter);
     _MarkStack(interpreter);
     _MarkEnvs(interpreter);
-    _Sweep(interpreter);
-    interpreter->Allocated = 0;
+    size_t srv = _Sweep(interpreter);
+    size_t nxt = srv * GC_GROWTH_FACTOR;
+
+    if (nxt < GC_THRESHOLD) {
+        interpreter->GcThreshold = GC_THRESHOLD;
+    } else {
+        interpreter->GcThreshold = (int) nxt;
+    }
+
+    interpreter->Allocated = srv;
 }
 
 void ForceGarbageCollect(Interpreter* interpreter) {

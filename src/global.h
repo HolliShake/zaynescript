@@ -34,11 +34,13 @@
 
 // Constants & Macros
 
+#define GC_GROWTH_FACTOR 2
+
 /**
  * @def GC_THRESHOLD
  * @brief The allocation threshold for triggering garbage collection.
  */
-#define GC_THRESHOLD 1500
+#define GC_THRESHOLD 1024
 
 /**
  * @def VARARG
@@ -706,6 +708,7 @@ struct interpreter_struct {
     int          EnvC;                                   /**< Environment stack pointer */
     int          ExceptionHandlerStacks[STACK_SIZE];     /**< Stack for exception handlers */
     int          ExceptionHandlerStackC;                 /**< Exception handler stack pointer */
+    int          GcThreshold;                            /**< Threshold for triggering garbage collection */
 };
 
 /**

@@ -102,6 +102,13 @@ int CoerceToI32(Value* value) {
             return value->Value.I32;
         case VLT_NUM:
             return (int) value->Value.Num;
+        case VLT_BINT:
+        case VLT_BNUM: {
+            bf_t* bf = (bf_t*) value->Value.Opaque;
+            int num = 0;
+            bf_get_int32(&num, bf, BF_RNDZ); 
+            return num;
+        }
         default:
             return 0;
     }
@@ -113,6 +120,13 @@ long CoerceToI64(Value* value) {
             return (long) value->Value.I32;
         case VLT_NUM:
             return (long) value->Value.Num;
+        case VLT_BINT:
+        case VLT_BNUM: {
+            bf_t* bf = (bf_t*) value->Value.Opaque;
+            int64_t num = 0;
+            bf_get_int64(&num, bf, BF_RNDZ); 
+            return num;
+        }
         default:
             return 0;
     }
@@ -124,6 +138,13 @@ double CoerceToNum(Value* value) {
             return (double) value->Value.I32;
         case VLT_NUM:
             return (double) value->Value.Num;
+        case VLT_BINT: 
+        case VLT_BNUM: {
+            bf_t* bf = (bf_t*) value->Value.Opaque;
+            double num = 0;
+            bf_get_float64(bf, &num, BF_RNDNA); 
+            return num;
+        }
         default:
             return 0.0;
     }

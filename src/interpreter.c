@@ -34,6 +34,7 @@ Interpreter* CreateInterpreter() {
     interpreter->EnvC                       = 0;
     // interpreter->ExceptionHandlerStacks[STACK_SIZE];
     interpreter->ExceptionHandlerStackC     = 0;
+    interpreter->GcThreshold                = GC_THRESHOLD;
     return interpreter;
 }
 
@@ -254,7 +255,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 
     while (ip != uf->CodeC) {
 
-        if (interpreter->Allocated >= GC_THRESHOLD) {
+        if (interpreter->Allocated >= interpreter->GcThreshold) {
             Mark(fnValue);
             GarbageCollect(interpreter);
         }

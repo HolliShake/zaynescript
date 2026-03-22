@@ -1,43 +1,58 @@
 #include "./io.h"
 
-
-static Value* _IoGenericPrint(Interpreter*  interpreter, int argc, Value** arguments, bool newline) {
+static Value* _IoGenericPrint(Interpreter* interpreter, int argc, Value** arguments, bool newline) {
     if (argc == 0) {
-        printf("\n");
-        return  interpreter->Null;
+        puts(newline ? "" : "");  // or just:
+        if (newline) putchar('\n');
+        return interpreter->Null;
     }
-    
-    size_t bufferSize = 256;
-    size_t bufferUsed = 0;
-    char* buffer = Allocate(bufferSize);
-    buffer[0] = '\0';
-    
+
+    // ----------------------------------------------------------------
+    // PASS 1: resolve all strings + measure total length
+    // ----------------------------------------------------------------
+    String *parts = Allocate(argc * sizeof(String));
+    if (!parts) return interpreter->Null;
+    size_t *lens  = Allocate(argc * sizeof(size_t));
+    if (!lens) { free(parts); return interpreter->Null; }
+
+    // total = sum of lengths + (argc-1) spaces + '\0'
+    size_t total = (argc - 1) + 1;
     for (int i = 0; i < argc; i++) {
-        String str = ValueToString(arguments[i]);
-        size_t strLen = strlen(str);
-        
-        // Ensure buffer has enough space (including space and null terminator)
-        size_t spaceNeeded = strLen + (i < argc - 1 ? 1 : 0); // +1 for space if not last
-        while (bufferUsed + spaceNeeded + 1 >= bufferSize) {
-            bufferSize *= 2;
-            buffer = Reallocate(buffer, bufferSize);
-        }
-        
-        strcpy(buffer + bufferUsed, str);
-        bufferUsed += strLen;
-        free(str);
-        
-        // Add space after each argument except the last one
-        if (i < argc - 1) {
-            buffer[bufferUsed] = ' ';
-            bufferUsed++;
-            buffer[bufferUsed] = '\0';
-        }
+        parts[i] = ValueToString(arguments[i]);
+        lens[i]  = parts[i] ? strlen(parts[i]) : 0;
+        total   += lens[i];
     }
-    
-    printf("\x1B[93m%s\x1B[0m%s", buffer, newline ? "\n" : "");
+
+    // ----------------------------------------------------------------
+    // PASS 2: single alloc, memcpy in
+    // ----------------------------------------------------------------
+    char *buffer = Allocate(total);
+    if (!buffer) goto cleanup;
+
+    char *p = buffer;
+    for (int i = 0; i < argc; i++) {
+        if (lens[i] > 0) {
+            memcpy(p, parts[i], lens[i]);
+            p += lens[i];
+        }
+        if (i < argc - 1) *p++ = ' ';
+    }
+    *p = '\0';
+
+    // single write syscall — faster than printf format processing
+    fputs("\x1B[93m", stdout);
+    fwrite(buffer, 1, total - 1, stdout);  // total-1 excludes '\0'
+    fputs("\x1B[0m", stdout);
+    if (newline) putchar('\n');
+
     free(buffer);
-    return  interpreter->Null;
+
+cleanup:
+    for (int i = 0; i < argc; i++) free(parts[i]);
+    free(parts);
+    free(lens);
+
+    return interpreter->Null;
 }
 
 static Value* _IoPrint(Interpreter*  interpreter, int argc, Value** arguments) {
