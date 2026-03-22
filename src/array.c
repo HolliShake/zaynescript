@@ -71,63 +71,70 @@ void ArrayExtend(Array *array, Array *other) {
 extern String ValueToString(Value* value);
 
 String ArrayToString(Array* array) {
-    if (array == NULL) {
-        return NULL;
+    if (array == NULL) return NULL;
+    if (array->Count == 0) {
+        String s = Allocate(3);
+        if (s) { s[0] = '['; s[1] = ']'; s[2] = '\0'; }
+        return s;
     }
-    
-    // Start with reasonable initial capacity
-    size_t capacity = 32 + array->Count * 16;
-    size_t length = 0;
-    String buffer = Allocate(capacity);
-    
-    if (buffer == NULL) return NULL;
-    
-    buffer[length++] = '[';
-    buffer[length] = '\0';
-    
+
+    static const char SELF[]    = "[self]";
+    static const size_t SELF_LEN = 6;
+
+    // ----------------------------------------------------------------
+    // PASS 1: resolve all elements, measure total length
+    // ----------------------------------------------------------------
+    String *parts = Allocate(array->Count * sizeof(String));
+    if (!parts) return NULL;
+    size_t *lens = Allocate(array->Count * sizeof(size_t));
+    if (!lens) { free(parts); return NULL; }
+
+    // '[' + (Count-1)*", " + ']' + '\0'
+    size_t total = 1 + (array->Count - 1) * 2 + 1 + 1;
+
     for (size_t i = 0; i < array->Count; i++) {
-        if (i > 0) {
-            // Ensure space for ", "
-            if (length + 2 >= capacity) {
-                capacity *= 2;
-                buffer = Reallocate(buffer, capacity);
-            }
-            buffer[length++] = ',';
-            buffer[length++] = ' ';
-            buffer[length] = '\0';
-        }
-        
-        String valStr;
-        if (array->Items[i] == array) {
-            valStr = "[self]";
-            size_t len = 6;
-            if (length + len + 1 >= capacity) {
-                capacity = capacity * 2 > length + len + 32 ? capacity * 2 : length + len + 32;
-                buffer = Reallocate(buffer, capacity);
-            }
-            strcpy(buffer + length, valStr);
-            length += len;
+        if (array->Items[i] == (Value*)array) {
+            parts[i] = NULL;        // NULL sentinel = self-reference
+            lens[i]  = SELF_LEN;
         } else {
-            valStr = ValueToString(array->Items[i]);
-            if (valStr != NULL) {
-                size_t len = strlen(valStr);
-                if (length + len + 1 >= capacity) {
-                    capacity = capacity * 2 > length + len + 32 ? capacity * 2 : length + len + 32;
-                    buffer = Reallocate(buffer, capacity);
-                }
-                strcpy(buffer + length, valStr);
-                length += len;
-                free(valStr);
-            }
+            parts[i] = ValueToString(array->Items[i]);
+            lens[i]  = parts[i] ? strlen(parts[i]) : 0;
         }
+        total += lens[i];
     }
-    
-    // Ensure space for "]"
-    if (length + 2 >= capacity) {
-        buffer = Reallocate(buffer, capacity + 2);
+
+    // ----------------------------------------------------------------
+    // PASS 2: single allocation, memcpy everything in
+    // ----------------------------------------------------------------
+    String buffer = Allocate(total);
+    if (!buffer) goto cleanup;
+
+    char *p = buffer;
+    *p++ = '[';
+
+    for (size_t i = 0; i < array->Count; i++) {
+        if (i > 0) { *p++ = ','; *p++ = ' '; }
+
+        if (parts[i] == NULL) {
+            memcpy(p, SELF, SELF_LEN);
+            p += SELF_LEN;
+        } else if (lens[i] > 0) {
+            memcpy(p, parts[i], lens[i]);
+            p += lens[i];
+        }
+
+        free(parts[i]);
+        parts[i] = NULL;
     }
-    buffer[length++] = ']';
-    buffer[length] = '\0';
-    
+
+    *p++ = ']';
+    *p   = '\0';
+
+cleanup:
+    for (size_t i = 0; i < array->Count; i++)
+        free(parts[i]); // NULL-safe, only hits on alloc failure path
+    free(parts);
+    free(lens);
+
     return buffer;
 }
