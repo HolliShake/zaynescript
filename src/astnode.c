@@ -26,8 +26,20 @@ Ast* AstInteger(String value, Position position) {
     return ast;
 }
 
+Ast* AstBigInteger(String value, Position position) {
+    Ast* ast   = InitAst(AST_BINT, position);
+    ast->Value = value;
+    return ast;
+}
+
 Ast* AstNumber(String value, Position position) {
     Ast* ast   = InitAst(AST_NUM, position);
+    ast->Value = value;
+    return ast;
+}
+
+Ast* AstBigNumber(String value, Position position) {
+    Ast* ast   = InitAst(AST_BNUM, position);
     ast->Value = value;
     return ast;
 }

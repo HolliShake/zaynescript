@@ -448,6 +448,15 @@ Value* DoPos(Interpreter* interp, Value* val) {
         return NewIntValue(interp, +CoerceToI32(val));
     } else if (ValueIsNum(val)) {
         return NewNumValue(interp, +CoerceToNum(val));
+    } else if (ValueIsAnyNum(val)) {
+        bf_t* resNum = Allocate(sizeof(bf_t));
+        bf_init(&interp->BfContext, resNum);
+        bf_set(resNum, CoerceToBitField(interp, val));
+        // unary + is a no-op, just copy
+        int prec = BFPrecession(val);
+        return prec == PREC_INT
+            ? NewBigIntValue(interp, resNum)
+            : NewBigNumValue(interp, resNum);
     } else {
         String errMsg = FormatString("%s: invalid operand for operator (+): %s", TYPE_ERROR, ValueTypeOf(val));
         Value* errVal = NewErrorValue(interp, errMsg);
@@ -461,6 +470,15 @@ Value* DoNeg(Interpreter* interp, Value* val) {
         return NewIntValue(interp, -CoerceToI32(val));
     } else if (ValueIsNum(val)) {
         return NewNumValue(interp, -CoerceToNum(val));
+    } else if (ValueIsAnyNum(val)) {
+        bf_t* resNum = Allocate(sizeof(bf_t));
+        bf_init(&interp->BfContext, resNum);
+        bf_set(resNum, CoerceToBitField(interp, val));
+        bf_neg(resNum); // flip sign bit
+        int prec = BFPrecession(val);
+        return prec == PREC_INT
+            ? NewBigIntValue(interp, resNum)
+            : NewBigNumValue(interp, resNum);
     } else {
         String errMsg = FormatString("%s: invalid operand for operator (-): %s", TYPE_ERROR, ValueTypeOf(val));
         Value* errVal = NewErrorValue(interp, errMsg);
@@ -482,6 +500,16 @@ Value* DoMul(Interpreter* interp, Value* lhs, Value* rhs) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        bf_t* lhsNum = CoerceToBitField(interp, lhs);
+        bf_t* rhsNum = CoerceToBitField(interp, rhs);
+        bf_t* resNum = Allocate(sizeof(bf_t));
+        bf_init(&interp->BfContext, resNum);
+        int prec = BFPrecession(lhs) | BFPrecession(rhs);
+        bf_mul(resNum, lhsNum, rhsNum, prec, BF_RNDN | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
+        result = prec == PREC_INT
+            ? NewBigIntValue(interp, resNum)
+            : NewBigNumValue(interp, resNum);
     } else {
         String errMsg = FormatString(
             "%s: invalid operands for operator (*): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
@@ -512,6 +540,16 @@ Value* DoDiv(Interpreter* interp, Value* lhs, Value* rhs) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        bf_t* lhsNum = CoerceToBitField(interp, lhs);
+        bf_t* rhsNum = CoerceToBitField(interp, rhs);
+        bf_t* resNum = Allocate(sizeof(bf_t));
+        bf_init(&interp->BfContext, resNum);
+        int prec = BFPrecession(lhs) | BFPrecession(rhs);
+        bf_div(resNum, lhsNum, rhsNum, prec, BF_RNDN | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
+        result = prec == PREC_INT
+            ? NewBigIntValue(interp, resNum)
+            : NewBigNumValue(interp, resNum);
     } else {
         String errMsg = FormatString(
             "%s: invalid operands for operator (/): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
@@ -542,6 +580,16 @@ Value* DoMod(Interpreter* interp, Value* lhs, Value* rhs) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        bf_t* lhsNum = CoerceToBitField(interp, lhs);
+        bf_t* rhsNum = CoerceToBitField(interp, rhs);
+        bf_t* resNum = Allocate(sizeof(bf_t));
+        bf_init(&interp->BfContext, resNum);
+        int prec = BFPrecession(lhs) | BFPrecession(rhs);
+        bf_rem(resNum, lhsNum, rhsNum, prec, BF_RNDN | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS, BF_RNDZ);
+        result = prec == PREC_INT
+            ? NewBigIntValue(interp, resNum)
+            : NewBigNumValue(interp, resNum);
     } else {
         String errMsg = FormatString(
             "%s: invalid operands for operator (%%): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
@@ -567,6 +615,15 @@ Value* DoInc(Interpreter* interp, Value* val) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else if (ValueIsAnyNum(val)) {
+        bf_t* resNum = Allocate(sizeof(bf_t));
+        bf_init(&interp->BfContext, resNum);
+        bf_set(resNum, CoerceToBitField(interp, val));
+        bf_add_si(resNum, resNum, 1, BF_PREC_INF, BF_RNDZ | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
+        int prec = BFPrecession(val);
+        return prec == PREC_INT
+            ? NewBigIntValue(interp, resNum)
+            : NewBigNumValue(interp, resNum);
     } else {
         String errMsg = FormatString(
             "%s: invalid operand for operator (++): %s", TYPE_ERROR, ValueTypeOf(val)
@@ -591,6 +648,16 @@ Value* DoAdd(Interpreter* interp, Value* lhs, Value* rhs) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        bf_t* lhsNum = CoerceToBitField(interp, lhs);
+        bf_t* rhsNum = CoerceToBitField(interp, rhs);
+        bf_t* resNum = Allocate(sizeof(bf_t));
+        bf_init(&interp->BfContext, resNum);
+        int prec = BFPrecession(lhs) | BFPrecession(rhs);
+        bf_add(resNum, lhsNum, rhsNum, prec, BF_RNDN | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
+        result = prec == PREC_INT
+            ? NewBigIntValue(interp, resNum)
+            : NewBigNumValue(interp, resNum);
     } else if (ValueIsStr(lhs) && ValueIsStr(rhs)) {
         Rune* lhsRunes = (Rune*) lhs->Value.Opaque;
         Rune* rhsRunes = (Rune*) rhs->Value.Opaque;
@@ -631,6 +698,15 @@ Value* DoDec(Interpreter* interp, Value* val) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else if (ValueIsAnyNum(val)) {
+        bf_t* resNum = Allocate(sizeof(bf_t));
+        bf_init(&interp->BfContext, resNum);
+        bf_set(resNum, CoerceToBitField(interp, val));
+        bf_add_si(resNum, resNum, -1, BF_PREC_INF, BF_RNDZ | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
+        int prec = BFPrecession(val);
+        return prec == PREC_INT
+            ? NewBigIntValue(interp, resNum)
+            : NewBigNumValue(interp, resNum);
     } else {
         String errMsg = FormatString(
             "%s: invalid operand for operator (--): %s", TYPE_ERROR, ValueTypeOf(val)
@@ -655,6 +731,16 @@ Value* DoSub(Interpreter* interp, Value* lhs, Value* rhs) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        bf_t* lhsNum = CoerceToBitField(interp, lhs);
+        bf_t* rhsNum = CoerceToBitField(interp, rhs);
+        bf_t* resNum = Allocate(sizeof(bf_t));
+        bf_init(&interp->BfContext, resNum);
+        int prec = BFPrecession(lhs) | BFPrecession(rhs);
+        bf_sub(resNum, lhsNum, rhsNum, prec, BF_RNDN | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
+        result = prec == PREC_INT
+            ? NewBigIntValue(interp, resNum)
+            : NewBigNumValue(interp, resNum);
     } else {
         String errMsg = FormatString(
             "%s: invalid operands for operator (-): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
@@ -674,6 +760,36 @@ Value* DoLShift(Interpreter* interp, Value* lhs, Value* rhs) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        bf_t* lhsNum = CoerceToBitField(interp, lhs);
+        bf_t* rhsNum = CoerceToBitField(interp, rhs);
+        bf_t* resNum = Allocate(sizeof(bf_t));
+        bf_init(&interp->BfContext, resNum);
+
+        // Get shift amount from rhs
+        slimb_t shiftAmount;
+#if LIMB_BITS == 32
+        bf_get_int32(&shiftAmount, rhsNum, 0);
+        if (shiftAmount == INT32_MIN)
+            shiftAmount = INT32_MIN + 1;
+#else
+        bf_get_int64(&shiftAmount, rhsNum, 0);
+        if (shiftAmount == INT64_MIN)
+            shiftAmount = INT64_MIN + 1;
+#endif
+
+        bf_set(resNum, lhsNum);
+        bf_mul_2exp(resNum, shiftAmount, BF_PREC_INF, BF_RNDZ);
+        // Left shift should never produce a fraction on integers,
+        // but guard anyway in case lhs is a float
+        if (shiftAmount < 0) {
+            bf_rint(resNum, BF_RNDD);
+        }
+
+        int prec = BFPrecession(lhs) | BFPrecession(rhs);
+        result = prec == PREC_INT
+            ? NewBigIntValue(interp, resNum)
+            : NewBigNumValue(interp, resNum);
     } else {
         String errMsg = FormatString(
             "%s: invalid operands for operator (<<): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
@@ -687,13 +803,41 @@ Value* DoLShift(Interpreter* interp, Value* lhs, Value* rhs) {
 
 Value* DoRShift(Interpreter* interp, Value* lhs, Value* rhs) {
     Value* result = NULL;
-    int offset    = GetOffset();
 
     if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
         long resultNum = CoerceToI64(lhs) >> CoerceToI64(rhs);
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        bf_t* lhsNum = CoerceToBitField(interp, lhs);
+        bf_t* rhsNum = CoerceToBitField(interp, rhs);
+        bf_t* resNum = Allocate(sizeof(bf_t));
+        bf_init(&interp->BfContext, resNum);
+
+        // Get shift amount from rhs and negate it (right shift = left shift by -n)
+        slimb_t shiftAmount;
+#if LIMB_BITS == 32
+        bf_get_int32(&shiftAmount, rhsNum, 0);
+        if (shiftAmount == INT32_MIN)
+            shiftAmount = INT32_MIN + 1;
+#else
+        bf_get_int64(&shiftAmount, rhsNum, 0);
+        if (shiftAmount == INT64_MIN)
+            shiftAmount = INT64_MIN + 1;
+#endif
+        // Negate to make it a right shift
+        shiftAmount = -shiftAmount;
+
+        bf_set(resNum, lhsNum);
+        bf_mul_2exp(resNum, shiftAmount, BF_PREC_INF, BF_RNDZ);
+        // Right shift can produce a fraction, floor it (arithmetic shift behavior)
+        bf_rint(resNum, BF_RNDD);
+
+        int prec = BFPrecession(lhs) | BFPrecession(rhs);
+        result = prec == PREC_INT
+            ? NewBigIntValue(interp, resNum)
+            : NewBigNumValue(interp, resNum);
     } else {
         String errMsg = FormatString(
             "%s: invalid operands for operator (>>): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
@@ -710,6 +854,11 @@ Value* DoLT(Interpreter* interp, Value* lhs, Value* rhs) {
 
     if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
         int comparison = CoerceToNum(lhs) < CoerceToNum(rhs);
+        result = comparison ? interp->True : interp->False;
+    } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        bf_t* lhsNum = CoerceToBitField(interp, lhs);
+        bf_t* rhsNum = CoerceToBitField(interp, rhs);
+        int comparison = bf_cmp_lt(lhsNum, rhsNum);
         result = comparison ? interp->True : interp->False;
     } else {
         String errMsg = FormatString(
@@ -728,6 +877,11 @@ Value* DoLTE(Interpreter* interp, Value* lhs, Value* rhs) {
     if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
         int comparison = CoerceToNum(lhs) <= CoerceToNum(rhs);
         result = comparison ? interp->True : interp->False;
+    } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        bf_t* lhsNum = CoerceToBitField(interp, lhs);
+        bf_t* rhsNum = CoerceToBitField(interp, rhs);
+        int comparison = bf_cmp_le(lhsNum, rhsNum);
+        result = comparison ? interp->True : interp->False;
     } else {
         String errMsg = FormatString(
             "%s: invalid operands for operator (<=): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
@@ -744,6 +898,11 @@ Value* DoGT(Interpreter* interp, Value* lhs, Value* rhs) {
 
     if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
         int comparison = CoerceToNum(lhs) > CoerceToNum(rhs);
+        result = comparison ? interp->True : interp->False;
+    } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        bf_t* lhsNum = CoerceToBitField(interp, lhs);
+        bf_t* rhsNum = CoerceToBitField(interp, rhs);
+        int comparison = bf_cmp_lt(rhsNum, lhsNum);
         result = comparison ? interp->True : interp->False;
     } else {
         String errMsg = FormatString(
@@ -762,6 +921,11 @@ Value* DoGTE(Interpreter* interp, Value* lhs, Value* rhs) {
     if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
         int comparison = CoerceToNum(lhs) >= CoerceToNum(rhs);
         result = comparison ? interp->True : interp->False;
+    } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        bf_t* lhsNum = CoerceToBitField(interp, lhs);
+        bf_t* rhsNum = CoerceToBitField(interp, rhs);
+        int comparison = bf_cmp_le(rhsNum, lhsNum);
+        result = comparison ? interp->True : interp->False;
     } else {
         String errMsg = FormatString(
             "%s: invalid operands for operator (>=): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
@@ -774,10 +938,22 @@ Value* DoGTE(Interpreter* interp, Value* lhs, Value* rhs) {
 }
 
 Value* DoEQ(Interpreter* interp, Value* lhs, Value* rhs) {
+    if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        bf_t* lhsNum = CoerceToBitField(interp, lhs);
+        bf_t* rhsNum = CoerceToBitField(interp, rhs);
+        int comparison = bf_cmp(lhsNum, rhsNum) == 0;
+        return comparison ? interp->True : interp->False;
+    }
     return ValueIsEqual(lhs, rhs) ? interp->True : interp->False;
 }
 
 Value* DoNE(Interpreter* interp, Value* lhs, Value* rhs) {
+    if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        bf_t* lhsNum = CoerceToBitField(interp, lhs);
+        bf_t* rhsNum = CoerceToBitField(interp, rhs);
+        int comparison = bf_cmp(lhsNum, rhsNum) != 0;
+        return comparison ? interp->True : interp->False;
+    }
     return !ValueIsEqual(lhs, rhs) ? interp->True : interp->False;
 }
 
@@ -791,6 +967,13 @@ Value* DoAnd(Interpreter* interp, Value* lhs, Value* rhs) {
     } else if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
         long long resultValue = (int)CoerceToI64(lhs) & (int)CoerceToI64(rhs);
         result = NewNumValue(interp, resultValue);
+    } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        bf_t* lhsNum = CoerceToBitField(interp, lhs);
+        bf_t* rhsNum = CoerceToBitField(interp, rhs);
+        bf_t* resNum = Allocate(sizeof(bf_t));
+        bf_init(&interp->BfContext, resNum);
+        bf_logic_and(resNum, lhsNum, rhsNum);
+        result = NewBigIntValue(interp, resNum);
     } else {
         String errMsg = FormatString(
             "%s: invalid operands for operator (&): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
@@ -812,6 +995,13 @@ Value* DoOr(Interpreter* interp, Value* lhs, Value* rhs) {
     } else if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
         long long resultValue = (int)CoerceToI64(lhs) | (int)CoerceToI64(rhs);
         result = NewNumValue(interp, resultValue);
+    } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        bf_t* lhsNum = CoerceToBitField(interp, lhs);
+        bf_t* rhsNum = CoerceToBitField(interp, rhs);
+        bf_t* resNum = Allocate(sizeof(bf_t));
+        bf_init(&interp->BfContext, resNum);
+        bf_logic_or(resNum, lhsNum, rhsNum);
+        result = NewBigIntValue(interp, resNum);
     } else {
         String errMsg = FormatString(
             "%s: invalid operands for operator (|): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)
@@ -833,6 +1023,13 @@ Value* DoXor(Interpreter* interp, Value* lhs, Value* rhs) {
     } else if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
         long long resultValue = (int)CoerceToI64(lhs) ^ (int)CoerceToI64(rhs);
         result = NewNumValue(interp, resultValue);
+    } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        bf_t* lhsNum = CoerceToBitField(interp, lhs);
+        bf_t* rhsNum = CoerceToBitField(interp, rhs);
+        bf_t* resNum = Allocate(sizeof(bf_t));
+        bf_init(&interp->BfContext, resNum);
+        bf_logic_xor(resNum, lhsNum, rhsNum);
+        result = NewBigIntValue(interp, resNum);
     } else {
         String errMsg = FormatString(
             "%s: invalid operands for operator (^): %s and %s", TYPE_ERROR, ValueTypeOf(lhs), ValueTypeOf(rhs)

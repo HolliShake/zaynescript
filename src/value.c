@@ -39,9 +39,21 @@ Value* NewIntValue(Interpreter* interpreter, int value) {
     return v;
 }
 
+Value* NewBigIntValue(Interpreter* interpreter, bf_t* value) {
+    Value* v = _CreateValue(interpreter, VLT_BINT);
+    v->Value.Opaque = value;
+    return v;
+}
+
 Value* NewNumValue(Interpreter* interpreter, double value) {
     Value* v = _CreateValue(interpreter, VLT_NUM);
     v->Value.Num = value;
+    return v;
+}
+
+Value* NewBigNumValue(Interpreter* interpreter, bf_t* value) {
+    Value* v = _CreateValue(interpreter, VLT_BNUM);
+    v->Value.Opaque = value;
     return v;
 }
 
@@ -106,12 +118,15 @@ Value* NewClassInstanceValue(Interpreter* interpreter, ClassInstance* instance) 
 }
 
 String ValueToString(Value* value) {
-    char* buffer;
+    String buffer;
     switch (value->Type) {
         case VLT_INT:
             buffer = Allocate(32);
             snprintf(buffer, 32, "%d", value->Value.I32);
             return buffer;
+        case VLT_BINT: {
+            return BFIntToString((bf_t*)value->Value.Opaque);
+        }
         case VLT_NUM:
             buffer = Allocate(64);
             // Check if the number can be represented as an integer
@@ -127,6 +142,9 @@ String ValueToString(Value* value) {
                 snprintf(buffer, 64, "%.15g", num);
             }
             return buffer;
+        case VLT_BNUM: {
+            return BFNumToString((bf_t*)value->Value.Opaque);
+        }
         case VLT_ERROR:
         case VLT_STR: {
             Rune* runes = (Rune*) value->Value.Opaque;
@@ -164,7 +182,7 @@ String ValueToString(Value* value) {
         case VLT_OBJECT:
             return HashMapToString(CoerceToHashMap(value));
         case VLT_CLASS:
-            return AllocateString("class");
+            return FormatString("<class.%s />", CoerceToUserClass(value)->Name);
         case VLT_CLASS_INSTANCE:
             return ClassInstanceToString(CoerceToClassInstance(value));
         case VLT_NATV_FUNCTION:
@@ -180,8 +198,12 @@ String ValueTypeOf(Value* value) {
             return "error";
         case VLT_INT:
             return "int";
+        case VLT_BINT:
+            return "BigInt";
         case VLT_NUM:
             return "num";
+        case VLT_BNUM:
+            return "BigNum";
         case VLT_STR:
             return "str";
         case VLT_BOOL:
@@ -200,8 +222,10 @@ String ValueTypeOf(Value* value) {
             return "object";
         case VLT_CLASS:
             return "class";
-        case VLT_CLASS_INSTANCE:
-            return "class instance";
+        case VLT_CLASS_INSTANCE: {
+            ClassInstance* cls = CoerceToClassInstance(value);
+            return CoerceToUserClass(cls->Proto)->Name;
+        }
         default:
             return "unknown";
     }
@@ -211,8 +235,20 @@ bool ValueIsInt(Value* value) {
     return value->Type == VLT_INT;
 }
 
+bool ValueIsBigInt(Value* value) {
+    return value->Type == VLT_BINT;
+}
+
 bool ValueIsNum(Value* value) {
     return value->Type == VLT_NUM || value->Type == VLT_INT;
+}
+
+bool ValueIsBigNum(Value* value) {
+    return value->Type == VLT_BNUM || value->Type == VLT_BINT;
+}
+
+bool ValueIsAnyNum(Value* value) {
+    return ValueIsNum(value) || ValueIsBigNum(value) || ValueIsBigNum(value) || ValueIsBigInt(value);
 }
 
 bool ValueIsStr(Value* value) {

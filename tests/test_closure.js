@@ -162,3 +162,7 @@ println(obj);
 println(obj);
 println(obj.value++ + 23 - 1);
 println(obj, 2, 3, 2);
+
+
+const g = [1,2,3];
+println(g, g.length, g.pop());

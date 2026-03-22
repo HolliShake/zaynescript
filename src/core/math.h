@@ -18,9 +18,9 @@
  * Initializes and loads the core Math module into the interpreter,
  * registering all mathematical functions and constants.
  * 
- * @param interpeter The interpreter instance to load the module into
+ * @param  interpreter The interpreter instance to load the module into
  * @return Value* Pointer to the loaded core Math module, or NULL on failure
  */
-Value* LoadCoreMath(Interpreter* interpeter);
+Value* LoadCoreMath(Interpreter*  interpreter);
 
 #endif /* MATH_H */

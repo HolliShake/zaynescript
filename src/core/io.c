@@ -1,10 +1,10 @@
 #include "./io.h"
 
 
-static Value* _IoGenericPrint(Interpreter* interpeter, int argc, Value** arguments, bool newline) {
+static Value* _IoGenericPrint(Interpreter*  interpreter, int argc, Value** arguments, bool newline) {
     if (argc == 0) {
         printf("\n");
-        return interpeter->Null;
+        return  interpreter->Null;
     }
     
     size_t bufferSize = 256;
@@ -37,15 +37,15 @@ static Value* _IoGenericPrint(Interpreter* interpeter, int argc, Value** argumen
     
     printf("\x1B[93m%s\x1B[0m%s", buffer, newline ? "\n" : "");
     free(buffer);
-    return interpeter->Null;
+    return  interpreter->Null;
 }
 
-static Value* _IoPrint(Interpreter* interpeter, int argc, Value** arguments) {
-    return _IoGenericPrint(interpeter, argc, arguments, false);
+static Value* _IoPrint(Interpreter*  interpreter, int argc, Value** arguments) {
+    return _IoGenericPrint( interpreter, argc, arguments, false);
 }
 
-static Value* _IoPrintln(Interpreter* interpeter, int argc, Value** arguments) {
-    return _IoGenericPrint(interpeter, argc, arguments, true);
+static Value* _IoPrintln(Interpreter*  interpreter, int argc, Value** arguments) {
+    return _IoGenericPrint( interpreter, argc, arguments, true);
 }
 
 static Value* _IoScan(Interpreter* interpreter, int argc, Value** arguments) {
@@ -225,8 +225,8 @@ static ModuleFunction _IoModuleFunctions[] = {
     { .Name = NULL }
 };
 
-Value* LoadCoreIo(Interpreter* interpeter) {
-    Value* ioModule = NewObjectValue(interpeter);
+Value* LoadCoreIo(Interpreter*  interpreter) {
+    Value* ioModule = NewObjectValue( interpreter);
     HashMap* ioMap  = CoerceToHashMap(ioModule);
     
     for (int i = 0; _IoModuleFunctions[i].Name != NULL; i++) {
@@ -237,7 +237,7 @@ Value* LoadCoreIo(Interpreter* interpeter) {
         if (func.Value != NULL) {
             HashMapSet(ioMap, hKey, _IoModuleFunctions[i].Value);
         } else {
-            HashMapSet(ioMap, hKey, NewNativeFunctionValue(interpeter, 
+            HashMapSet(ioMap, hKey, NewNativeFunctionValue( interpreter, 
                 CreateNativeFunctionMeta(
                     (const String) name,
                     func.Argc,

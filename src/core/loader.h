@@ -2,6 +2,7 @@
 #include "./array.h"
 #include "./date.h"
 #include "./io.h"
+#include "./os.h"
 #include "./math.h"
 
 #ifndef CORE_LOADER_H

@@ -8,9 +8,10 @@
  *
  * @param name The name of the function.
  * @param argc The number of arguments the function takes.
+ * @param async Whether the function is asynchronous.
  * @return Pointer to the newly created UserFunction structure, or NULL on failure.
  */
-UserFunction* CreateUserFunction(String name, int argc);
+UserFunction* CreateUserFunction(String name, int argc, bool async);
 
 /**
  * Creates a new main user function.

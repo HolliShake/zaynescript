@@ -98,6 +98,37 @@ static int _SaveNum(Compiler* compiler, double val) {
     return offset;
 }
 
+static int _SaveBigNum(Compiler* compiler, bf_t* val, bool i64plus) {
+    int offset = GetOffset();
+
+    for (int i = 0; i < offset; i++) {
+        Value* constantRaw = compiler->Interpreter->Constants[i];
+        String constantStr = ValueToString(constantRaw);
+        String valStr = i64plus ? BFIntToString(val) : BFNumToString(val);
+        if (((i64plus && ValueIsBigInt(constantRaw)) || (!i64plus && ValueIsBigNum(constantRaw))) && strcmp(constantStr, valStr) == 0) {
+            free(constantStr);
+            free(valStr);
+            return i;
+        }
+        free(constantStr);
+        free(valStr);
+    }
+
+    Value* newValue = i64plus
+        ? NewBigIntValue(compiler->Interpreter, val)
+        : NewBigNumValue(compiler->Interpreter, val);
+
+    PushArray(
+        Value*,
+        compiler->Interpreter->Constants, 
+        compiler->Interpreter->ConstantC, 
+        newValue, 
+        NULL
+    );
+
+    return offset;
+}
+
 static int _SaveStr(Compiler* compiler, String val) {
     int offset = GetOffset();
     for (int i = 0; i < offset; i++) {
@@ -319,6 +350,15 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             }
             break;
         }
+        case AST_BINT: {
+            bf_t* num = Allocate(sizeof(bf_t));
+            bf_init(&(compiler->Interpreter->BfContext), num);
+            bf_atof(num, node->Value, NULL, 10, BF_PREC_INF, BF_RNDZ);
+            offset = _SaveBigNum(compiler, num, true);
+            _EmitLine(compiler, uf, node->Position);
+            _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+            break;
+        }
         case AST_NUM: {
             offset = _SaveNum(compiler, strtod(node->Value, NULL));
             val = _GetConstantValue(compiler, offset);
@@ -327,7 +367,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
             }
             break;
-        } 
+        }
+        case AST_BNUM: {
+            bf_t* num = Allocate(sizeof(bf_t));
+            bf_init(&(compiler->Interpreter->BfContext), num);
+            bf_atof(num, node->Value, NULL, 10, BF_PREC_INF, BF_RNDZ);
+            offset = _SaveBigNum(compiler, num, false);
+            _EmitLine(compiler, uf, node->Position);
+            _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+            break;
+        }
         case AST_STR: {
             offset = _SaveStr(compiler, node->Value);
             val = _GetConstantValue(compiler, offset);
@@ -488,7 +537,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             Ast* params = node->B;
             Ast* body   = node->C;
 
-            UserFunction* fn = CreateUserFunction(NULL, 0);
+            UserFunction* fn = CreateUserFunction(NULL, 0, node->Flag);
 
             // First, count parameters and collect them
             int paramc = 0;
@@ -1656,7 +1705,7 @@ static void _ClassDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope
                 Ast* params = actualBody->B;
                 Ast* body   = actualBody->C;
 
-                UserFunction* fn = CreateUserFunction(AllocateString(fnName->Value), 0);
+                UserFunction* fn = CreateUserFunction(AllocateString(fnName->Value), 0, actualBody->Flag);
 
                 // First, count parameters
                 int paramc = 0;
@@ -1787,7 +1836,7 @@ static void _FunctionDeclaration(Compiler* compiler, UserFunction* uf, Scope* sc
 
     int nameOffset = symbol->Offset;
 
-    UserFunction* fn = CreateUserFunction(AllocateString(fnName->Value), 0);
+    UserFunction* fn = CreateUserFunction(AllocateString(fnName->Value), 0, node->Flag);
 
     int paramc = 0;
     while (params != NULL) {
