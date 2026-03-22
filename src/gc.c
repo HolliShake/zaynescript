@@ -7,8 +7,18 @@ extern String ValueToString(Value* value);
  * 
  * @param value The value to free
  */
-static void _Free(Value* value) {
+static void _Free(Interpreter* interp, Value* value) {
     switch (value->Type) {
+        case VLT_BINT:
+        case VLT_BNUM: {
+            bf_t* bf = (bf_t*) value->Value.Opaque;
+            if (bf != NULL) {
+                bf_delete(bf);
+                bf_free(&interp->BfContext, bf);
+                value->Value.Opaque = NULL;
+            }
+            break;
+        }
         case VLT_STR:
             if (value->Value.Opaque != NULL) {
                 free(value->Value.Opaque);
@@ -260,7 +270,7 @@ static void _Sweep(Interpreter* interpreter) {
         if (!value->Marked) {
             Value* unreached = value;
             *current = unreached->Next;
-            _Free(unreached);
+            _Free(interpreter, unreached);
         } else {
             value->Marked = 0;
             current = &value->Next;
