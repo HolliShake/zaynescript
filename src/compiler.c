@@ -98,14 +98,14 @@ static int _SaveNum(Compiler* compiler, double val) {
     return offset;
 }
 
-static int _SaveBigNum(Compiler* compiler, bf_t* val) {
+static int _SaveBigNum(Compiler* compiler, bf_t* val, bool i64plus) {
     int offset = GetOffset();
 
     for (int i = 0; i < offset; i++) {
         Value* constantRaw = compiler->Interpreter->Constants[i];
         String constantStr = ValueToString(constantRaw);
-        String valStr = BFNumToString(val);
-        if (ValueIsBigNum(constantRaw) && strcmp(constantStr, valStr) == 0) {
+        String valStr = i64plus ? BFIntToString(val) : BFNumToString(val);
+        if (((i64plus && ValueIsBigInt(constantRaw)) || (!i64plus && ValueIsBigNum(constantRaw))) && strcmp(constantStr, valStr) == 0) {
             free(constantStr);
             free(valStr);
             return i;
@@ -114,7 +114,9 @@ static int _SaveBigNum(Compiler* compiler, bf_t* val) {
         free(valStr);
     }
 
-    Value* newValue = NewBigNumValue(compiler->Interpreter, val);
+    Value* newValue = i64plus
+        ? NewBigIntValue(compiler->Interpreter, val)
+        : NewBigNumValue(compiler->Interpreter, val);
 
     PushArray(
         Value*,
@@ -352,7 +354,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             bf_t* num = Allocate(sizeof(bf_t));
             bf_init(&(compiler->Interpreter->BfContext), num);
             bf_atof(num, node->Value, NULL, 10, BF_PREC_INF, BF_RNDZ);
-            offset = _SaveBigNum(compiler, num);
+            offset = _SaveBigNum(compiler, num, true);
             _EmitLine(compiler, uf, node->Position);
             _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
             break;
@@ -365,7 +367,16 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
             }
             break;
-        } 
+        }
+        case AST_BNUM: {
+            bf_t* num = Allocate(sizeof(bf_t));
+            bf_init(&(compiler->Interpreter->BfContext), num);
+            bf_atof(num, node->Value, NULL, 10, BF_PREC_INF, BF_RNDZ);
+            offset = _SaveBigNum(compiler, num, false);
+            _EmitLine(compiler, uf, node->Position);
+            _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
+            break;
+        }
         case AST_STR: {
             offset = _SaveStr(compiler, node->Value);
             val = _GetConstantValue(compiler, offset);

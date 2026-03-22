@@ -125,7 +125,7 @@ String ValueToString(Value* value) {
             snprintf(buffer, 32, "%d", value->Value.I32);
             return buffer;
         case VLT_BINT: {
-            return BFNumToString((bf_t*)value->Value.Opaque);
+            return BFIntToString((bf_t*)value->Value.Opaque);
         }
         case VLT_NUM:
             buffer = Allocate(64);
@@ -143,9 +143,7 @@ String ValueToString(Value* value) {
             }
             return buffer;
         case VLT_BNUM: {
-            size_t len;
-            buffer = bf_ftoa(&len, value->Value.Opaque, 10, 0, BF_RNDZ | BF_FTOA_FORMAT_FRAC);
-            return buffer;
+            return BFNumToString((bf_t*)value->Value.Opaque);
         }
         case VLT_ERROR:
         case VLT_STR: {
