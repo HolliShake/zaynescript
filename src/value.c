@@ -198,8 +198,12 @@ String ValueTypeOf(Value* value) {
             return "error";
         case VLT_INT:
             return "int";
+        case VLT_BINT:
+            return "BigInt";
         case VLT_NUM:
             return "num";
+        case VLT_BNUM:
+            return "BigNum";
         case VLT_STR:
             return "str";
         case VLT_BOOL:
@@ -218,8 +222,10 @@ String ValueTypeOf(Value* value) {
             return "object";
         case VLT_CLASS:
             return "class";
-        case VLT_CLASS_INSTANCE:
-            return "class instance";
+        case VLT_CLASS_INSTANCE: {
+            ClassInstance* cls = CoerceToClassInstance(value);
+            return CoerceToUserClass(cls->Proto)->Name;
+        }
         default:
             return "unknown";
     }
@@ -239,6 +245,10 @@ bool ValueIsNum(Value* value) {
 
 bool ValueIsBigNum(Value* value) {
     return value->Type == VLT_BNUM || value->Type == VLT_BINT;
+}
+
+bool ValueIsAnyNum(Value* value) {
+    return ValueIsNum(value) || ValueIsBigNum(value) || ValueIsBigNum(value) || ValueIsBigInt(value);
 }
 
 bool ValueIsStr(Value* value) {

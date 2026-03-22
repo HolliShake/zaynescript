@@ -58,6 +58,12 @@
  */
 #define CONSTRUCTOR_NAME "init"
 
+#define PREC_INT 0
+
+#define PREC_DBL 53
+
+#define PREC_NUM(len) (uint64_t)len * LIMB_BITS
+
 /**
  * @def Panic
  * @brief Prints an error message and terminates the program.
@@ -872,6 +878,27 @@ long CoerceToI64(Value* value);
  * @return The double representation.
  */
 double CoerceToNum(Value* value);
+
+/**
+ * @brief Coerces a value to a big integer (bf_t).
+ * 
+ * Converts a runtime value to a big integer, performing type conversion
+ * as necessary. Behavior depends on the value's type. Uses the libbf
+ * library for big integer representation.
+ * 
+ * @param interp Pointer to the interpreter instance.
+ * @param value The value to coerce.
+ * @return Pointer to the big integer representation.
+ */
+bf_t* CoerceToBitField(Interpreter* interp, Value* value);
+
+/**
+ * @brief Gets the precession (number of decimal places) for a big numeric value.
+ * 
+ * @param value The big numeric value.
+ * @return The precession.
+ */
+limb_t BFPrecession(Value* value);
 
 /**
  * @brief Coerces a value to a boolean.

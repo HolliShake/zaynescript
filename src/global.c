@@ -129,6 +129,50 @@ double CoerceToNum(Value* value) {
     }
 }
 
+bf_t* CoerceToBitField(Interpreter* interp, Value* value) {
+    switch (value->Type) {
+        case VLT_INT: {
+            bf_t* bf = Allocate(sizeof(bf_t));
+            bf_init(&interp->BfContext, bf);
+            bf_set_si(bf, (long) value->Value.I32);
+            return bf;
+        }
+        case VLT_NUM: {
+            bf_t* bf = Allocate(sizeof(bf_t));
+            bf_init(&interp->BfContext, bf);
+            bf_set_float64(bf, value->Value.Num);
+            return bf;
+        }
+        case VLT_BINT:
+        case VLT_BNUM: {
+            return (bf_t*) value->Value.Opaque;
+        }
+        default: return NULL;
+    }
+}
+
+limb_t BFPrecession(Value* value) {
+    switch (value->Type) {
+        case VLT_INT:
+            return PREC_INT;
+        case VLT_NUM:
+            return PREC_DBL;
+        case VLT_BINT: {
+            bf_t* bf = (bf_t*) value->Value.Opaque;
+            return bf->expn == 0 
+                ? PREC_INT 
+                : PREC_NUM(bf->len);
+        }
+        case VLT_BNUM: {
+            bf_t* bf = (bf_t*) value->Value.Opaque;
+            return bf->expn == 0 
+                ? PREC_INT 
+                : PREC_NUM(bf->len);
+        }
+        default: return 0;
+    }
+}
+
 bool CoerceToBool(Value* value) {
     switch (value->Type) {
         case VLT_ERROR:
@@ -377,11 +421,21 @@ String FormatString(String format, ...) {
 }
 
 String BFIntToString(bf_t* value) {
-    String str = bf_ftoa(NULL, value, 10, 0, BF_RNDZ | BF_FTOA_FORMAT_FRAC);
-    return str;
+    String str = bf_ftoa(NULL, value, 10, PREC_INT, BF_RNDZ | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
+    if (str == NULL) {
+        Panic("Failed to convert big integer to string");
+    }
+    String formattedStr = FormatString("%sn", str);
+    free(str);
+    return formattedStr;
 }
 
 String BFNumToString(bf_t* value) {
-    String str = bf_ftoa(NULL, value, 10, 17, BF_RNDZ | BF_FTOA_FORMAT_FREE_MIN | BF_FTOA_JS_QUIRKS);
-    return str;
+    String str = bf_ftoa(NULL, value, 10, PREC_NUM(value->len), BF_RNDZ | BF_FTOA_FORMAT_FREE_MIN | BF_FTOA_JS_QUIRKS);
+    if (str == NULL) {
+        Panic("Failed to convert big number to string");
+    }
+    String formattedStr = FormatString("%sn", str);
+    free(str);
+    return formattedStr;
 }

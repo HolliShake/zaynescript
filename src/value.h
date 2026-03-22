@@ -66,6 +66,15 @@ Value* NewBigNumValue(Interpreter* interpreter, bf_t* value);
  * @param value The string to store
  * @return Pointer to newly allocated Value structure containing the string
  */
+bool ValueIsAnyNum(Value* value);
+
+/**
+ * @brief Creates a new string value
+ * 
+ * @param interpreter Pointer to the interpreter instance
+ * @param value The string to store
+ * @return Pointer to newly allocated Value structure containing the string
+ */
 Value* NewStrValue(Interpreter* interpreter, String value);
 
 /**
