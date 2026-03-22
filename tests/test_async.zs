@@ -46,4 +46,4 @@ println(xl);
 println(xl);
 
 
-println(!!110n, !!0n);
+println(!!110n, !!0n, [1,2,3,4][2n], "World"[1n]);

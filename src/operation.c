@@ -148,7 +148,7 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* index, bool f
         // Handle array methods or attributes
         Array* array = CoerceToArray(obj);
 
-        if (ValueIsNum(index)) {
+        if (ValueIsAnyNum(index)) {
             long idx = (long) CoerceToI64(index);
             if (idx < 0 || idx >= array->Count) {
                 free(key);
@@ -235,11 +235,29 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* index, bool f
             return member;
         }
     } else if (ValueIsStr(obj)) {
-        Rune* rne  = (Rune*) obj->Value.Opaque;
+        Rune* rne = (Rune*) obj->Value.Opaque;
+        String st = ValueToString(obj);
+        size_t ln = utf_length(st);
+        free(st);
+        if (!ValueIsAnyNum(index)) {
+            free(key);
+            String errMsg = FormatString("%s: string indices must be integers, not %s", TYPE_ERROR, ValueTypeOf(index));
+            Value* errVal = NewErrorValue(interp, errMsg);
+            free(errMsg);
+            return errVal;
+        }
         long idx   = CoerceToI64(index);
-        String str =  utf_rune_to_string(rne[idx]);
+        if (idx < 0 || idx >= ln) {
+            free(key);
+            String errMsg = FormatString("%s: string index %ld out of bounds", INDEX_ERROR, idx);
+            Value* errVal = NewErrorValue(interp, errMsg);
+            free(errMsg);
+            return errVal;
+        }
+        String str = utf_rune_to_string(rne[idx]);
         Value* val = NewStrValue(interp, str);
         free(key);
+        free(str);
         return val;
     }
     free(key);
