@@ -35,4 +35,15 @@ println([1,2,3,4,5,6,7,8,9].keep(fn(i, e) {
 println(Array, getUser(), getType());
 
 println(10.56n, 2.2e2n);
-println(100n + 2n, 5n / 2n, 5n * 5n, 1 << 2n, 4n >> 2, 3 > 2n);
+println(100n + 2n, 5n / 2n, 5n * 5n, 1 << 2n, 4n >> 2, 3 > 2n, 3 == 3);
+
+
+var xl = 100n;
+xl++;
+
+println(xl);
+--xl;
+println(xl);
+
+
+println(!!110n, !!0n);

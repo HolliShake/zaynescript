@@ -179,6 +179,10 @@ bool CoerceToBool(Value* value) {
             return false;
         case VLT_INT:
             return value->Value.I32 != 0;
+        case VLT_BINT:
+            return !bf_is_zero((bf_t*) value->Value.Opaque);
+        case VLT_BNUM:
+            return !bf_is_zero((bf_t*) value->Value.Opaque);
         case VLT_NUM:
             return value->Value.Num != 0.0;
         case VLT_STR:

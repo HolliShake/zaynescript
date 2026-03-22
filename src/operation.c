@@ -448,6 +448,15 @@ Value* DoPos(Interpreter* interp, Value* val) {
         return NewIntValue(interp, +CoerceToI32(val));
     } else if (ValueIsNum(val)) {
         return NewNumValue(interp, +CoerceToNum(val));
+    } else if (ValueIsAnyNum(val)) {
+        bf_t* resNum = Allocate(sizeof(bf_t));
+        bf_init(&interp->BfContext, resNum);
+        bf_set(resNum, CoerceToBitField(interp, val));
+        // unary + is a no-op, just copy
+        int prec = BFPrecession(val);
+        return prec == PREC_INT
+            ? NewBigIntValue(interp, resNum)
+            : NewBigNumValue(interp, resNum);
     } else {
         String errMsg = FormatString("%s: invalid operand for operator (+): %s", TYPE_ERROR, ValueTypeOf(val));
         Value* errVal = NewErrorValue(interp, errMsg);
@@ -461,6 +470,15 @@ Value* DoNeg(Interpreter* interp, Value* val) {
         return NewIntValue(interp, -CoerceToI32(val));
     } else if (ValueIsNum(val)) {
         return NewNumValue(interp, -CoerceToNum(val));
+    } else if (ValueIsAnyNum(val)) {
+        bf_t* resNum = Allocate(sizeof(bf_t));
+        bf_init(&interp->BfContext, resNum);
+        bf_set(resNum, CoerceToBitField(interp, val));
+        bf_neg(resNum); // flip sign bit
+        int prec = BFPrecession(val);
+        return prec == PREC_INT
+            ? NewBigIntValue(interp, resNum)
+            : NewBigNumValue(interp, resNum);
     } else {
         String errMsg = FormatString("%s: invalid operand for operator (-): %s", TYPE_ERROR, ValueTypeOf(val));
         Value* errVal = NewErrorValue(interp, errMsg);
@@ -597,6 +615,15 @@ Value* DoInc(Interpreter* interp, Value* val) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else if (ValueIsAnyNum(val)) {
+        bf_t* resNum = Allocate(sizeof(bf_t));
+        bf_init(&interp->BfContext, resNum);
+        bf_set(resNum, CoerceToBitField(interp, val));
+        bf_add_si(resNum, resNum, 1, BF_PREC_INF, BF_RNDZ | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
+        int prec = BFPrecession(val);
+        return prec == PREC_INT
+            ? NewBigIntValue(interp, resNum)
+            : NewBigNumValue(interp, resNum);
     } else {
         String errMsg = FormatString(
             "%s: invalid operand for operator (++): %s", TYPE_ERROR, ValueTypeOf(val)
@@ -671,6 +698,15 @@ Value* DoDec(Interpreter* interp, Value* val) {
         result = (resultNum == (int)resultNum && resultNum <= INT_MAX && resultNum >= INT_MIN)
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
+    } else if (ValueIsAnyNum(val)) {
+        bf_t* resNum = Allocate(sizeof(bf_t));
+        bf_init(&interp->BfContext, resNum);
+        bf_set(resNum, CoerceToBitField(interp, val));
+        bf_add_si(resNum, resNum, -1, BF_PREC_INF, BF_RNDZ | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
+        int prec = BFPrecession(val);
+        return prec == PREC_INT
+            ? NewBigIntValue(interp, resNum)
+            : NewBigNumValue(interp, resNum);
     } else {
         String errMsg = FormatString(
             "%s: invalid operand for operator (--): %s", TYPE_ERROR, ValueTypeOf(val)
