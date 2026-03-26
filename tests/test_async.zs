@@ -21,3 +21,15 @@ fn callMe() async {
 println(callMe());
 println("AUTO");
 println(callMe());
+
+fn awaitable() async {
+    return "Hola!";
+}
+
+const v = awaitable()
+    .then(fn(v) {
+        println(">>>>>>>>>>>>>>> From then", v);
+        return v;
+    });
+
+println(">>", v);

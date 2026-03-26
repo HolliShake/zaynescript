@@ -3,6 +3,7 @@
 StateMachine* CreateStateMachine(StateMachineState initial, size_t ip, size_t stack, Value* env, Value* promise, Value* function, Value* thenCallback, Value* catchCallback) {
     StateMachine* sm = Allocate(sizeof(StateMachine));
     sm->State        = initial;
+    sm->IsCallback   = false;
     sm->CallEnv      = env;
     sm->WaitFor      = promise;
     sm->Value        = NULL;
@@ -10,7 +11,6 @@ StateMachine* CreateStateMachine(StateMachineState initial, size_t ip, size_t st
     sm->Catch        = catchCallback;
     sm->Function     = function;
     sm->Ip           = ip;
-    sm->Stack        = stack;
     sm->WaitListC    = 0;
     sm->WaitList     = Allocate(sizeof(Value*)), sm->WaitList[0] = NULL; // initial capacity for wait list
     return sm;
@@ -28,4 +28,10 @@ void StateMachineAddWaitList(StateMachine* stateMachine, Value* value) {
     stateMachine->WaitList[stateMachine->WaitListC++] = value;
     stateMachine->WaitList = Reallocate(stateMachine->WaitList, sizeof(Value*) * (stateMachine->WaitListC + 1));
     stateMachine->WaitList[stateMachine->WaitListC] = NULL; // keep NULL-terminated
+}
+
+
+void FreeStateMachine(StateMachine* sm) {
+    free(sm->WaitList);
+    free(sm);
 }

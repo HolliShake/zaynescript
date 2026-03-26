@@ -695,6 +695,7 @@ struct interpreter_struct {
     bf_context_t BfContext;                              /**< Context for the libbf library (memory management, etc.) */
     HashMap*     Imports;                                /**< Imports map */
     Value*       Array;                                  /**< Built-in Array class */
+    Value*       Promise;                                /**< Built-in Promise class */
     Value*       True;                                   /**< Singleton 'true' value */
     Value*       False;                                  /**< Singleton 'false' value */
     Value*       Null;                                   /**< Singleton 'null' value */
@@ -769,6 +770,7 @@ typedef enum state_machine_state_enum {
  */
 typedef struct state_machine_struct {
     StateMachineState State;
+    bool              IsCallback;
     Value*            CallEnv;
     Value*            WaitFor;
     Value*            Value;
@@ -776,7 +778,6 @@ typedef struct state_machine_struct {
     Value*            Catch;
     Value*            Function;
     size_t            Ip;
-    size_t            Stack;
     Value**           WaitList;
     size_t            WaitListC;
 } StateMachine;

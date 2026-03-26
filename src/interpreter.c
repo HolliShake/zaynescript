@@ -19,6 +19,7 @@ Interpreter* CreateInterpreter() {
     interpreter->RootEnv                    = NULL;
     interpreter->CallEnv                    = NULL;
     interpreter->Array                      = CreateArrayClass(interpreter);
+    interpreter->Promise                    = CreatePromiseClass(interpreter);
     interpreter->True                       = NewBoolValue(interpreter, 1);
     interpreter->False                      = NewBoolValue(interpreter, 0);
     interpreter->Null                       = NewNullValue(interpreter);
@@ -999,11 +1000,20 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
     // Consume all remaining tasks in the task queue (e.g. pending promises) before exiting the program
     Value* task = NULL;
     while ((task = _DequeueTask(interpreter)) != NULL) {
+        // Awaited
         StateMachine* sm = CoerceToStateMachine(task);
-        SaveEnv(interpreter, sm->CallEnv);
-        Run(interpreter, task);
-        Popp();
-        RestoreEnv(interpreter);
+        if (!sm->IsCallback) {
+            SaveEnv(interpreter, sm->CallEnv);
+            Run(interpreter, task);
+            Popp();
+            RestoreEnv(interpreter);
+        } else {
+            Push(sm->Value);
+            SaveEnv(interpreter, sm->CallEnv);
+            Run(interpreter, task);
+            Popp();
+            RestoreEnv(interpreter);
+        }
     }
 
     interpreter->RootEnv = saveGbl;

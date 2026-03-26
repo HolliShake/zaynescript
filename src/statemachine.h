@@ -10,4 +10,6 @@ void StateMachineSet(StateMachine* stateMachine, StateMachineState newState, siz
 
 void StateMachineAddWaitList(StateMachine* stateMachine, Value* value);
 
+void FreeStateMachine(StateMachine* sm);
+
 #endif

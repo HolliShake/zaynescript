@@ -78,7 +78,20 @@ void RestoreNthEnvAndSync(Interpreter* interp, int n) {
 
 bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
     String key = ValueToString(method);
-    if (ValueIsArray(obj)) {
+    if (ValueIsPromise(obj)) {
+        // Handle Promise methods or attributes
+        Class* cls = CoerceToUserClass(interp->Promise);
+
+        while (cls != NULL) {
+            if (ClassHasMember(cls, key, false, true)) {
+                free(key);
+                return true;
+            }
+            if (cls->Base == NULL) break;
+            cls = CoerceToUserClass(cls->Base);
+        }
+
+    } else if (ValueIsArray(obj)) {
         // Handle array methods or attributes
         Array* array = CoerceToArray(obj);
 
@@ -144,7 +157,21 @@ bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method) {
 
 Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* index, bool forMethodCall) {
     String key = ValueToString(index);
-    if (ValueIsArray(obj)) {
+    if (ValueIsPromise(obj)) {
+        // Handle Promise methods or attributes
+        Class* cls = CoerceToUserClass(interp->Promise);
+
+        while (cls != NULL) {
+            if (ClassHasMember(cls, key, false, forMethodCall)) {
+                Value* member = ClassGetMember(cls, key, false);
+                free(key);
+                return member;
+            }
+            if (cls->Base == NULL) break;
+            cls = CoerceToUserClass(cls->Base);
+        }
+
+    } else if (ValueIsArray(obj)) {
         // Handle array methods or attributes
         Array* array = CoerceToArray(obj);
 

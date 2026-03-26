@@ -121,8 +121,7 @@ static void _Free(Interpreter* interp, Value* value) {
         }
         case VLT_PROMISE: {
             StateMachine* sm = CoerceToStateMachine(value);
-            free(sm->WaitList);
-            free(sm);
+            FreeStateMachine(sm);
             value->Value.Opaque = NULL;
             break;
         }
