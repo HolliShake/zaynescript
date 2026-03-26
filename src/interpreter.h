@@ -17,6 +17,7 @@
 #include "./global.h"
 #include "./operation.h"
 #include "./parser.h"
+#include "./statemachine.h"
 #include "./value.h"
 
 #ifndef INTERPRETER_H

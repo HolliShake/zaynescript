@@ -66,15 +66,6 @@ Value* NewBigNumValue(Interpreter* interpreter, bf_t* value);
  * @param value The string to store
  * @return Pointer to newly allocated Value structure containing the string
  */
-bool ValueIsAnyNum(Value* value);
-
-/**
- * @brief Creates a new string value
- * 
- * @param interpreter Pointer to the interpreter instance
- * @param value The string to store
- * @return Pointer to newly allocated Value structure containing the string
- */
 Value* NewStrValue(Interpreter* interpreter, String value);
 
 /**
@@ -93,6 +84,15 @@ Value* NewBoolValue(Interpreter* interpreter, int value);
  * @return Pointer to newly allocated Value structure representing null
  */
 Value* NewNullValue(Interpreter* interpreter);
+
+/**
+ * @brief Creates a new promise value
+ * 
+ * @param interpreter Pointer to the interpreter instance
+ * @param stateMachine Pointer to the StateMachine structure representing the promise's execution state
+ * @return Pointer to newly allocated Value structure representing a promise
+ */
+Value* NewPromiseValue(Interpreter* interpreter, StateMachine* stateMachine);
 
 /**
  * @brief Creates a new user function value
@@ -204,6 +204,15 @@ bool ValueIsNum(Value* value);
 bool ValueIsBigNum(Value* value);
 
 /**
+ * @brief Creates a new string value
+ * 
+ * @param interpreter Pointer to the interpreter instance
+ * @param value The string to store
+ * @return Pointer to newly allocated Value structure containing the string
+ */
+bool ValueIsAnyNum(Value* value);
+
+/**
  * @brief Checks if a value is a string type
  * 
  * @param value Pointer to the Value to check
@@ -290,6 +299,14 @@ bool ValueIsClass(Value* value);
  * @return true if the value is a class instance, false otherwise
  */
 bool ValueIsClassInstance(Value* value);
+
+/**
+ * @brief Checks if a value is a promise
+ * 
+ * @param value Pointer to the Value to check
+ * @return true if the value is a promise, false otherwise
+ */
+bool ValueIsPromise(Value* value);
 
 /**
  * @brief Compares two values for equality

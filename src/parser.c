@@ -553,6 +553,34 @@ static Ast* _Unary(Parser* parser) {
         free(op);
 
         return node;
+    } else if (CHECKTV(KEY_AWAIT))  {
+        ACCEPTV_FREE(KEY_AWAIT);
+
+        Ast* operand = _Unary(parser);
+
+        if (operand == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                parser->Next.Position, 
+                "expected an expression"
+            );
+        }
+
+        if (operand->Type != AST_CALL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                operand->Position, 
+                "await can only be applied to function calls"
+            );
+        }
+
+        return AstSingle(
+            AST_AWAIT,
+            operand, 
+            MergePositions(operand->Position, operand->Position)
+        );
     }
 
     return _Postfix(parser);

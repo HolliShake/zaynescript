@@ -393,7 +393,7 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
 
     if (!ValueIsCallable(fn)) {
         _PopN(argc);
-        return NewErrorFValue(interp, "%s: invalid operation: attempted to call a non-callable value", TYPE_ERROR);
+        return NewErrorFValue(interp, "%s: invalid operation: attempted to call a non-callable value (%s)", TYPE_ERROR, ValueToString(fn));
     }
 
     if (ValueIsNativeFunction(fn)) {

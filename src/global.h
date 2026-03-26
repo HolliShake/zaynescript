@@ -274,6 +274,7 @@ typedef enum ast_type_enum {
     AST_LOGICAL_NOT, /**< Logical NOT (!) */
     AST_PRE_INC,     /**< Pre-increment (++i) */
     AST_PRE_DEC,     /**< Pre-decrement (--i) */
+    AST_AWAIT,       /**< Await expression (await promise) */
     // Binary Operators
     AST_MUL,          /**< Multiplication (*) */
     AST_DIV,          /**< Division (/) */
@@ -349,6 +350,7 @@ typedef enum value_type_enum {
     VLT_STR,            /**< String value */
     VLT_BOOL,           /**< Boolean value */
     VLT_NULL,           /**< Null value */
+    VLT_PROMISE,        /**< Promise value */
     VLT_ARRAY,          /**< Array value */
     VLT_OBJECT,         /**< Object value */
     VLT_CLASS,          /**< Class definition value */
@@ -421,6 +423,8 @@ typedef enum opcode_enum {
     OP_NOT,                          /**< Logical NOT */
     OP_POS,                          /**< Unary plus */
     OP_NEG,                          /**< Unary minus */
+    OP_AWAIT,                        /**< Await a promise */
+    OP_GET_AWAITED_VALUE,            /**< Get the awaited value */
     OP_MUL,                          /**< Multiply */
     OP_DIV,                          /**< Divide */
     OP_MOD,                          /**< Modulo */
@@ -709,6 +713,8 @@ struct interpreter_struct {
     int          ExceptionHandlerStacks[STACK_SIZE];     /**< Stack for exception handlers */
     int          ExceptionHandlerStackC;                 /**< Exception handler stack pointer */
     int          GcThreshold;                            /**< Threshold for triggering garbage collection */
+    Value*       TaskQueue[STACK_SIZE];                  /**< Queue for pending tasks (e.g. resolved promises) */
+    int          TaskQueueC;                             /**< Count of pending tasks in the task queue */
 };
 
 /**
@@ -723,6 +729,57 @@ typedef struct compiler_struct {
     String       ModulePath;  /**< Path to the module */
     Parser*      Parser;      /**< Pointer to the parser */
 } Compiler;
+
+/**
+ * @enum StateMachineState
+ * @brief Enumeration representing the possible states of a state machine.
+ * 
+ * @var PENDING
+ *      State indicating that the operation is still in progress.
+ * @var COMPLETE
+ *      State indicating that the operation has completed successfully.
+ * @var REJECTED
+ *      State indicating that the operation has failed or been rejected.
+ */
+typedef enum state_machine_state_enum {
+    PENDING,
+    WAITING,
+    CONTINUING,
+    FULFILLED,
+    REJECTED,
+} StateMachineState;
+
+/**
+ * @struct StateMachine
+ * @brief Represents a state machine for managing asynchronous operations.
+ * 
+ * @var StateMachine::State
+ *      The current state of the state machine (PENDING, COMPLETE, or REJECTED).
+ * @var StateMachine::WaitFor
+ *     Pointer to a value that the state machine is waiting on (e.g. a promise).
+ * @var StateMachine::Value
+ *      Pointer to the resulting value produced by the state machine operation.
+ * @var StateMachine::Then
+ *      Pointer to a callback value to be executed upon successful completion.
+ * @var StateMachine::Catch
+ *      Pointer to a callback value to be executed upon rejection or error.
+ * @var StateMachine::Function
+ *      Pointer to the primary function or operation being executed by the state machine.
+ * @var StateMachine::Ip
+ *      Instruction pointer; tracks the execution position within the state machine.
+ */
+typedef struct state_machine_struct {
+    StateMachineState State;
+    Value*            CallEnv;
+    Value*            WaitFor;
+    Value*            Value;
+    Value*            Then;
+    Value*            Catch;
+    Value*            Function;
+    size_t            Ip;
+    size_t            Stack;
+    bool              Awaited;
+} StateMachine;
 
 // -----------------------------------------------------------------------------
 // Memory Allocation & Utilities
@@ -990,6 +1047,18 @@ Class* CoerceToUserClass(Value* value);
  * @return Pointer to the ClassInstance.
  */
 ClassInstance* CoerceToClassInstance(Value* value);
+
+/**
+ * @brief Coerces a value to a StateMachine.
+ * 
+ * Extracts the StateMachine pointer from a value. The value must be
+ * of type VLT_CLASS_INSTANCE and its prototype must be the built-in
+ * StateMachine class.
+ * 
+ * @param value The value to coerce.
+ * @return Pointer to the StateMachine.
+ */
+StateMachine* CoerceToStateMachine(Value* value);
 
 // Error Handling
 

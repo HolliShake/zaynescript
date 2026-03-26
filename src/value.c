@@ -75,6 +75,12 @@ Value* NewNullValue(Interpreter* interpreter) {
     return v;
 }
 
+Value* NewPromiseValue(Interpreter* interpreter, StateMachine* stateMachine) {
+    Value* v = _CreateValue(interpreter, VLT_PROMISE);
+    v->Value.Opaque = stateMachine;
+    return v;
+}
+
 Value* NewUserFunctionValue(Interpreter* interpreter, UserFunction* userFunction) {
     Value* v = _CreateValue(interpreter, VLT_USER_FUNCTION);
     v->Value.Opaque = userFunction;
@@ -182,11 +188,24 @@ String ValueToString(Value* value) {
         case VLT_OBJECT:
             return HashMapToString(CoerceToHashMap(value));
         case VLT_CLASS:
-            return FormatString("<class.%s />", CoerceToUserClass(value)->Name);
+            return FormatString("<Class.%s />", CoerceToUserClass(value)->Name);
         case VLT_CLASS_INSTANCE:
             return ClassInstanceToString(CoerceToClassInstance(value));
         case VLT_NATV_FUNCTION:
             return NativeFunctionMetaToString(CoerceToNativeFunction(value));
+        case VLT_PROMISE: {
+            StateMachine* sm = CoerceToStateMachine(value);
+            switch (sm->State) {
+                case PENDING:
+                    return AllocateString("<Promise.PENDING />");
+                case FULFILLED:
+                    return FormatString("<Promise.FULFILLED {%s} />", ValueToString(sm->Value));
+                case REJECTED:
+                    return FormatString("<Promise.REJECTED {%s} />", ValueToString(sm->Value));
+                default:
+                    return AllocateString("<Promise.UNKNOWN />");
+            }
+        }
         default:
             return AllocateString("unknown");
     }
@@ -195,39 +214,42 @@ String ValueToString(Value* value) {
 String ValueTypeOf(Value* value) {
     switch (value->Type) {
         case VLT_ERROR:
-            return "error";
+            return "Error";
         case VLT_INT:
-            return "int";
+            return "Int";
         case VLT_BINT:
             return "BigInt";
         case VLT_NUM:
-            return "num";
+            return "Number";
         case VLT_BNUM:
             return "BigNum";
         case VLT_STR:
-            return "str";
+            return "String";
         case VLT_BOOL:
-            return "bool";
+            return "Bool";
         case VLT_NULL:
-            return "null";
+            return "Null";
         case VLT_USER_FUNCTION:
-            return "function";
+            return "Function";
         case VLT_NATV_FUNCTION:
-            return "native function";
+            return "Native Function";
         case VLT_ENVIRONMENT:
-            return "environment";
+            return "Environment";
         case VLT_ARRAY:
-            return "array";
+            return "Array";
         case VLT_OBJECT:
-            return "object";
+            return "Object";
         case VLT_CLASS:
-            return "class";
+            return "Class";
         case VLT_CLASS_INSTANCE: {
             ClassInstance* cls = CoerceToClassInstance(value);
             return CoerceToUserClass(cls->Proto)->Name;
         }
+        case VLT_PROMISE: {
+            return "Promise";
+        }
         default:
-            return "unknown";
+            return "Unknown";
     }
 }
 
@@ -293,6 +315,10 @@ bool ValueIsClass(Value* value) {
 
 bool ValueIsClassInstance(Value* value) {
     return value->Type == VLT_CLASS_INSTANCE;
+}
+
+bool ValueIsPromise(Value* value) {
+    return value->Type == VLT_PROMISE;
 }
 
 bool ValueIsEqual(Value* a, Value* b) {

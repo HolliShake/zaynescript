@@ -53,7 +53,29 @@
 
 ## Building
 
-To build ZayneScript, you need a C compiler (like GCC).
+To build ZayneScript, you need a C compiler (GCC) and GNU Make.
+
+### Linux / macOS — using Make (recommended)
+
+```bash
+# Debug build (default)
+make
+
+# Release build (optimised, no debug symbols)
+make release
+
+# Build and run immediately
+make run
+
+# Remove the compiled binary
+make clean
+```
+
+### Linux / macOS — manual GCC
+
+```bash
+gcc -O3 -DNDEBUG -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c ./libbf/*.c -o zscript.exe -lm -ldl -lpthread
+```
 
 ### Windows (using MinGW/GCC)
 
@@ -66,13 +88,7 @@ You can use the provided `run.bat` script:
 Or run the GCC command manually:
 
 ```bash
-gcc -O3 -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c -o zscript.exe -lm
-```
-
-### Linux / macOS
-
-```bash
-gcc -O3 -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c -o zscript -lm -ldl -lpthread
+gcc -O3 -DNDEBUG -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c ./libbf/*.c -o zscript.exe -lm
 ```
 
 ## Usage

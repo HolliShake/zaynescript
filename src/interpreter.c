@@ -35,6 +35,8 @@ Interpreter* CreateInterpreter() {
     // interpreter->ExceptionHandlerStacks[STACK_SIZE];
     interpreter->ExceptionHandlerStackC     = 0;
     interpreter->GcThreshold                = GC_THRESHOLD;
+    // interpreter->TaskQueue[STACK_SIZE];
+    interpreter->TaskQueueC                = 0;
     return interpreter;
 }
 
@@ -43,6 +45,7 @@ Interpreter* CreateInterpreter() {
 #define PopN(n)     (interpreter->Stacks[interpreter->StackC -= (n)])
 #define Peek()      (interpreter->Stacks[interpreter->StackC - 1])
 #define PeekAt(n)   (interpreter->Stacks[interpreter->StackC - n])
+#define RestoreStack(n) (interpreter->StackC = (n))
 
 #define SetVar(envObj, offset, value) EnvironmentSetLocal(CoerceToEnvironment(envObj), offset, value)
 #define GetVar(envObj, offset) EnvironmentGetLocal(CoerceToEnvironment(envObj), offset)->Value
@@ -225,9 +228,27 @@ static void _TypeError(Interpreter* interpreter, UserFunction* uf, size_t* ip, S
     _Error(interpreter, uf, ip, TYPE_ERROR, message);
 }
 
+/******* Task Queue Management */
+static void _EnqueueTask(Interpreter* interpreter, Value* task) {
+    if (interpreter->TaskQueueC >= STACK_SIZE) {
+        InterpreterPanic("Task queue overflow");
+    }
+    interpreter->TaskQueue[interpreter->TaskQueueC++] = task;
+}
+
+static Value* _DequeueTask(Interpreter* interpreter) {
+    if (interpreter->TaskQueueC == 0) {
+        return NULL;
+    }
+    Value* task = interpreter->TaskQueue[0];
+    memmove(interpreter->TaskQueue, interpreter->TaskQueue + 1, sizeof(Value*) * (--interpreter->TaskQueueC));
+    return task;
+}
+
 /******* Main interpreter loop */
 void Run(Interpreter* interpreter, Value* fnValue) {
-    UserFunction* uf = CoerceToUserFunction(fnValue);
+    StateMachine* sm = NULL;
+    UserFunction* uf = ValueIsUserFunction(fnValue) ? CoerceToUserFunction(fnValue) : NULL;
     uint8_t opcode   = 0;
     Value* lhs       = NULL;
     Value* rhs       = NULL;
@@ -249,6 +270,24 @@ void Run(Interpreter* interpreter, Value* fnValue) {
     int size         = 0;
     bool catched     = false;
     String str       = NULL;
+
+    if (uf != NULL && uf->Async) {
+        sm = CreateStateMachine(
+            /*Status   */ PENDING,
+            /*Ip       */ 0,
+            /*StackC   */ interpreter->StackC,
+            /*Env      */ interpreter->CallEnv,
+            /*WaitFor  */ NULL,
+            /*Function */ fnValue,
+            /*Then     */ NULL,
+            /*Catch    */ NULL
+        );
+        fnValue = NewPromiseValue(interpreter, sm);
+    } else if (ValueIsPromise(fnValue)) {
+        sm = CoerceToStateMachine(fnValue);
+        uf = CoerceToUserFunction(sm->Function);
+        ip = sm->Ip;
+    }
  
     #define Forward(size) (ip += size)
     #define JmpFrwd(addr) (ip  = addr)
@@ -416,8 +455,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
             }
             case OP_CLASS_MAKE: {
                 str = _ReadString(uf->Codes, ip);
-                //NOTE: memory leak (AllocateString creates a char* string passed to CreateUserClass. CreateUserClass duplicates this string for its own storage, so the first allocation is leaked)
-                obj = NewClassValue(interpreter, CreateUserClass(AllocateString(str), NULL));
+                obj = NewClassValue(interpreter, CreateUserClass(str, NULL));
                 Push(obj);
                 Forward(strlen(str) + 1);
                 free(str);
@@ -527,6 +565,19 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                     break;
                 }
                 Push(res);
+                break;
+            }
+            case OP_AWAIT: {
+                if (!ValueIsPromise(Peek())) break;
+                val = Popp();
+                CoerceToStateMachine(val)->Awaited = true;
+                StateMachineSet(sm, PENDING, ip, interpreter->CallEnv, val, NULL);
+                _EnqueueTask(interpreter, fnValue);
+                Push(fnValue);
+                return;
+            }
+            case OP_GET_AWAITED_VALUE: {
+                Push(CoerceToStateMachine(sm->WaitFor)->Value);
                 break;
             }
             case OP_MUL: {
@@ -888,10 +939,15 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 break;
             }
             case OP_RETURN: {
+                if (uf->Async) {
+                    val = Popp();
+                    StateMachineSet(sm, FULFILLED, 0, NULL, NULL, val);
+                    Push(fnValue);
+                }
                 return;
             }
             default: {
-                Panic("Unknown opcode: %s, %d %d\n", uf->Name != NULL ? uf->Name : "<anonymous>", opcode, OP_LOAD_NAME);
+                InterpreterPanic("Unknown opcode: %s, %d %d\n", uf->Name != NULL ? uf->Name : "<anonymous>", opcode, OP_LOAD_NAME);
                 return;
             }
         }
@@ -905,8 +961,20 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
     SaveRootEnv(interpreter, env);
     Run(interpreter, fnValue);
     RestoreEnv(interpreter);
+
+    // Consume all remaining tasks in the task queue (e.g. pending promises) before exiting the program
+    Value* task = NULL;
+    while ((task = _DequeueTask(interpreter)) != NULL) {
+        StateMachine* sm = CoerceToStateMachine(task);
+        SaveEnv(interpreter, sm->CallEnv);
+        Run(interpreter, task);
+        Popp();
+        RestoreEnv(interpreter);
+    }
+
     interpreter->RootEnv = saveGbl;
     if (interpreter->StackC != 1) {
+        DumpStack();
         InterpreterPanic(
             "internal error: stack not cleaned up after function '%s' execution, expected 1 value on stack but got %d values", 
             uf->Name != NULL ? uf->Name : "<anonymous>", 

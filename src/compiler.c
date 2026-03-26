@@ -748,6 +748,14 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             _AssignOpLhs(compiler, uf, scope, node->A, false);
             break;
         }
+        case AST_AWAIT: {
+            _Expression(compiler, uf, scope, node->A);
+            _EmitLine(compiler, uf, node->Position);
+            _Emit(compiler, uf, OP_AWAIT);
+            _EmitLine(compiler, uf, node->Position);
+            _Emit(compiler, uf, OP_GET_AWAITED_VALUE);
+            break;
+        }
         case AST_MUL: {
             if (_IsAstConstant(compiler, node)) {
                 lhs = _Expression(compiler, uf, scope, node->A);

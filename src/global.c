@@ -285,6 +285,14 @@ ClassInstance* CoerceToClassInstance(Value* value) {
     Panic("Value is not a ClassInstance");
 }
 
+StateMachine* CoerceToStateMachine(Value* value) {
+    if (value == NULL) return NULL;
+    if (value->Type == VLT_PROMISE) {
+        return (StateMachine*) value->Value.Opaque;
+    }
+    Panic("Value is not a Promise/StateMachine");
+}
+
 String GetErrorLine(String path, Rune* runes, Position position, String message) {
     if (runes == NULL) {
         return NULL;
