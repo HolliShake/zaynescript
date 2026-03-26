@@ -266,8 +266,7 @@ String HashMapToString(HashMap* hashmap) {
             strcat(result, "\"");
             strcat(result, node->Key);
             strcat(result, "\": ");
-            //NOTE: memory leak (ValueToString returns a new string that is not freed)
-            strcat(result, ValueToString(node->Val));
+            strcat(result, node->Val);
             first = false;
             node = node->Next;
         }
