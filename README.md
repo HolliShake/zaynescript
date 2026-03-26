@@ -165,7 +165,7 @@ println(add5(10)); // 15
 
 #### Async Functions
 
-The `async` keyword is placed **after** the parameter list:
+The `async` keyword is placed **after** the parameter list. Calling an async function returns a **Promise** immediately; use `await` inside another async function to wait for the result.
 
 ```javascript
 fn fetchData() async {
@@ -176,6 +176,45 @@ fn fetchData() async {
 const task = fn() async {
     return "done";
 };
+```
+
+Use `await` to suspend the current async function until the awaited promise resolves:
+
+```javascript
+fn topLevel() async {
+    return "Hello";
+}
+
+fn callMe() async {
+    println(await topLevel()); // Hello
+    println(await topLevel()); // Hello
+    return 1;
+}
+
+println(callMe()); // <Promise>
+```
+
+#### Promise Chaining (`.then`)
+
+Promises expose a `.then(callback)` method for chaining reactions without `await`. Each `.then` receives the resolved value of the previous step and its return value becomes the next promise in the chain:
+
+```javascript
+fn awaitable() async {
+    return "Hola!";
+}
+
+const v = awaitable()
+    .then(fn(v) {
+        println("resolved with:", v); // resolved with: Hola!
+        return 42;
+    })
+    .then(fn(v) {
+        println("chained value:", v); // chained value: 42
+        return "done";
+    })
+    .then(println); // done
+
+println(v); // <Promise>
 ```
 
 ### Operators

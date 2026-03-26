@@ -295,14 +295,12 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 
     if (uf != NULL && uf->Async) {
         sm = CreateStateMachine(
-            /*Status   */ PENDING,
-            /*Ip       */ 0,
-            /*StackC   */ interpreter->StackC,
-            /*Env      */ interpreter->CallEnv,
-            /*WaitFor  */ NULL,
-            /*Function */ fnValue,
-            /*Then     */ NULL,
-            /*Catch    */ NULL
+            /*Status     */ PENDING,
+            /*IsCallback */ false,
+            /*Ip         */ 0,
+            /*Env        */ interpreter->CallEnv,
+            /*WaitFor    */ NULL,
+            /*Function   */ fnValue
         );
         fnValue = NewPromiseValue(interpreter, sm);
     } else if (ValueIsPromise(fnValue)) {
@@ -1008,11 +1006,15 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
             Popp();
             RestoreEnv(interpreter);
         } else {
-            Push(sm->Value);
-            SaveEnv(interpreter, sm->CallEnv);
-            Run(interpreter, task);
-            Popp();
-            RestoreEnv(interpreter);
+            StateMachine* wait = CoerceToStateMachine(sm->WaitFor);
+            Push(wait->Value);
+            DoCall(interpreter, sm->Function, 1, false);
+            Value* callBackReturn = Popp();
+            sm->Value = callBackReturn;
+            sm->State = FULFILLED;
+            for (size_t i = 0; i < sm->WaitListC; i++) {
+                _EnqueueTask(interpreter, sm->WaitList[i]);
+            }
         }
     }
 

@@ -29,7 +29,12 @@ fn awaitable() async {
 const v = awaitable()
     .then(fn(v) {
         println(">>>>>>>>>>>>>>> From then", v);
-        return v;
-    });
+        return 4;
+    })
+    .then(fn(v) {
+        println("waiting for>>", v);
+        return "foocers";
+    })
+    .then(println);
 
 println(">>", v);

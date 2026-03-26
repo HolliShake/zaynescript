@@ -25,14 +25,12 @@ Value* _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
 
     StateMachine* originalSM = CoerceToStateMachine(thisArg);
 
-    StateMachine* sm = CreateStateMachine(PENDING, 0, 0, interpreter->CallEnv, thisArg, thenCallback, NULL, NULL);
-    sm->IsCallback = true;
+    StateMachine* sm = CreateStateMachine(PENDING, true, 0, interpreter->CallEnv, thisArg, thenCallback);
     Value* newPromise = NewPromiseValue(interpreter, sm);
 
     if (originalSM->State == PENDING) {
         StateMachineAddWaitList(originalSM, newPromise);
     } else {
-        sm->Value = originalSM->Value;
         int tail = (interpreter->TaskQueueHead + interpreter->TaskQueueC) % STACK_SIZE;
         interpreter->TaskQueue[tail] = newPromise;
         interpreter->TaskQueueC++;
@@ -63,7 +61,7 @@ Value* _PromiseCatch(Interpreter* interpreter, int argc, Value** arguments) {
         return NewErrorValue(interpreter, "Callback function for Promise.catch must take exactly 1 argument (error)");
     }
 
-    StateMachine* sm = CreateStateMachine(PENDING, 0, 0, interpreter->CallEnv, thisArg, catchCallback, NULL, NULL);
+    StateMachine* sm = CreateStateMachine(PENDING, true, 0, interpreter->CallEnv, thisArg, catchCallback);
     Value* newPromise = NewPromiseValue(interpreter, sm);
 
     StateMachineAddWaitList(CoerceToStateMachine(thisArg), newPromise);

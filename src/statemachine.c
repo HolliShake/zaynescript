@@ -1,14 +1,12 @@
 #include "./statemachine.h"
 
-StateMachine* CreateStateMachine(StateMachineState initial, size_t ip, size_t stack, Value* env, Value* promise, Value* function, Value* thenCallback, Value* catchCallback) {
+StateMachine* CreateStateMachine(StateMachineState initial, bool isCallback, size_t ip, Value* env, Value* promise, Value* function) {
     StateMachine* sm = Allocate(sizeof(StateMachine));
     sm->State        = initial;
-    sm->IsCallback   = false;
+    sm->IsCallback   = isCallback;
     sm->CallEnv      = env;
     sm->WaitFor      = promise;
     sm->Value        = NULL;
-    sm->Then         = thenCallback;
-    sm->Catch        = catchCallback;
     sm->Function     = function;
     sm->Ip           = ip;
     sm->WaitListC    = 0;

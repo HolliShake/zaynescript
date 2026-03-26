@@ -234,8 +234,6 @@ void Mark(Value* value) {
                 Mark(sm->CallEnv);
                 Mark(sm->WaitFor);
                 Mark(sm->Value);
-                Mark(sm->Then);
-                Mark(sm->Catch);
                 Mark(sm->Function);
                 for (int i = 0; i < sm->WaitListC; i++) {
                     Mark(sm->WaitList[i]);

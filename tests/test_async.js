@@ -21,3 +21,18 @@ async function callMe() {
 println(callMe());
 println("AUTO");
 println(callMe());
+
+async function awaitable() {
+    return "Hola!";
+}
+
+const v = awaitable()
+    .then(function(v) {
+        println(">>>>>>>>>>>>>>> From then", v);
+        return 4;
+    })
+    .then(function(v) {
+        println("waiting for>>", v);
+    });
+
+println(">>", v);

@@ -774,8 +774,6 @@ typedef struct state_machine_struct {
     Value*            CallEnv;
     Value*            WaitFor;
     Value*            Value;
-    Value*            Then;
-    Value*            Catch;
     Value*            Function;
     size_t            Ip;
     Value**           WaitList;
