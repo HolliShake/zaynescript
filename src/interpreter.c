@@ -36,6 +36,7 @@ Interpreter* CreateInterpreter() {
     interpreter->ExceptionHandlerStackC     = 0;
     interpreter->GcThreshold                = GC_THRESHOLD;
     // interpreter->TaskQueue[STACK_SIZE];
+    interpreter->TaskQueueHead             = 0;
     interpreter->TaskQueueC                = 0;
     return interpreter;
 }
@@ -233,17 +234,37 @@ static void _EnqueueTask(Interpreter* interpreter, Value* task) {
     if (interpreter->TaskQueueC >= STACK_SIZE) {
         InterpreterPanic("Task queue overflow");
     }
-    interpreter->TaskQueue[interpreter->TaskQueueC++] = task;
+    int tail = (interpreter->TaskQueueHead + interpreter->TaskQueueC) % STACK_SIZE;
+    interpreter->TaskQueue[tail] = task;
+    interpreter->TaskQueueC++;
 }
 
 static Value* _DequeueTask(Interpreter* interpreter) {
     if (interpreter->TaskQueueC == 0) {
         return NULL;
     }
-    Value* task = interpreter->TaskQueue[0];
-    memmove(interpreter->TaskQueue, interpreter->TaskQueue + 1, sizeof(Value*) * (--interpreter->TaskQueueC));
+    Value* task = interpreter->TaskQueue[interpreter->TaskQueueHead];
+    interpreter->TaskQueueHead = (interpreter->TaskQueueHead + 1) % STACK_SIZE;
+    interpreter->TaskQueueC--;
     return task;
 }
+
+static Value* _DequeueTaskAt(Interpreter* interpreter, int index) {
+    if (interpreter->TaskQueueC == 0 || index < 0 || index >= interpreter->TaskQueueC) {
+        return NULL;
+    }
+    int phys = (interpreter->TaskQueueHead + index) % STACK_SIZE;
+    Value* task = interpreter->TaskQueue[phys];
+    // Shift all logical elements after 'index' one slot toward the head
+    for (int i = index; i < interpreter->TaskQueueC - 1; i++) {
+        int cur  = (interpreter->TaskQueueHead + i)     % STACK_SIZE;
+        int next = (interpreter->TaskQueueHead + i + 1) % STACK_SIZE;
+        interpreter->TaskQueue[cur] = interpreter->TaskQueue[next];
+    }
+    interpreter->TaskQueueC--;
+    return task;
+}
+
 
 /******* Main interpreter loop */
 void Run(Interpreter* interpreter, Value* fnValue) {
@@ -570,9 +591,17 @@ void Run(Interpreter* interpreter, Value* fnValue) {
             case OP_AWAIT: {
                 if (!ValueIsPromise(Peek())) break;
                 val = Popp();
-                CoerceToStateMachine(val)->Awaited = true;
+
                 StateMachineSet(sm, PENDING, ip, interpreter->CallEnv, val, NULL);
-                _EnqueueTask(interpreter, fnValue);
+
+                StateMachine* awaitedSM = CoerceToStateMachine(val);
+
+                if (awaitedSM->State == FULFILLED) {
+                    _EnqueueTask(interpreter, fnValue);
+                } else {
+                    StateMachineAddWaitList(awaitedSM, fnValue);
+                }
+                
                 Push(fnValue);
                 return;
             }
@@ -943,6 +972,11 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                     val = Popp();
                     StateMachineSet(sm, FULFILLED, 0, NULL, NULL, val);
                     Push(fnValue);
+
+                    for (int i = 0; i < sm->WaitListC; i++) {
+                        Value* suspendedTask = sm->WaitList[i];
+                        _EnqueueTask(interpreter, suspendedTask);
+                    }
                 }
                 return;
             }

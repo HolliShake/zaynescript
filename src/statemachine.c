@@ -11,10 +11,10 @@ StateMachine* CreateStateMachine(StateMachineState initial, size_t ip, size_t st
     sm->Function     = function;
     sm->Ip           = ip;
     sm->Stack        = stack;
-    sm->Awaited      = false;
+    sm->WaitListC    = 0;
+    sm->WaitList     = Allocate(sizeof(Value*)), sm->WaitList[0] = NULL; // initial capacity for wait list
     return sm;
 }
-
 
 void StateMachineSet(StateMachine* stateMachine, StateMachineState newState, size_t ip, Value* env,  Value* waitFor, Value* value) {
     stateMachine->State   = newState;
@@ -22,4 +22,10 @@ void StateMachineSet(StateMachine* stateMachine, StateMachineState newState, siz
     stateMachine->CallEnv = env;
     stateMachine->WaitFor = waitFor;
     stateMachine->Value   = value;
+}
+
+void StateMachineAddWaitList(StateMachine* stateMachine, Value* value) {
+    stateMachine->WaitList[stateMachine->WaitListC++] = value;
+    stateMachine->WaitList = Reallocate(stateMachine->WaitList, sizeof(Value*) * (stateMachine->WaitListC + 1));
+    stateMachine->WaitList[stateMachine->WaitListC] = NULL; // keep NULL-terminated
 }

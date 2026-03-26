@@ -119,6 +119,13 @@ static void _Free(Interpreter* interp, Value* value) {
             value->Value.Opaque = NULL;
             break;
         }
+        case VLT_PROMISE: {
+            StateMachine* sm = CoerceToStateMachine(value);
+            free(sm->WaitList);
+            free(sm);
+            value->Value.Opaque = NULL;
+            break;
+        }
         default:
             break;
     }
@@ -218,6 +225,21 @@ void Mark(Value* value) {
                     if (cell != NULL && cell->Value != NULL) {
                         Mark(cell->Value);
                     }
+                }
+            }
+            break;
+        }
+        case VLT_PROMISE: {
+            StateMachine* sm = CoerceToStateMachine(value);
+            if (sm != NULL) {
+                Mark(sm->CallEnv);
+                Mark(sm->WaitFor);
+                Mark(sm->Value);
+                Mark(sm->Then);
+                Mark(sm->Catch);
+                Mark(sm->Function);
+                for (int i = 0; i < sm->WaitListC; i++) {
+                    Mark(sm->WaitList[i]);
                 }
             }
             break;

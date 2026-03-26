@@ -8,4 +8,6 @@ StateMachine* CreateStateMachine(StateMachineState initial, size_t ip, size_t st
 
 void StateMachineSet(StateMachine* stateMachine, StateMachineState newState, size_t ip, Value* env,  Value* waitFor, Value* value);
 
+void StateMachineAddWaitList(StateMachine* stateMachine, Value* value);
+
 #endif

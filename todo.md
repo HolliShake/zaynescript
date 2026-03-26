@@ -8,6 +8,6 @@
 [x] Add do while
 [x] Add Try/catch
 [ ] Add Switch Expression and Switch Statement
-[ ] Add async/await and state machine
+[x] Add async/await and state machine
 [ ] Add null coalescing operator (??)
 [ ] Add optional chaining (?.)

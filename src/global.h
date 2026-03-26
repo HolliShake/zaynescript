@@ -714,6 +714,7 @@ struct interpreter_struct {
     int          ExceptionHandlerStackC;                 /**< Exception handler stack pointer */
     int          GcThreshold;                            /**< Threshold for triggering garbage collection */
     Value*       TaskQueue[STACK_SIZE];                  /**< Queue for pending tasks (e.g. resolved promises) */
+    int          TaskQueueHead;                          /**< Head index (next item to dequeue) */
     int          TaskQueueC;                             /**< Count of pending tasks in the task queue */
 };
 
@@ -743,8 +744,6 @@ typedef struct compiler_struct {
  */
 typedef enum state_machine_state_enum {
     PENDING,
-    WAITING,
-    CONTINUING,
     FULFILLED,
     REJECTED,
 } StateMachineState;
@@ -778,7 +777,8 @@ typedef struct state_machine_struct {
     Value*            Function;
     size_t            Ip;
     size_t            Stack;
-    bool              Awaited;
+    Value**           WaitList;
+    size_t            WaitListC;
 } StateMachine;
 
 // -----------------------------------------------------------------------------

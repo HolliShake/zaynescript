@@ -1,17 +1,17 @@
-import { println } from "core:io";
+const println = console.log;
 
-fn  topLevel() async {
+async function topLevel() {
     println("From top level");
     return "Hello";
 }
 
-fn asyncFn() async {
+async function asyncFn() {
     await topLevel();
     println("Called!!");
     return "Resolve me!";
 }
 
-fn callMe() async {
+async function callMe() {
     println(await asyncFn());
     println(await asyncFn());
     println(await asyncFn());
