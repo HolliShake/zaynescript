@@ -184,6 +184,7 @@ static Value* _IoFormat(Interpreter* interpreter, int argc, Value** arguments) {
     buffer[bufferUsed] = '\0';
     free(formatStr);
 
+    //Note: memory leak (AllocateString(buffer) creates a copy that is passed to NewStrValue, which converts it to runes via StringToRunes but never frees the AllocateString copy)
     Value* result = NewStrValue(interpreter, AllocateString(buffer));
     free(buffer);
     return result;
@@ -246,15 +247,14 @@ Value* LoadCoreIo(Interpreter*  interpreter) {
     
     for (int i = 0; _IoModuleFunctions[i].Name != NULL; i++) {
         ModuleFunction func = _IoModuleFunctions[i];
-        String name = AllocateString(func.Name);
-        String hKey = AllocateString(func.Name);
+        String hKey = func.Name;
         
         if (func.Value != NULL) {
             HashMapSet(ioMap, hKey, _IoModuleFunctions[i].Value);
         } else {
-            HashMapSet(ioMap, hKey, NewNativeFunctionValue( interpreter, 
+            HashMapSet(ioMap, hKey, NewNativeFunctionValue(interpreter, 
                 CreateNativeFunctionMeta(
-                    (const String) name,
+                    (const String) hKey,
                     func.Argc,
                     func.CFunction
                 )

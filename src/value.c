@@ -199,8 +199,10 @@ String ValueToString(Value* value) {
                 case PENDING:
                     return AllocateString("<Promise.PENDING />");
                 case FULFILLED:
+                    //Note: memory leak (ValueToString(sm->Value) allocates a string that is passed to FormatString but never freed)
                     return FormatString("<Promise.FULFILLED {%s} />", ValueToString(sm->Value));
                 case REJECTED:
+                    //Note: memory leak (ValueToString(sm->Value) allocates a string that is passed to FormatString but never freed)
                     return FormatString("<Promise.REJECTED {%s} />", ValueToString(sm->Value));
                 default:
                     return AllocateString("<Promise.UNKNOWN />");

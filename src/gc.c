@@ -39,33 +39,10 @@ static void _Free(Interpreter* interp, Value* value) {
         }
         case VLT_OBJECT:
             if (value->Value.Opaque != NULL) {
-                // Note: deeply freeing HashMap keys/values would require more logic
-                // For now, we just free the HashMap struct itself
                 HashMap* hashMap = CoerceToHashMap(value);
                 if (hashMap != NULL) {
-                    // Buckets
-                    for (size_t i = 0; i < hashMap->Size; i++) {
-                        HashNode* node = &hashMap->Buckets[i];
-                        // First node is in the array, only free key
-                        if (node->Key != NULL) {
-                            free(node->Key);
-                            node->Key = NULL;
-                        }
-
-                        // Subsequent nodes are malloc'd
-                        HashNode* current = node->Next;
-                        while (current != NULL) {
-                            HashNode* next = current->Next;
-                            if (current->Key != NULL) {
-                                free(current->Key);
-                            }
-                            free(current);
-                            current = next;
-                        }
-                    }
-                    free(hashMap->Buckets);
+                    FreeHashMap(hashMap);
                 }
-                free(value->Value.Opaque);
                 value->Value.Opaque = NULL;
             }
             break;
@@ -73,13 +50,11 @@ static void _Free(Interpreter* interp, Value* value) {
             Class* classObj = CoerceToUserClass(value);
             if (classObj != NULL) {
                 if (classObj->StaticMembers != NULL) {
-                    free(classObj->StaticMembers->Buckets);
-                    free(classObj->StaticMembers);
+                    FreeHashMap(classObj->StaticMembers);
                     classObj->StaticMembers = NULL;
                 }
                 if (classObj->InstanceMembers != NULL) {
-                    free(classObj->InstanceMembers->Buckets);
-                    free(classObj->InstanceMembers);
+                    FreeHashMap(classObj->InstanceMembers);
                     classObj->InstanceMembers = NULL;
                 }
                 free(classObj->Name);
@@ -92,8 +67,7 @@ static void _Free(Interpreter* interp, Value* value) {
             ClassInstance* instance = CoerceToClassInstance(value);
             if (instance != NULL) {
                 if (instance->Members != NULL) {
-                    free(instance->Members->Buckets);
-                    free(instance->Members);
+                    FreeHashMap(instance->Members);
                     instance->Members = NULL;
                 }
                 free(instance);

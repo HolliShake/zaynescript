@@ -112,15 +112,14 @@ Value* LoadCoreOs(Interpreter* interpreter) {
     
     for (int i = 0; _OsModuleFunctions[i].Name != NULL; i++) {
         ModuleFunction func = _OsModuleFunctions[i];
-        String name = AllocateString(func.Name);
-        String hKey = AllocateString(func.Name);
+        String hKey = func.Name;
         
         if (func.Value != NULL) {
             HashMapSet(osMap, hKey, _OsModuleFunctions[i].Value);
         } else {
             HashMapSet(osMap, hKey, NewNativeFunctionValue(interpreter, 
                 CreateNativeFunctionMeta(
-                    (const String) name,
+                    (const String) hKey,
                     func.Argc,
                     func.CFunction
                 )

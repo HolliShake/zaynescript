@@ -762,6 +762,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 rhs = _Expression(compiler, uf, scope, node->B);
                 val = DoMul(compiler->Interpreter, lhs, rhs);
                 if (ValueIsError(val)) {
+                    //Note: memory leak (ValueToString(val) allocates a string passed to ThrowError which calls exit() — the string is never freed)
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
@@ -788,6 +789,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 rhs = _Expression(compiler, uf, scope, node->B);
                 val = DoDiv(compiler->Interpreter, lhs, rhs);
                 if (ValueIsError(val)) {
+                    //Note: memory leak (ValueToString(val) allocates a string passed to ThrowError which calls exit() — the string is never freed)
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
@@ -815,6 +817,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 rhs = _Expression(compiler, uf, scope, node->B);
                 val = DoMod(compiler->Interpreter, lhs, rhs);
                 if (ValueIsError(val)) {
+                    //Note: memory leak (ValueToString(val) allocates a string passed to ThrowError which calls exit() — the string is never freed)
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
@@ -842,6 +845,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 rhs = _ExpressionMain(compiler, uf, scope, node->B, true);
                 val = DoAdd(compiler->Interpreter, lhs, rhs);
                 if (ValueIsError(val)) {
+                    //Note: memory leak (ValueToString(val) allocates a string passed to ThrowError which calls exit() — the string is never freed)
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
@@ -868,6 +872,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 rhs = _Expression(compiler, uf, scope, node->B);
                 val = DoSub(compiler->Interpreter, lhs, rhs);
                 if (ValueIsError(val)) {
+                    //Note: memory leak (ValueToString(val) allocates a string passed to ThrowError which calls exit() — the string is never freed)
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
@@ -895,6 +900,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 rhs = _Expression(compiler, uf, scope, node->B);
                 val = DoLShift(compiler->Interpreter, lhs, rhs);
                 if (ValueIsError(val)) {
+                    //Note: memory leak (ValueToString(val) allocates a string passed to ThrowError which calls exit() — the string is never freed)
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
@@ -922,6 +928,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 rhs = _Expression(compiler, uf, scope, node->B);
                 val = DoRShift(compiler->Interpreter, lhs, rhs);
                 if (ValueIsError(val)) {
+                    //Note: memory leak (ValueToString(val) allocates a string passed to ThrowError which calls exit() — the string is never freed)
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
@@ -948,6 +955,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 rhs = _Expression(compiler, uf, scope, node->B);
                 val = DoLT(compiler->Interpreter, lhs, rhs);
                 if (ValueIsError(val)) {
+                    //Note: memory leak (ValueToString(val) allocates a string passed to ThrowError which calls exit() — the string is never freed)
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
@@ -974,6 +982,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 rhs = _Expression(compiler, uf, scope, node->B);
                 val = DoLTE(compiler->Interpreter, lhs, rhs);
                 if (ValueIsError(val)) {
+                    //Note: memory leak (ValueToString(val) allocates a string passed to ThrowError which calls exit() — the string is never freed)
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
@@ -1000,6 +1009,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 rhs = _Expression(compiler, uf, scope, node->B);
                 val = DoGT(compiler->Interpreter, lhs, rhs);
                 if (ValueIsError(val)) {
+                    //Note: memory leak (ValueToString(val) allocates a string passed to ThrowError which calls exit() — the string is never freed)
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
@@ -1026,6 +1036,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 rhs = _Expression(compiler, uf, scope, node->B);
                 val = DoGTE(compiler->Interpreter, lhs, rhs);
                 if (ValueIsError(val)) {
+                    //Note: memory leak (ValueToString(val) allocates a string passed to ThrowError which calls exit() — the string is never freed)
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
@@ -1052,6 +1063,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 rhs = _Expression(compiler, uf, scope, node->B);
                 val = DoEQ(compiler->Interpreter, lhs, rhs);
                 if (ValueIsError(val)) {
+                    //Note: memory leak (ValueToString(val) allocates a string passed to ThrowError which calls exit() — the string is never freed)
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
@@ -1078,6 +1090,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 rhs = _Expression(compiler, uf, scope, node->B);
                 val = DoNE(compiler->Interpreter, lhs, rhs);
                 if (ValueIsError(val)) {
+                    //Note: memory leak (ValueToString(val) allocates a string passed to ThrowError which calls exit() — the string is never freed)
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
@@ -1104,6 +1117,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 rhs = _Expression(compiler, uf, scope, node->B);
                 val = DoAnd(compiler->Interpreter, lhs, rhs);
                 if (ValueIsError(val)) {
+                    //Note: memory leak (ValueToString(val) allocates a string passed to ThrowError which calls exit() — the string is never freed)
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
@@ -1130,6 +1144,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 rhs = _Expression(compiler, uf, scope, node->B);
                 val = DoOr(compiler->Interpreter, lhs, rhs);
                 if (ValueIsError(val)) {
+                    //Note: memory leak (ValueToString(val) allocates a string passed to ThrowError which calls exit() — the string is never freed)
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 
@@ -1157,6 +1172,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 rhs = _Expression(compiler, uf, scope, node->B);
                 val = DoXor(compiler->Interpreter, lhs, rhs);
                 if (ValueIsError(val)) {
+                    //Note: memory leak (ValueToString(val) allocates a string passed to ThrowError which calls exit() — the string is never freed)
                     ThrowError(
                         compiler->Parser->Lexer->Path, 
                         compiler->Parser->Lexer->Data, 

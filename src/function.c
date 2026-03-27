@@ -169,7 +169,7 @@ void FreeUserFunction(UserFunction* userFunction) {
 
 NativeFunction* CreateNativeFunctionMeta(const String name, int argc, NativeFunctionCallback funcPtr) {
     NativeFunction* meta = Allocate(sizeof(NativeFunction));
-    meta->Name    = name;
+    meta->Name    = AllocateString(name);
     meta->Argc    = argc;
     meta->FuncPtr = funcPtr;
     return meta;

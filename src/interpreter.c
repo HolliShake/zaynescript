@@ -66,6 +66,7 @@ Interpreter* CreateInterpreter() {
     printf("Stack [%d items]: [ ", interpreter->StackC); \
     for (int i = 0; i < interpreter->StackC; i++) { \
         if (i > 0) printf(", "); \
+        /*Note: memory leak (ValueToString allocates a string that is passed to printf but never freed)*/ \
         printf("%s", ValueToString(interpreter->Stacks[i])); \
     } \
     printf(" ]\n"); \
@@ -201,6 +202,7 @@ static void _Error(Interpreter* interpreter, UserFunction* uf, size_t* ip, const
     LineInfo line = _GetLineFromPc(uf, *ip);
     String fmt = FormatString("[%s:%d]::%s: %s", line.Path, line.Line, type, message);
     free(message);
+    //Note: memory leak (fmt from FormatString is passed to NewErrorValue which copies it via StringToRunes, but fmt is never freed)
     Value* err = NewErrorValue(interpreter, fmt);
     if (isCatched()) {
         JumpToError(ip, _PeekTry(interpreter));
@@ -209,6 +211,7 @@ static void _Error(Interpreter* interpreter, UserFunction* uf, size_t* ip, const
         return;
     }
     InterpreterPanic(ValueToString(err));
+    //Note: memory leak (ValueToString allocates a string passed to InterpreterPanic which calls exit() — the string is never freed)
 }
 
 static void _RaiseError(Interpreter* interpreter, UserFunction* uf, size_t* ip, Value* error) {
@@ -219,6 +222,7 @@ static void _RaiseError(Interpreter* interpreter, UserFunction* uf, size_t* ip, 
         return;
     }
     LineInfo line = _GetLineFromPc(uf, *ip);
+    //Note: memory leak (ValueToString(error) allocates a string passed to FormatString, and FormatString result is passed to InterpreterPanic which calls exit() — both strings are never freed)
     InterpreterPanic(FormatString("[%s:%d]::%s", line.Path, line.Line, ValueToString(error)));
 }
 
@@ -328,6 +332,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 str = _ReadString(uf->Codes, ip);
                 res = DoImportCore(interpreter, str);
                 if (ValueIsError(res)) {
+                    //Note: memory leak (str is not freed when DoImportCore returns an error)
                     _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
@@ -446,8 +451,9 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 for (int i = 0; i < size; i++) {
                     key = Popp();
                     val = Popp();
-                    //NOTE: memory leak (ValueToString returns a new string. If HashMapSet updates an existing key, this new string is not freed by HashMapSet)
-                    HashMapSet(map, ValueToString(key), val);
+                    String keyStr = ValueToString(key);
+                    HashMapSet(map, keyStr, val);
+                    free(keyStr);
                 }
                 Push(obj);
                 Forward(4);

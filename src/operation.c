@@ -313,6 +313,8 @@ Value* DoImportCore(Interpreter* interp, String moduleName) {
 }
 
 Value* DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val) {
+    //Note: memory leak (hashKey from ValueToString is not freed in the Array branch)
+    String hashKey = ValueToString(index);
     if (ValueIsArray(obj)) {
         Array* array = CoerceToArray(obj);
         long idx = (long) CoerceToI64(index);
@@ -325,13 +327,16 @@ Value* DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val) {
         array->Items[idx] = val;
     } else if (ValueIsObject(obj)) {
         HashMap* map = CoerceToHashMap(obj);
-        HashMapSet(map, ValueToString(index), val);
+        HashMapSet(map, hashKey, val);
+        free(hashKey);
     } else if (ValueIsClassInstance(obj)) {
         ClassInstance* instance = CoerceToClassInstance(obj);
-        HashMapSet(instance->Members, ValueToString(index), val);
+        HashMapSet(instance->Members, hashKey, val);
+        free(hashKey);
     } else if (ValueIsClass(obj)) {
         Class* cls = CoerceToUserClass(obj);
-        HashMapSet(cls->StaticMembers, ValueToString(index), val);
+        HashMapSet(cls->StaticMembers, hashKey, val);
+        free(hashKey);
     } else {
         return NewErrorFValue(interp, "%s: cannot set index on non-object", TYPE_ERROR);
     }
@@ -420,6 +425,7 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
 
     if (!ValueIsCallable(fn)) {
         _PopN(argc);
+        //Note: memory leak (ValueToString(fn) allocates a string passed to NewErrorFValue but never freed)
         return NewErrorFValue(interp, "%s: invalid operation: attempted to call a non-callable value (%s)", TYPE_ERROR, ValueToString(fn));
     }
 
@@ -456,6 +462,7 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
     }
 
     if (!ValueIsCallable(fn)) {
+        //Note: memory leak (ValueToString(fn) allocates a string passed to Panic's format but never freed)
         Panic("Attempted to call a non-callable value: %s\n", ValueToString(fn));
     }
 
@@ -496,6 +503,7 @@ Value* DoPos(Interpreter* interp, Value* val) {
     } else if (ValueIsAnyNum(val)) {
         bf_t* resNum = Allocate(sizeof(bf_t));
         bf_init(&interp->BfContext, resNum);
+        //Note: memory leak (CoerceToBitField allocates a new bf_t for VLT_INT/VLT_NUM types, but that temporary is never freed)
         bf_set(resNum, CoerceToBitField(interp, val));
         // unary + is a no-op, just copy
         int prec = BFPrecession(val);
@@ -518,6 +526,7 @@ Value* DoNeg(Interpreter* interp, Value* val) {
     } else if (ValueIsAnyNum(val)) {
         bf_t* resNum = Allocate(sizeof(bf_t));
         bf_init(&interp->BfContext, resNum);
+        //Note: memory leak (CoerceToBitField allocates a new bf_t for VLT_INT/VLT_NUM types, but that temporary is never freed)
         bf_set(resNum, CoerceToBitField(interp, val));
         bf_neg(resNum); // flip sign bit
         int prec = BFPrecession(val);
@@ -546,6 +555,7 @@ Value* DoMul(Interpreter* interp, Value* lhs, Value* rhs) {
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));
@@ -586,6 +596,7 @@ Value* DoDiv(Interpreter* interp, Value* lhs, Value* rhs) {
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));
@@ -626,6 +637,7 @@ Value* DoMod(Interpreter* interp, Value* lhs, Value* rhs) {
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));
@@ -663,6 +675,7 @@ Value* DoInc(Interpreter* interp, Value* val) {
     } else if (ValueIsAnyNum(val)) {
         bf_t* resNum = Allocate(sizeof(bf_t));
         bf_init(&interp->BfContext, resNum);
+        //Note: memory leak (CoerceToBitField allocates a new bf_t for VLT_INT/VLT_NUM types, but that temporary is never freed)
         bf_set(resNum, CoerceToBitField(interp, val));
         bf_add_si(resNum, resNum, 1, BF_PREC_INF, BF_RNDZ | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
         int prec = BFPrecession(val);
@@ -694,6 +707,7 @@ Value* DoAdd(Interpreter* interp, Value* lhs, Value* rhs) {
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));
@@ -746,6 +760,7 @@ Value* DoDec(Interpreter* interp, Value* val) {
     } else if (ValueIsAnyNum(val)) {
         bf_t* resNum = Allocate(sizeof(bf_t));
         bf_init(&interp->BfContext, resNum);
+        //Note: memory leak (CoerceToBitField allocates a new bf_t for VLT_INT/VLT_NUM types, but that temporary is never freed)
         bf_set(resNum, CoerceToBitField(interp, val));
         bf_add_si(resNum, resNum, -1, BF_PREC_INF, BF_RNDZ | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
         int prec = BFPrecession(val);
@@ -777,6 +792,7 @@ Value* DoSub(Interpreter* interp, Value* lhs, Value* rhs) {
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));
@@ -806,6 +822,7 @@ Value* DoLShift(Interpreter* interp, Value* lhs, Value* rhs) {
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));
@@ -855,6 +872,7 @@ Value* DoRShift(Interpreter* interp, Value* lhs, Value* rhs) {
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));
@@ -901,6 +919,7 @@ Value* DoLT(Interpreter* interp, Value* lhs, Value* rhs) {
         int comparison = CoerceToNum(lhs) < CoerceToNum(rhs);
         result = comparison ? interp->True : interp->False;
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         int comparison = bf_cmp_lt(lhsNum, rhsNum);
@@ -923,6 +942,7 @@ Value* DoLTE(Interpreter* interp, Value* lhs, Value* rhs) {
         int comparison = CoerceToNum(lhs) <= CoerceToNum(rhs);
         result = comparison ? interp->True : interp->False;
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         int comparison = bf_cmp_le(lhsNum, rhsNum);
@@ -945,6 +965,7 @@ Value* DoGT(Interpreter* interp, Value* lhs, Value* rhs) {
         int comparison = CoerceToNum(lhs) > CoerceToNum(rhs);
         result = comparison ? interp->True : interp->False;
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         int comparison = bf_cmp_lt(rhsNum, lhsNum);
@@ -967,6 +988,7 @@ Value* DoGTE(Interpreter* interp, Value* lhs, Value* rhs) {
         int comparison = CoerceToNum(lhs) >= CoerceToNum(rhs);
         result = comparison ? interp->True : interp->False;
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         int comparison = bf_cmp_le(rhsNum, lhsNum);
@@ -984,6 +1006,7 @@ Value* DoGTE(Interpreter* interp, Value* lhs, Value* rhs) {
 
 Value* DoEQ(Interpreter* interp, Value* lhs, Value* rhs) {
     if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         int comparison = bf_cmp(lhsNum, rhsNum) == 0;
@@ -994,6 +1017,7 @@ Value* DoEQ(Interpreter* interp, Value* lhs, Value* rhs) {
 
 Value* DoNE(Interpreter* interp, Value* lhs, Value* rhs) {
     if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         int comparison = bf_cmp(lhsNum, rhsNum) != 0;
@@ -1013,6 +1037,7 @@ Value* DoAnd(Interpreter* interp, Value* lhs, Value* rhs) {
         long long resultValue = (int)CoerceToI64(lhs) & (int)CoerceToI64(rhs);
         result = NewNumValue(interp, resultValue);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));
@@ -1041,6 +1066,7 @@ Value* DoOr(Interpreter* interp, Value* lhs, Value* rhs) {
         long long resultValue = (int)CoerceToI64(lhs) | (int)CoerceToI64(rhs);
         result = NewNumValue(interp, resultValue);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));
@@ -1069,6 +1095,7 @@ Value* DoXor(Interpreter* interp, Value* lhs, Value* rhs) {
         long long resultValue = (int)CoerceToI64(lhs) ^ (int)CoerceToI64(rhs);
         result = NewNumValue(interp, resultValue);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
+        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));

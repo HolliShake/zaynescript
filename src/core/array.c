@@ -163,8 +163,7 @@ Value* CreateArrayClass(Interpreter* interpreter) {
     // Define Array methods here (e.g., push, pop, length, etc.)
     for (int i = 0; _ArrayClassMethods[i].Name != NULL; i++) {
         ModuleFunction func = _ArrayClassMethods[i];
-        String name = AllocateString(func.Name);
-        String hKey = AllocateString(func.Name);
+        String hKey = func.Name;
         
         if (func.CFunction != NULL) {
             ClassDefineMemberByString(
@@ -172,7 +171,7 @@ Value* CreateArrayClass(Interpreter* interpreter) {
                 hKey, 
                 NewNativeFunctionValue(interpreter, 
                     CreateNativeFunctionMeta(
-                        (const String) name,
+                        (const String) hKey,
                         func.Argc,
                         func.CFunction
                     )
@@ -191,7 +190,7 @@ Value* LoadCoreArray(Interpreter* interpreter) {
     Value* module = NewObjectValue(interpreter);
     HashMap* map  = CoerceToHashMap(module);
 
-    HashMapSet(map, AllocateString("Array"), val);
+    HashMapSet(map, "Array", val);
     return module;
 }
 

@@ -189,11 +189,11 @@ static Value* _DateToString(Interpreter* interpreter, int argc, Value** argument
     if (tstr) {
         size_t len = strlen(tstr);
         if (len > 0 && tstr[len-1] == '\n') tstr[len-1] = '\0';
-        //NOTE: memory leak (AllocateString creates a char* string that is passed to NewStrValue, but NewStrValue converts it to Runes and doesn't free the original char* string)
-        return NewStrValue(interpreter, AllocateString(tstr));
+        
+        return NewStrValue(interpreter, tstr);
     }
-    //NOTE: memory leak (AllocateString creates a char* string that is passed to NewStrValue, but NewStrValue converts it to Runes and doesn't free the original char* string)
-    return NewStrValue(interpreter, AllocateString("Invalid Date"));
+
+    return NewStrValue(interpreter, "Invalid Date");
 }
 
 static ModuleFunction _DateClassMethods[] = {
@@ -220,11 +220,23 @@ Value* LoadCoreDate(Interpreter*  interpreter) {
     // Register methods
     for (int i = 0; _DateClassMethods[i].Name != NULL; i++) {
         ModuleFunction* func = &_DateClassMethods[i];
+        String hKey = func->Name;
+        
         if (func->CFunction) {
-            String name = AllocateString(func->Name);
-            String hKey = AllocateString(func->Name);
-            NativeFunction* meta = CreateNativeFunctionMeta(name, func->Argc, func->CFunction);
-            ClassDefineMemberByString(cls, hKey, NewNativeFunctionValue( interpreter, meta), false);
+    
+            ClassDefineMemberByString(
+                cls, 
+                hKey, 
+                NewNativeFunctionValue(
+                    interpreter, 
+                    CreateNativeFunctionMeta(
+                        (String) hKey, 
+                        func->Argc, 
+                        func->CFunction
+                    )
+                ), 
+                false
+            );
         }
     }
     

@@ -1,6 +1,6 @@
 #include "./scope.h"
 
-Symbol* CreateSymbol(String name, bool isGlobal, bool isLocalToFn, bool isConstant, int offset) {
+Symbol* CreateSymbol(bool isGlobal, bool isLocalToFn, bool isConstant, int offset) {
     Symbol* symbol       = Allocate(sizeof(Symbol));
     symbol->IsGlobal     = isGlobal;
     symbol->IsLocalToFn  = isLocalToFn;
@@ -126,9 +126,9 @@ bool ScopeIsLocalToFn(Scope* scope, String name) {
 }
 
 void ScopeSetSymbol(Scope* scope, String name, bool isGlobal, bool isLocalToFn, bool isConstant, int offset) {
-    String key = AllocateString(name);
-    Symbol* symbol = CreateSymbol(key, isGlobal, isLocalToFn, isConstant, offset);
-    HashMapSet(scope->Symbols, key, symbol);
+    //Note: memory leak (if 'name' already exists in scope->Symbols, HashMapSet overwrites the old Symbol* without freeing it)
+    Symbol* symbol = CreateSymbol(isGlobal, isLocalToFn, isConstant, offset);
+    HashMapSet(scope->Symbols, name, symbol);
 }
 
 Symbol* ScopeGetSymbol(Scope* scope, String name, bool recurse) {
@@ -179,9 +179,9 @@ void ScopeSetCapture(Scope* scope, String name, bool isGlobal, bool isLocalToFn,
     if (closureScope == NULL) {
         return;
     }
-    String key = AllocateString(name);
-    Symbol* symbol = CreateSymbol(key, isGlobal, isLocalToFn, isConstant, offset);
-    HashMapSet(closureScope->Captures, key, symbol);
+    //Note: memory leak (if 'name' already exists in closureScope->Captures, HashMapSet overwrites the old Symbol* without freeing it)
+    Symbol* symbol = CreateSymbol(isGlobal, isLocalToFn, isConstant, offset);
+    HashMapSet(closureScope->Captures, name, symbol);
 }
 
 Symbol* ScopeGetCapture(Scope* scope, String name, bool recurse) {
@@ -222,13 +222,31 @@ int ScopeCountNested(Scope* scope, ScopeType type) {
     return count;
 }
 
+static void _FreeHashMapSymbols(HashMap* hashmap) {
+    if (hashmap == NULL) {
+        return;
+    }
+    
+    for (size_t i = 0; i < hashmap->Size; i++) {
+        HashNode* node = &hashmap->Buckets[i];
+        while (node != NULL && node->Key != NULL) {
+            Symbol* symbol = (Symbol*) node->Val;
+            if (symbol != NULL) {
+                free(symbol);
+            }
+            node = node->Next;
+        }
+    }
+}
+
 void FreeScope(Scope* scope) {
     if (scope == NULL) {
         return;
     }
-    //NOTE: memory leak (FreeScope only frees the struct, not the internal HashMaps Symbols/Captures or arrays ContinueJumps/BreakJumps)
-    free(scope->Symbols);
-    free(scope->Captures);
+    _FreeHashMapSymbols(scope->Symbols);
+    FreeHashMap(scope->Symbols);
+    _FreeHashMapSymbols(scope->Captures);
+    FreeHashMap(scope->Captures);
     free(scope->ContinueJumps);
     free(scope->BreakJumps);
     free(scope);

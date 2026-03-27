@@ -8,6 +8,7 @@
 #include "./global.h"
 #include "./environment.h"
 #include "./function.h"
+#include "./hashmap.h"
 #include "./statemachine.h"
 
 #ifndef GC_H

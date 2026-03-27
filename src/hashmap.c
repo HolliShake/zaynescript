@@ -46,10 +46,12 @@ static void _Rehash(HashMap* hashmap) {
         HashNode* node = &oldBuckets[i];
         while (node != NULL && node->Key != NULL) {
             HashNode* next = node->Next;
+            //Note: memory leak (HashMapSet internally AllocateStrings the key, but the old node->Key is never freed before the node is discarded)
             HashMapSet(hashmap, node->Key, node->Val);
             
             // free chain nodes (but not the first node in each bucket)
             if (node != &oldBuckets[i]) {
+                //Note: memory leak (node->Key string is not freed before freeing the node struct; the key was heap-allocated by a prior AllocateString call)
                 free(node);
             }
             node = next;
@@ -104,7 +106,7 @@ void HashMapSet(HashMap* hashmap, String key, void* value) {
     
     // If bucket is empty, use it directly
     if (node->Key == NULL) {
-        node->Key = key;
+        node->Key = AllocateString(key);
         node->Val = value;
         hashmap->Count++;
         return;
@@ -129,7 +131,7 @@ void HashMapSet(HashMap* hashmap, String key, void* value) {
         return;
     }
     
-    newNode->Key = key;
+    newNode->Key = AllocateString(key);
     newNode->Val = value;
     newNode->Next = NULL;
     current->Next = newNode;
@@ -274,4 +276,26 @@ String HashMapToString(HashMap* hashmap) {
     
     strcat(result, " }");
     return result;
+}
+
+void FreeHashMap(HashMap* hashmap) {
+    if (hashmap == NULL) {
+        return;
+    }
+    
+    for (size_t i = 0; i < hashmap->Size; i++) {
+        HashNode* node = &hashmap->Buckets[i];
+        while (node != NULL && node->Key != NULL) {
+            HashNode* next = node->Next;
+            free(node->Key);
+            // Note: we do not free node->Val here since we don't know its type
+            if (node != &hashmap->Buckets[i]) {
+                free(node); // Free chain nodes, but not the first node in each bucket
+            }
+            node = next;
+        }
+    }
+    
+    free(hashmap->Buckets);
+    free(hashmap);
 }
