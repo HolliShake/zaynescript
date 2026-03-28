@@ -332,12 +332,13 @@ int main(int argc, char** argv) {
     //NOTE: memory leak (ReadFile allocates a buffer, StringToRunes reads it, but the buffer is never freed)
     String fileContent = ReadInternalFile(path);
     if (!fileContent) {
+        free(path);
+        ForceGarbageCollect(interpreter);
         FreeInterpreter(interpreter);
         return EXIT_FAILURE;
     }
     Rune* data = StringToRunes(fileContent);
     free(fileContent);
-
 
     Lexer* lexer = CreateLexer(path, data);
     Parser* parser = CreateParser(lexer);
@@ -346,7 +347,6 @@ int main(int argc, char** argv) {
     Value* compiled = Compile(compiler);
 
     Interpret(interpreter, compiled);
-
 
     FreeLexer(lexer);
     FreeParser(parser);
