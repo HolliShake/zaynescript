@@ -16,13 +16,13 @@ void ClassExtend(Class* cls, Value* base) {
 extern String ValueToString(Value*);
 
 void ClassDefineMember(Class* cls, Value* key, Value* value, bool isStatic) {
+    String keyStr = ValueToString(key);
     if (isStatic) {
-        //NOTE: memory leak (ValueToString returns a new string. If HashMapSet updates an existing key, this new string is not freed by HashMapSet)
-        HashMapSet(cls->StaticMembers, ValueToString(key), value);
+        HashMapSet(cls->StaticMembers, keyStr, value);
     } else {
-        //NOTE: memory leak (ValueToString returns a new string. If HashMapSet updates an existing key, this new string is not freed by HashMapSet)
-        HashMapSet(cls->InstanceMembers, ValueToString(key), value);
+        HashMapSet(cls->InstanceMembers, keyStr, value);
     }
+    free(keyStr);
 }
 
 void ClassDefineMemberByString(Class* cls, String key, Value* value, bool isStatic) {
@@ -72,7 +72,7 @@ String ClassInstanceToString(ClassInstance* instance) {
     
     // Start building the string
     size_t bufferSize = 1024;
-    char* buffer = Allocate(bufferSize);
+    String buffer = Allocate(bufferSize);
     size_t currentPos = 0;
     
     // Add class name and opening brace
@@ -87,7 +87,7 @@ String ClassInstanceToString(ClassInstance* instance) {
             size_t needed = currentPos + strlen(node->Key) + 100;
             if (needed > bufferSize) {
                 bufferSize = needed * 2;
-                char* newBuffer = Allocate(bufferSize);
+                String newBuffer = Allocate(bufferSize);
                 memcpy(newBuffer, buffer, currentPos);
                 free(buffer);
                 buffer = newBuffer;
@@ -101,7 +101,8 @@ String ClassInstanceToString(ClassInstance* instance) {
             String valueStr = ValueToString((Value*)node->Val);
             currentPos += snprintf(buffer + currentPos, bufferSize - currentPos, 
                                   "%s: %s", node->Key, valueStr);
-            //NOTE: memory leak (ValueToString returns a new string that is not freed)
+            
+            free(valueStr);
             
             node = node->Next;
         }

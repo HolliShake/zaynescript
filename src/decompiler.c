@@ -31,7 +31,7 @@ static void _Append(String* dest, String src) {
     }
 }
 
-static void _AppendFmt(String* dest, const char* format, ...) {
+static void _AppendFmt(String* dest, const String format, ...) {
     va_list args, args_copy;
     va_start(args, format);
     va_copy(args_copy, args);

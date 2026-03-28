@@ -20,6 +20,7 @@ static void _Free(Interpreter* interp, Value* value) {
             break;
         }
         case VLT_STR:
+        case VLT_ERROR:
             if (value->Value.Opaque != NULL) {
                 free(value->Value.Opaque);
                 value->Value.Opaque = NULL;
@@ -39,33 +40,10 @@ static void _Free(Interpreter* interp, Value* value) {
         }
         case VLT_OBJECT:
             if (value->Value.Opaque != NULL) {
-                // Note: deeply freeing HashMap keys/values would require more logic
-                // For now, we just free the HashMap struct itself
                 HashMap* hashMap = CoerceToHashMap(value);
                 if (hashMap != NULL) {
-                    // Buckets
-                    for (size_t i = 0; i < hashMap->Size; i++) {
-                        HashNode* node = &hashMap->Buckets[i];
-                        // First node is in the array, only free key
-                        if (node->Key != NULL) {
-                            free(node->Key);
-                            node->Key = NULL;
-                        }
-
-                        // Subsequent nodes are malloc'd
-                        HashNode* current = node->Next;
-                        while (current != NULL) {
-                            HashNode* next = current->Next;
-                            if (current->Key != NULL) {
-                                free(current->Key);
-                            }
-                            free(current);
-                            current = next;
-                        }
-                    }
-                    free(hashMap->Buckets);
+                    FreeHashMap(hashMap);
                 }
-                free(value->Value.Opaque);
                 value->Value.Opaque = NULL;
             }
             break;
@@ -73,13 +51,11 @@ static void _Free(Interpreter* interp, Value* value) {
             Class* classObj = CoerceToUserClass(value);
             if (classObj != NULL) {
                 if (classObj->StaticMembers != NULL) {
-                    free(classObj->StaticMembers->Buckets);
-                    free(classObj->StaticMembers);
+                    FreeHashMap(classObj->StaticMembers);
                     classObj->StaticMembers = NULL;
                 }
                 if (classObj->InstanceMembers != NULL) {
-                    free(classObj->InstanceMembers->Buckets);
-                    free(classObj->InstanceMembers);
+                    FreeHashMap(classObj->InstanceMembers);
                     classObj->InstanceMembers = NULL;
                 }
                 free(classObj->Name);
@@ -92,8 +68,7 @@ static void _Free(Interpreter* interp, Value* value) {
             ClassInstance* instance = CoerceToClassInstance(value);
             if (instance != NULL) {
                 if (instance->Members != NULL) {
-                    free(instance->Members->Buckets);
-                    free(instance->Members);
+                    FreeHashMap(instance->Members);
                     instance->Members = NULL;
                 }
                 free(instance);
@@ -116,6 +91,12 @@ static void _Free(Interpreter* interp, Value* value) {
         case VLT_NATV_FUNCTION: {
             NativeFunction* nf = CoerceToNativeFunction(value);
             FreeNativeFunction(nf);
+            value->Value.Opaque = NULL;
+            break;
+        }
+        case VLT_PROMISE: {
+            StateMachine* sm = CoerceToStateMachine(value);
+            FreeStateMachine(sm);
             value->Value.Opaque = NULL;
             break;
         }
@@ -222,6 +203,22 @@ void Mark(Value* value) {
             }
             break;
         }
+        case VLT_PROMISE: {
+            StateMachine* sm = CoerceToStateMachine(value);
+            if (sm != NULL) {
+                Mark(sm->CallEnv);
+                Mark(sm->WaitFor);
+                Mark(sm->Value);
+                Mark(sm->Function);
+                for (int i = 0; i < sm->StackTop; i++) {
+                    if (sm->Stacks != NULL) Mark(sm->Stacks[i]);
+                }
+                for (int i = 0; i < sm->WaitListC; i++) {
+                    Mark(sm->WaitList[i]);
+                }
+            }
+            break;
+        }
         default:
             break;
     }
@@ -229,37 +226,38 @@ void Mark(Value* value) {
 
 static void _MarkConstants(Interpreter* interpreter) {
     for (int i = 0; i < interpreter->ConstantC; i++) {
-        Value* constant = interpreter->Constants[i];
-        if (constant != NULL) {
-            Mark(constant);
-        }
+        Mark(interpreter->Constants[i]);
     }
 }
 
 static void _MarkFunctions(Interpreter* interpreter) {
     for (int i = 0; i < interpreter->FunctionC; i++) {
-        Value* function = interpreter->Functions[i];
-        if (function != NULL) {
-            Mark(function);
-        }
+        Mark(interpreter->Functions[i]);
     }
 }
 
 static void _MarkStack(Interpreter* interpreter) {
     for (int i = 0; i < interpreter->StackC; i++) {
-        Value* value = interpreter->Stacks[i];
-        if (value != NULL) {
-            Mark(value);
-        }
+        Mark(interpreter->Stacks[i]);
     }
 }
 
 static void _MarkEnvs(Interpreter* interpreter) {
     for (int i = 0; i < interpreter->EnvC; i++) {
-        Value* envObj = interpreter->Envs[i];
-        if (envObj != NULL) {
-            Mark(envObj);
-        }
+        Mark(interpreter->Envs[i]);
+    }
+}
+
+static void _MarkTaskQueue(Interpreter* interpreter) {
+    for (int i = 0; i < interpreter->TaskQueueC; i++) {
+        int idx = (interpreter->TaskQueueHead + i) % STACK_SIZE;
+        Mark(interpreter->TaskQueue[idx]);
+    }
+}
+
+static void _MarkCallStack(Interpreter* interpreter) {
+    for (int i = 0; i < interpreter->CallStackC; i++) {
+        Mark(interpreter->CallStack[i]);
     }
 }
 
@@ -283,16 +281,23 @@ static size_t _Sweep(Interpreter* interpreter) {
 
 void GarbageCollect(Interpreter* interpreter) {
     // printf("GC: Starting garbage collection... Allocated = %d bytes, Threshold = %d bytes\n", interpreter->Allocated, interpreter->GcThreshold);
+    Mark(interpreter->GcRoot);
     Mark(interpreter->Array);
+    Mark(interpreter->Date);
+    Mark(interpreter->Promise);
     Mark(interpreter->True);
     Mark(interpreter->False);
     Mark(interpreter->Null);
     Mark(interpreter->RootEnv);
     Mark(interpreter->CallEnv);
+    if (interpreter->ActiveTask != NULL) Mark(interpreter->ActiveTask);
     _MarkConstants(interpreter);
     _MarkFunctions(interpreter);
     _MarkStack(interpreter);
     _MarkEnvs(interpreter);
+    _MarkTaskQueue(interpreter);
+    _MarkCallStack(interpreter);
+
     size_t srv = _Sweep(interpreter);
     size_t nxt = srv * GC_GROWTH_FACTOR;
 

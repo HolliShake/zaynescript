@@ -14,6 +14,17 @@
 #define CORE_DATE_H
 
 /**
+ * @brief Creates the Date class
+ * 
+ * This function initializes the Date class with its methods and properties.
+ * It is called during the loading of the core Date module.
+ * 
+ * @param  interpreter The interpreter instance to create the Date class in
+ * @return Value* Pointer to the created Date class, or NULL on failure
+ */
+Value* CreateDateClass(Interpreter* interpreter);
+
+/**
  * @brief Loads the core Date module
  * 
  * This function initializes and loads the core Date module, which provides

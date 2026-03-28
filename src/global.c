@@ -78,7 +78,7 @@ String RunesStrToString(Rune* runes) {
     // Convert each rune to UTF-8 and append to string
     size_t offset = 0;
     for (size_t i = 0; i < runeCount; i++) {
-        char* runeStr = utf_rune_to_string(runes[i]);
+        String runeStr = utf_rune_to_string(runes[i]);
         size_t runeLen = strlen(runeStr);
         memcpy(str + offset, runeStr, runeLen);
         offset += runeLen;
@@ -285,6 +285,14 @@ ClassInstance* CoerceToClassInstance(Value* value) {
     Panic("Value is not a ClassInstance");
 }
 
+StateMachine* CoerceToStateMachine(Value* value) {
+    if (value == NULL) return NULL;
+    if (value->Type == VLT_PROMISE) {
+        return (StateMachine*) value->Value.Opaque;
+    }
+    Panic("Value is not a Promise/StateMachine");
+}
+
 String GetErrorLine(String path, Rune* runes, Position position, String message) {
     if (runes == NULL) {
         return NULL;
@@ -321,7 +329,7 @@ String GetErrorLine(String path, Rune* runes, Position position, String message)
     
     // Build the error message string
     size_t bufferSize = 4096;
-    char* result = Allocate(bufferSize);
+    String result = Allocate(bufferSize);
     size_t currentPos = 0;
     
     // Add error header
@@ -364,7 +372,7 @@ String GetErrorLine(String path, Rune* runes, Position position, String message)
         size_t needed = currentPos + LINE_NUM_WIDTH + strlen(lineBuffer) + 200;
         if (needed > bufferSize) {
             bufferSize = needed * 2;
-            char* newResult = Allocate(bufferSize);
+            String newResult = Allocate(bufferSize);
             memcpy(newResult, result, currentPos);
             free(result);
             result = newResult;
@@ -435,7 +443,7 @@ String FormatString(String format, ...) {
     va_end(args);
     
     // Allocate buffer
-    char* buffer = Allocate(size);
+    String buffer = Allocate(size);
     
     // Write formatted string to buffer
     va_start(args, format);

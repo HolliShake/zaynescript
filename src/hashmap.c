@@ -47,6 +47,7 @@ static void _Rehash(HashMap* hashmap) {
         while (node != NULL && node->Key != NULL) {
             HashNode* next = node->Next;
             HashMapSet(hashmap, node->Key, node->Val);
+            free(node->Key);
             
             // free chain nodes (but not the first node in each bucket)
             if (node != &oldBuckets[i]) {
@@ -104,7 +105,7 @@ void HashMapSet(HashMap* hashmap, String key, void* value) {
     
     // If bucket is empty, use it directly
     if (node->Key == NULL) {
-        node->Key = key;
+        node->Key = AllocateString(key);
         node->Val = value;
         hashmap->Count++;
         return;
@@ -129,7 +130,7 @@ void HashMapSet(HashMap* hashmap, String key, void* value) {
         return;
     }
     
-    newNode->Key = key;
+    newNode->Key = AllocateString(key);
     newNode->Val = value;
     newNode->Next = NULL;
     current->Next = newNode;
@@ -244,8 +245,10 @@ String HashMapToString(HashMap* hashmap) {
     for (size_t i = 0; i < hashmap->Size; i++) {
         HashNode* node = &hashmap->Buckets[i];
         while (node != NULL && node->Key != NULL) {
-            bufferSize += strlen(node->Key) + 50; // Key + formatting
+            String valStr = ValueToString((Value*)node->Val);
+            bufferSize += strlen(node->Key) + (valStr ? strlen(valStr) : 4) + 10;
             node = node->Next;
+            free(valStr);
         }
     }
     
@@ -266,8 +269,11 @@ String HashMapToString(HashMap* hashmap) {
             strcat(result, "\"");
             strcat(result, node->Key);
             strcat(result, "\": ");
-            //NOTE: memory leak (ValueToString returns a new string that is not freed)
-            strcat(result, ValueToString(node->Val));
+            String valStr = ValueToString((Value*)node->Val);
+            if (valStr != NULL) {
+                strcat(result, valStr);
+                free(valStr);
+            }
             first = false;
             node = node->Next;
         }
@@ -275,4 +281,27 @@ String HashMapToString(HashMap* hashmap) {
     
     strcat(result, " }");
     return result;
+}
+
+void FreeHashMap(HashMap* hashmap) {
+    if (hashmap == NULL) {
+        return;
+    }
+    
+    for (size_t i = 0; i < hashmap->Size; i++) {
+        HashNode* node = &hashmap->Buckets[i];
+        while (node != NULL && node->Key != NULL) {
+            HashNode* next = node->Next;
+            free(node->Key);
+            node->Key = NULL;
+            // Note: we do not free node->Val here since we don't know its type
+            if (node != &hashmap->Buckets[i]) {
+                free(node); // Free chain nodes, but not the first node in each bucket
+            }
+            node = next;
+        }
+    }
+    
+    free(hashmap->Buckets);
+    free(hashmap);
 }

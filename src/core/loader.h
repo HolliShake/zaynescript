@@ -2,8 +2,10 @@
 #include "./array.h"
 #include "./date.h"
 #include "./io.h"
-#include "./os.h"
 #include "./math.h"
+#include "./os.h"
+#include "./promise.h"
+
 
 #ifndef CORE_LOADER_H
 #define CORE_LOADER_H

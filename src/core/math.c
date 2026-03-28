@@ -84,15 +84,14 @@ Value* LoadCoreMath(Interpreter* interpreter) {
 
     for (int i = 0; _MathModuleFunctions[i].Name != NULL; i++) {
         ModuleFunction func = _MathModuleFunctions[i];
-        String name = AllocateString((String)func.Name);
-        String hKey = AllocateString((String)func.Name);
+        String hKey = func.Name;
         
         if (func.Value != NULL) {
             HashMapSet(map, hKey, func.Value);
         } else {
             HashMapSet(map, hKey, NewNativeFunctionValue(interpreter, 
                 CreateNativeFunctionMeta(
-                    (const String) name,
+                    (const String) hKey,
                     func.Argc,
                     func.CFunction
                 )
@@ -101,8 +100,8 @@ Value* LoadCoreMath(Interpreter* interpreter) {
     }
     
     // Constants
-    HashMapSet(map, AllocateString("pi"), NewNumValue(interpreter, M_PI));
-    HashMapSet(map, AllocateString("e"), NewNumValue(interpreter, M_E));
+    HashMapSet(map, "pi", NewNumValue(interpreter, M_PI));
+    HashMapSet(map, "e", NewNumValue(interpreter, M_E));
 
     return module;
 }

@@ -52,6 +52,7 @@ static int _CheckTokenT(Parser* parser, TokenKind type) {
 }
 
 static void _AcceptTokenV(Parser* parser, String value) {
+    if (parser->Next.Type == TK_EOF) return;
     if (_CheckTokenV(parser, value)) {
         parser->Next = NextToken(parser->Lexer);
         return;
@@ -67,6 +68,7 @@ static void _AcceptTokenV(Parser* parser, String value) {
 }
 
 static void _AcceptTokenT(Parser* parser, TokenKind type) {
+    if (parser->Next.Type == TK_EOF) return;
     if (_CheckTokenT(parser, type)) {
         parser->Next = NextToken(parser->Lexer);
         return;
@@ -553,6 +555,34 @@ static Ast* _Unary(Parser* parser) {
         free(op);
 
         return node;
+    } else if (CHECKTV(KEY_AWAIT))  {
+        ACCEPTV_FREE(KEY_AWAIT);
+
+        Ast* operand = _Unary(parser);
+
+        if (operand == NULL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                parser->Next.Position, 
+                "expected an expression"
+            );
+        }
+
+        if (operand->Type != AST_CALL) {
+            ThrowError(
+                parser->Lexer->Path, 
+                parser->Lexer->Data, 
+                operand->Position, 
+                "await can only be applied to function calls"
+            );
+        }
+
+        return AstSingle(
+            AST_AWAIT,
+            operand, 
+            MergePositions(operand->Position, operand->Position)
+        );
     }
 
     return _Postfix(parser);

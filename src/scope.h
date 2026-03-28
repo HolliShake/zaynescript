@@ -21,14 +21,13 @@
  * Allocates and initializes a Symbol structure with the given properties.
  * Symbols represent variables and their metadata within a scope.
  * 
- * @param name The name of the symbol (string identifier)
  * @param isGlobal Whether the symbol is global (true) or local (false)
  * @param isLocalToFn Whether the symbol is local to a function scope
  * @param isConstant Whether the symbol is constant (immutable)
  * @param offset The offset of the symbol in the function's local variables array
  * @return Pointer to the newly created Symbol structure, or NULL on allocation failure
  */
-Symbol* CreateSymbol(String name, bool isGlobal, bool isLocalToFn, bool isConstant, int offset);
+Symbol* CreateSymbol(bool isGlobal, bool isLocalToFn, bool isConstant, int offset);
 
 /**
  * @brief Creates a new scope

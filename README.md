@@ -53,7 +53,29 @@
 
 ## Building
 
-To build ZayneScript, you need a C compiler (like GCC).
+To build ZayneScript, you need a C compiler (GCC) and GNU Make.
+
+### Linux / macOS — using Make (recommended)
+
+```bash
+# Debug build (default)
+make
+
+# Release build (optimised, no debug symbols)
+make release
+
+# Build and run immediately
+make run
+
+# Remove the compiled binary
+make clean
+```
+
+### Linux / macOS — manual GCC
+
+```bash
+gcc -O3 -DNDEBUG -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c ./libbf/*.c -o zscript.exe -lm -ldl -lpthread
+```
 
 ### Windows (using MinGW/GCC)
 
@@ -66,13 +88,7 @@ You can use the provided `run.bat` script:
 Or run the GCC command manually:
 
 ```bash
-gcc -O3 -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c -o zscript.exe -lm
-```
-
-### Linux / macOS
-
-```bash
-gcc -O3 -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c -o zscript -lm -ldl -lpthread
+gcc -O3 -DNDEBUG -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c ./libbf/*.c -o zscript.exe -lm
 ```
 
 ## Usage
@@ -149,7 +165,7 @@ println(add5(10)); // 15
 
 #### Async Functions
 
-The `async` keyword is placed **after** the parameter list:
+The `async` keyword is placed **after** the parameter list. Calling an async function returns a **Promise** immediately; use `await` inside another async function to wait for the result.
 
 ```javascript
 fn fetchData() async {
@@ -160,6 +176,45 @@ fn fetchData() async {
 const task = fn() async {
     return "done";
 };
+```
+
+Use `await` to suspend the current async function until the awaited promise resolves:
+
+```javascript
+fn topLevel() async {
+    return "Hello";
+}
+
+fn callMe() async {
+    println(await topLevel()); // Hello
+    println(await topLevel()); // Hello
+    return 1;
+}
+
+println(callMe()); // <Promise>
+```
+
+#### Promise Chaining (`.then`)
+
+Promises expose a `.then(callback)` method for chaining reactions without `await`. Each `.then` receives the resolved value of the previous step and its return value becomes the next promise in the chain:
+
+```javascript
+fn awaitable() async {
+    return "Hola!";
+}
+
+const v = awaitable()
+    .then(fn(v) {
+        println("resolved with:", v); // resolved with: Hola!
+        return 42;
+    })
+    .then(fn(v) {
+        println("chained value:", v); // chained value: 42
+        return "done";
+    })
+    .then(println); // done
+
+println(v); // <Promise>
 ```
 
 ### Operators

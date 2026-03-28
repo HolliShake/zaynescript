@@ -73,4 +73,15 @@ int HashMapContains(HashMap* hashmap, String key);
  */
 String HashMapToString(HashMap* hashmap);
 
+/**
+ * FreeHashMap - Frees the memory used by the hash map
+ *
+ * Deallocates all memory associated with the hash map, including keys and
+ * values. The caller is responsible for ensuring that any pointers stored
+ * as values are properly freed if necessary.
+ *
+ * @param hashmap Pointer to the hash map to free
+ */
+void FreeHashMap(HashMap* hashmap);
+
 #endif

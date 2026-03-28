@@ -185,15 +185,15 @@ static Value* _DateToString(Interpreter* interpreter, int argc, Value** argument
     char buffer[128];
     // Example: "Sat Jan 17 2026 12:34:56"
     // ctime includes newline, so we might want to manually format or strip it
-    char* tstr = ctime(&rawtime);
+    String tstr = ctime(&rawtime);
     if (tstr) {
         size_t len = strlen(tstr);
         if (len > 0 && tstr[len-1] == '\n') tstr[len-1] = '\0';
-        //NOTE: memory leak (AllocateString creates a char* string that is passed to NewStrValue, but NewStrValue converts it to Runes and doesn't free the original char* string)
-        return NewStrValue(interpreter, AllocateString(tstr));
+        
+        return NewStrValue(interpreter, tstr);
     }
-    //NOTE: memory leak (AllocateString creates a char* string that is passed to NewStrValue, but NewStrValue converts it to Runes and doesn't free the original char* string)
-    return NewStrValue(interpreter, AllocateString("Invalid Date"));
+
+    return NewStrValue(interpreter, "Invalid Date");
 }
 
 static ModuleFunction _DateClassMethods[] = {
@@ -212,21 +212,42 @@ static ModuleFunction _DateClassMethods[] = {
     { .Name = NULL }
 };
 
-
-Value* LoadCoreDate(Interpreter*  interpreter) {
-    Value* dateModule = NewClassValue( interpreter, CreateUserClass("Date", NULL));
-    Class* cls = CoerceToUserClass(dateModule);
+Value* CreateDateClass(Interpreter* interpreter) {
+    Value* dateClass = NewClassValue(interpreter, CreateUserClass("Date", NULL));
+    Class* cls = CoerceToUserClass(dateClass);
     
     // Register methods
     for (int i = 0; _DateClassMethods[i].Name != NULL; i++) {
         ModuleFunction* func = &_DateClassMethods[i];
+        String hKey = func->Name;
+        
         if (func->CFunction) {
-            String name = AllocateString(func->Name);
-            String hKey = AllocateString(func->Name);
-            NativeFunction* meta = CreateNativeFunctionMeta(name, func->Argc, func->CFunction);
-            ClassDefineMemberByString(cls, hKey, NewNativeFunctionValue( interpreter, meta), false);
+    
+            ClassDefineMemberByString(
+                cls, 
+                hKey, 
+                NewNativeFunctionValue(
+                    interpreter, 
+                    CreateNativeFunctionMeta(
+                        (String) hKey, 
+                        func->Argc, 
+                        func->CFunction
+                    )
+                ), 
+                false
+            );
         }
     }
     
-    return dateModule;
+    return dateClass;
+}
+
+Value* LoadCoreDate(Interpreter* interpreter) {
+    Value* val = (interpreter->Date != NULL) ? interpreter->Date : (interpreter->Date = CreateDateClass(interpreter));
+
+    Value* module = NewObjectValue(interpreter);
+    HashMap* map  = CoerceToHashMap(module);
+
+    HashMapSet(map, "Date", val);
+    return module;
 }

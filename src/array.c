@@ -78,7 +78,7 @@ String ArrayToString(Array* array) {
         return s;
     }
 
-    static const char SELF[]    = "[self]";
+    static const String SELF     = "[self]";
     static const size_t SELF_LEN = 6;
 
     // ----------------------------------------------------------------
@@ -109,7 +109,7 @@ String ArrayToString(Array* array) {
     String buffer = Allocate(total);
     if (!buffer) goto cleanup;
 
-    char *p = buffer;
+    String p = buffer;
     *p++ = '[';
 
     for (size_t i = 0; i < array->Count; i++) {

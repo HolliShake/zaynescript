@@ -19,6 +19,8 @@ Interpreter* CreateInterpreter() {
     interpreter->RootEnv                    = NULL;
     interpreter->CallEnv                    = NULL;
     interpreter->Array                      = CreateArrayClass(interpreter);
+    interpreter->Date                       = CreateDateClass(interpreter);
+    interpreter->Promise                    = CreatePromiseClass(interpreter);
     interpreter->True                       = NewBoolValue(interpreter, 1);
     interpreter->False                      = NewBoolValue(interpreter, 0);
     interpreter->Null                       = NewNullValue(interpreter);
@@ -35,6 +37,10 @@ Interpreter* CreateInterpreter() {
     // interpreter->ExceptionHandlerStacks[STACK_SIZE];
     interpreter->ExceptionHandlerStackC     = 0;
     interpreter->GcThreshold                = GC_THRESHOLD;
+    // interpreter->TaskQueue[STACK_SIZE];
+    interpreter->TaskQueueHead             = 0;
+    interpreter->TaskQueueC                = 0;
+    interpreter->ActiveTask                = NULL;
     return interpreter;
 }
 
@@ -43,6 +49,7 @@ Interpreter* CreateInterpreter() {
 #define PopN(n)     (interpreter->Stacks[interpreter->StackC -= (n)])
 #define Peek()      (interpreter->Stacks[interpreter->StackC - 1])
 #define PeekAt(n)   (interpreter->Stacks[interpreter->StackC - n])
+#define RestoreStack(n) (interpreter->StackC = (n))
 
 #define SetVar(envObj, offset, value) EnvironmentSetLocal(CoerceToEnvironment(envObj), offset, value)
 #define GetVar(envObj, offset) EnvironmentGetLocal(CoerceToEnvironment(envObj), offset)->Value
@@ -61,6 +68,7 @@ Interpreter* CreateInterpreter() {
     printf("Stack [%d items]: [ ", interpreter->StackC); \
     for (int i = 0; i < interpreter->StackC; i++) { \
         if (i > 0) printf(", "); \
+        /*Note: memory leak (ValueToString allocates a string that is passed to printf but never freed)*/ \
         printf("%s", ValueToString(interpreter->Stacks[i])); \
     } \
     printf(" ]\n"); \
@@ -77,9 +85,9 @@ Interpreter* CreateInterpreter() {
 } while(0)
 
 #define HandleError(messageFormat, ...) { \
-    int size = snprintf(NULL, 0, (char*) messageFormat, ##__VA_ARGS__) + 1; \
+    int size = snprintf(NULL, 0, (String) messageFormat, ##__VA_ARGS__) + 1; \
     String message = (String) Allocate(size); \
-    snprintf(message, size, (char*) messageFormat, ##__VA_ARGS__); \
+    snprintf(message, size, (String) messageFormat, ##__VA_ARGS__); \
     if (catched) { \
         JmpFrwd(PeekEH()); \
         PoppEH(); \
@@ -197,13 +205,20 @@ static void _Error(Interpreter* interpreter, UserFunction* uf, size_t* ip, const
     String fmt = FormatString("[%s:%d]::%s: %s", line.Path, line.Line, type, message);
     free(message);
     Value* err = NewErrorValue(interpreter, fmt);
+    free(fmt);
     if (isCatched()) {
         JumpToError(ip, _PeekTry(interpreter));
         _PoppTry(interpreter);
         Push(err);
         return;
     }
-    InterpreterPanic(ValueToString(err));
+    String errStr = ValueToString(err);
+    fprintf(stderr, "[%s:%d]::Panic: %s\n", __FILE__, __LINE__, errStr);
+    free(errStr);
+    ForceGarbageCollect(interpreter);
+    FreeInterpreter(interpreter);
+    fprintf(stderr, "Program exited with panic.\n");
+    exit(EXIT_FAILURE);
 }
 
 static void _RaiseError(Interpreter* interpreter, UserFunction* uf, size_t* ip, Value* error) {
@@ -214,7 +229,15 @@ static void _RaiseError(Interpreter* interpreter, UserFunction* uf, size_t* ip, 
         return;
     }
     LineInfo line = _GetLineFromPc(uf, *ip);
-    InterpreterPanic(FormatString("[%s:%d]::%s", line.Path, line.Line, ValueToString(error)));
+    String errStr = ValueToString(error);
+    String msg = FormatString("[%s:%d]::%s", line.Path, line.Line, errStr);
+    free(errStr);
+    fprintf(stderr, "[%s:%d]::Panic: %s\n", __FILE__, __LINE__, msg);
+    free(msg);
+    ForceGarbageCollect(interpreter);
+    FreeInterpreter(interpreter);
+    fprintf(stderr, "Program exited with panic.\n");
+    exit(EXIT_FAILURE);
 }
 
 static void _ReferenceError(Interpreter* interpreter, UserFunction* uf, size_t* ip, String message) {
@@ -225,9 +248,47 @@ static void _TypeError(Interpreter* interpreter, UserFunction* uf, size_t* ip, S
     _Error(interpreter, uf, ip, TYPE_ERROR, message);
 }
 
+/******* Task Queue Management */
+static void _EnqueueTask(Interpreter* interpreter, Value* task) {
+    if (interpreter->TaskQueueC >= STACK_SIZE) {
+        InterpreterPanic("Task queue overflow");
+    }
+    int tail = (interpreter->TaskQueueHead + interpreter->TaskQueueC) % STACK_SIZE;
+    interpreter->TaskQueue[tail] = task;
+    interpreter->TaskQueueC++;
+}
+
+static Value* _DequeueTask(Interpreter* interpreter) {
+    if (interpreter->TaskQueueC == 0) {
+        return NULL;
+    }
+    Value* task = interpreter->TaskQueue[interpreter->TaskQueueHead];
+    interpreter->TaskQueueHead = (interpreter->TaskQueueHead + 1) % STACK_SIZE;
+    interpreter->TaskQueueC--;
+    return task;
+}
+
+static Value* _DequeueTaskAt(Interpreter* interpreter, int index) {
+    if (interpreter->TaskQueueC == 0 || index < 0 || index >= interpreter->TaskQueueC) {
+        return NULL;
+    }
+    int phys = (interpreter->TaskQueueHead + index) % STACK_SIZE;
+    Value* task = interpreter->TaskQueue[phys];
+    // Shift all logical elements after 'index' one slot toward the head
+    for (int i = index; i < interpreter->TaskQueueC - 1; i++) {
+        int cur  = (interpreter->TaskQueueHead + i)     % STACK_SIZE;
+        int next = (interpreter->TaskQueueHead + i + 1) % STACK_SIZE;
+        interpreter->TaskQueue[cur] = interpreter->TaskQueue[next];
+    }
+    interpreter->TaskQueueC--;
+    return task;
+}
+
+
 /******* Main interpreter loop */
 void Run(Interpreter* interpreter, Value* fnValue) {
-    UserFunction* uf = CoerceToUserFunction(fnValue);
+    StateMachine* sm = NULL;
+    UserFunction* uf = ValueIsUserFunction(fnValue) ? CoerceToUserFunction(fnValue) : NULL;
     uint8_t opcode   = 0;
     Value* lhs       = NULL;
     Value* rhs       = NULL;
@@ -239,6 +300,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
     Value* key       = NULL;
     Value* val       = NULL;
     Value* err       = NULL;
+    Value* prm       = NULL;
     Environment* env = NULL;
     HashMap* map     = NULL;
     Array* array     = NULL;
@@ -249,6 +311,31 @@ void Run(Interpreter* interpreter, Value* fnValue) {
     int size         = 0;
     bool catched     = false;
     String str       = NULL;
+
+    bool restored = false;
+
+    if (uf != NULL && uf->Async) {
+        // Initial call
+        sm = CreateStateMachine(
+            /*Status     */ PENDING,
+            /*IsCallback */ false,
+            /*Ip         */ 0,
+            /*Env        */ interpreter->CallEnv,
+            /*WaitFor    */ NULL,
+            /*Function   */ fnValue
+        );
+        sm->StackBot = interpreter->StackC;
+        prm = NewPromiseValue(interpreter, sm);
+    } else if (ValueIsPromise(fnValue)) {
+        // Restore
+        prm = fnValue;
+        sm  = CoerceToStateMachine(prm);
+        sm->StackBot = interpreter->StackC;
+        uf  = CoerceToUserFunction(sm->Function);
+        ip  = sm->Ip;
+        interpreter->StackC = sm->StackBot;
+        restored = true;
+    }
  
     #define Forward(size) (ip += size)
     #define JmpFrwd(addr) (ip  = addr)
@@ -257,6 +344,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 
         if (interpreter->Allocated >= interpreter->GcThreshold) {
             Mark(fnValue);
+            Mark(prm);
             GarbageCollect(interpreter);
         }
 
@@ -269,6 +357,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 str = _ReadString(uf->Codes, ip);
                 res = DoImportCore(interpreter, str);
                 if (ValueIsError(res)) {
+                    free(str);
                     _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
@@ -387,8 +476,9 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 for (int i = 0; i < size; i++) {
                     key = Popp();
                     val = Popp();
-                    //NOTE: memory leak (ValueToString returns a new string. If HashMapSet updates an existing key, this new string is not freed by HashMapSet)
-                    HashMapSet(map, ValueToString(key), val);
+                    String keyStr = ValueToString(key);
+                    HashMapSet(map, keyStr, val);
+                    free(keyStr);
                 }
                 Push(obj);
                 Forward(4);
@@ -416,8 +506,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
             }
             case OP_CLASS_MAKE: {
                 str = _ReadString(uf->Codes, ip);
-                //NOTE: memory leak (AllocateString creates a char* string passed to CreateUserClass. CreateUserClass duplicates this string for its own storage, so the first allocation is leaked)
-                obj = NewClassValue(interpreter, CreateUserClass(AllocateString(str), NULL));
+                obj = NewClassValue(interpreter, CreateUserClass(str, NULL));
                 Push(obj);
                 Forward(strlen(str) + 1);
                 free(str);
@@ -466,10 +555,12 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 break;
             }
             case OP_CALL_CTOR: {
+                interpreter->CallStack[interpreter->CallStackC++] = (prm != NULL) ? prm : fnValue;
                 argc = _ReadInt32(uf->Codes, ip);
                 Forward(4);
                 cls  = Popp();
                 res  = DoCallCtor(interpreter, cls, argc);
+                --interpreter->CallStackC;
                 if (ValueIsError(res)) {
                     _RaiseError(interpreter, uf, &ip, res);
                     break;
@@ -477,10 +568,12 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 break;
             }
             case OP_CALL: {
+                interpreter->CallStack[interpreter->CallStackC++] = (prm != NULL) ? prm : fnValue;
                 argc = _ReadInt32(uf->Codes, ip);
                 Forward(4);
                 obj  = Popp();
                 res  = DoCall(interpreter, obj, argc, false);
+                --interpreter->CallStackC;
                 if (ValueIsError(res)) {
                     _RaiseError(interpreter, uf, &ip, res);
                     break;
@@ -488,11 +581,13 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 break;
             }
             case OP_CALL_METHOD: {
+                interpreter->CallStack[interpreter->CallStackC++] = (prm != NULL) ? prm : fnValue;
                 argc = _ReadInt32(uf->Codes, ip);
                 Forward(4);
                 key  = Popp(); // method
                 obj  = Popp(); // 'this' object
                 res  = DoCallMethod(interpreter, obj, key, argc);
+                --interpreter->CallStackC;
                 if (ValueIsError(res)) {
                     _RaiseError(interpreter, uf, &ip, res);
                     break;
@@ -527,6 +622,52 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                     break;
                 }
                 Push(res);
+                break;
+            }
+            case OP_AWAIT: {
+                if (!ValueIsPromise(Peek())) break;
+                val = Popp(); // The awaited promise
+
+                StateMachineAwait(sm, ip, val);
+
+                // 1. FIX: Calculate the exact size of the current stack frame
+                int size = interpreter->StackC - sm->StackBot;
+
+                // Now your Panic message makes perfect sense!
+                if (size < 0) Panic("Invalid stack state: StackC (%d) is less than StackBot (%d)", interpreter->StackC, sm->StackBot);
+
+                // 2. Free old memory (Make sure 'free' matches 'Allocate'!)
+                if (sm->Stacks != NULL) {
+                    free(sm->Stacks); // Or your engine's equivalent memory freer
+                    sm->Stacks = NULL;
+                }
+
+                sm->StackTop = size;
+
+                // 3. Allocate and copy ONLY this function's variables
+                if (size > 0) {
+                    sm->Stacks = Allocate(sizeof(Value*) * size);
+                    
+                    // This now perfectly copies exactly from StackBot to StackC
+                    memcpy(sm->Stacks, &interpreter->Stacks[sm->StackBot], sizeof(Value*) * size);
+                }
+
+                // 4. Update StackC to reflect that this function's variables are popped off the main stack
+                interpreter->StackC = sm->StackBot;
+
+                StateMachine* awaitedSM = CoerceToStateMachine(val);
+
+                if (awaitedSM->State == FULFILLED) {
+                    _EnqueueTask(interpreter, prm);
+                } else {
+                    StateMachineAddWaitList(awaitedSM, prm);
+                }
+
+                Push(prm);
+                return;
+            }
+            case OP_GET_AWAITED_VALUE: {
+                Push(CoerceToStateMachine(sm->WaitFor)->Value);
                 break;
             }
             case OP_MUL: {
@@ -888,10 +1029,21 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 break;
             }
             case OP_RETURN: {
+                if (uf->Async) {
+                    val = Popp();
+
+                    StateMachineFulfill(sm, val);
+                    Push(prm);
+
+                    for (int i = 0; i < sm->WaitListC; i++) {
+                        Value* suspendedTask = sm->WaitList[i];
+                        _EnqueueTask(interpreter, suspendedTask);
+                    }
+                }
                 return;
             }
             default: {
-                Panic("Unknown opcode: %s, %d %d\n", uf->Name != NULL ? uf->Name : "<anonymous>", opcode, OP_LOAD_NAME);
+                InterpreterPanic("Unknown opcode: %s, %d %d\n", uf->Name != NULL ? uf->Name : "<anonymous>", opcode, OP_LOAD_NAME);
                 return;
             }
         }
@@ -905,8 +1057,49 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
     SaveRootEnv(interpreter, env);
     Run(interpreter, fnValue);
     RestoreEnv(interpreter);
+
+    int old = interpreter->StackC;
+
+    // Consume all remaining tasks in the task queue (e.g. pending promises) before exiting the program
+    Value* task = NULL;
+    while ((task = _DequeueTask(interpreter)) != NULL) {
+        interpreter->ActiveTask = task;
+        interpreter->CallStack[interpreter->CallStackC++] = task;
+        // Awaited
+        StateMachine* sm = CoerceToStateMachine(task);
+        if (!sm->IsCallback) {
+            DoCall(interpreter, task, 0, false);
+        } else {
+            StateMachine* wait = CoerceToStateMachine(sm->WaitFor);
+            if (wait->State != FULFILLED) Panic("internal error: expected awaited state machine to be fulfilled when resuming callback, but got state %d", wait->State);
+            
+            // 1. Push value
+            Push(wait->Value);
+
+            // 2. Call the callback
+            DoCall(interpreter, sm->Function, 1, false);
+            
+            // 3. Fulfill the state machine with the callback's return value
+            StateMachineFulfill(sm, Popp());
+
+            // 4. Enqueue all tasks waiting on this state machine
+            for (size_t i = 0; i < sm->WaitListC; i++) {
+                _EnqueueTask(interpreter, sm->WaitList[i]);
+            }
+        }
+
+        --interpreter->CallStackC;
+
+        interpreter->ActiveTask = NULL;
+    }
+
+    printf("Program finished with exit code!\n");
+
+    interpreter->StackC  = old;
     interpreter->RootEnv = saveGbl;
+
     if (interpreter->StackC != 1) {
+        DumpStack();
         InterpreterPanic(
             "internal error: stack not cleaned up after function '%s' execution, expected 1 value on stack but got %d values", 
             uf->Name != NULL ? uf->Name : "<anonymous>", 
@@ -922,6 +1115,7 @@ void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/) {
 
 void FreeInterpreter(Interpreter* interpreter) {
     bf_context_end(&interpreter->BfContext);
+    FreeHashMap(interpreter->Imports);
     free(interpreter->Constants);
     free(interpreter->Functions);
     free(interpreter);
