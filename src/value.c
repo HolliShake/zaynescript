@@ -198,12 +198,18 @@ String ValueToString(Value* value) {
             switch (sm->State) {
                 case PENDING:
                     return AllocateString("<Promise.PENDING />");
-                case FULFILLED:
-                    //Note: memory leak (ValueToString(sm->Value) allocates a string that is passed to FormatString but never freed)
-                    return FormatString("<Promise.FULFILLED {%s} />", ValueToString(sm->Value));
-                case REJECTED:
-                    //Note: memory leak (ValueToString(sm->Value) allocates a string that is passed to FormatString but never freed)
-                    return FormatString("<Promise.REJECTED {%s} />", ValueToString(sm->Value));
+                case FULFILLED: {
+                    String inner = ValueToString(sm->Value);
+                    String result = FormatString("<Promise.FULFILLED {%s} />", inner);
+                    free(inner);
+                    return result;
+                }
+                case REJECTED: {
+                    String inner = ValueToString(sm->Value);
+                    String result = FormatString("<Promise.REJECTED {%s} />", inner);
+                    free(inner);
+                    return result;
+                }
                 default:
                     return AllocateString("<Promise.UNKNOWN />");
             }

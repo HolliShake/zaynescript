@@ -1,5 +1,12 @@
 #include "./operation.h"
 
+#define FreeTempBf(interp, bf, val) do { \
+    if ((val)->Type == VLT_INT || (val)->Type == VLT_NUM) { \
+        bf_delete(bf); \
+        free(bf); \
+    } \
+} while(0)
+
 #define PushArray(type, array, count, val, defaultValue) do { \
     (array)[(count)++] = val; \
     (array) = Reallocate((array), sizeof(type) * ((count) + 1)); \
@@ -548,8 +555,9 @@ Value* DoPos(Interpreter* interp, Value* val) {
     } else if (ValueIsAnyNum(val)) {
         bf_t* resNum = Allocate(sizeof(bf_t));
         bf_init(&interp->BfContext, resNum);
-        //Note: memory leak (CoerceToBitField allocates a new bf_t for VLT_INT/VLT_NUM types, but that temporary is never freed)
-        bf_set(resNum, CoerceToBitField(interp, val));
+        bf_t* tmpBf = CoerceToBitField(interp, val);
+        bf_set(resNum, tmpBf);
+        FreeTempBf(interp, tmpBf, val);
         // unary + is a no-op, just copy
         int prec = BFPrecession(val);
         return prec == PREC_INT
@@ -571,8 +579,9 @@ Value* DoNeg(Interpreter* interp, Value* val) {
     } else if (ValueIsAnyNum(val)) {
         bf_t* resNum = Allocate(sizeof(bf_t));
         bf_init(&interp->BfContext, resNum);
-        //Note: memory leak (CoerceToBitField allocates a new bf_t for VLT_INT/VLT_NUM types, but that temporary is never freed)
-        bf_set(resNum, CoerceToBitField(interp, val));
+        bf_t* tmpBf = CoerceToBitField(interp, val);
+        bf_set(resNum, tmpBf);
+        FreeTempBf(interp, tmpBf, val);
         bf_neg(resNum); // flip sign bit
         int prec = BFPrecession(val);
         return prec == PREC_INT
@@ -600,13 +609,14 @@ Value* DoMul(Interpreter* interp, Value* lhs, Value* rhs) {
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
-        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));
         bf_init(&interp->BfContext, resNum);
         int prec = BFPrecession(lhs) | BFPrecession(rhs);
         bf_mul(resNum, lhsNum, rhsNum, prec, BF_RNDN | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
+        FreeTempBf(interp, lhsNum, lhs);
+        FreeTempBf(interp, rhsNum, rhs);
         result = prec == PREC_INT
             ? NewBigIntValue(interp, resNum)
             : NewBigNumValue(interp, resNum);
@@ -641,13 +651,14 @@ Value* DoDiv(Interpreter* interp, Value* lhs, Value* rhs) {
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
-        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));
         bf_init(&interp->BfContext, resNum);
         int prec = BFPrecession(lhs) | BFPrecession(rhs);
         bf_div(resNum, lhsNum, rhsNum, prec, BF_RNDN | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
+        FreeTempBf(interp, lhsNum, lhs);
+        FreeTempBf(interp, rhsNum, rhs);
         result = prec == PREC_INT
             ? NewBigIntValue(interp, resNum)
             : NewBigNumValue(interp, resNum);
@@ -682,13 +693,14 @@ Value* DoMod(Interpreter* interp, Value* lhs, Value* rhs) {
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
-        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));
         bf_init(&interp->BfContext, resNum);
         int prec = BFPrecession(lhs) | BFPrecession(rhs);
         bf_rem(resNum, lhsNum, rhsNum, prec, BF_RNDN | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS, BF_RNDZ);
+        FreeTempBf(interp, lhsNum, lhs);
+        FreeTempBf(interp, rhsNum, rhs);
         result = prec == PREC_INT
             ? NewBigIntValue(interp, resNum)
             : NewBigNumValue(interp, resNum);
@@ -720,8 +732,9 @@ Value* DoInc(Interpreter* interp, Value* val) {
     } else if (ValueIsAnyNum(val)) {
         bf_t* resNum = Allocate(sizeof(bf_t));
         bf_init(&interp->BfContext, resNum);
-        //Note: memory leak (CoerceToBitField allocates a new bf_t for VLT_INT/VLT_NUM types, but that temporary is never freed)
-        bf_set(resNum, CoerceToBitField(interp, val));
+        bf_t* tmpBf = CoerceToBitField(interp, val);
+        bf_set(resNum, tmpBf);
+        FreeTempBf(interp, tmpBf, val);
         bf_add_si(resNum, resNum, 1, BF_PREC_INF, BF_RNDZ | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
         int prec = BFPrecession(val);
         return prec == PREC_INT
@@ -752,13 +765,14 @@ Value* DoAdd(Interpreter* interp, Value* lhs, Value* rhs) {
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
-        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));
         bf_init(&interp->BfContext, resNum);
         int prec = BFPrecession(lhs) | BFPrecession(rhs);
         bf_add(resNum, lhsNum, rhsNum, prec, BF_RNDN | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
+        FreeTempBf(interp, lhsNum, lhs);
+        FreeTempBf(interp, rhsNum, rhs);
         result = prec == PREC_INT
             ? NewBigIntValue(interp, resNum)
             : NewBigNumValue(interp, resNum);
@@ -805,8 +819,9 @@ Value* DoDec(Interpreter* interp, Value* val) {
     } else if (ValueIsAnyNum(val)) {
         bf_t* resNum = Allocate(sizeof(bf_t));
         bf_init(&interp->BfContext, resNum);
-        //Note: memory leak (CoerceToBitField allocates a new bf_t for VLT_INT/VLT_NUM types, but that temporary is never freed)
-        bf_set(resNum, CoerceToBitField(interp, val));
+        bf_t* tmpBf = CoerceToBitField(interp, val);
+        bf_set(resNum, tmpBf);
+        FreeTempBf(interp, tmpBf, val);
         bf_add_si(resNum, resNum, -1, BF_PREC_INF, BF_RNDZ | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
         int prec = BFPrecession(val);
         return prec == PREC_INT
@@ -837,13 +852,14 @@ Value* DoSub(Interpreter* interp, Value* lhs, Value* rhs) {
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
-        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));
         bf_init(&interp->BfContext, resNum);
         int prec = BFPrecession(lhs) | BFPrecession(rhs);
         bf_sub(resNum, lhsNum, rhsNum, prec, BF_RNDN | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
+        FreeTempBf(interp, lhsNum, lhs);
+        FreeTempBf(interp, rhsNum, rhs);
         result = prec == PREC_INT
             ? NewBigIntValue(interp, resNum)
             : NewBigNumValue(interp, resNum);
@@ -867,7 +883,6 @@ Value* DoLShift(Interpreter* interp, Value* lhs, Value* rhs) {
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
-        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));
@@ -886,6 +901,8 @@ Value* DoLShift(Interpreter* interp, Value* lhs, Value* rhs) {
 #endif
 
         bf_set(resNum, lhsNum);
+        FreeTempBf(interp, lhsNum, lhs);
+        FreeTempBf(interp, rhsNum, rhs);
         bf_mul_2exp(resNum, shiftAmount, BF_PREC_INF, BF_RNDZ);
         // Left shift should never produce a fraction on integers,
         // but guard anyway in case lhs is a float
@@ -917,7 +934,6 @@ Value* DoRShift(Interpreter* interp, Value* lhs, Value* rhs) {
             ? NewIntValue(interp, (int) resultNum)
             : NewNumValue(interp, resultNum);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
-        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));
@@ -938,6 +954,8 @@ Value* DoRShift(Interpreter* interp, Value* lhs, Value* rhs) {
         shiftAmount = -shiftAmount;
 
         bf_set(resNum, lhsNum);
+        FreeTempBf(interp, lhsNum, lhs);
+        FreeTempBf(interp, rhsNum, rhs);
         bf_mul_2exp(resNum, shiftAmount, BF_PREC_INF, BF_RNDZ);
         // Right shift can produce a fraction, floor it (arithmetic shift behavior)
         bf_rint(resNum, BF_RNDD);
@@ -964,10 +982,11 @@ Value* DoLT(Interpreter* interp, Value* lhs, Value* rhs) {
         int comparison = CoerceToNum(lhs) < CoerceToNum(rhs);
         result = comparison ? interp->True : interp->False;
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
-        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         int comparison = bf_cmp_lt(lhsNum, rhsNum);
+        FreeTempBf(interp, lhsNum, lhs);
+        FreeTempBf(interp, rhsNum, rhs);
         result = comparison ? interp->True : interp->False;
     } else {
         String errMsg = FormatString(
@@ -987,10 +1006,11 @@ Value* DoLTE(Interpreter* interp, Value* lhs, Value* rhs) {
         int comparison = CoerceToNum(lhs) <= CoerceToNum(rhs);
         result = comparison ? interp->True : interp->False;
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
-        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         int comparison = bf_cmp_le(lhsNum, rhsNum);
+        FreeTempBf(interp, lhsNum, lhs);
+        FreeTempBf(interp, rhsNum, rhs);
         result = comparison ? interp->True : interp->False;
     } else {
         String errMsg = FormatString(
@@ -1010,10 +1030,11 @@ Value* DoGT(Interpreter* interp, Value* lhs, Value* rhs) {
         int comparison = CoerceToNum(lhs) > CoerceToNum(rhs);
         result = comparison ? interp->True : interp->False;
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
-        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         int comparison = bf_cmp_lt(rhsNum, lhsNum);
+        FreeTempBf(interp, lhsNum, lhs);
+        FreeTempBf(interp, rhsNum, rhs);
         result = comparison ? interp->True : interp->False;
     } else {
         String errMsg = FormatString(
@@ -1033,10 +1054,11 @@ Value* DoGTE(Interpreter* interp, Value* lhs, Value* rhs) {
         int comparison = CoerceToNum(lhs) >= CoerceToNum(rhs);
         result = comparison ? interp->True : interp->False;
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
-        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         int comparison = bf_cmp_le(rhsNum, lhsNum);
+        FreeTempBf(interp, lhsNum, lhs);
+        FreeTempBf(interp, rhsNum, rhs);
         result = comparison ? interp->True : interp->False;
     } else {
         String errMsg = FormatString(
@@ -1051,10 +1073,11 @@ Value* DoGTE(Interpreter* interp, Value* lhs, Value* rhs) {
 
 Value* DoEQ(Interpreter* interp, Value* lhs, Value* rhs) {
     if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
-        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         int comparison = bf_cmp(lhsNum, rhsNum) == 0;
+        FreeTempBf(interp, lhsNum, lhs);
+        FreeTempBf(interp, rhsNum, rhs);
         return comparison ? interp->True : interp->False;
     }
     return ValueIsEqual(lhs, rhs) ? interp->True : interp->False;
@@ -1062,10 +1085,11 @@ Value* DoEQ(Interpreter* interp, Value* lhs, Value* rhs) {
 
 Value* DoNE(Interpreter* interp, Value* lhs, Value* rhs) {
     if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
-        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         int comparison = bf_cmp(lhsNum, rhsNum) != 0;
+        FreeTempBf(interp, lhsNum, lhs);
+        FreeTempBf(interp, rhsNum, rhs);
         return comparison ? interp->True : interp->False;
     }
     return !ValueIsEqual(lhs, rhs) ? interp->True : interp->False;
@@ -1082,12 +1106,13 @@ Value* DoAnd(Interpreter* interp, Value* lhs, Value* rhs) {
         long long resultValue = (int)CoerceToI64(lhs) & (int)CoerceToI64(rhs);
         result = NewNumValue(interp, resultValue);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
-        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));
         bf_init(&interp->BfContext, resNum);
         bf_logic_and(resNum, lhsNum, rhsNum);
+        FreeTempBf(interp, lhsNum, lhs);
+        FreeTempBf(interp, rhsNum, rhs);
         result = NewBigIntValue(interp, resNum);
     } else {
         String errMsg = FormatString(
@@ -1111,12 +1136,13 @@ Value* DoOr(Interpreter* interp, Value* lhs, Value* rhs) {
         long long resultValue = (int)CoerceToI64(lhs) | (int)CoerceToI64(rhs);
         result = NewNumValue(interp, resultValue);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
-        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));
         bf_init(&interp->BfContext, resNum);
         bf_logic_or(resNum, lhsNum, rhsNum);
+        FreeTempBf(interp, lhsNum, lhs);
+        FreeTempBf(interp, rhsNum, rhs);
         result = NewBigIntValue(interp, resNum);
     } else {
         String errMsg = FormatString(
@@ -1140,12 +1166,13 @@ Value* DoXor(Interpreter* interp, Value* lhs, Value* rhs) {
         long long resultValue = (int)CoerceToI64(lhs) ^ (int)CoerceToI64(rhs);
         result = NewNumValue(interp, resultValue);
     } else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
-        //Note: memory leak (CoerceToBitField allocates a new bf_t when lhs or rhs is VLT_INT/VLT_NUM, but those temporaries are never freed)
         bf_t* lhsNum = CoerceToBitField(interp, lhs);
         bf_t* rhsNum = CoerceToBitField(interp, rhs);
         bf_t* resNum = Allocate(sizeof(bf_t));
         bf_init(&interp->BfContext, resNum);
         bf_logic_xor(resNum, lhsNum, rhsNum);
+        FreeTempBf(interp, lhsNum, lhs);
+        FreeTempBf(interp, rhsNum, rhs);
         result = NewBigIntValue(interp, resNum);
     } else {
         String errMsg = FormatString(

@@ -204,16 +204,21 @@ static void _Error(Interpreter* interpreter, UserFunction* uf, size_t* ip, const
     LineInfo line = _GetLineFromPc(uf, *ip);
     String fmt = FormatString("[%s:%d]::%s: %s", line.Path, line.Line, type, message);
     free(message);
-    //Note: memory leak (fmt from FormatString is passed to NewErrorValue which copies it via StringToRunes, but fmt is never freed)
     Value* err = NewErrorValue(interpreter, fmt);
+    free(fmt);
     if (isCatched()) {
         JumpToError(ip, _PeekTry(interpreter));
         _PoppTry(interpreter);
         Push(err);
         return;
     }
-    InterpreterPanic(ValueToString(err));
-    //Note: memory leak (ValueToString allocates a string passed to InterpreterPanic which calls exit() — the string is never freed)
+    String errStr = ValueToString(err);
+    fprintf(stderr, "[%s:%d]::Panic: %s\n", __FILE__, __LINE__, errStr);
+    free(errStr);
+    ForceGarbageCollect(interpreter);
+    FreeInterpreter(interpreter);
+    fprintf(stderr, "Program exited with panic.\n");
+    exit(EXIT_FAILURE);
 }
 
 static void _RaiseError(Interpreter* interpreter, UserFunction* uf, size_t* ip, Value* error) {
@@ -224,8 +229,15 @@ static void _RaiseError(Interpreter* interpreter, UserFunction* uf, size_t* ip, 
         return;
     }
     LineInfo line = _GetLineFromPc(uf, *ip);
-    //Note: memory leak (ValueToString(error) allocates a string passed to FormatString, and FormatString result is passed to InterpreterPanic which calls exit() — both strings are never freed)
-    InterpreterPanic(FormatString("[%s:%d]::%s", line.Path, line.Line, ValueToString(error)));
+    String errStr = ValueToString(error);
+    String msg = FormatString("[%s:%d]::%s", line.Path, line.Line, errStr);
+    free(errStr);
+    fprintf(stderr, "[%s:%d]::Panic: %s\n", __FILE__, __LINE__, msg);
+    free(msg);
+    ForceGarbageCollect(interpreter);
+    FreeInterpreter(interpreter);
+    fprintf(stderr, "Program exited with panic.\n");
+    exit(EXIT_FAILURE);
 }
 
 static void _ReferenceError(Interpreter* interpreter, UserFunction* uf, size_t* ip, String message) {

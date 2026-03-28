@@ -1812,6 +1812,7 @@ static void _ClassDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope
                 }
 
                 ScopeSetSymbol(classScope, fnName->Value, false, true, false, -1);
+                FreeScope(fnScope);
                 break;
             }
             default: {
@@ -2342,6 +2343,7 @@ static void _DoWhileStatement(Compiler* compiler, UserFunction* uf, Scope* scope
         _JumpToLabel(compiler, uf, loopScope->BreakJumps[i]);
     }
     _JumpToLabel(compiler, uf, labelENDDO);
+    FreeScope(loopScope);
 }
 
 static void _TryCatch(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node) {

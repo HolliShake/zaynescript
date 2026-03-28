@@ -20,6 +20,7 @@ static void _Free(Interpreter* interp, Value* value) {
             break;
         }
         case VLT_STR:
+        case VLT_ERROR:
             if (value->Value.Opaque != NULL) {
                 free(value->Value.Opaque);
                 value->Value.Opaque = NULL;

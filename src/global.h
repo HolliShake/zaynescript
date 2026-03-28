@@ -40,7 +40,7 @@
  * @def GC_THRESHOLD
  * @brief The allocation threshold for triggering garbage collection.
  */
-#define GC_THRESHOLD 2
+#define GC_THRESHOLD 2048
 
 /**
  * @def VARARG

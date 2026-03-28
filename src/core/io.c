@@ -184,8 +184,7 @@ static Value* _IoFormat(Interpreter* interpreter, int argc, Value** arguments) {
     buffer[bufferUsed] = '\0';
     free(formatStr);
 
-    //Note: memory leak (AllocateString(buffer) creates a copy that is passed to NewStrValue, which converts it to runes via StringToRunes but never frees the AllocateString copy)
-    Value* result = NewStrValue(interpreter, AllocateString(buffer));
+    Value* result = NewStrValue(interpreter, buffer);
     free(buffer);
     return result;
 }

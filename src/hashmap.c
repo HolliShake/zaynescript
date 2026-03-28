@@ -46,12 +46,11 @@ static void _Rehash(HashMap* hashmap) {
         HashNode* node = &oldBuckets[i];
         while (node != NULL && node->Key != NULL) {
             HashNode* next = node->Next;
-            //Note: memory leak (HashMapSet internally AllocateStrings the key, but the old node->Key is never freed before the node is discarded)
             HashMapSet(hashmap, node->Key, node->Val);
+            free(node->Key);
             
             // free chain nodes (but not the first node in each bucket)
             if (node != &oldBuckets[i]) {
-                //Note: memory leak (node->Key string is not freed before freeing the node struct; the key was heap-allocated by a prior AllocateString call)
                 free(node);
             }
             node = next;
