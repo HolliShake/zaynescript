@@ -320,9 +320,9 @@ Value* DoImportCore(Interpreter* interp, String moduleName) {
 }
 
 Value* DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val) {
-    //Note: memory leak (hashKey from ValueToString is not freed in the Array branch)
     String hashKey = ValueToString(index);
     if (ValueIsArray(obj)) {
+        free(hashKey);
         Array* array = CoerceToArray(obj);
         long idx = (long) CoerceToI64(index);
         if (idx < 0 || idx >= array->Count) {
