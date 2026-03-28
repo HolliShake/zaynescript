@@ -422,7 +422,7 @@ import "core:math"; // available as `math`
 // Named imports from other modules
 import { getUser, getCwd } from "core:os";
 import { Array } from "core:Array";
-import "core:Date"; // available as `Date`
+import { Date } from "core:Date"; // available as `Date`
 ```
 
 ### Standard Library
