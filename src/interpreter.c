@@ -1103,6 +1103,7 @@ void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/) {
 
 void FreeInterpreter(Interpreter* interpreter) {
     bf_context_end(&interpreter->BfContext);
+    FreeHashMap(interpreter->Imports);
     free(interpreter->Constants);
     free(interpreter->Functions);
     free(interpreter);

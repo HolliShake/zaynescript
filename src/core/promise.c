@@ -83,18 +83,14 @@ Value* CreatePromiseClass(Interpreter* interpreter) {
 
     for (int i = 0; _PromiseClassMethods[i].Name != NULL; i++) {
         ModuleFunction func = _PromiseClassMethods[i];
-        //Note: memory leak (AllocateString(func.Name) for 'name' is passed to CreateNativeFunctionMeta which copies it again via AllocateString; the original 'name' is never freed)
-        String name = AllocateString(func.Name);
-        //Note: memory leak (AllocateString(func.Name) for 'hKey' is passed to ClassDefineMemberByString → HashMapSet which copies it via AllocateString; the original 'hKey' is never freed)
-        String hKey = AllocateString(func.Name);
         
         if (func.CFunction != NULL) {
             ClassDefineMemberByString(
                 cls, 
-                hKey, 
+                func.Name, 
                 NewNativeFunctionValue(interpreter, 
                     CreateNativeFunctionMeta(
-                        (const String) name,
+                        (const String) func.Name,
                         func.Argc,
                         func.CFunction
                     )

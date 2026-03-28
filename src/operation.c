@@ -488,7 +488,7 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
 
         for (int i = argc - 1; i >= end; i--) {
             args[i] = _Popp();
-            Mark(args[i]);
+            args[i];
         }
 
         Value* res = nativeFunc(interp, argc, args);

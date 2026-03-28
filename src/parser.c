@@ -52,6 +52,7 @@ static int _CheckTokenT(Parser* parser, TokenKind type) {
 }
 
 static void _AcceptTokenV(Parser* parser, String value) {
+    if (parser->Next.Type == TK_EOF) return;
     if (_CheckTokenV(parser, value)) {
         parser->Next = NextToken(parser->Lexer);
         return;
@@ -67,6 +68,7 @@ static void _AcceptTokenV(Parser* parser, String value) {
 }
 
 static void _AcceptTokenT(Parser* parser, TokenKind type) {
+    if (parser->Next.Type == TK_EOF) return;
     if (_CheckTokenT(parser, type)) {
         parser->Next = NextToken(parser->Lexer);
         return;
