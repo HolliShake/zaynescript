@@ -49,7 +49,11 @@ LDFLAGS  := -lm -ldl -lpthread
 
 # ----------------------------------------------------------------
 
-.PHONY: all release debug clean run pgo-gen pgo-use pgo clean-pgo
+PREFIX   ?= /usr/local
+BINDIR   ?= $(PREFIX)/bin
+LIBDIR   ?= $(PREFIX)/lib/zscript
+
+.PHONY: all release debug clean run pgo-gen pgo-use pgo clean-pgo install uninstall
 
 all: debug
 
@@ -90,6 +94,20 @@ clean-pgo:
 
 clean: clean-pgo
 	rm -f $(TARGET)
+
+install: release
+	@echo "Installing $(TARGET) → $(BINDIR)/zscript"
+	install -d $(BINDIR)
+	install -m 755 $(TARGET) $(BINDIR)/zscript
+	@echo "Installing tests → $(LIBDIR)/tests/"
+	install -d $(LIBDIR)/tests
+	install -m 644 tests/*.zs $(LIBDIR)/tests/
+
+uninstall:
+	@echo "Removing $(BINDIR)/zscript"
+	rm -f $(BINDIR)/zscript
+	@echo "Removing $(LIBDIR)/"
+	rm -rf $(LIBDIR)
 
 run: debug
 	# ADDED: ASAN_OPTIONS for deep unwinding

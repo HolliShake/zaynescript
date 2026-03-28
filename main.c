@@ -125,6 +125,11 @@ void RunTests() {
     
     DIR* dir = opendir(testsPath);
     if (!dir) {
+        // Fall back to installed lib path
+        testsPath = "/usr/local/lib/zscript/tests/";
+        dir = opendir(testsPath);
+    }
+    if (!dir) {
         fprintf(stderr, "Error: Could not open tests directory '%s'\n", testsPath);
         return;
     }
@@ -210,9 +215,9 @@ void RunTests() {
         // Build full path with proper directory separator
         char fullPath[512];
 #ifdef _WIN32
-        snprintf(fullPath, sizeof(fullPath), ".\\tests\\%s", entry->d_name);
+        snprintf(fullPath, sizeof(fullPath), "%s%s", testsPath, entry->d_name);
 #else
-        snprintf(fullPath, sizeof(fullPath), "./tests/%s", entry->d_name);
+        snprintf(fullPath, sizeof(fullPath), "%s%s", testsPath, entry->d_name);
 #endif
         
         printf("Running test: %s\n", fullPath);
