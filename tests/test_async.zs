@@ -46,7 +46,10 @@ fn toCall() async {
 }
 
 fn callMeMaybe() async {
-    println(1,2,await toCall(),4,5);
+    const r = await toCall();
+    println(r,r,r,r,1000);
+    return 1;
 }
 
-println(callMeMaybe());
+
+callMeMaybe();

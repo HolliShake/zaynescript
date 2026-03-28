@@ -33,6 +33,20 @@ const v = awaitable()
     })
     .then(function(v) {
         println("waiting for>>", v);
-    });
+        return "foocers";
+    })
+    .then(println);
 
 println(">>", v);
+
+async function toCall() {
+    return 3;
+}
+
+async function callMeMaybe() {
+    const r = await toCall();
+    println(r, r, r, r, 1000);
+    return 1;
+}
+
+callMeMaybe();

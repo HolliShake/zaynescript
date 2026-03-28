@@ -40,7 +40,7 @@
  * @def GC_THRESHOLD
  * @brief The allocation threshold for triggering garbage collection.
  */
-#define GC_THRESHOLD 1024
+#define GC_THRESHOLD 2
 
 /**
  * @def VARARG
@@ -710,8 +710,6 @@ struct interpreter_struct {
     int          FunctionC;                              /**< Count of functions */
     Value*       Stacks[STACK_SIZE];                     /**< Execution stack */
     int          StackC;                                 /**< Stack pointer/count */
-    int          EvalTop;                                /**< Top of the evaluation stack */
-    int          EvalBot;                                /**< Base of the evaluation stack */
     Value*       Envs[STACK_SIZE];                       /**< Environment stack for variable scopes */
     int          EnvC;                                   /**< Environment stack pointer */
     int          ExceptionHandlerStacks[STACK_SIZE];     /**< Stack for exception handlers */
@@ -720,6 +718,9 @@ struct interpreter_struct {
     Value*       TaskQueue[STACK_SIZE];                  /**< Queue for pending tasks (e.g. resolved promises) */
     int          TaskQueueHead;                          /**< Head index (next item to dequeue) */
     int          TaskQueueC;                             /**< Count of pending tasks in the task queue */
+    Value*       CallStack[STACK_SIZE];                  /**< Call stack for function calls (stores return addresses, etc.) */
+    int          CallStackC;                             /**< Call stack pointer */
+    Value*       ActiveTask;                             /**< Currently active task being processed */
 };
 
 /**

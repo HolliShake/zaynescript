@@ -345,6 +345,7 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 : _SaveInt(compiler, (int)lld);
             val = _GetConstantValue(compiler, offset);
             if (!evalOnly) {
+                printf("Saving integer constant %lld at offset %d\n", lld, offset);
                 _EmitLine(compiler, uf, node->Position);
                 _EmitConst(compiler, uf, OP_LOAD_CONST, offset);
             }

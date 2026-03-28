@@ -30,6 +30,47 @@ StateMachine* CreateStateMachine(StateMachineState initial, bool isCallback, siz
 void StateMachineSet(StateMachine* stateMachine, StateMachineState newState, size_t ip, Value* env,  Value* waitFor, Value* value);
 
 /**
+ * @brief Updates the state and value of a StateMachine.
+ * 
+ * This function is a simplified version of StateMachineSet that only updates
+ * the state and value of the StateMachine, without modifying the instruction
+ * pointer, environment, or waitFor fields. It is useful for quickly transitioning
+ * the state machine to a new state with an associated value.
+ * 
+ * @param stateMachine Pointer to the StateMachine instance to update.
+ * @param newState The new state to set for the StateMachine.
+ * @param value The value to set on the StateMachine (e.g., resolved value or rejection reason).
+ */
+void StateMachineUpdate(StateMachine* stateMachine, StateMachineState newState, Value* value);
+
+/**
+ * @brief Sets the StateMachine to an awaiting state with a specified waitFor value.
+ * 
+ * This function transitions the StateMachine to a new state (e.g., pending) and
+ * sets the waitFor field to indicate that the state machine is now waiting on a
+ * specific value (e.g., a promise). This is typically called when an asynchronous
+ * operation is initiated and the state machine needs to wait for its completion.
+ * 
+ * @param stateMachine Pointer to the StateMachine instance to update.
+ * @param ip The instruction pointer to set for the StateMachine when awaiting.
+ * @param value The value that the StateMachine is waiting for (e.g., a promise).
+ */
+void StateMachineAwait(StateMachine* stateMachine, size_t ip, Value* value);
+
+/**
+ * @brief Transitions the StateMachine to a fulfilled state with a specified value.
+ * 
+ * This function updates the StateMachine's state to fulfilled and sets the
+ * associated value (e.g., the resolved value of a promise). It is typically
+ * called when an asynchronous operation completes successfully and the state
+ * machine needs to transition to a fulfilled state.
+ * 
+ * @param stateMachine Pointer to the StateMachine instance to update.
+ * @param value The value to set on the StateMachine (e.g., resolved value).
+ */
+void StateMachineFulfill(StateMachine* stateMachine, Value* value);
+
+/**
  * @brief Adds a value to the StateMachine's wait list.
  * 
  * This function appends a value to the StateMachine's wait list, which is

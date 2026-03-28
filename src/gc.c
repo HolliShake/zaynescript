@@ -209,6 +209,9 @@ void Mark(Value* value) {
                 Mark(sm->WaitFor);
                 Mark(sm->Value);
                 Mark(sm->Function);
+                for (int i = 0; i < sm->StackTop; i++) {
+                    if (sm->Stacks != NULL) Mark(sm->Stacks[i]);
+                }
                 for (int i = 0; i < sm->WaitListC; i++) {
                     Mark(sm->WaitList[i]);
                 }
@@ -222,37 +225,38 @@ void Mark(Value* value) {
 
 static void _MarkConstants(Interpreter* interpreter) {
     for (int i = 0; i < interpreter->ConstantC; i++) {
-        Value* constant = interpreter->Constants[i];
-        if (constant != NULL) {
-            Mark(constant);
-        }
+        Mark(interpreter->Constants[i]);
     }
 }
 
 static void _MarkFunctions(Interpreter* interpreter) {
     for (int i = 0; i < interpreter->FunctionC; i++) {
-        Value* function = interpreter->Functions[i];
-        if (function != NULL) {
-            Mark(function);
-        }
+        Mark(interpreter->Functions[i]);
     }
 }
 
 static void _MarkStack(Interpreter* interpreter) {
     for (int i = 0; i < interpreter->StackC; i++) {
-        Value* value = interpreter->Stacks[i];
-        if (value != NULL) {
-            Mark(value);
-        }
+        Mark(interpreter->Stacks[i]);
     }
 }
 
 static void _MarkEnvs(Interpreter* interpreter) {
     for (int i = 0; i < interpreter->EnvC; i++) {
-        Value* envObj = interpreter->Envs[i];
-        if (envObj != NULL) {
-            Mark(envObj);
-        }
+        Mark(interpreter->Envs[i]);
+    }
+}
+
+static void _MarkTaskQueue(Interpreter* interpreter) {
+    for (int i = 0; i < interpreter->TaskQueueC; i++) {
+        int idx = (interpreter->TaskQueueHead + i) % STACK_SIZE;
+        Mark(interpreter->TaskQueue[idx]);
+    }
+}
+
+static void _MarkCallStack(Interpreter* interpreter) {
+    for (int i = 0; i < interpreter->CallStackC; i++) {
+        Mark(interpreter->CallStack[i]);
     }
 }
 
@@ -276,16 +280,23 @@ static size_t _Sweep(Interpreter* interpreter) {
 
 void GarbageCollect(Interpreter* interpreter) {
     // printf("GC: Starting garbage collection... Allocated = %d bytes, Threshold = %d bytes\n", interpreter->Allocated, interpreter->GcThreshold);
+    Mark(interpreter->GcRoot);
     Mark(interpreter->Array);
+    Mark(interpreter->Date);
+    Mark(interpreter->Promise);
     Mark(interpreter->True);
     Mark(interpreter->False);
     Mark(interpreter->Null);
     Mark(interpreter->RootEnv);
     Mark(interpreter->CallEnv);
+    if (interpreter->ActiveTask != NULL) Mark(interpreter->ActiveTask);
     _MarkConstants(interpreter);
     _MarkFunctions(interpreter);
     _MarkStack(interpreter);
     _MarkEnvs(interpreter);
+    _MarkTaskQueue(interpreter);
+    _MarkCallStack(interpreter);
+
     size_t srv = _Sweep(interpreter);
     size_t nxt = srv * GC_GROWTH_FACTOR;
 

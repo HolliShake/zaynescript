@@ -421,6 +421,8 @@ Value* DoCallMethod(Interpreter* interp, Value* obj, Value* methodName, int argc
 }
 
 Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
+    Value* env = NULL;
+
     if (fn == NULL) Panic("Attempted to call a null value!");
 
     if (ValueIsPromise(fn)) {
@@ -429,13 +431,32 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
         StateMachine* sm = CoerceToStateMachine(fn);
         if (sm->WaitFor == NULL) Panic("Attempted to resume a promise that is not waiting on any value!");
         if (sm->State == PENDING) {
-            // Restore stack
-            memcpy(&(interp->Stacks), sm->Stacks, sizeof(Value*) * sm->StackTop);
-            interp->StackC = sm->StackTop;
+            // 2. ANCHOR: Set the new bottom to the CURRENT top of the stack
+            sm->StackBot = interp->StackC;
+
+            // 3. Restore to the OFFSET position (interp->Stacks + sm->StackBot)
+            if (sm->Stacks != NULL && sm->StackTop > 0) {
+                memcpy(&interp->Stacks[sm->StackBot], sm->Stacks, sizeof(Value*) * sm->StackTop);
+                
+                // 4. Advance the global stack pointer
+                interp->StackC = sm->StackBot + sm->StackTop;
+            }
+        } else {
+            Panic("Attempted to resume a promise that is not pending (current state: %d)\n", sm->State);
         }
-        SaveEnv(interp, sm->CallEnv);
+
+        // 1. Save
+        interp->Envs[interp->EnvC++] = interp->CallEnv;
+        interp->CallEnv = env = sm->CallEnv;
+        
+        // 2. Run
         Run(interp, fn);
-        RestoreEnv(interp);
+
+        // 3. Restore
+        env = interp->Envs[--interp->EnvC];
+        interp->Envs[interp->EnvC] = NULL;
+        interp->CallEnv = env;
+
         return interp->Null;
     }
 
@@ -457,7 +478,7 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
             return errVal;
         }
 
-        Value** args = Allocate(sizeof(Value*) * argc);
+        Value** args = Allocate(sizeof(Value*) * argc); args[0] = NULL;
 
         int end = 0;
         if (withThis) {
@@ -467,6 +488,7 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
 
         for (int i = argc - 1; i >= end; i--) {
             args[i] = _Popp();
+            Mark(args[i]);
         }
 
         Value* res = nativeFunc(interp, argc, args);
@@ -492,9 +514,23 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
         Panic("User function '%s' has null Scope\n", uf->Name != NULL ? uf->Name : "<anonymous>");
     }
 
-    SaveEnv(interp, NewEnvironmentValue(interp, CreateEnvironment(uf->Scope, uf->LocalC)));
+    // 1. Save
+    interp->Envs[interp->EnvC++] = interp->CallEnv;
+    interp->CallEnv = env = NewEnvironmentValue(
+        interp, 
+        CreateEnvironment(
+            uf->Scope, // Use the scope where the function is defined as parent env!
+            uf->LocalC
+        )
+    );
+
+    // 2. Run the function
     Run(interp, fn);
-    RestoreEnv(interp);
+
+    // 3. Restore
+    env = interp->Envs[--interp->EnvC];
+    interp->Envs[interp->EnvC] = NULL;
+    interp->CallEnv = env;
 
     return interp->Null;
 }

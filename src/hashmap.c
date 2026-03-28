@@ -294,6 +294,7 @@ void FreeHashMap(HashMap* hashmap) {
         while (node != NULL && node->Key != NULL) {
             HashNode* next = node->Next;
             free(node->Key);
+            node->Key = NULL;
             // Note: we do not free node->Val here since we don't know its type
             if (node != &hashmap->Buckets[i]) {
                 free(node); // Free chain nodes, but not the first node in each bucket

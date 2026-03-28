@@ -5,7 +5,9 @@
 TARGET   := zscript.exe
 
 CC       := gcc
-CFLAGS   := -Wno-pointer-sign
+# ADDED: -fno-omit-frame-pointer for deep ASan traces
+CFLAGS   := -Wno-pointer-sign -fsanitize=address,leak -g3 -fno-omit-frame-pointer
+CFLAGSR  := -Wno-pointer-sign
 
 # Source files (mirrors run.bash)
 SRCS     := main.c \
@@ -25,16 +27,18 @@ all: debug
 
 release:
 	@echo "Building in release mode..."
-	$(CC) $(CFLAGS) -O3 -DNDEBUG $(SRCS) -o $(TARGET) $(LDFLAGS)
+	$(CC) $(CFLAGSR) -O3 -DNDEBUG $(SRCS) -o $(TARGET) $(LDFLAGS)
 	@echo "Build successful → $(TARGET)"
 
 debug:
 	@echo "Building in debug mode..."
-	$(CC) $(CFLAGS) -g -O3 $(SRCS) -o $(TARGET) $(LDFLAGS)
+	# FIXED: Changed -O3 to -O0 to prevent function inlining
+	$(CC) $(CFLAGS) -O0 $(SRCS) -o $(TARGET) $(LDFLAGS)
 	@echo "Build successful → $(TARGET)"
 
 clean:
 	rm -f $(TARGET)
 
 run: debug
-	LC_ALL=en_US.UTF-8 ./$(TARGET)
+	# ADDED: ASAN_OPTIONS for deep unwinding
+	ASAN_OPTIONS=fast_unwind_on_malloc=0:malloc_context_size=30 LC_ALL=en_US.UTF-8 ./$(TARGET)

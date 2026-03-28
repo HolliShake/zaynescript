@@ -19,6 +19,7 @@ Interpreter* CreateInterpreter() {
     interpreter->RootEnv                    = NULL;
     interpreter->CallEnv                    = NULL;
     interpreter->Array                      = CreateArrayClass(interpreter);
+    interpreter->Date                       = CreateDateClass(interpreter);
     interpreter->Promise                    = CreatePromiseClass(interpreter);
     interpreter->True                       = NewBoolValue(interpreter, 1);
     interpreter->False                      = NewBoolValue(interpreter, 0);
@@ -31,8 +32,6 @@ Interpreter* CreateInterpreter() {
     interpreter->Functions[0]               = NULL;
     // interpreter->Stacks[STACK_SIZE];
     interpreter->StackC                     = 0;
-    interpreter->EvalTop                    = 0;
-    interpreter->EvalBot                    = 0;
     // interpreter->Envs[STACK_SIZE];
     interpreter->EnvC                       = 0;
     // interpreter->ExceptionHandlerStacks[STACK_SIZE];
@@ -41,6 +40,7 @@ Interpreter* CreateInterpreter() {
     // interpreter->TaskQueue[STACK_SIZE];
     interpreter->TaskQueueHead             = 0;
     interpreter->TaskQueueC                = 0;
+    interpreter->ActiveTask                = NULL;
     return interpreter;
 }
 
@@ -300,6 +300,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
     bool catched     = false;
     String str       = NULL;
 
+    bool restored = false;
+
     if (uf != NULL && uf->Async) {
         // Initial call
         sm = CreateStateMachine(
@@ -315,9 +317,12 @@ void Run(Interpreter* interpreter, Value* fnValue) {
     } else if (ValueIsPromise(fnValue)) {
         // Restore
         prm = fnValue;
-        sm  = CoerceToStateMachine(fnValue);
+        sm  = CoerceToStateMachine(prm);
+        sm->StackBot = interpreter->StackC;
         uf  = CoerceToUserFunction(sm->Function);
         ip  = sm->Ip;
+        interpreter->StackC = sm->StackBot;
+        restored = true;
     }
  
     #define Forward(size) (ip += size)
@@ -327,6 +332,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 
         if (interpreter->Allocated >= interpreter->GcThreshold) {
             Mark(fnValue);
+            Mark(prm);
             GarbageCollect(interpreter);
         }
 
@@ -339,7 +345,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 str = _ReadString(uf->Codes, ip);
                 res = DoImportCore(interpreter, str);
                 if (ValueIsError(res)) {
-                    //Note: memory leak (str is not freed when DoImportCore returns an error)
+                    free(str);
                     _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
@@ -537,10 +543,12 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 break;
             }
             case OP_CALL_CTOR: {
+                interpreter->CallStack[interpreter->CallStackC++] = (prm != NULL) ? prm : fnValue;
                 argc = _ReadInt32(uf->Codes, ip);
                 Forward(4);
                 cls  = Popp();
                 res  = DoCallCtor(interpreter, cls, argc);
+                --interpreter->CallStackC;
                 if (ValueIsError(res)) {
                     _RaiseError(interpreter, uf, &ip, res);
                     break;
@@ -548,10 +556,12 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 break;
             }
             case OP_CALL: {
+                interpreter->CallStack[interpreter->CallStackC++] = (prm != NULL) ? prm : fnValue;
                 argc = _ReadInt32(uf->Codes, ip);
                 Forward(4);
                 obj  = Popp();
                 res  = DoCall(interpreter, obj, argc, false);
+                --interpreter->CallStackC;
                 if (ValueIsError(res)) {
                     _RaiseError(interpreter, uf, &ip, res);
                     break;
@@ -559,11 +569,13 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 break;
             }
             case OP_CALL_METHOD: {
+                interpreter->CallStack[interpreter->CallStackC++] = (prm != NULL) ? prm : fnValue;
                 argc = _ReadInt32(uf->Codes, ip);
                 Forward(4);
                 key  = Popp(); // method
                 obj  = Popp(); // 'this' object
                 res  = DoCallMethod(interpreter, obj, key, argc);
+                --interpreter->CallStackC;
                 if (ValueIsError(res)) {
                     _RaiseError(interpreter, uf, &ip, res);
                     break;
@@ -602,15 +614,34 @@ void Run(Interpreter* interpreter, Value* fnValue) {
             }
             case OP_AWAIT: {
                 if (!ValueIsPromise(Peek())) break;
-                val = Popp();
+                val = Popp(); // The awaited promise
 
-                StateMachineSet(sm, PENDING, ip, interpreter->CallEnv, val, NULL);
+                StateMachineAwait(sm, ip, val);
 
-                int size     = interpreter->StackC - sm->StackBot;
-                sm->StackTop = interpreter->StackC;
-                sm->Stacks   = Allocate(sizeof(Value*) * size);
+                // 1. FIX: Calculate the exact size of the current stack frame
+                int size = interpreter->StackC - sm->StackBot;
+
+                // Now your Panic message makes perfect sense!
+                if (size < 0) Panic("Invalid stack state: StackC (%d) is less than StackBot (%d)", interpreter->StackC, sm->StackBot);
+
+                // 2. Free old memory (Make sure 'free' matches 'Allocate'!)
+                if (sm->Stacks != NULL) {
+                    free(sm->Stacks); // Or your engine's equivalent memory freer
+                    sm->Stacks = NULL;
+                }
+
+                sm->StackTop = size;
+
+                // 3. Allocate and copy ONLY this function's variables
+                if (size > 0) {
+                    sm->Stacks = Allocate(sizeof(Value*) * size);
+                    
+                    // This now perfectly copies exactly from StackBot to StackC
+                    memcpy(sm->Stacks, &interpreter->Stacks[sm->StackBot], sizeof(Value*) * size);
+                }
+
+                // 4. Update StackC to reflect that this function's variables are popped off the main stack
                 interpreter->StackC = sm->StackBot;
-                memcpy(sm->Stacks, &(interpreter->Stacks[sm->StackBot]), sizeof(Value*) * size);
 
                 StateMachine* awaitedSM = CoerceToStateMachine(val);
 
@@ -619,7 +650,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 } else {
                     StateMachineAddWaitList(awaitedSM, prm);
                 }
-                
+
                 Push(prm);
                 return;
             }
@@ -988,7 +1019,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
             case OP_RETURN: {
                 if (uf->Async) {
                     val = Popp();
-                    StateMachineSet(sm, FULFILLED, 0, NULL, NULL, val);
+
+                    StateMachineFulfill(sm, val);
                     Push(prm);
 
                     for (int i = 0; i < sm->WaitListC; i++) {
@@ -1014,29 +1046,44 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
     Run(interpreter, fnValue);
     RestoreEnv(interpreter);
 
-    int stackOld = interpreter->StackC;
+    int old = interpreter->StackC;
 
     // Consume all remaining tasks in the task queue (e.g. pending promises) before exiting the program
     Value* task = NULL;
     while ((task = _DequeueTask(interpreter)) != NULL) {
+        interpreter->ActiveTask = task;
+        interpreter->CallStack[interpreter->CallStackC++] = task;
         // Awaited
         StateMachine* sm = CoerceToStateMachine(task);
         if (!sm->IsCallback) {
             DoCall(interpreter, task, 0, false);
-            Popp();
         } else {
             StateMachine* wait = CoerceToStateMachine(sm->WaitFor);
-            if (wait->State != FULFILLED) continue;
+            if (wait->State != FULFILLED) Panic("internal error: expected awaited state machine to be fulfilled when resuming callback, but got state %d", wait->State);
+            
+            // 1. Push value
             Push(wait->Value);
+
+            // 2. Call the callback
             DoCall(interpreter, sm->Function, 1, false);
-            StateMachineSet(sm, FULFILLED, 0, NULL, NULL, Popp());
+            
+            // 3. Fulfill the state machine with the callback's return value
+            StateMachineFulfill(sm, Popp());
+
+            // 4. Enqueue all tasks waiting on this state machine
             for (size_t i = 0; i < sm->WaitListC; i++) {
                 _EnqueueTask(interpreter, sm->WaitList[i]);
             }
         }
+
+        --interpreter->CallStackC;
+
+        interpreter->ActiveTask = NULL;
     }
 
-    interpreter->StackC = stackOld;
+    printf("Program finished with exit code!\n");
+
+    interpreter->StackC  = old;
     interpreter->RootEnv = saveGbl;
 
     if (interpreter->StackC != 1) {
