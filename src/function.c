@@ -101,13 +101,13 @@ int UserFunctionAddCapture(UserFunction* userFunction, int depth, int sourceOffs
 }
 
 String UserFunctionToString(UserFunction* userFunction) {
-    const char* name = userFunction->Name != NULL ? userFunction->Name : "<anonymous>";
+    const String name = userFunction->Name != NULL ? userFunction->Name : "<anonymous>";
     
     if (userFunction->Argc == -1) {
         // Variadic function
         size_t nameLen = strlen(name);
         size_t bufferSize = nameLen + 32; // "function " + name + "(...$n) {...}" + null
-        char* buffer = Allocate(bufferSize);
+        String buffer = Allocate(bufferSize);
         snprintf(buffer, bufferSize, "function %s(...$n) {...}", name);
         return buffer;
     } else {
@@ -130,7 +130,7 @@ String UserFunctionToString(UserFunction* userFunction) {
         }
         
         // Build arguments string
-        char* args = Allocate(argsSize + 1);
+        String args = Allocate(argsSize + 1);
         args[0] = '\0';
         size_t offset = 0;
         for (int i = 0; i < userFunction->Argc; i++) {
@@ -145,7 +145,7 @@ String UserFunctionToString(UserFunction* userFunction) {
         // Build final string
         size_t nameLen = strlen(name);
         size_t bufferSize = nameLen + argsSize + 32; // "function " + name + "(" + args + ") {...}" + null
-        char* buffer = Allocate(bufferSize);
+        String buffer = Allocate(bufferSize);
         snprintf(buffer, bufferSize, "function %s(%s) {...}", name, args);
         free(args);
         return buffer;
@@ -182,7 +182,7 @@ String NativeFunctionMetaToString(NativeFunction* meta) {
         // Variadic function
         size_t nameLen = strlen(meta->Name);
         size_t bufferSize = nameLen + 32; // "native function " + name + "(...$n) {...}" + null
-        char* buffer = Allocate(bufferSize);
+        String buffer = Allocate(bufferSize);
         snprintf(buffer, bufferSize, "native function %s(...$n) {...}", meta->Name);
         return buffer;
     } else {
@@ -205,7 +205,7 @@ String NativeFunctionMetaToString(NativeFunction* meta) {
         }
         
         // Build arguments string
-        char* args = Allocate(argsSize + 1);
+        String args = Allocate(argsSize + 1);
         args[0] = '\0';
         size_t offset = 0;
         for (int i = 0; i < meta->Argc; i++) {
@@ -220,7 +220,7 @@ String NativeFunctionMetaToString(NativeFunction* meta) {
         // Build final string
         size_t nameLen = strlen(meta->Name);
         size_t bufferSize = nameLen + argsSize + 32; // "native function " + name + "(" + args + ") {...}" + null
-        char* buffer = Allocate(bufferSize);
+        String buffer = Allocate(bufferSize);
         snprintf(buffer, bufferSize, "native function %s(%s) {...}", meta->Name, args);
         free(args);
         return buffer;

@@ -421,7 +421,23 @@ Value* DoCallMethod(Interpreter* interp, Value* obj, Value* methodName, int argc
 }
 
 Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
-    if (fn == NULL) Panic("Attempted to call a null value\n");
+    if (fn == NULL) Panic("Attempted to call a null value!");
+
+    if (ValueIsPromise(fn)) {
+        // Resume only
+        _PopN(argc);
+        StateMachine* sm = CoerceToStateMachine(fn);
+        if (sm->WaitFor == NULL) Panic("Attempted to resume a promise that is not waiting on any value!");
+        if (sm->State == PENDING) {
+            // Restore stack
+            memcpy(&(interp->Stacks), sm->Stacks, sizeof(Value*) * sm->StackTop);
+            interp->StackC = sm->StackTop;
+        }
+        SaveEnv(interp, sm->CallEnv);
+        Run(interp, fn);
+        RestoreEnv(interp);
+        return interp->Null;
+    }
 
     if (!ValueIsCallable(fn)) {
         _PopN(argc);
@@ -461,11 +477,6 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
         return ValueIsError(res) ? res : interp->Null;
     }
 
-    if (!ValueIsCallable(fn)) {
-        //Note: memory leak (ValueToString(fn) allocates a string passed to Panic's format but never freed)
-        Panic("Attempted to call a non-callable value: %s\n", ValueToString(fn));
-    }
-
     // Call
     UserFunction* uf = CoerceToUserFunction(fn);
 
@@ -481,9 +492,7 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
         Panic("User function '%s' has null Scope\n", uf->Name != NULL ? uf->Name : "<anonymous>");
     }
 
-    Value* env = NULL;
-    env = NewEnvironmentValue(interp, CreateEnvironment(uf->Scope, uf->LocalC));
-    SaveEnv(interp, env);
+    SaveEnv(interp, NewEnvironmentValue(interp, CreateEnvironment(uf->Scope, uf->LocalC)));
     Run(interp, fn);
     RestoreEnv(interp);
 

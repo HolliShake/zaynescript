@@ -246,8 +246,10 @@ String HashMapToString(HashMap* hashmap) {
     for (size_t i = 0; i < hashmap->Size; i++) {
         HashNode* node = &hashmap->Buckets[i];
         while (node != NULL && node->Key != NULL) {
-            bufferSize += strlen(node->Key) + 50; // Key + formatting
+            String valStr = ValueToString((Value*)node->Val);
+            bufferSize += strlen(node->Key) + (valStr ? strlen(valStr) : 4) + 10;
             node = node->Next;
+            free(valStr);
         }
     }
     
@@ -268,7 +270,11 @@ String HashMapToString(HashMap* hashmap) {
             strcat(result, "\"");
             strcat(result, node->Key);
             strcat(result, "\": ");
-            strcat(result, node->Val);
+            String valStr = ValueToString((Value*)node->Val);
+            if (valStr != NULL) {
+                strcat(result, valStr);
+                free(valStr);
+            }
             first = false;
             node = node->Next;
         }

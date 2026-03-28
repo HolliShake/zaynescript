@@ -26,10 +26,10 @@ static Value* _IoGenericPrint(Interpreter* interpreter, int argc, Value** argume
     // ----------------------------------------------------------------
     // PASS 2: single alloc, memcpy in
     // ----------------------------------------------------------------
-    char *buffer = Allocate(total);
+    String buffer = Allocate(total);
     if (!buffer) goto cleanup;
 
-    char *p = buffer;
+    String p = buffer;
     for (int i = 0; i < argc; i++) {
         if (lens[i] > 0) {
             memcpy(p, parts[i], lens[i]);
@@ -83,7 +83,7 @@ static Value* _IoScan(Interpreter* interpreter, int argc, Value** arguments) {
     
     size_t bufferSize = 1024;
     size_t totalRead = 0;
-    char* buffer = Allocate(bufferSize);
+    String buffer = Allocate(bufferSize);
     
     // Read input dynamically, expanding buffer as needed
     while (1) {
@@ -127,7 +127,7 @@ static Value* _IoParseNum(Interpreter* interpreter, int argc, Value** arguments)
         return NewErrorValue(interpreter, "parseNum() expects a string as its argument");
     }
     String str = ValueToString(arguments[0]);
-    char* endptr;
+    String endptr;
     double num = strtod(str, &endptr);
     free(str);
     
@@ -151,7 +151,7 @@ static Value* _IoFormat(Interpreter* interpreter, int argc, Value** arguments) {
 
     // Estimate initial buffer size
     size_t bufferSize = formatLen + argc * 32;
-    char* buffer = Allocate(bufferSize);
+    String buffer = Allocate(bufferSize);
     size_t bufferUsed = 0;
 
     int argIndex = 1;

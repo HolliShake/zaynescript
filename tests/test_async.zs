@@ -38,3 +38,15 @@ const v = awaitable()
     .then(println);
 
 println(">>", v);
+
+
+
+fn toCall() async {
+    return 3;
+}
+
+fn callMeMaybe() async {
+    println(1,2,await toCall(),4,5);
+}
+
+println(callMeMaybe());

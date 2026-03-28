@@ -72,7 +72,7 @@ String ClassInstanceToString(ClassInstance* instance) {
     
     // Start building the string
     size_t bufferSize = 1024;
-    char* buffer = Allocate(bufferSize);
+    String buffer = Allocate(bufferSize);
     size_t currentPos = 0;
     
     // Add class name and opening brace
@@ -87,7 +87,7 @@ String ClassInstanceToString(ClassInstance* instance) {
             size_t needed = currentPos + strlen(node->Key) + 100;
             if (needed > bufferSize) {
                 bufferSize = needed * 2;
-                char* newBuffer = Allocate(bufferSize);
+                String newBuffer = Allocate(bufferSize);
                 memcpy(newBuffer, buffer, currentPos);
                 free(buffer);
                 buffer = newBuffer;

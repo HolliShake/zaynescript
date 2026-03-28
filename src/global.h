@@ -695,6 +695,7 @@ struct interpreter_struct {
     bf_context_t BfContext;                              /**< Context for the libbf library (memory management, etc.) */
     HashMap*     Imports;                                /**< Imports map */
     Value*       Array;                                  /**< Built-in Array class */
+    Value*       Date;                                   /**< Built-in Date class */
     Value*       Promise;                                /**< Built-in Promise class */
     Value*       True;                                   /**< Singleton 'true' value */
     Value*       False;                                  /**< Singleton 'false' value */
@@ -709,6 +710,8 @@ struct interpreter_struct {
     int          FunctionC;                              /**< Count of functions */
     Value*       Stacks[STACK_SIZE];                     /**< Execution stack */
     int          StackC;                                 /**< Stack pointer/count */
+    int          EvalTop;                                /**< Top of the evaluation stack */
+    int          EvalBot;                                /**< Base of the evaluation stack */
     Value*       Envs[STACK_SIZE];                       /**< Environment stack for variable scopes */
     int          EnvC;                                   /**< Environment stack pointer */
     int          ExceptionHandlerStacks[STACK_SIZE];     /**< Stack for exception handlers */
@@ -755,8 +758,12 @@ typedef enum state_machine_state_enum {
  * 
  * @var StateMachine::State
  *      The current state of the state machine (PENDING, COMPLETE, or REJECTED).
+ * @var StateMachine::StackTop
+ *      The current top index of the execution stack for this state machine.
+ * @var StateMachine::StackBot
+ *      The base index of the execution stack for this state machine.
  * @var StateMachine::WaitFor
- *     Pointer to a value that the state machine is waiting on (e.g. a promise).
+ *      Pointer to a value that the state machine is waiting on (e.g. a promise).
  * @var StateMachine::Value
  *      Pointer to the resulting value produced by the state machine operation.
  * @var StateMachine::Then
@@ -770,12 +777,15 @@ typedef enum state_machine_state_enum {
  */
 typedef struct state_machine_struct {
     StateMachineState State;
+    size_t            StackTop;
+    size_t            StackBot;
     bool              IsCallback;
     Value*            CallEnv;
     Value*            WaitFor;
     Value*            Value;
     Value*            Function;
     size_t            Ip;
+    Value**           Stacks;
     Value**           WaitList;
     size_t            WaitListC;
 } StateMachine;
