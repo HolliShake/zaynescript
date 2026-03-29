@@ -11,4 +11,4 @@
 [x] Add async/await and state machine
 [ ] Add null coalescing operator (??)
 [ ] Add optional chaining (?.)
-[ ] Fix memory leak for bitfields/bignum implementation/operations
+[x] Fix memory leak for bitfields/bignum implementation/operations

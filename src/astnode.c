@@ -212,6 +212,21 @@ Ast* AstIf(Ast* condition, Ast* thenBranch, Ast* elseBranch, Position position) 
     return ast;
 }
 
+Ast* AstSwitch(Ast* expression, Ast* cases, Ast* defaultCase, Position position) {
+    Ast* ast = InitAst(AST_SWITCH, position);
+    ast->A   = expression;
+    ast->B   = cases;
+    ast->C   = defaultCase;
+    return ast;
+}
+
+Ast* AstSwitchCase(Ast* caseValue, Ast* caseBody, Position position) {
+    Ast* ast = InitAst(AST_SWITCH_CASE, position);
+    ast->A   = caseValue;
+    ast->B   = caseBody;
+    return ast;
+}
+
 Ast* AstFor(Ast* initializerConditionMutator, Ast* body, Position position) {
     Ast* ast = InitAst(AST_FOR, position);
     ast->A   = initializerConditionMutator;

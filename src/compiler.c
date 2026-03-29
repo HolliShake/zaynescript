@@ -1209,6 +1209,82 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
             _JumpToLabel(compiler, uf, jumpOffset);
             break;
         }
+        case AST_SWITCH: {
+            Ast* expr  = node->A;
+            Ast* cases = node->B;
+            Ast* defaultCase = node->C;
+
+            int endSwitchC     = 0;
+            int* gotoEndSwitch = Allocate(sizeof(int));
+
+            _Expression(compiler, uf, scope, expr);
+
+            while (cases != NULL) {
+                Ast* caseExpr = cases->A;
+                Ast* caseBody = cases->B;
+
+                int casesMatchC = 0;
+                int* casesMatch = Allocate(sizeof(int));
+
+                // CASE:;
+                Ast* currentExpr = caseExpr;
+                while (currentExpr != NULL) {
+                    _EmitLine(compiler, uf, currentExpr->Position);
+                    _Emit(compiler, uf, OP_DUPTOP);
+
+                    // COMPARE
+                    _Expression(compiler, uf, scope, currentExpr);
+                    _EmitLine(compiler, uf, currentExpr->Position);
+                    _Emit(compiler, uf, OP_EQ);
+
+                    // GOTO EXECUTE:;
+                    _EmitLine(compiler, uf, currentExpr->Position);
+                    casesMatch[casesMatchC++] = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_TRUE);
+                    casesMatch = Reallocate(casesMatch, sizeof(int) * (casesMatchC + 1));
+
+                    currentExpr = currentExpr->Next;
+                }
+                
+                // GOTO NEXTCASE;
+                _EmitLine(compiler, uf, caseExpr->Position);
+                int jumpToNextCase = _EmitJumpTo(compiler, uf, OP_JUMP);
+
+                for (int i = 0; i < casesMatchC; i++) {
+                    _JumpToLabel(compiler, uf, casesMatch[i]);
+                }
+                free(casesMatch);
+                
+                // EXECUTE:;
+                _Expression(compiler, uf, scope, caseBody);
+
+                // GOTO ENDSWITCH;
+                _EmitLine(compiler, uf, node->Position);
+                gotoEndSwitch[endSwitchC++] = _EmitJumpTo(compiler, uf, OP_JUMP);
+                gotoEndSwitch = Reallocate(gotoEndSwitch, sizeof(int) * (endSwitchC + 1));
+                
+                // NEXTCASE;
+                _JumpToLabel(compiler, uf, jumpToNextCase);
+                cases = cases->Next;
+            }
+            if (defaultCase != NULL) {
+                _Expression(compiler, uf, scope, defaultCase);
+            } else {
+                _EmitLine(compiler, uf, node->Position);
+                _Emit(compiler, uf, OP_LOAD_NULL);
+            }
+            // ENDSWITCH:;
+            for (int i = 0; i < endSwitchC; i++) {
+                _JumpToLabel(compiler, uf, gotoEndSwitch[i]);
+            }
+
+            // Cleanup
+            _EmitLine(compiler, uf, node->Position);
+            _Emit(compiler, uf, OP_ROT2);
+            _EmitLine(compiler, uf, node->Position);
+            _Emit(compiler, uf, OP_POPTOP);
+            free(gotoEndSwitch);
+            break;
+        }
         case AST_TERNARY: {
             _Expression(compiler, uf, scope, node->A);
             _EmitLine(compiler, uf, node->Position);

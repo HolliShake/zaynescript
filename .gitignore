@@ -1,2 +1,4 @@
 *.exe
 .pgo-data
+/tests/*.js
+/tests/*.py

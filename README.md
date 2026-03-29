@@ -540,4 +540,5 @@ MIT License
 
 ## Author
 
-Philipp Andrew Redondo
+Philipp Andrew Redondo © 2025-Present. All rights reserved.
+

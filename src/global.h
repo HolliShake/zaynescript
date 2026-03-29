@@ -243,6 +243,8 @@ typedef enum ast_type_enum {
     AST_CLASS_MEMBER,         /**< Class member definition */
     AST_EXPRESSION_STATEMENT, /**< Statement wrapping an expression */
     AST_IF,                   /**< If statement */
+    AST_SWITCH,               /**< Switch statement */
+    AST_SWITCH_CASE,          /**< Case within a switch statement */
     AST_FOR,                  /**< For loop statement */
     AST_WHILE,                /**< While loop statement */
     AST_DO_WHILE,             /**< Do-while loop statement */
