@@ -480,48 +480,256 @@ String BFNumToString(bf_t* value) {
     #define PATH_SEPARATOR "/"
 #endif
 
-String AbsolutePath(String pathStr) {
-    // 0. Extract raw char* from your String type (adjust to your API)
-    // Example: const char* path = String_GetRaw(pathStr);
-    const char* path = pathStr; 
-    
-    if (!path || path[0] == '\0') {
-        return NULL; // Or return an empty String depending on your needs
+bool IsAbsolutePath(String path) {
+    if (!path || path[0] == '\0') return false;
+
+#ifdef _WIN32
+    // Windows: "C:\" or "\\server"
+    if (isalpha(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/')) return true;
+    if ((path[0] == '\\' && path[1] == '\\') || (path[0] == '/' && path[1] == '/')) return true;
+#else
+    // POSIX: "/usr/bin"
+    if (path[0] == '/') return true;
+#endif
+
+    return false;
+}
+
+String NormalizePath(String pathStr) {
+    if (!pathStr || pathStr[0] == '\0') {
+        return AllocateString(".");
     }
 
-    // 1. Check if the path is already absolute
-    bool is_absolute = false;
-#ifdef _WIN32
-    // Windows absolute path: starts with Drive Letter (C:\) or UNC path (\\server)
-    if (isalpha(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/')) {
-        is_absolute = true;
-    } else if ((path[0] == '\\' && path[1] == '\\') || (path[0] == '/' && path[1] == '/')) {
-        is_absolute = true;
+    bool is_abs = IsAbsolutePath(pathStr);
+    
+    // Create a mutable copy for tokenization
+    String temp = Allocate(strlen(pathStr) + 1);
+    strcpy(temp, pathStr);
+
+    // Stack to hold the valid path components
+    String stack[256]; 
+    int top = 0;
+
+    // Tokenize the path by slashes
+    String token = strtok(temp, "/\\");
+    while (token != NULL) {
+        if (strcmp(token, ".") == 0) {
+            // Ignore "."
+        } else if (strcmp(token, "..") == 0) {
+            if (top > 0 && strcmp(stack[top - 1], "..") != 0) {
+                // Pop the last directory off the stack
+                top--;
+            } else if (!is_abs) {
+                // If it's a relative path and we are at the top, we must keep ".."
+                stack[top++] = token;
+            }
+            // If it's absolute and top == 0, we can't go above root, so do nothing.
+        } else {
+            // Normal directory or file name
+            stack[top++] = token;
+        }
+        token = strtok(NULL, "/\\");
     }
+
+    // Allocate memory for the normalized result
+    String result = Allocate(strlen(pathStr) + 2); // +2 for potential root slash and null
+    result[0] = '\0';
+
+    // Handle root for absolute paths
+    if (is_abs) {
+#ifdef _WIN32
+        // If it was a drive letter (e.g., C:\), strtok leaves "C:" in stack[0]
+        if (!(isalpha(pathStr[0]) && pathStr[1] == ':')) {
+            strcpy(result, PATH_SEPARATOR); // UNC or root slash
+        }
 #else
-    // Unix/Linux/macOS absolute path: starts with a forward slash
-    if (path[0] == '/') {
-        is_absolute = true;
+        strcpy(result, "/");
+#endif
+    }
+
+    // Reconstruct the path from the stack
+    for (int i = 0; i < top; i++) {
+        strcat(result, stack[i]);
+        if (i < top - 1) {
+            strcat(result, PATH_SEPARATOR);
+        }
+    }
+
+    // Edge cases (e.g., path was just "." or "/")
+    if (result[0] == '\0') {
+        strcpy(result, is_abs ? PATH_SEPARATOR : ".");
+    }
+#ifdef _WIN32
+    // Ensure "C:" becomes "C:\" if it's the only thing left
+    else if (isalpha(result[0]) && result[1] == ':' && result[2] == '\0') {
+        strcat(result, PATH_SEPARATOR);
     }
 #endif
 
-    if (is_absolute) {
-        // Path is already absolute. Return a copy or reference.
-        // Example: return String_Duplicate(pathStr);
-        return AllocateString(pathStr); // Adjust to your String API
+    free(temp);
+    return result;
+}
+
+String Basename(String pathStr) {
+    if (!pathStr || pathStr[0] == '\0') {
+        return AllocateString(".");
+    }
+
+    // Find the last separator
+    String lastSep = NULL;
+    for (int i = (int)strlen(pathStr) - 1; i >= 0; i--) {
+        if (pathStr[i] == '/' || pathStr[i] == '\\') {
+            lastSep = &pathStr[i];
+            break;
+        }
+    }
+
+    // Get the filename part (after last separator, or the whole string)
+    String filename = lastSep ? lastSep + 1 : pathStr;
+
+    // Find the last dot to strip the extension
+    String lastDot = strrchr(filename, '.');
+    if (lastDot && lastDot != filename) {
+        size_t len = lastDot - filename;
+        String result = Allocate(len + 1);
+        memcpy(result, filename, len);
+        result[len] = '\0';
+        return result;
+    }
+
+    return AllocateString(filename);
+}
+
+String Dirname(String pathStr) {
+    // If path is empty or null, standard behavior is to return "." (current dir)
+    if (!pathStr || pathStr[0] == '\0') {
+        String dot = Allocate(2);
+        strcpy(dot, ".");
+        return dot;
+    }
+
+    // Work on a copy of the string so we don't mutate the user's input
+    size_t len = strlen(pathStr);
+    String path = Allocate(len + 1);
+    if (!path) return NULL;
+    strcpy(path, pathStr);
+
+    // 1. Strip any trailing separators (e.g., "src/folder/" -> "src/folder")
+    // But don't strip if the string is just the root "/"
+    while (len > 1 && (path[len - 1] == '/' || path[len - 1] == '\\')) {
+        path[len - 1] = '\0';
+        len--;
+    }
+
+    // 2. Find the last separator
+    String last_sep = NULL;
+    for (int i = (int)len - 1; i >= 0; i--) {
+        if (path[i] == '/' || path[i] == '\\') {
+            last_sep = &path[i];
+            break;
+        }
+    }
+
+    // 3. No separator found? It's just a file name. Return "."
+    if (!last_sep) {
+        free(path);
+        String dot = Allocate(2);
+        strcpy(dot, ".");
+        return dot;
+    }
+
+    // 4. If the separator is at the very beginning (e.g., "/file.txt")
+    if (last_sep == path) {
+        // Keep the root slash, terminate right after it
+        path[1] = '\0';
+    } else {
+        // Separator is in the middle. Strip any sequence of duplicate slashes.
+        while (last_sep > path && (*(last_sep - 1) == '/' || *(last_sep - 1) == '\\')) {
+            last_sep--;
+        }
+        *last_sep = '\0'; // Terminate the string here to drop the basename
+    }
+
+    return path;
+}
+
+String AbsolutePathFromBase(String baseStr, String pathStr) {
+    if (!pathStr || pathStr[0] == '\0') {
+        return NULL;
+    }
+    
+    // 1. If the path is already absolute, the base is irrelevant.
+    if (IsAbsolutePath(pathStr)) {
+        String abs_copy = Allocate(strlen(pathStr) + 1);
+        strcpy(abs_copy, pathStr);
+        String normalized_path = NormalizePath(abs_copy);
+        free(abs_copy);
+        return normalized_path;
+    }
+
+    // 2. If the base is empty, just return the path (or you could fallback to CWD)
+    if (!baseStr || baseStr[0] == '\0') {
+        String path_copy = Allocate(strlen(pathStr) + 1);
+        strcpy(path_copy, pathStr);
+        String normalized_path = NormalizePath(path_copy);
+        free(path_copy);
+        return normalized_path;
+    }
+
+    // 3. Prepare for concatenation
+    size_t base_len = strlen(baseStr);
+    bool needs_separator = true;
+    
+    // Check if base already ends with a separator
+    char last_char = baseStr[base_len - 1];
+    if (last_char == '/' || last_char == '\\') {
+        needs_separator = false;
+    }
+
+    // Skip leading separators in the target path to avoid double slashes (e.g., "base//" "path")
+    String p = pathStr;
+    while (p[0] == '/' || p[0] == '\\') {
+        p++;
+    }
+
+    // 4. Allocate and build the new path
+    size_t total_len = base_len + (needs_separator ? 1 : 0) + strlen(p) + 1;
+    String resolved_path = Allocate(total_len);
+    if (!resolved_path) return NULL;
+
+    strcpy(resolved_path, baseStr);
+    if (needs_separator) {
+        strcat(resolved_path, PATH_SEPARATOR);
+    }
+    strcat(resolved_path, p);
+
+    String normalized_path = NormalizePath(resolved_path);
+    free(resolved_path);
+
+    return normalized_path;
+}
+
+String AbsolutePath(String pathStr) {
+    String path = pathStr; 
+    
+    if (!path || path[0] == '\0') {
+        return NULL;
+    }
+
+    // 1. Check if the path is already absolute
+    if (IsAbsolutePath(path)) {
+        return NormalizePath(pathStr);
     }
 
     // 2. Get the Current Working Directory
-    char cwd[4096]; // 4096 safely covers most OS max path limits
+    char cwd[4096];
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
-        // CWD retrieval failed (e.g., path too long or directory deleted)
         return NULL; 
     }
 
     // 3. Resolve the path with the CWD
     size_t cwd_len = strlen(cwd);
     
-    // Check if CWD already ends with a separator (e.g., root directory "C:\" or "/")
     bool needs_separator = true;
     if (cwd_len > 0) {
         char last_char = cwd[cwd_len - 1];
@@ -530,15 +738,15 @@ String AbsolutePath(String pathStr) {
         }
     }
 
-    // Skip leading separators in the relative path to avoid double separators (e.g., "C:\/" )
+    // Skip leading separators in the relative path to avoid double separators
     while (path[0] == '/' || path[0] == '\\') {
         path++;
     }
 
     // Allocate memory for: CWD + Separator + Path + Null Terminator
     size_t total_len = cwd_len + (needs_separator ? 1 : 0) + strlen(path) + 1;
-    char* resolved_raw_path = (char*)malloc(total_len);
-    
+    String resolved_raw_path = Allocate(total_len);
+
     if (!resolved_raw_path) {
         return NULL; // Memory allocation failed
     }
@@ -551,7 +759,7 @@ String AbsolutePath(String pathStr) {
     strcat(resolved_raw_path, path);
 
     // 4. Convert back to your custom String type
-    String final_path = AllocateString(resolved_raw_path);
+    String final_path = NormalizePath(resolved_raw_path);
     free(resolved_raw_path);
     return final_path;
 }

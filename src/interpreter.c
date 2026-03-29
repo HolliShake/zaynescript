@@ -383,6 +383,19 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 free(str);
                 break;
             }
+            case OP_IMPORT_RELATIVE: {
+                str = _ReadString(uf->Codes, ip);
+                res = DoImportFile(interpreter, str);
+                if (ValueIsError(res)) {
+                    free(str);
+                    _RaiseError(interpreter, uf, &ip, res);
+                    break;
+                }
+                Push(res);
+                Forward(strlen(str) + 1);
+                free(str);
+                break;
+            }
             case OP_LOAD_CAPTURE: {
                 offset = _ReadInt32(uf->Codes, ip);
                 val    = GetCap(uf, offset);

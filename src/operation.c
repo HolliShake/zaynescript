@@ -363,8 +363,8 @@ Value* DoImportLib(Interpreter* interp, String moduleName) {
     }
 
     if (HashMapContains(interp->Imports, filePath)) {
-        fclose(file);
         Value* mod = (Value*) HashMapGet(interp->Imports, filePath);
+        fclose(file);
         free(filePath);
         return mod;
     }
@@ -373,12 +373,7 @@ Value* DoImportLib(Interpreter* interp, String moduleName) {
     long size = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    char* buffer = (char*)malloc(size + 1);
-    if (!buffer) {
-        fclose(file);
-        free(filePath);
-        return NewErrorFValue(interp, "%s: could not allocate memory for lib module '%s'", IMPORT_ERROR, moduleName);
-    }
+    String buffer = Allocate(size + 1);
 
     fread(buffer, 1, size, file);
     buffer[size] = '\0';
@@ -388,11 +383,77 @@ Value* DoImportLib(Interpreter* interp, String moduleName) {
     free(buffer);
 
     // Lex, parse, compile, interpret
-    Lexer* lexer = CreateLexer(filePath, data);
-    Parser* parser = CreateParser(lexer);
-    Ast* programAst = Parse(parser);
-    Compiler* compiler = CreateCompiler(interp, parser);
-    Value* compiled = CompileAst(compiler, programAst);
+    Lexer*    lexer      = CreateLexer(filePath, data);
+    Parser*   parser     = CreateParser(lexer);
+    Ast*      programAst = Parse(parser);
+    Compiler* compiler   = CreateCompiler(interp, parser);
+    Value*    compiled   = CompileAst(compiler, programAst);
+
+    DoCall(interp, compiled, 0, false);
+    Value* result = _Popp();
+
+    // After interpret, the module's exports should be on the stack
+    // Return null — the compiler handles binding imports from the stack
+    HashMapSet(interp->Imports, filePath, result);
+
+    FreeLexer(lexer);
+    FreeParser(parser);
+    FreeAst(programAst);
+    FreeCompiler(compiler);
+    free(filePath);
+    free(data);
+
+    return result;
+}
+
+Value* DoImportFile(Interpreter* interp, String filePathNoExt) {
+    bool windows = false;
+    #ifdef _WIN32
+        windows = true;
+    #endif
+
+    String filePath = FormatString("%s.zs", filePathNoExt);
+
+    // Build file path: <ExecPath>/lib/<moduleName>.zs
+    // linux -> /usr/local/lib/zscript/lib/<moduleName>.zs
+
+    // Read the file
+    FILE* file = fopen(filePath, "rb");
+
+    if (!file) {
+        String errMsg = FormatString("%s: file '%s' not found", IMPORT_ERROR, filePath);
+        Value* errVal = NewErrorValue(interp, errMsg);
+        free(filePath);
+        free(errMsg);
+        return errVal;
+    }
+
+    if (HashMapContains(interp->Imports, filePath)) {
+        Value* mod = (Value*) HashMapGet(interp->Imports, filePath);
+        free(filePath);
+        fclose(file);
+        return mod;
+    }
+
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    String buffer = Allocate(size + 1);
+
+    fread(buffer, 1, size, file);
+    buffer[size] = '\0';
+    fclose(file);
+
+    Rune* data = StringToRunes(buffer);
+    free(buffer);
+
+    // Lex, parse, compile, interpret
+    Lexer*    lexer      = CreateLexer(filePath, data);
+    Parser*   parser     = CreateParser(lexer);
+    Ast*      programAst = Parse(parser);
+    Compiler* compiler   = CreateCompiler(interp, parser);
+    Value*    compiled   = CompileAst(compiler, programAst);
 
     DoCall(interp, compiled, 0, false);
     Value* result = _Popp();

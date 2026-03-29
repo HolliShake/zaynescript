@@ -2010,8 +2010,12 @@ static void _ImportStatement(Compiler* compiler, UserFunction* uf, Scope* scope,
     Ast* imports    = node->A;
     Ast* moduleName = node->B;
 
+    bool isTryingRelative =
+        (!StringStartsWith(moduleName->Value, "core:") && !StringStartsWith(moduleName->Value, "lib:")) &&
+        (StringStartsWith(moduleName->Value, "./") || StringStartsWith(moduleName->Value, "../"));
+
     // Validate, should not contain spaces, dots, or special characters
-    if (strpbrk(moduleName->Value, " .><=!@#$%^&*()_+-=[]{}|\\;'\"`~") != NULL) {
+    if (strpbrk(moduleName->Value, " .><=!@#$%^&*()_+-=[]{}|\\;'\"`~") != NULL && !isTryingRelative) {
         ThrowError(
             compiler->Parser->Lexer->Path, 
             compiler->Parser->Lexer->Data, 
@@ -2032,6 +2036,11 @@ static void _ImportStatement(Compiler* compiler, UserFunction* uf, Scope* scope,
         type = OP_IMPORT_LIB;
         modulePrefix = moduleName->Value + 4;
         prefixLen = 4;
+    } else if (isTryingRelative) {
+        type = OP_IMPORT_RELATIVE;
+        String fileDir = Dirname(_GetModule(compiler));
+        modulePrefix = AbsolutePathFromBase(fileDir, moduleName->Value);
+        free(fileDir);
     } else {
         ThrowError(
             compiler->Parser->Lexer->Path, 
@@ -2058,10 +2067,18 @@ static void _ImportStatement(Compiler* compiler, UserFunction* uf, Scope* scope,
             );
         }
 
+        String cleanName = Basename(modulePrefix);
+
         int offset = UserFunctionEmitLocal(uf);
-        ScopeSetSymbol(scope, modulePrefix, true, true, true, offset);
+        ScopeSetSymbol(scope, cleanName, true, true, true, offset);
         _EmitLine(compiler, uf, moduleName->Position);
         _EmitArg(compiler, uf, OP_STORE_NAME, offset);
+
+        free(cleanName);
+    }
+
+    if (type == OP_IMPORT_RELATIVE) {
+        free(modulePrefix);
     }
 
     while (imports != NULL) {
@@ -2722,10 +2739,9 @@ static void _Statement(Compiler* compiler, UserFunction* userFunction, Scope* sc
         case AST_IF:
             _IfStatement(compiler, userFunction, scope, node);
             break;
-        case AST_SWITCH: {
+        case AST_SWITCH:
             _SwitchStatement(compiler, userFunction, scope, node);
             break;
-        }
         case AST_FOR:
             _ForStatement(compiler, userFunction, scope, node);
             break;
@@ -2820,7 +2836,6 @@ static Value* _Program(Compiler* compiler, Ast* node, bool isModule) {
 Value* Compile(Compiler* compiler) {
     Ast* program = Parse(compiler->Parser);
     Value* value = _Program(compiler, program, false);
-    HashMapSet(compiler->Interpreter->Imports, compiler->ModulePath, value);
     FreeAst(program);
     return value;
 }

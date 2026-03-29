@@ -92,6 +92,17 @@ Value* DoImportCore(Interpreter* interp, String moduleName);
 Value* DoImportLib(Interpreter* interp, String moduleName);
 
 /**
+ * Performs import file operation.
+ * Loads a module from a specified file path.
+ * 
+ * @param interp    The interpreter instance
+ * @param filePath  The file path of the module to import
+ * 
+ * @return Module value, or error value if not found
+ */
+Value* DoImportFile(Interpreter* interp, String filePath);
+
+/**
  * Sets an index on an object.
  * Supports arrays (by numeric index), objects (by key),
  * class instances (member), and classes (static member).
