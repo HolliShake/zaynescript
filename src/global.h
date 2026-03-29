@@ -716,6 +716,17 @@ typedef struct module_function_struct {
 // -----------------------------------------------------------------------------
 
 /**
+ * @struct stack_trace_struct
+ * @brief Represents a single entry in the call stack for debugging.
+ *
+ * Stores the line information and function value for a particular call frame.
+ */
+typedef struct stack_trace {
+    LineInfo line;
+    Value*   Function;
+} StackTrace;
+
+/**
  * @struct interpreter_struct
  * @brief Main interpreter state structure containing execution context.
  *
@@ -751,10 +762,10 @@ struct interpreter_struct {
     Value*       TaskQueue[STACK_SIZE]; /**< Queue for pending tasks (e.g. resolved promises) */
     int          TaskQueueHead;         /**< Head index (next item to dequeue) */
     int          TaskQueueC;            /**< Count of pending tasks in the task queue */
-    Value*
-        CallStack[STACK_SIZE]; /**< Call stack for function calls (stores return addresses, etc.) */
-    int CallStackC;            /**< Call stack pointer */
-    Value* ActiveTask;         /**< Currently active task being processed */
+    StackTrace   CallStack[STACK_SIZE]; /**< Call stack for debugging (stores line info and function
+                                           for each call frame) */
+    int    CallStackC;                  /**< Call stack pointer/count */
+    Value* ActiveTask;                  /**< Currently active task being processed */
 };
 
 /**
@@ -809,6 +820,8 @@ typedef enum state_machine_state_enum {
  *      Pointer to the primary function or operation being executed by the state machine.
  * @var StateMachine::Ip
  *      Instruction pointer; tracks the execution position within the state machine.
+ * @var StateMachine::Line
+ *      Line information for debugging.
  * @var StateMachine::Stacks
  *      Saved execution stack for this state machine's context.
  * @var StateMachine::WaitList
@@ -832,6 +845,7 @@ typedef struct state_machine_struct {
     Value*            Value;      /**< Resulting value of the operation */
     Value*            Function;   /**< Function being executed */
     size_t            Ip;         /**< Instruction pointer */
+    LineInfo          Line;       /**< Line information for debugging */
     Value**           Stacks;     /**< Saved execution stack */
     Value**           WaitList;   /**< Array of awaited values */
     size_t            WaitListC;  /**< Count of items in WaitList */

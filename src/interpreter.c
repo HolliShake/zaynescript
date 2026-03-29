@@ -1,5 +1,9 @@
 #include "./interpreter.h"
 
+#include "global.h"
+
+#include <stdio.h>
+
 static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
     // libbf uses size == 0 to signal a free() operation
     if (size == 0) {
@@ -213,19 +217,36 @@ BAD:;
 static void
 _Error(Interpreter* interpreter, UserFunction* uf, size_t* ip, const String type, String message) {
     LineInfo line = _GetLineFromPc(uf, *ip);
-    String   fmt  = FormatString("[%s:%d]::%s: %s", line.Path, line.Line, type, message);
-    free(message);
-    Value* err = NewErrorValue(interpreter, fmt);
-    free(fmt);
+    if (interpreter->ActiveTask != NULL) {
+        String fmt = FormatString("[%s:%d]::%s: %s", line.Path, line.Line, type, message);
+        free(message);
+        Value* err = NewErrorValue(interpreter, fmt);
+        free(fmt);
+        JumpToError(ip, uf->CodeC);
+        Push(err);
+        return;
+    }
     if (isCatched()) {
+        /* Caught: create the error value and hand it to the catch handler */
+        String fmt = FormatString("[%s:%d]::%s: %s", line.Path, line.Line, type, message);
+        free(message);
+        Value* err = NewErrorValue(interpreter, fmt);
+        free(fmt);
         JumpToError(ip, _PeekTry(interpreter));
         _PoppTry(interpreter);
         Push(err);
         return;
     }
-    String errStr = ValueToString(err);
-    fprintf(stderr, "[%s:%d]::Panic: %s\n", __FILE__, __LINE__, errStr);
-    free(errStr);
+    /* Uncaught: no need to allocate a tracked Value, just report and abort */
+    fprintf(stderr,
+            "[%s:%d]::Panic: [%s:%d]::%s: %s\n",
+            __FILE__,
+            __LINE__,
+            line.Path,
+            line.Line,
+            type,
+            message);
+    free(message);
     ForceGarbageCollect(interpreter);
     FreeInterpreter(interpreter);
     fprintf(stderr, "Program exited with panic.\n");
@@ -233,12 +254,19 @@ _Error(Interpreter* interpreter, UserFunction* uf, size_t* ip, const String type
 }
 
 static void _RaiseError(Interpreter* interpreter, UserFunction* uf, size_t* ip, Value* error) {
+    if (interpreter->ActiveTask != NULL) {
+        Push(error);
+        JumpToError(ip, uf->CodeC);
+        return;
+    }
     if (isCatched()) {
+        /* Caught: preserve the original error value as-is for the catch handler */
         JumpToError(ip, _PeekTry(interpreter));
         _PoppTry(interpreter);
         Push(error);
         return;
     }
+    /* Uncaught: format for display only, no new error Value is created */
     LineInfo line   = _GetLineFromPc(uf, *ip);
     String   errStr = ValueToString(error);
     String   msg    = FormatString("[%s:%d]::%s", line.Path, line.Line, errStr);
@@ -639,8 +667,10 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 }
             case OP_CALL_CTOR:
                 {
-                    interpreter->CallStack[interpreter->CallStackC++] =
-                        (prm != NULL) ? prm : fnValue;
+                    interpreter->CallStack[interpreter->CallStackC++] = (StackTrace){
+                        .line     = _GetLineFromPc(uf, ip),
+                        .Function = (prm != NULL) ? prm : fnValue,
+                    };
                     argc = _ReadInt32(uf->Codes, ip);
                     Forward(4);
                     cls = Popp();
@@ -654,8 +684,10 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 }
             case OP_CALL:
                 {
-                    interpreter->CallStack[interpreter->CallStackC++] =
-                        (prm != NULL) ? prm : fnValue;
+                    interpreter->CallStack[interpreter->CallStackC++] = (StackTrace){
+                        .line     = _GetLineFromPc(uf, ip),
+                        .Function = (prm != NULL) ? prm : fnValue,
+                    };
                     argc = _ReadInt32(uf->Codes, ip);
                     Forward(4);
                     obj = Popp();
@@ -669,8 +701,10 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 }
             case OP_CALL_METHOD:
                 {
-                    interpreter->CallStack[interpreter->CallStackC++] =
-                        (prm != NULL) ? prm : fnValue;
+                    interpreter->CallStack[interpreter->CallStackC++] = (StackTrace){
+                        .line     = _GetLineFromPc(uf, ip),
+                        .Function = (prm != NULL) ? prm : fnValue,
+                    };
                     argc = _ReadInt32(uf->Codes, ip);
                     Forward(4);
                     key = Popp();  // method
@@ -723,6 +757,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                     val = Popp();  // The awaited promise
 
                     StateMachineAwait(sm, ip, val);
+                    sm->Line    = _GetLineFromPc(uf, ip);
                     sm->CallEnv = interpreter->CallEnv;
 
                     // 1. Calculate the exact size of the current stack frame
@@ -1258,27 +1293,40 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
     // program
     Value* task = NULL;
     while ((task = _DequeueTask(interpreter)) != NULL) {
-        interpreter->ActiveTask                           = task;
-        interpreter->CallStack[interpreter->CallStackC++] = task;
         // Awaited
         StateMachine* sm = CoerceToStateMachine(task);
+
+        interpreter->ActiveTask                           = task;
+        interpreter->CallStack[interpreter->CallStackC++] = (StackTrace){
+            .line     = sm->Line,
+            .Function = task,
+        };
+
         if (!sm->IsCallback) {
             DoCall(interpreter, task, 0, false);
         } else {
             StateMachine* wait = CoerceToStateMachine(sm->WaitFor);
-            if (wait->State != FULFILLED)
-                Panic("internal error: expected awaited state machine to be fulfilled when "
-                      "resuming callback, but got state %d",
-                      wait->State);
+            // if (wait->State != FULFILLED)
+            //     Panic("internal error: expected awaited state machine to be fulfilled when "
+            //           "resuming callback, but got state %d",
+            //           wait->State);
 
             // 1. Push value
             Push(wait->Value);
 
             // 2. Call the callback
+            interpreter->CallStack[interpreter->CallStackC++] = (StackTrace){
+                .line     = sm->Line,
+                .Function = task,
+            };
+
             DoCall(interpreter, sm->Function, 1, false);
 
+            --interpreter->CallStackC;
+
             // 3. Fulfill the state machine with the callback's return value
-            StateMachineFulfill(sm, Popp());
+            (ValueIsError(Peek()) ? StateMachineReject(sm, Popp())
+                                  : StateMachineFulfill(sm, Popp()));
 
             // 4. Enqueue all tasks waiting on this state machine
             for (size_t i = 0; i < sm->WaitListC; i++) {

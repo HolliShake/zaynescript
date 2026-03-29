@@ -55,6 +55,12 @@ void StateMachineFulfill(StateMachine* stateMachine, Value* value) {
     stateMachine->Value = value;
 }
 
+void StateMachineReject(StateMachine* stateMachine, Value* value) {
+    stateMachine->State = REJECTED;
+    stateMachine->Ip    = 0;
+    stateMachine->Value = value;
+}
+
 void StateMachineAddWaitList(StateMachine* stateMachine, Value* value) {
     stateMachine->WaitList[stateMachine->WaitListC++] = value;
     stateMachine->WaitList =

@@ -97,6 +97,11 @@ void StateMachineAwait(StateMachine* stateMachine, size_t ip, Value* value);
 void StateMachineFulfill(StateMachine* stateMachine, Value* value);
 
 /**
+ *
+ */
+void StateMachineReject(StateMachine* stateMachine, Value* value);
+
+/**
  * @brief Adds a value to the StateMachine's wait list.
  *
  * This function appends a value to the StateMachine's wait list, which is

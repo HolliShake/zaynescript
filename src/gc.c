@@ -277,7 +277,7 @@ static void _MarkTaskQueue(Interpreter* interpreter) {
 
 static void _MarkCallStack(Interpreter* interpreter) {
     for (int i = 0; i < interpreter->CallStackC; i++) {
-        Mark(interpreter->CallStack[i]);
+        Mark(interpreter->CallStack[i].Function);
     }
 }
 
