@@ -37,21 +37,21 @@ Rune* StringToRunes(String str) {
     if (str == NULL) {
         return NULL;
     }
-    
+
     // Get the number of UTF-8 characters (runes) in the string
     size_t runeCount = utf_length(str);
-    
+
     // Allocate array for runes + null terminator
     Rune* runes = Allocate(sizeof(Rune) * (runeCount + 1));
-    
+
     // Convert each UTF-8 character to a rune
     for (size_t i = 0; i < runeCount; i++) {
         runes[i] = utf_char_code_at(str, i);
     }
-    
+
     // Null-terminate the rune array
     runes[runeCount] = 0;
-    
+
     return runes;
 }
 
@@ -59,22 +59,22 @@ String RunesStrToString(Rune* runes) {
     if (runes == NULL) {
         return NULL;
     }
-    
+
     // Count the number of runes
     size_t runeCount = 0;
     while (runes[runeCount] != 0) {
         runeCount++;
     }
-    
+
     // Calculate total size needed for UTF-8 encoded string
     size_t totalSize = 0;
     for (size_t i = 0; i < runeCount; i++) {
         totalSize += utf_size_of_codepoint(runes[i]);
     }
-    
+
     // Allocate string buffer
     String str = Allocate(totalSize + 1);
-    
+
     // Convert each rune to UTF-8 and append to string
     size_t offset = 0;
     for (size_t i = 0; i < runeCount; i++) {
@@ -84,7 +84,7 @@ String RunesStrToString(Rune* runes) {
         offset += runeLen;
         free(runeStr);
     }
-    
+
     str[totalSize] = '\0';
     return str;
 }
@@ -103,12 +103,13 @@ int CoerceToI32(Value* value) {
         case VLT_NUM:
             return (int) value->Value.Num;
         case VLT_BINT:
-        case VLT_BNUM: {
-            bf_t* bf = (bf_t*) value->Value.Opaque;
-            int num = 0;
-            bf_get_int32(&num, bf, BF_RNDZ); 
-            return num;
-        }
+        case VLT_BNUM:
+            {
+                bf_t* bf  = (bf_t*) value->Value.Opaque;
+                int   num = 0;
+                bf_get_int32(&num, bf, BF_RNDZ);
+                return num;
+            }
         default:
             return 0;
     }
@@ -121,12 +122,13 @@ long CoerceToI64(Value* value) {
         case VLT_NUM:
             return (long) value->Value.Num;
         case VLT_BINT:
-        case VLT_BNUM: {
-            bf_t* bf = (bf_t*) value->Value.Opaque;
-            int64_t num = 0;
-            bf_get_int64(&num, bf, BF_RNDZ); 
-            return num;
-        }
+        case VLT_BNUM:
+            {
+                bf_t*   bf  = (bf_t*) value->Value.Opaque;
+                int64_t num = 0;
+                bf_get_int64(&num, bf, BF_RNDZ);
+                return num;
+            }
         default:
             return 0;
     }
@@ -138,13 +140,14 @@ double CoerceToNum(Value* value) {
             return (double) value->Value.I32;
         case VLT_NUM:
             return (double) value->Value.Num;
-        case VLT_BINT: 
-        case VLT_BNUM: {
-            bf_t* bf = (bf_t*) value->Value.Opaque;
-            double num = 0;
-            bf_get_float64(bf, &num, BF_RNDNA); 
-            return num;
-        }
+        case VLT_BINT:
+        case VLT_BNUM:
+            {
+                bf_t*  bf  = (bf_t*) value->Value.Opaque;
+                double num = 0;
+                bf_get_float64(bf, &num, BF_RNDNA);
+                return num;
+            }
         default:
             return 0.0;
     }
@@ -152,23 +155,27 @@ double CoerceToNum(Value* value) {
 
 bf_t* CoerceToBitField(Interpreter* interp, Value* value) {
     switch (value->Type) {
-        case VLT_INT: {
-            bf_t* bf = Allocate(sizeof(bf_t));
-            bf_init(&interp->BfContext, bf);
-            bf_set_si(bf, (long) value->Value.I32);
-            return bf;
-        }
-        case VLT_NUM: {
-            bf_t* bf = Allocate(sizeof(bf_t));
-            bf_init(&interp->BfContext, bf);
-            bf_set_float64(bf, value->Value.Num);
-            return bf;
-        }
+        case VLT_INT:
+            {
+                bf_t* bf = Allocate(sizeof(bf_t));
+                bf_init(&interp->BfContext, bf);
+                bf_set_si(bf, (long) value->Value.I32);
+                return bf;
+            }
+        case VLT_NUM:
+            {
+                bf_t* bf = Allocate(sizeof(bf_t));
+                bf_init(&interp->BfContext, bf);
+                bf_set_float64(bf, value->Value.Num);
+                return bf;
+            }
         case VLT_BINT:
-        case VLT_BNUM: {
-            return (bf_t*) value->Value.Opaque;
-        }
-        default: return NULL;
+        case VLT_BNUM:
+            {
+                return (bf_t*) value->Value.Opaque;
+            }
+        default:
+            return NULL;
     }
 }
 
@@ -178,19 +185,18 @@ limb_t BFPrecession(Value* value) {
             return PREC_INT;
         case VLT_NUM:
             return PREC_DBL;
-        case VLT_BINT: {
-            bf_t* bf = (bf_t*) value->Value.Opaque;
-            return bf->expn == 0 
-                ? PREC_INT 
-                : PREC_NUM(bf->len);
-        }
-        case VLT_BNUM: {
-            bf_t* bf = (bf_t*) value->Value.Opaque;
-            return bf->expn == 0 
-                ? PREC_INT 
-                : PREC_NUM(bf->len);
-        }
-        default: return 0;
+        case VLT_BINT:
+            {
+                bf_t* bf = (bf_t*) value->Value.Opaque;
+                return bf->expn == 0 ? PREC_INT : PREC_NUM(bf->len);
+            }
+        case VLT_BNUM:
+            {
+                bf_t* bf = (bf_t*) value->Value.Opaque;
+                return bf->expn == 0 ? PREC_INT : PREC_NUM(bf->len);
+            }
+        default:
+            return 0;
     }
 }
 
@@ -230,7 +236,8 @@ bool CoerceToBool(Value* value) {
 }
 
 Environment* CoerceToEnvironment(Value* value) {
-    if (value == NULL) return NULL;
+    if (value == NULL)
+        return NULL;
     if (value->Type == VLT_ENVIRONMENT) {
         return (Environment*) value->Value.Opaque;
     }
@@ -238,7 +245,8 @@ Environment* CoerceToEnvironment(Value* value) {
 }
 
 HashMap* CoerceToHashMap(Value* value) {
-    if (value == NULL) return NULL;
+    if (value == NULL)
+        return NULL;
     if (value->Type == VLT_OBJECT) {
         return (HashMap*) value->Value.Opaque;
     }
@@ -246,7 +254,8 @@ HashMap* CoerceToHashMap(Value* value) {
 }
 
 Array* CoerceToArray(Value* value) {
-    if (value == NULL) return NULL;
+    if (value == NULL)
+        return NULL;
     if (value->Type == VLT_ARRAY) {
         return (Array*) value->Value.Opaque;
     }
@@ -254,7 +263,8 @@ Array* CoerceToArray(Value* value) {
 }
 
 UserFunction* CoerceToUserFunction(Value* value) {
-    if (value == NULL) return NULL;
+    if (value == NULL)
+        return NULL;
     if (value->Type == VLT_USER_FUNCTION) {
         return (UserFunction*) value->Value.Opaque;
     }
@@ -262,7 +272,8 @@ UserFunction* CoerceToUserFunction(Value* value) {
 }
 
 NativeFunction* CoerceToNativeFunction(Value* value) {
-    if (value == NULL) return NULL;
+    if (value == NULL)
+        return NULL;
     if (value->Type == VLT_NATV_FUNCTION) {
         return (NativeFunction*) value->Value.Opaque;
     }
@@ -270,7 +281,8 @@ NativeFunction* CoerceToNativeFunction(Value* value) {
 }
 
 Class* CoerceToUserClass(Value* value) {
-    if (value == NULL) return NULL;
+    if (value == NULL)
+        return NULL;
     if (value->Type == VLT_CLASS) {
         return (Class*) value->Value.Opaque;
     }
@@ -278,7 +290,8 @@ Class* CoerceToUserClass(Value* value) {
 }
 
 ClassInstance* CoerceToClassInstance(Value* value) {
-    if (value == NULL) return NULL;
+    if (value == NULL)
+        return NULL;
     if (value->Type == VLT_CLASS_INSTANCE) {
         return (ClassInstance*) value->Value.Opaque;
     }
@@ -286,7 +299,8 @@ ClassInstance* CoerceToClassInstance(Value* value) {
 }
 
 StateMachine* CoerceToStateMachine(Value* value) {
-    if (value == NULL) return NULL;
+    if (value == NULL)
+        return NULL;
     if (value->Type == VLT_PROMISE) {
         return (StateMachine*) value->Value.Opaque;
     }
@@ -297,23 +311,23 @@ String GetErrorLine(String path, Rune* runes, Position position, String message)
     if (runes == NULL) {
         return NULL;
     }
-    
-    #define PADDING 3
-    #define MAX_LINE_WIDTH 1000
-    #define LINE_NUM_WIDTH 4
-    
+
+#define PADDING        3
+#define MAX_LINE_WIDTH 1000
+#define LINE_NUM_WIDTH 4
+
     // Count total lines and find line start positions
-    int lineCount = 1;
-    int maxLines = 1000; // Initial capacity
+    int  lineCount  = 1;
+    int  maxLines   = 1000;  // Initial capacity
     int* lineStarts = Allocate(sizeof(int) * maxLines);
-    lineStarts[0] = 0; // First line starts at index 0
-    
+    lineStarts[0]   = 0;     // First line starts at index 0
+
     // Scan through runes to find newline positions
     for (int i = 0; runes[i] != 0; i++) {
         if (runes[i] == '\n') {
             if (lineCount >= maxLines) {
-                maxLines *= 2;
-                int* newLineStarts = Allocate(sizeof(int) * maxLines);
+                maxLines           *= 2;
+                int* newLineStarts  = Allocate(sizeof(int) * maxLines);
                 memcpy(newLineStarts, lineStarts, sizeof(int) * lineCount);
                 free(lineStarts);
                 lineStarts = newLineStarts;
@@ -322,108 +336,117 @@ String GetErrorLine(String path, Rune* runes, Position position, String message)
             lineCount++;
         }
     }
-    
+
     // Calculate the range of lines to display (0-based internally)
     int startLine = (position.LineStart - PADDING > 1) ? position.LineStart - PADDING : 1;
-    int endLine = (position.LineStart + PADDING < lineCount) ? position.LineStart + PADDING : lineCount;
-    
+    int endLine =
+        (position.LineStart + PADDING < lineCount) ? position.LineStart + PADDING : lineCount;
+
     // Build the error message string
     size_t bufferSize = 4096;
-    String result = Allocate(bufferSize);
+    String result     = Allocate(bufferSize);
     size_t currentPos = 0;
-    
+
     // Add error header
-    currentPos += snprintf(result + currentPos, bufferSize - currentPos,
-                          "Error in [%s:%d:%d] %s\n\n",
-                          path, position.LineStart, position.ColmStart, message);
-    
+    currentPos += snprintf(result + currentPos,
+                           bufferSize - currentPos,
+                           "Error in [%s:%d:%d] %s\n\n",
+                           path,
+                           position.LineStart,
+                           position.ColmStart,
+                           message);
+
     // Display each line in the range
     for (int line = startLine; line <= endLine; line++) {
         int lineStartIdx = lineStarts[line - 1];
-        int lineEndIdx = (line < lineCount) ? lineStarts[line] - 1 : lineStartIdx;
-        
+        int lineEndIdx   = (line < lineCount) ? lineStarts[line] - 1 : lineStartIdx;
+
         // Find actual end of line (excluding newline)
         while (lineEndIdx > lineStartIdx && runes[lineEndIdx] == '\n') {
             lineEndIdx--;
         }
-        
+
         // Find the actual end of the line (scan until newline or null)
         int actualLineEnd = lineStartIdx;
         while (runes[actualLineEnd] != '\n' && runes[actualLineEnd] != 0) {
             actualLineEnd++;
         }
-        actualLineEnd--; // Back up to last character before newline/null
-        
+        actualLineEnd--;  // Back up to last character before newline/null
+
         // Convert runes to string for this line
         char lineBuffer[MAX_LINE_WIDTH];
-        int bufferIdx = 0;
-        
+        int  bufferIdx = 0;
+
         for (int i = lineStartIdx; i <= actualLineEnd && runes[i] != '\n' && runes[i] != 0; i++) {
             unsigned char utf8Buffer[5];
-            int utf8Size = utf_encode_char(runes[i], utf8Buffer);
-            
+            int           utf8Size = utf_encode_char(runes[i], utf8Buffer);
+
             for (int j = 0; j < utf8Size && bufferIdx < MAX_LINE_WIDTH - 5; j++) {
                 lineBuffer[bufferIdx++] = utf8Buffer[j];
             }
         }
         lineBuffer[bufferIdx] = '\0';
-        
+
         // Ensure buffer is large enough
         size_t needed = currentPos + LINE_NUM_WIDTH + strlen(lineBuffer) + 200;
         if (needed > bufferSize) {
-            bufferSize = needed * 2;
+            bufferSize       = needed * 2;
             String newResult = Allocate(bufferSize);
             memcpy(newResult, result, currentPos);
             free(result);
             result = newResult;
         }
-        
+
         // Print line number and content
-        currentPos += snprintf(result + currentPos, bufferSize - currentPos,
-                              "%4d | %s\n", line, lineBuffer);
-        
+        currentPos +=
+            snprintf(result + currentPos, bufferSize - currentPos, "%4d | %s\n", line, lineBuffer);
+
         // Add error highlighting if this is the error line
         if (line == position.LineStart) {
             // Add error indicator line
-            currentPos += snprintf(result + currentPos, bufferSize - currentPos,
-                                  "%4s | ", "");
-            
+            currentPos += snprintf(result + currentPos, bufferSize - currentPos, "%4s | ", "");
+
             // Convert to 0-based indexing
             int colStart = position.ColmStart - 1;
-            int colEnd = position.ColmEnded - 1;
-            
+            int colEnd   = position.ColmEnded - 1;
+
             // Bounds checking
-            if (colStart < 0) colStart = 0;
-            if (colEnd < colStart) colEnd = colStart;
-            
+            if (colStart < 0)
+                colStart = 0;
+            if (colEnd < colStart)
+                colEnd = colStart;
+
             int lineLength = strlen(lineBuffer);
-            if (colEnd >= lineLength) colEnd = lineLength - 1;
-            if (colEnd < 0) colEnd = 0;
-            
+            if (colEnd >= lineLength)
+                colEnd = lineLength - 1;
+            if (colEnd < 0)
+                colEnd = 0;
+
             // Add spaces up to the error column
             for (int col = 0; col < colStart; col++) {
                 result[currentPos++] = ' ';
             }
-            
+
             // Add error carets
             int errorLength = colEnd - colStart + 1;
-            if (errorLength < 1) errorLength = 1;
-            
+            if (errorLength < 1)
+                errorLength = 1;
+
             for (int i = 0; i < errorLength; i++) {
                 result[currentPos++] = '^';
             }
-            
+
             result[currentPos++] = '\n';
-            result[currentPos] = '\0';
+            result[currentPos]   = '\0';
         }
     }
-    
+
     free(lineStarts);
-    
-    #undef PADDING
-    #undef MAX_LINE_WIDTH
-    #undef LINE_NUM_WIDTH
-    
+
+#undef PADDING
+#undef MAX_LINE_WIDTH
+#undef LINE_NUM_WIDTH
+
     return result;
 }
 
@@ -437,24 +460,25 @@ void ThrowError(String path, Rune* runes, Position position, String message) {
 String FormatString(String format, ...) {
     va_list args;
     va_start(args, format);
-    
+
     // Determine required buffer size
-    int size = vsnprintf(NULL, 0, format, args) + 1; // +1 for null terminator
+    int size = vsnprintf(NULL, 0, format, args) + 1;  // +1 for null terminator
     va_end(args);
-    
+
     // Allocate buffer
     String buffer = Allocate(size);
-    
+
     // Write formatted string to buffer
     va_start(args, format);
     vsnprintf(buffer, size, format, args);
     va_end(args);
-    
+
     return buffer;
 }
 
 String BFIntToString(bf_t* value) {
-    String str = bf_ftoa(NULL, value, 10, PREC_INT, BF_RNDZ | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
+    String str =
+        bf_ftoa(NULL, value, 10, PREC_INT, BF_RNDZ | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
     if (str == NULL) {
         Panic("Failed to convert big integer to string");
     }
@@ -464,7 +488,11 @@ String BFIntToString(bf_t* value) {
 }
 
 String BFNumToString(bf_t* value) {
-    String str = bf_ftoa(NULL, value, 10, PREC_NUM(value->len), BF_RNDZ | BF_FTOA_FORMAT_FREE_MIN | BF_FTOA_JS_QUIRKS);
+    String str = bf_ftoa(NULL,
+                         value,
+                         10,
+                         PREC_NUM(value->len),
+                         BF_RNDZ | BF_FTOA_FORMAT_FREE_MIN | BF_FTOA_JS_QUIRKS);
     if (str == NULL) {
         Panic("Failed to convert big number to string");
     }
@@ -474,22 +502,26 @@ String BFNumToString(bf_t* value) {
 }
 
 #ifdef _WIN32
-    #define getcwd _getcwd
-    #define PATH_SEPARATOR "\\"
+#    define getcwd         _getcwd
+#    define PATH_SEPARATOR "\\"
 #else
-    #define PATH_SEPARATOR "/"
+#    define PATH_SEPARATOR "/"
 #endif
 
 bool IsAbsolutePath(String path) {
-    if (!path || path[0] == '\0') return false;
+    if (!path || path[0] == '\0')
+        return false;
 
 #ifdef _WIN32
     // Windows: "C:\" or "\\server"
-    if (isalpha(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/')) return true;
-    if ((path[0] == '\\' && path[1] == '\\') || (path[0] == '/' && path[1] == '/')) return true;
+    if (isalpha(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/'))
+        return true;
+    if ((path[0] == '\\' && path[1] == '\\') || (path[0] == '/' && path[1] == '/'))
+        return true;
 #else
     // POSIX: "/usr/bin"
-    if (path[0] == '/') return true;
+    if (path[0] == '/')
+        return true;
 #endif
 
     return false;
@@ -501,14 +533,14 @@ String NormalizePath(String pathStr) {
     }
 
     bool is_abs = IsAbsolutePath(pathStr);
-    
+
     // Create a mutable copy for tokenization
     String temp = Allocate(strlen(pathStr) + 1);
     strcpy(temp, pathStr);
 
     // Stack to hold the valid path components
-    String stack[256]; 
-    int top = 0;
+    String stack[256];
+    int    top = 0;
 
     // Tokenize the path by slashes
     String token = strtok(temp, "/\\");
@@ -532,15 +564,15 @@ String NormalizePath(String pathStr) {
     }
 
     // Allocate memory for the normalized result
-    String result = Allocate(strlen(pathStr) + 2); // +2 for potential root slash and null
-    result[0] = '\0';
+    String result = Allocate(strlen(pathStr) + 2);  // +2 for potential root slash and null
+    result[0]     = '\0';
 
     // Handle root for absolute paths
     if (is_abs) {
 #ifdef _WIN32
         // If it was a drive letter (e.g., C:\), strtok leaves "C:" in stack[0]
         if (!(isalpha(pathStr[0]) && pathStr[1] == ':')) {
-            strcpy(result, PATH_SEPARATOR); // UNC or root slash
+            strcpy(result, PATH_SEPARATOR);  // UNC or root slash
         }
 #else
         strcpy(result, "/");
@@ -577,7 +609,7 @@ String Basename(String pathStr) {
 
     // Find the last separator
     String lastSep = NULL;
-    for (int i = (int)strlen(pathStr) - 1; i >= 0; i--) {
+    for (int i = (int) strlen(pathStr) - 1; i >= 0; i--) {
         if (pathStr[i] == '/' || pathStr[i] == '\\') {
             lastSep = &pathStr[i];
             break;
@@ -590,7 +622,7 @@ String Basename(String pathStr) {
     // Find the last dot to strip the extension
     String lastDot = strrchr(filename, '.');
     if (lastDot && lastDot != filename) {
-        size_t len = lastDot - filename;
+        size_t len    = lastDot - filename;
         String result = Allocate(len + 1);
         memcpy(result, filename, len);
         result[len] = '\0';
@@ -609,9 +641,10 @@ String Dirname(String pathStr) {
     }
 
     // Work on a copy of the string so we don't mutate the user's input
-    size_t len = strlen(pathStr);
+    size_t len  = strlen(pathStr);
     String path = Allocate(len + 1);
-    if (!path) return NULL;
+    if (!path)
+        return NULL;
     strcpy(path, pathStr);
 
     // 1. Strip any trailing separators (e.g., "src/folder/" -> "src/folder")
@@ -623,7 +656,7 @@ String Dirname(String pathStr) {
 
     // 2. Find the last separator
     String last_sep = NULL;
-    for (int i = (int)len - 1; i >= 0; i--) {
+    for (int i = (int) len - 1; i >= 0; i--) {
         if (path[i] == '/' || path[i] == '\\') {
             last_sep = &path[i];
             break;
@@ -647,7 +680,7 @@ String Dirname(String pathStr) {
         while (last_sep > path && (*(last_sep - 1) == '/' || *(last_sep - 1) == '\\')) {
             last_sep--;
         }
-        *last_sep = '\0'; // Terminate the string here to drop the basename
+        *last_sep = '\0';  // Terminate the string here to drop the basename
     }
 
     return path;
@@ -657,7 +690,7 @@ String AbsolutePathFromBase(String baseStr, String pathStr) {
     if (!pathStr || pathStr[0] == '\0') {
         return NULL;
     }
-    
+
     // 1. If the path is already absolute, the base is irrelevant.
     if (IsAbsolutePath(pathStr)) {
         String abs_copy = Allocate(strlen(pathStr) + 1);
@@ -677,9 +710,9 @@ String AbsolutePathFromBase(String baseStr, String pathStr) {
     }
 
     // 3. Prepare for concatenation
-    size_t base_len = strlen(baseStr);
-    bool needs_separator = true;
-    
+    size_t base_len        = strlen(baseStr);
+    bool   needs_separator = true;
+
     // Check if base already ends with a separator
     char last_char = baseStr[base_len - 1];
     if (last_char == '/' || last_char == '\\') {
@@ -693,9 +726,10 @@ String AbsolutePathFromBase(String baseStr, String pathStr) {
     }
 
     // 4. Allocate and build the new path
-    size_t total_len = base_len + (needs_separator ? 1 : 0) + strlen(p) + 1;
+    size_t total_len     = base_len + (needs_separator ? 1 : 0) + strlen(p) + 1;
     String resolved_path = Allocate(total_len);
-    if (!resolved_path) return NULL;
+    if (!resolved_path)
+        return NULL;
 
     strcpy(resolved_path, baseStr);
     if (needs_separator) {
@@ -710,8 +744,8 @@ String AbsolutePathFromBase(String baseStr, String pathStr) {
 }
 
 String AbsolutePath(String pathStr) {
-    String path = pathStr; 
-    
+    String path = pathStr;
+
     if (!path || path[0] == '\0') {
         return NULL;
     }
@@ -724,12 +758,12 @@ String AbsolutePath(String pathStr) {
     // 2. Get the Current Working Directory
     char cwd[4096];
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
-        return NULL; 
+        return NULL;
     }
 
     // 3. Resolve the path with the CWD
     size_t cwd_len = strlen(cwd);
-    
+
     bool needs_separator = true;
     if (cwd_len > 0) {
         char last_char = cwd[cwd_len - 1];
@@ -744,11 +778,11 @@ String AbsolutePath(String pathStr) {
     }
 
     // Allocate memory for: CWD + Separator + Path + Null Terminator
-    size_t total_len = cwd_len + (needs_separator ? 1 : 0) + strlen(path) + 1;
+    size_t total_len         = cwd_len + (needs_separator ? 1 : 0) + strlen(path) + 1;
     String resolved_raw_path = Allocate(total_len);
 
     if (!resolved_raw_path) {
-        return NULL; // Memory allocation failed
+        return NULL;  // Memory allocation failed
     }
 
     // Assemble the final string

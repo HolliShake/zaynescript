@@ -1,118 +1,126 @@
-#include "./interpreter.h" 
+#include "./interpreter.h"
 
 static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
     // libbf uses size == 0 to signal a free() operation
     if (size == 0) {
-        free(ptr); 
+        free(ptr);
         return NULL;
     }
     // If ptr is NULL, realloc behaves exactly like malloc
-    return realloc(ptr, size); 
+    return realloc(ptr, size);
 }
 
 Interpreter* CreateInterpreter(String execPath) {
-    Interpreter* interpreter                = Allocate(sizeof(Interpreter));
+    Interpreter* interpreter = Allocate(sizeof(Interpreter));
     bf_context_init(&(interpreter->BfContext), interpreter_bf_realloc, NULL);
-    interpreter->ExecPath                   = AllocateString(execPath);
-    interpreter->Imports                    = CreateHashMap(16);
-    interpreter->Allocated                  = 0;
-    interpreter->GcRoot                     = NULL;
-    interpreter->RootEnv                    = NULL;
-    interpreter->CallEnv                    = NULL;
-    interpreter->Array                      = CreateArrayClass(interpreter);
-    interpreter->Date                       = CreateDateClass(interpreter);
-    interpreter->Promise                    = CreatePromiseClass(interpreter);
-    interpreter->True                       = NewBoolValue(interpreter, 1);
-    interpreter->False                      = NewBoolValue(interpreter, 0);
-    interpreter->Null                       = NewNullValue(interpreter);
-    interpreter->Constants                  = Allocate(sizeof(Value*));
-    interpreter->ConstantC                  = 0;
-    interpreter->Constants[0]               = NULL;
-    interpreter->Functions                  = Allocate(sizeof(Value*));
-    interpreter->FunctionC                  = 0;
-    interpreter->Functions[0]               = NULL;
+    interpreter->ExecPath     = AllocateString(execPath);
+    interpreter->Imports      = CreateHashMap(16);
+    interpreter->Allocated    = 0;
+    interpreter->GcRoot       = NULL;
+    interpreter->RootEnv      = NULL;
+    interpreter->CallEnv      = NULL;
+    interpreter->Array        = CreateArrayClass(interpreter);
+    interpreter->Date         = CreateDateClass(interpreter);
+    interpreter->Promise      = CreatePromiseClass(interpreter);
+    interpreter->True         = NewBoolValue(interpreter, 1);
+    interpreter->False        = NewBoolValue(interpreter, 0);
+    interpreter->Null         = NewNullValue(interpreter);
+    interpreter->Constants    = Allocate(sizeof(Value*));
+    interpreter->ConstantC    = 0;
+    interpreter->Constants[0] = NULL;
+    interpreter->Functions    = Allocate(sizeof(Value*));
+    interpreter->FunctionC    = 0;
+    interpreter->Functions[0] = NULL;
     // interpreter->Stacks[STACK_SIZE];
-    interpreter->StackC                     = 0;
+    interpreter->StackC = 0;
     // interpreter->Envs[STACK_SIZE];
-    interpreter->EnvC                       = 0;
+    interpreter->EnvC = 0;
     // interpreter->ExceptionHandlerStacks[STACK_SIZE];
-    interpreter->ExceptionHandlerStackC     = 0;
-    interpreter->GcThreshold                = GC_THRESHOLD;
+    interpreter->ExceptionHandlerStackC = 0;
+    interpreter->GcThreshold            = GC_THRESHOLD;
     // interpreter->TaskQueue[STACK_SIZE];
-    interpreter->TaskQueueHead             = 0;
-    interpreter->TaskQueueC                = 0;
-    interpreter->ActiveTask                = NULL;
+    interpreter->TaskQueueHead = 0;
+    interpreter->TaskQueueC    = 0;
+    interpreter->ActiveTask    = NULL;
     return interpreter;
 }
 
-#define Push(value) (interpreter->Stacks[interpreter->StackC++] = value)
-#define Popp()      (interpreter->Stacks[--interpreter->StackC])
-#define PopN(n)     (interpreter->Stacks[interpreter->StackC -= (n)])
-#define Peek()      (interpreter->Stacks[interpreter->StackC - 1])
-#define PeekAt(n)   (interpreter->Stacks[interpreter->StackC - n])
+#define Push(value)     (interpreter->Stacks[interpreter->StackC++] = value)
+#define Popp()          (interpreter->Stacks[--interpreter->StackC])
+#define PopN(n)         (interpreter->Stacks[interpreter->StackC -= (n)])
+#define Peek()          (interpreter->Stacks[interpreter->StackC - 1])
+#define PeekAt(n)       (interpreter->Stacks[interpreter->StackC - n])
 #define RestoreStack(n) (interpreter->StackC = (n))
 
-#define SetVar(envObj, offset, value) EnvironmentSetLocal(CoerceToEnvironment(envObj), offset, value)
+#define SetVar(envObj, offset, value)                                                              \
+    EnvironmentSetLocal(CoerceToEnvironment(envObj), offset, value)
 #define GetVar(envObj, offset) EnvironmentGetLocal(CoerceToEnvironment(envObj), offset)->Value
 #define GetCap(uFunct, offset) (uFunct->Captures[offset]->Value)
 #define SetCap(uFunct, offset, value) (uFunct->Captures[offset]->Value = value)
 
-#define DumpFrame() do { \
-    printf("Stack: "); \
-    for (int i = 0; i < uf->CodeC; i++) { \
-        printf("%d ", uf->Codes[i]); \
-    } \
-    printf("\n"); \
-} while (0)
+#define DumpFrame()                                                                                \
+    do {                                                                                           \
+        printf("Stack: ");                                                                         \
+        for (int i = 0; i < uf->CodeC; i++) {                                                      \
+            printf("%d ", uf->Codes[i]);                                                           \
+        }                                                                                          \
+        printf("\n");                                                                              \
+    } while (0)
 
-#define DumpStack() do { \
-    printf("Stack [%d items]: [ ", interpreter->StackC); \
-    for (int i = 0; i < interpreter->StackC; i++) { \
-        if (i > 0) printf(", "); \
-        /*Note: memory leak (ValueToString allocates a string that is passed to printf but never freed)*/ \
-        printf("%s", ValueToString(interpreter->Stacks[i])); \
-    } \
-    printf(" ]\n"); \
-} while (0)
+#define DumpStack()                                                                                \
+    do {                                                                                           \
+        printf("Stack [%d items]: [ ", interpreter->StackC);                                       \
+        for (int i = 0; i < interpreter->StackC; i++) {                                            \
+            if (i > 0)                                                                             \
+                printf(", ");                                                                      \
+            /*Note: memory leak (ValueToString allocates a string that is passed to printf but     \
+             * never freed)*/                                                                      \
+            printf("%s", ValueToString(interpreter->Stacks[i]));                                   \
+        }                                                                                          \
+        printf(" ]\n");                                                                            \
+    } while (0)
 
-#define InterpreterPanic(message, ...) do { \
-    fprintf(stderr, "[%s:%d]::Panic: ", __FILE__, __LINE__); \
-    fprintf(stderr, message, ##__VA_ARGS__); \
-    fprintf(stderr, "\n"); \
-    ForceGarbageCollect(interpreter); \
-    FreeInterpreter(interpreter); \
-    fprintf(stderr, "Program exited with panic.\n"); \
-    exit(EXIT_FAILURE); \
-} while(0)
+#define InterpreterPanic(message, ...)                                                             \
+    do {                                                                                           \
+        fprintf(stderr, "[%s:%d]::Panic: ", __FILE__, __LINE__);                                   \
+        fprintf(stderr, message, ##__VA_ARGS__);                                                   \
+        fprintf(stderr, "\n");                                                                     \
+        ForceGarbageCollect(interpreter);                                                          \
+        FreeInterpreter(interpreter);                                                              \
+        fprintf(stderr, "Program exited with panic.\n");                                           \
+        exit(EXIT_FAILURE);                                                                        \
+    } while (0)
 
-#define HandleError(messageFormat, ...) { \
-    int size = snprintf(NULL, 0, (String) messageFormat, ##__VA_ARGS__) + 1; \
-    String message = (String) Allocate(size); \
-    snprintf(message, size, (String) messageFormat, ##__VA_ARGS__); \
-    if (catched) { \
-        JmpFrwd(PeekEH()); \
-        PoppEH(); \
-        Push(NewErrorValue(interpreter, message)); \
-        free(message); \
-        break; \
-    } \
-    InterpreterPanic(message); \
-    free(message); \
-    break; } \
+#define HandleError(messageFormat, ...)                                                            \
+    {                                                                                              \
+        int    size    = snprintf(NULL, 0, (String) messageFormat, ##__VA_ARGS__) + 1;             \
+        String message = (String) Allocate(size);                                                  \
+        snprintf(message, size, (String) messageFormat, ##__VA_ARGS__);                            \
+        if (catched) {                                                                             \
+            JmpFrwd(PeekEH());                                                                     \
+            PoppEH();                                                                              \
+            Push(NewErrorValue(interpreter, message));                                             \
+            free(message);                                                                         \
+            break;                                                                                 \
+        }                                                                                          \
+        InterpreterPanic(message);                                                                 \
+        free(message);                                                                             \
+        break;                                                                                     \
+    }
 
 static int _ReadInt32(uint8_t* codes, int alignStart) {
-    int offset = 0;
-    offset |= codes[alignStart + 0] << 24;
-    offset |= codes[alignStart + 1] << 16;
-    offset |= codes[alignStart + 2] <<  8;
-    offset |= codes[alignStart + 3] <<  0;
+    int offset  = 0;
+    offset     |= codes[alignStart + 0] << 24;
+    offset     |= codes[alignStart + 1] << 16;
+    offset     |= codes[alignStart + 2] << 8;
+    offset     |= codes[alignStart + 3] << 0;
     return offset;
 }
 
 static String _ReadString(uint8_t* codes, int alignStart) {
-    String str = (String)(codes + alignStart);
-    int length = strlen(str);
-    String new = Allocate(length + 1);
+    String str    = (String) (codes + alignStart);
+    int    length = strlen(str);
+    String new    = Allocate(length + 1);
     memcpy(new, str, length + 1);
     return new;
 }
@@ -154,7 +162,7 @@ static void _PopNTry(Interpreter* interpreter, int n) {
 }
 
 static void _PoppTry(Interpreter* interpreter) {
-   _PopNTry(interpreter, 1);
+    _PopNTry(interpreter, 1);
 }
 
 static int _PeekTry(Interpreter* interpreter) {
@@ -167,21 +175,22 @@ static int _PeekTry(Interpreter* interpreter) {
 
 #define JumpToError(ip, addr) (*ip = addr)
 
-#define DumpTraceBack(uf, ip) do { \
-    for (int i = 0; i < uf->LineC; i++) { \
-        fprintf(stderr, "[%s:%d] == %d\n", uf->Lines[i].Path, uf->Lines[i].Line, ip); \
-    } \
-    fprintf(stderr, "\n"); \
-} while (0) \
+#define DumpTraceBack(uf, ip)                                                                      \
+    do {                                                                                           \
+        for (int i = 0; i < uf->LineC; i++) {                                                      \
+            fprintf(stderr, "[%s:%d] == %d\n", uf->Lines[i].Path, uf->Lines[i].Line, ip);          \
+        }                                                                                          \
+        fprintf(stderr, "\n");                                                                     \
+    } while (0)
 
 static LineInfo _GetLineFromPc(UserFunction* uf, size_t pc) {
     if (uf->LineC == 0) {
         goto BAD;
     }
-    
-    int low = 0;
+
+    int low  = 0;
     int high = uf->LineC - 1;
-    
+
     while (low <= high) {
         int mid = low + (high - low) / 2;
         if (uf->Lines[mid].Pc == pc) {
@@ -192,18 +201,19 @@ static LineInfo _GetLineFromPc(UserFunction* uf, size_t pc) {
             high = mid - 1;
         }
     }
-    
+
     // If exact match not found, return the line for the closest lower PC
     if (high >= 0) {
         return uf->Lines[high];
     }
-    BAD:;
-    return (LineInfo) { };
+BAD:;
+    return (LineInfo){};
 }
 
-static void _Error(Interpreter* interpreter, UserFunction* uf, size_t* ip, const String type, String message) {
+static void
+_Error(Interpreter* interpreter, UserFunction* uf, size_t* ip, const String type, String message) {
     LineInfo line = _GetLineFromPc(uf, *ip);
-    String fmt = FormatString("[%s:%d]::%s: %s", line.Path, line.Line, type, message);
+    String   fmt  = FormatString("[%s:%d]::%s: %s", line.Path, line.Line, type, message);
     free(message);
     Value* err = NewErrorValue(interpreter, fmt);
     free(fmt);
@@ -229,9 +239,9 @@ static void _RaiseError(Interpreter* interpreter, UserFunction* uf, size_t* ip, 
         Push(error);
         return;
     }
-    LineInfo line = _GetLineFromPc(uf, *ip);
-    String errStr = ValueToString(error);
-    String msg = FormatString("[%s:%d]::%s", line.Path, line.Line, errStr);
+    LineInfo line   = _GetLineFromPc(uf, *ip);
+    String   errStr = ValueToString(error);
+    String   msg    = FormatString("[%s:%d]::%s", line.Path, line.Line, errStr);
     free(errStr);
     fprintf(stderr, "[%s:%d]::Panic: %s\n", __FILE__, __LINE__, msg);
     free(msg);
@@ -241,7 +251,8 @@ static void _RaiseError(Interpreter* interpreter, UserFunction* uf, size_t* ip, 
     exit(EXIT_FAILURE);
 }
 
-static void _ReferenceError(Interpreter* interpreter, UserFunction* uf, size_t* ip, String message) {
+static void
+_ReferenceError(Interpreter* interpreter, UserFunction* uf, size_t* ip, String message) {
     _Error(interpreter, uf, ip, REFERENCE_ERROR, message);
 }
 
@@ -263,7 +274,7 @@ static Value* _DequeueTask(Interpreter* interpreter) {
     if (interpreter->TaskQueueC == 0) {
         return NULL;
     }
-    Value* task = interpreter->TaskQueue[interpreter->TaskQueueHead];
+    Value* task                = interpreter->TaskQueue[interpreter->TaskQueueHead];
     interpreter->TaskQueueHead = (interpreter->TaskQueueHead + 1) % STACK_SIZE;
     interpreter->TaskQueueC--;
     return task;
@@ -273,45 +284,44 @@ static Value* _DequeueTaskAt(Interpreter* interpreter, int index) {
     if (interpreter->TaskQueueC == 0 || index < 0 || index >= interpreter->TaskQueueC) {
         return NULL;
     }
-    int phys = (interpreter->TaskQueueHead + index) % STACK_SIZE;
+    int    phys = (interpreter->TaskQueueHead + index) % STACK_SIZE;
     Value* task = interpreter->TaskQueue[phys];
     // Shift all logical elements after 'index' one slot toward the head
     for (int i = index; i < interpreter->TaskQueueC - 1; i++) {
-        int cur  = (interpreter->TaskQueueHead + i)     % STACK_SIZE;
-        int next = (interpreter->TaskQueueHead + i + 1) % STACK_SIZE;
+        int cur                     = (interpreter->TaskQueueHead + i) % STACK_SIZE;
+        int next                    = (interpreter->TaskQueueHead + i + 1) % STACK_SIZE;
         interpreter->TaskQueue[cur] = interpreter->TaskQueue[next];
     }
     interpreter->TaskQueueC--;
     return task;
 }
 
-
 /******* Main interpreter loop */
 void Run(Interpreter* interpreter, Value* fnValue) {
-    StateMachine* sm = NULL;
-    UserFunction* uf = ValueIsUserFunction(fnValue) ? CoerceToUserFunction(fnValue) : NULL;
-    uint8_t opcode   = 0;
-    Value* lhs       = NULL;
-    Value* rhs       = NULL;
-    Value* res       = NULL;
-    Value* ext       = NULL;
-    Value* arr       = NULL;
-    Value* obj       = NULL;
-    Value* cls       = NULL;
-    Value* key       = NULL;
-    Value* val       = NULL;
-    Value* err       = NULL;
-    Value* prm       = NULL;
-    Environment* env = NULL;
-    HashMap* map     = NULL;
-    Array* array     = NULL;
-    size_t ip        = 0;
-    int offset       = 0;
-    int argc         = 0;
-    int flg          = 0;
-    int size         = 0;
-    bool catched     = false;
-    String str       = NULL;
+    StateMachine* sm      = NULL;
+    UserFunction* uf      = ValueIsUserFunction(fnValue) ? CoerceToUserFunction(fnValue) : NULL;
+    uint8_t       opcode  = 0;
+    Value*        lhs     = NULL;
+    Value*        rhs     = NULL;
+    Value*        res     = NULL;
+    Value*        ext     = NULL;
+    Value*        arr     = NULL;
+    Value*        obj     = NULL;
+    Value*        cls     = NULL;
+    Value*        key     = NULL;
+    Value*        val     = NULL;
+    Value*        err     = NULL;
+    Value*        prm     = NULL;
+    Environment*  env     = NULL;
+    HashMap*      map     = NULL;
+    Array*        array   = NULL;
+    size_t        ip      = 0;
+    int           offset  = 0;
+    int           argc    = 0;
+    int           flg     = 0;
+    int           size    = 0;
+    bool          catched = false;
+    String        str     = NULL;
 
     bool restored = false;
 
@@ -323,29 +333,27 @@ void Run(Interpreter* interpreter, Value* fnValue) {
             /*Ip         */ 0,
             /*Env        */ interpreter->CallEnv,
             /*WaitFor    */ NULL,
-            /*Function   */ fnValue
-        );
+            /*Function   */ fnValue);
         sm->StackBot = interpreter->StackC;
         sm->EnvBot   = interpreter->EnvC;
-        prm = NewPromiseValue(interpreter, sm);
+        prm          = NewPromiseValue(interpreter, sm);
     } else if (ValueIsPromise(fnValue)) {
         // Restore
-        prm = fnValue;
-        sm  = CoerceToStateMachine(prm);
-        sm->StackBot = interpreter->StackC;
-        sm->EnvBot   = interpreter->EnvC;
-        uf  = CoerceToUserFunction(sm->Function);
-        ip  = sm->Ip;
+        prm                 = fnValue;
+        sm                  = CoerceToStateMachine(prm);
+        sm->StackBot        = interpreter->StackC;
+        sm->EnvBot          = interpreter->EnvC;
+        uf                  = CoerceToUserFunction(sm->Function);
+        ip                  = sm->Ip;
         interpreter->StackC = sm->StackBot;
         interpreter->EnvC   = sm->EnvBot;
-        restored = true;
+        restored            = true;
     }
- 
-    #define Forward(size) (ip += size)
-    #define JmpFrwd(addr) (ip  = addr)
+
+#define Forward(size) (ip += size)
+#define JmpFrwd(addr) (ip = addr)
 
     while (ip != uf->CodeC) {
-
         if (interpreter->Allocated >= interpreter->GcThreshold) {
             Mark(fnValue);
             Mark(prm);
@@ -357,773 +365,888 @@ void Run(Interpreter* interpreter, Value* fnValue) {
         catched = interpreter->ExceptionHandlerStackC != 0;
 
         switch (opcode) {
-            case OP_IMPORT_CORE: {
-                str = _ReadString(uf->Codes, ip);
-                res = DoImportCore(interpreter, str);
-                if (ValueIsError(res)) {
+            case OP_IMPORT_CORE:
+                {
+                    str = _ReadString(uf->Codes, ip);
+                    res = DoImportCore(interpreter, str);
+                    if (ValueIsError(res)) {
+                        free(str);
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    Forward(strlen(str) + 1);
                     free(str);
-                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
-                Push(res);
-                Forward(strlen(str) + 1);
-                free(str);
-                break;
-            }
-            case OP_IMPORT_LIB: {
-                str = _ReadString(uf->Codes, ip);
-                res = DoImportLib(interpreter, str);
-                if (ValueIsError(res)) {
+            case OP_IMPORT_LIB:
+                {
+                    str = _ReadString(uf->Codes, ip);
+                    res = DoImportLib(interpreter, str);
+                    if (ValueIsError(res)) {
+                        free(str);
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    Forward(strlen(str) + 1);
                     free(str);
-                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
-                Push(res);
-                Forward(strlen(str) + 1);
-                free(str);
-                break;
-            }
-            case OP_IMPORT_RELATIVE: {
-                str = _ReadString(uf->Codes, ip);
-                res = DoImportFile(interpreter, str);
-                if (ValueIsError(res)) {
+            case OP_IMPORT_RELATIVE:
+                {
+                    str = _ReadString(uf->Codes, ip);
+                    res = DoImportFile(interpreter, str);
+                    if (ValueIsError(res)) {
+                        free(str);
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    Forward(strlen(str) + 1);
                     free(str);
-                    _RaiseError(interpreter, uf, &ip, res);
                     break;
                 }
-                Push(res);
-                Forward(strlen(str) + 1);
-                free(str);
-                break;
-            }
-            case OP_LOAD_CAPTURE: {
-                offset = _ReadInt32(uf->Codes, ip);
-                val    = GetCap(uf, offset);
-                if (val == NULL) {
-                    _ReferenceError(interpreter, uf, &ip, AllocateString("variable is referenced before initialization"));
+            case OP_LOAD_CAPTURE:
+                {
+                    offset = _ReadInt32(uf->Codes, ip);
+                    val    = GetCap(uf, offset);
+                    if (val == NULL) {
+                        _ReferenceError(
+                            interpreter,
+                            uf,
+                            &ip,
+                            AllocateString("variable is referenced before initialization"));
+                        break;
+                    }
+                    Push(val);
+                    Forward(4);
                     break;
                 }
-                Push(val);
-                Forward(4);
-                break;
-            }
-            case OP_LOAD_NAME: {
-                offset = _ReadInt32(uf->Codes, ip);
-                val    = GetVar(interpreter->RootEnv, offset);
-                if (val == NULL) {
-                    _ReferenceError(interpreter, uf, &ip, AllocateString("variable is referenced before initialization"));
+            case OP_LOAD_NAME:
+                {
+                    offset = _ReadInt32(uf->Codes, ip);
+                    val    = GetVar(interpreter->RootEnv, offset);
+                    if (val == NULL) {
+                        _ReferenceError(
+                            interpreter,
+                            uf,
+                            &ip,
+                            AllocateString("variable is referenced before initialization"));
+                        break;
+                    }
+                    Push(val);
+                    Forward(4);
                     break;
                 }
-                Push(val);
-                Forward(4);
-                break;
-            }
-            case OP_LOAD_LOCAL: {
-                offset = _ReadInt32(uf->Codes, ip);
-                val    = GetVar(interpreter->CallEnv, offset);
-                if (val == NULL) {
-                    _ReferenceError(interpreter, uf, &ip, AllocateString("variable is referenced before initialization"));
+            case OP_LOAD_LOCAL:
+                {
+                    offset = _ReadInt32(uf->Codes, ip);
+                    val    = GetVar(interpreter->CallEnv, offset);
+                    if (val == NULL) {
+                        _ReferenceError(
+                            interpreter,
+                            uf,
+                            &ip,
+                            AllocateString("variable is referenced before initialization"));
+                        break;
+                    }
+                    Push(val);
+                    Forward(4);
                     break;
                 }
-                Push(val);
-                Forward(4);
-                break;
-            }
-            case OP_LOAD_CONST: {
-                offset = _ReadInt32(uf->Codes, ip);
-                Push(interpreter->Constants[offset]);
-                Forward(4);
-                break;
-            }
-            case OP_LOAD_BOOL: {
-                offset = _ReadInt32(uf->Codes, ip);
-                Push(
-                    offset 
-                    ? interpreter->True
-                    : interpreter->False
-                );
-                Forward(4);
-                break;
-            }
-            case OP_LOAD_NULL: {
-                Push(interpreter->Null);
-                break;
-            }
-            case OP_LOAD_STRING: {
-                str = _ReadString(uf->Codes, ip);
-                Push(NewStrValue(interpreter, str));
-                Forward(strlen(str) + 1);
-                free(str);
-                break;
-            }
-            case OP_ARRAY_EXTEND: {
-                ext = Popp();
-                arr = Peek();
-                if (!ValueIsArray(ext)) {
-                    _TypeError( interpreter, uf, &ip, FormatString("expected array to extend to be an array, got %s", ValueTypeOf(ext)));
+            case OP_LOAD_CONST:
+                {
+                    offset = _ReadInt32(uf->Codes, ip);
+                    Push(interpreter->Constants[offset]);
+                    Forward(4);
                     break;
                 }
-                ArrayExtend(CoerceToArray(arr), CoerceToArray(ext));
-                break;
-            }
-            case OP_ARRAY_PUSH: {
-                val = Popp();
-                arr = Peek();
-                if (!ValueIsArray(ext)) {
-                    _TypeError(interpreter, uf, &ip, FormatString("expected array to push to be an array, got %s", ValueTypeOf(ext)));
+            case OP_LOAD_BOOL:
+                {
+                    offset = _ReadInt32(uf->Codes, ip);
+                    Push(offset ? interpreter->True : interpreter->False);
+                    Forward(4);
                     break;
                 }
-                ArrayPush(CoerceToArray(arr), val);
-                break;
-            }
-            case OP_ARRAY_MAKE: {
-                size  = _ReadInt32(uf->Codes, ip);
-                arr   = NewArrayValue(interpreter);
-                array = CoerceToArray(arr);
-                for (int i = 0; i < size; i++) {
-                    val = PeekAt(size + i);
-                    ArrayPush(array, val);
-                }
-                PopN(size);
-                Push(arr);
-                Forward(4);
-                break;
-            }
-            case OP_OBJECT_EXTEND: {
-                ext = Popp();
-                obj = Peek();
-                if (!ValueIsObject(ext)) {
-                    _TypeError(interpreter, uf, &ip, FormatString("expected object to extend to be an object, got %s", ValueTypeOf(ext)));
+            case OP_LOAD_NULL:
+                {
+                    Push(interpreter->Null);
                     break;
                 }
-                HashMapExtend(CoerceToHashMap(obj), CoerceToHashMap(ext));
-                break;
-            }
-            case OP_OBJECT_MAKE: {
-                size = _ReadInt32(uf->Codes, ip);
-                obj  = NewObjectValue(interpreter);
-                map  = CoerceToHashMap(obj);
-                for (int i = 0; i < size; i++) {
+            case OP_LOAD_STRING:
+                {
+                    str = _ReadString(uf->Codes, ip);
+                    Push(NewStrValue(interpreter, str));
+                    Forward(strlen(str) + 1);
+                    free(str);
+                    break;
+                }
+            case OP_ARRAY_EXTEND:
+                {
+                    ext = Popp();
+                    arr = Peek();
+                    if (!ValueIsArray(ext)) {
+                        _TypeError(interpreter,
+                                   uf,
+                                   &ip,
+                                   FormatString("expected array to extend to be an array, got %s",
+                                                ValueTypeOf(ext)));
+                        break;
+                    }
+                    ArrayExtend(CoerceToArray(arr), CoerceToArray(ext));
+                    break;
+                }
+            case OP_ARRAY_PUSH:
+                {
+                    val = Popp();
+                    arr = Peek();
+                    if (!ValueIsArray(ext)) {
+                        _TypeError(interpreter,
+                                   uf,
+                                   &ip,
+                                   FormatString("expected array to push to be an array, got %s",
+                                                ValueTypeOf(ext)));
+                        break;
+                    }
+                    ArrayPush(CoerceToArray(arr), val);
+                    break;
+                }
+            case OP_ARRAY_MAKE:
+                {
+                    size  = _ReadInt32(uf->Codes, ip);
+                    arr   = NewArrayValue(interpreter);
+                    array = CoerceToArray(arr);
+                    for (int i = 0; i < size; i++) {
+                        val = PeekAt(size + i);
+                        ArrayPush(array, val);
+                    }
+                    PopN(size);
+                    Push(arr);
+                    Forward(4);
+                    break;
+                }
+            case OP_OBJECT_EXTEND:
+                {
+                    ext = Popp();
+                    obj = Peek();
+                    if (!ValueIsObject(ext)) {
+                        _TypeError(interpreter,
+                                   uf,
+                                   &ip,
+                                   FormatString("expected object to extend to be an object, got %s",
+                                                ValueTypeOf(ext)));
+                        break;
+                    }
+                    HashMapExtend(CoerceToHashMap(obj), CoerceToHashMap(ext));
+                    break;
+                }
+            case OP_OBJECT_MAKE:
+                {
+                    size = _ReadInt32(uf->Codes, ip);
+                    obj  = NewObjectValue(interpreter);
+                    map  = CoerceToHashMap(obj);
+                    for (int i = 0; i < size; i++) {
+                        key           = Popp();
+                        val           = Popp();
+                        String keyStr = ValueToString(key);
+                        HashMapSet(map, keyStr, val);
+                        free(keyStr);
+                    }
+                    Push(obj);
+                    Forward(4);
+                    break;
+                }
+            case OP_OBJECT_PLUCK_ATTRIBUTE:
+                {
+                    str = _ReadString(uf->Codes, ip);
+                    obj = Peek();
+                    map = CoerceToHashMap(obj);
+                    val = HashMapGet(map, str);
+                    Push((val == NULL) ? interpreter->Null : val);
+                    Forward(strlen(str) + 1);
+                    free(str);
+                    break;
+                }
+            case OP_CLASS_EXTEND:
+                {
+                    ext = Popp();  // super class
+                    cls = Peek();  // class being extended
+                    if (!ValueIsClass(ext)) {
+                        _TypeError(interpreter,
+                                   uf,
+                                   &ip,
+                                   FormatString("expected superclass to be a class, got %s",
+                                                ValueTypeOf(ext)));
+                        break;
+                    }
+                    ClassExtend(CoerceToUserClass(cls), ext);
+                    break;
+                }
+            case OP_CLASS_MAKE:
+                {
+                    str = _ReadString(uf->Codes, ip);
+                    obj = NewClassValue(interpreter, CreateUserClass(str, NULL));
+                    Push(obj);
+                    Forward(strlen(str) + 1);
+                    free(str);
+                    break;
+                }
+            case OP_CLASS_DEFINE_STATIC_MEMBER:
+            case OP_CLASS_DEFINE_INSTANCE_MEMBER:
+                {
                     key = Popp();
                     val = Popp();
-                    String keyStr = ValueToString(key);
-                    HashMapSet(map, keyStr, val);
-                    free(keyStr);
-                }
-                Push(obj);
-                Forward(4);
-                break;
-            }
-            case OP_OBJECT_PLUCK_ATTRIBUTE: {
-                str = _ReadString(uf->Codes, ip);
-                obj = Peek();
-                map = CoerceToHashMap(obj);
-                val = HashMapGet(map, str);
-                Push((val == NULL) ? interpreter->Null : val);
-                Forward(strlen(str) + 1);
-                free(str);
-                break;
-            }
-            case OP_CLASS_EXTEND: {
-                ext = Popp(); // super class
-                cls = Peek(); // class being extended
-                if (!ValueIsClass(ext)) {
-                    _TypeError(interpreter, uf, &ip, FormatString("expected superclass to be a class, got %s", ValueTypeOf(ext)));
+                    obj = Peek();
+                    ClassDefineMember(CoerceToUserClass(obj),
+                                      key,
+                                      val,
+                                      (opcode == OP_CLASS_DEFINE_STATIC_MEMBER));
                     break;
                 }
-                ClassExtend(CoerceToUserClass(cls), ext);
-                break;
-            }
-            case OP_CLASS_MAKE: {
-                str = _ReadString(uf->Codes, ip);
-                obj = NewClassValue(interpreter, CreateUserClass(str, NULL));
-                Push(obj);
-                Forward(strlen(str) + 1);
-                free(str);
-                break;
-            }
-            case OP_CLASS_DEFINE_STATIC_MEMBER: 
-            case OP_CLASS_DEFINE_INSTANCE_MEMBER: {
-                key = Popp();
-                val = Popp();
-                obj = Peek();
-                ClassDefineMember(CoerceToUserClass(obj), key, val, (opcode == OP_CLASS_DEFINE_STATIC_MEMBER));
-                break;
-            }
-            case OP_SET_INDEX: {
-                val = Popp();
-                key = Popp();
-                obj = Peek();
-                res = DoSetIndex(interpreter, obj, key, val);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                break;
-            }
-            case OP_GET_INDEX: {
-                key = Popp();
-                obj = Popp();
-                res = DoGetIndex(interpreter, obj, key);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_LOAD_FUNCTION_CLOSURE:
-            case OP_LOAD_FUNCTION: {
-                offset = _ReadInt32(uf->Codes, ip);
-                res    = DoLoadFunction(
-                    interpreter, 
-                    offset, 
-                    (opcode == OP_LOAD_FUNCTION_CLOSURE)
-                );
-                Push(res);
-                Forward(4);
-                break;
-            }
-            case OP_CALL_CTOR: {
-                interpreter->CallStack[interpreter->CallStackC++] = (prm != NULL) ? prm : fnValue;
-                argc = _ReadInt32(uf->Codes, ip);
-                Forward(4);
-                cls  = Popp();
-                res  = DoCallCtor(interpreter, cls, argc);
-                --interpreter->CallStackC;
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                break;
-            }
-            case OP_CALL: {
-                interpreter->CallStack[interpreter->CallStackC++] = (prm != NULL) ? prm : fnValue;
-                argc = _ReadInt32(uf->Codes, ip);
-                Forward(4);
-                obj  = Popp();
-                res  = DoCall(interpreter, obj, argc, false);
-                --interpreter->CallStackC;
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                break;
-            }
-            case OP_CALL_METHOD: {
-                interpreter->CallStack[interpreter->CallStackC++] = (prm != NULL) ? prm : fnValue;
-                argc = _ReadInt32(uf->Codes, ip);
-                Forward(4);
-                key  = Popp(); // method
-                obj  = Popp(); // 'this' object
-                res  = DoCallMethod(interpreter, obj, key, argc);
-                --interpreter->CallStackC;
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                break;
-            }
-            case OP_NOT: {
-                rhs = Popp();
-                res = DoNot(interpreter, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_POS: {
-                rhs = Popp();
-                res = DoPos(interpreter, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_NEG: {
-                rhs = Popp();
-                res = DoNeg(interpreter, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_AWAIT: {
-                if (!ValueIsPromise(Peek())) break;
-                val = Popp(); // The awaited promise
-
-                StateMachineAwait(sm, ip, val);
-                sm->CallEnv = interpreter->CallEnv;
-
-                // 1. Calculate the exact size of the current stack frame
-                int size = interpreter->StackC - sm->StackBot;
-                int envsize = interpreter->EnvC - sm->EnvBot;
-
-                // Now your Panic message makes perfect sense!
-                if (size < 0) Panic("Invalid stack state: StackC (%d) is less than StackBot (%d)", interpreter->StackC, sm->StackBot);
-
-                // 2. Free old memory (Make sure 'free' matches 'Allocate'!)
-                if (sm->Stacks != NULL) {
-                    free(sm->Stacks); // Or your engine's equivalent memory freer
-                    sm->Stacks = NULL;
-                }
-
-                if (sm->EnvStack != NULL) {
-                    free(sm->EnvStack); // Or your engine's equivalent memory freer
-                    sm->EnvStack = NULL;
-                }
-
-                sm->StackTop = size;
-                sm->EnvTop = envsize;
-
-                // 3. Allocate and copy ONLY this function's variables
-                if (size > 0) {
-                    sm->Stacks = Allocate(sizeof(Value*) * size);
-                    
-                    // This now perfectly copies exactly from StackBot to StackC
-                    memcpy(sm->Stacks, &interpreter->Stacks[sm->StackBot], sizeof(Value*) * size);
-                }
-
-                if (envsize > 0) {
-                    sm->EnvStack = Allocate(sizeof(Value*) * envsize);
-                    
-                    // This now perfectly copies exactly from EnvBot to EnvC
-                    memcpy(sm->EnvStack, &interpreter->Envs[sm->EnvBot], sizeof(Value*) * envsize);
-                }
-
-                // 4. Update StackC to reflect that this function's variables are popped off the main stack
-                interpreter->StackC = sm->StackBot;
-
-                // 5. Update EnvC to reflect that this function's variables are popped off the main env stack
-                interpreter->EnvC = sm->EnvBot;
-
-                // =================================================================
-                // 6. FIX: RESTORE THE CALLER'S ENVIRONMENT BEFORE RETURNING
-                // =================================================================
-                if (interpreter->EnvC > 0) {
-                    interpreter->CallEnv = interpreter->Envs[interpreter->EnvC - 1];
-                } else {
-                    // Fallback: If the stack is empty, we are back at the top level.
-                    // Replace 'interpreter->GlobalEnv' with whatever your global env is actually named!
-                    interpreter->CallEnv = interpreter->RootEnv; 
-                }
-                // =================================================================
-
-                StateMachine* awaitedSM = CoerceToStateMachine(val);
-
-                if (awaitedSM->State == FULFILLED) {
-                    _EnqueueTask(interpreter, prm);
-                } else {
-                    StateMachineAddWaitList(awaitedSM, prm);
-                }
-
-                Push(prm);
-                return;
-            }
-            case OP_GET_AWAITED_VALUE: {
-                Push(CoerceToStateMachine(sm->WaitFor)->Value);
-                break;
-            }
-            case OP_MUL: {
-                rhs = Popp();
-                lhs = Popp();
-                res = DoMul(interpreter, lhs, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_DIV: {
-                rhs = Popp();
-                lhs = Popp();
-                res =  DoDiv(interpreter, lhs, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_MOD: {
-                rhs = Popp();
-                lhs = Popp();
-                res = DoMod(interpreter, lhs, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_POSTINC: {
-                // bot [obj, key, val] top
-                lhs = Popp(); // old value
-                res = DoInc(interpreter, lhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                Push(lhs);
-                break;
-            }
-            case OP_INC: {
-                rhs = Popp();
-                res = DoInc(interpreter, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_ADD: {
-                rhs = Popp();
-                lhs = Popp();
-                res = DoAdd(interpreter, lhs, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_POSTDEC: {
-                // bot [obj, key, val] top
-                lhs = Popp(); // old value
-                res = DoDec(interpreter, lhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                Push(lhs);
-                break;
-            }
-            case OP_DEC: {
-                rhs = Popp();
-                res = DoDec(interpreter, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_SUB: {
-                rhs = Popp();
-                lhs = Popp();
-                res = DoSub(interpreter, lhs, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_LSHFT: {
-                rhs = Popp();
-                lhs = Popp();
-                res = DoLShift(interpreter, lhs, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_RSHFT: {
-                rhs = Popp();
-                lhs = Popp();
-                res = DoRShift(interpreter, lhs, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_LT: {
-                rhs = Popp();
-                lhs = Popp();
-                res = DoLT(interpreter, lhs, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_LTE: {
-                rhs = Popp();
-                lhs = Popp();
-                res = DoLTE(interpreter, lhs, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_GT: {
-                rhs = Popp();
-                lhs = Popp();
-                res = DoGT(interpreter, lhs, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_GTE: {
-                rhs = Popp();
-                lhs = Popp();
-                res = DoGTE(interpreter, lhs, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_EQ: {
-                rhs = Popp();
-                lhs = Popp();
-                res = DoEQ(interpreter, lhs, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_NE: {
-                rhs = Popp();
-                lhs = Popp();
-                res = DoNE(interpreter, lhs, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_AND: {
-                rhs = Popp();
-                lhs = Popp();
-                res = DoAnd(interpreter, lhs, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_OR: {
-                rhs = Popp();
-                lhs = Popp();
-                res = DoOr(interpreter, lhs, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_XOR: {
-                rhs = Popp();
-                lhs = Popp();
-                res = DoXor(interpreter, lhs, rhs);
-                if (ValueIsError(res)) {
-                    _RaiseError(interpreter, uf, &ip, res);
-                    break;
-                }
-                Push(res);
-                break;
-            }
-            case OP_STORE_CAPTURE: {
-                offset = _ReadInt32(uf->Codes, ip);
-                SetCap(uf, offset, Popp());
-                Forward(4);
-                break;
-            }
-            case OP_STORE_NAME: {
-                offset = _ReadInt32(uf->Codes, ip);
-                SetVar(interpreter->RootEnv, offset, Popp());
-                Forward(4);
-                break;
-            }
-            case OP_STORE_LOCAL: {
-                offset = _ReadInt32(uf->Codes, ip);
-                SetVar(interpreter->CallEnv, offset, Popp());
-                Forward(4);
-                break;
-            }
-            case OP_DUPTOP: {
-                Push(Peek());
-                break;
-            }
-            case OP_DUP2: {
-                Value* a = PeekAt(1);
-                Value* b = PeekAt(2);
-                Push(b);
-                Push(a);
-                break;
-            }
-            case OP_POPTOP: {
-                Popp();
-                break;
-            }
-            case OP_ROT2: {
-                // A B -> B A
-                Value* a = PeekAt(1);
-                Value* b = PeekAt(2);
-                interpreter->Stacks[interpreter->StackC - 1] = b;
-                interpreter->Stacks[interpreter->StackC - 2] = a;
-                break;
-            }
-            case OP_ROT3: {
-                // A B C -> C A B
-                Value* a = PeekAt(1);
-                Value* b = PeekAt(2);
-                Value* c = PeekAt(3);
-                interpreter->Stacks[interpreter->StackC - 1] = c;
-                interpreter->Stacks[interpreter->StackC - 2] = a;
-                interpreter->Stacks[interpreter->StackC - 3] = b;
-                break;
-            }
-            case OP_ROT4: {
-                // A B C D -> D A B C
-                Value* d = PeekAt(1);
-                Value* c = PeekAt(2);
-                Value* b = PeekAt(3);
-                Value* a = PeekAt(4);
-                interpreter->Stacks[interpreter->StackC - 1] = c;
-                interpreter->Stacks[interpreter->StackC - 2] = b;
-                interpreter->Stacks[interpreter->StackC - 3] = a;
-                interpreter->Stacks[interpreter->StackC - 4] = d;
-                break;
-            }
-            case OP_SETUP_TRY: {
-                offset = _ReadInt32(uf->Codes, ip);
-                _PushTry(interpreter, offset);
-                Forward(4);
-                break;
-            }
-            case OP_POP_TRY: {
-                _PoppTry(interpreter);
-                break;
-            }
-            case OP_POPN_TRY: {
-                size = _ReadInt32(uf->Codes, ip);
-                _PopNTry(interpreter, size);
-                Forward(4);
-                break;
-            }
-            case OP_ENTER_SCOPE: {
-                SaveEnv(interpreter, interpreter->CallEnv);
-                interpreter->CallEnv = NewEnvironmentValue(interpreter, EnvironmentCloneFromValue(interpreter->CallEnv));
-                break;
-            }
-            case OP_EXIT_SCOPE: {
-                Environment* src = CoerceToEnvironment(interpreter->CallEnv);
-                RestoreEnv(interpreter);
-                Environment* dst = CoerceToEnvironment(interpreter->CallEnv);
-                EnvironmentSync(src, dst);
-                break;
-            }
-            case OP_EXITN_SCOPE: {
-                size = _ReadInt32(uf->Codes, ip);
-                RestoreNthEnvAndSync(interpreter, size);
-                Forward(4);
-                break;
-            }
-            case OP_JUMP_IF_FALSE_OR_POP: {
-                offset = _ReadInt32(uf->Codes, ip);
-                val    = Peek();
-                if (!CoerceToBool(val)) {
-                    JmpFrwd(offset);
-                } else {
-                    Popp();
-                    Forward(4);
-                }
-                break;
-            }
-            case OP_JUMP_IF_TRUE_OR_POP: {
-                offset = _ReadInt32(uf->Codes, ip);
-                val    = Peek();
-                if (CoerceToBool(val)) {
-                    JmpFrwd(offset);
-                } else {
-                    Popp();
-                    Forward(4);
-                }
-                break;
-            }
-            case OP_POP_JUMP_IF_FALSE: {
-                offset = _ReadInt32(uf->Codes, ip);
-                val    = Popp();
-                if (CoerceToBool(val) == false) {
-                    JmpFrwd(offset);
-                } else {
-                    Forward(4);
-                }
-                break;
-            }
-            case OP_POP_JUMP_IF_TRUE: {
-                offset = _ReadInt32(uf->Codes, ip);
-                val    = Popp();
-                if (CoerceToBool(val) == true) {
-                    JmpFrwd(offset);
-                } else {
-                    Forward(4);
-                }
-                break;
-            }
-            case OP_JUMP: {
-                offset = _ReadInt32(uf->Codes, ip);
-                JmpFrwd(offset);
-                break;
-            }
-            case OP_ABSOLUTE_JUMP: {
-                offset = _ReadInt32(uf->Codes, ip);
-                JmpFrwd(offset);
-                break;
-            }
-            case OP_RETURN: {
-                if (uf->Async) {
+            case OP_SET_INDEX:
+                {
                     val = Popp();
-
-                    StateMachineFulfill(sm, val);
-                    Push(prm);
-
-                    for (int i = 0; i < sm->WaitListC; i++) {
-                        Value* suspendedTask = sm->WaitList[i];
-                        _EnqueueTask(interpreter, suspendedTask);
+                    key = Popp();
+                    obj = Peek();
+                    res = DoSetIndex(interpreter, obj, key, val);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
                     }
+                    break;
                 }
-                return;
-            }
-            default: {
-                InterpreterPanic("Unknown opcode: %s, %d %d\n", uf->Name != NULL ? uf->Name : "<anonymous>", opcode, OP_LOAD_NAME);
-                return;
-            }
+            case OP_GET_INDEX:
+                {
+                    key = Popp();
+                    obj = Popp();
+                    res = DoGetIndex(interpreter, obj, key);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_LOAD_FUNCTION_CLOSURE:
+            case OP_LOAD_FUNCTION:
+                {
+                    offset = _ReadInt32(uf->Codes, ip);
+                    res = DoLoadFunction(interpreter, offset, (opcode == OP_LOAD_FUNCTION_CLOSURE));
+                    Push(res);
+                    Forward(4);
+                    break;
+                }
+            case OP_CALL_CTOR:
+                {
+                    interpreter->CallStack[interpreter->CallStackC++] =
+                        (prm != NULL) ? prm : fnValue;
+                    argc = _ReadInt32(uf->Codes, ip);
+                    Forward(4);
+                    cls = Popp();
+                    res = DoCallCtor(interpreter, cls, argc);
+                    --interpreter->CallStackC;
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    break;
+                }
+            case OP_CALL:
+                {
+                    interpreter->CallStack[interpreter->CallStackC++] =
+                        (prm != NULL) ? prm : fnValue;
+                    argc = _ReadInt32(uf->Codes, ip);
+                    Forward(4);
+                    obj = Popp();
+                    res = DoCall(interpreter, obj, argc, false);
+                    --interpreter->CallStackC;
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    break;
+                }
+            case OP_CALL_METHOD:
+                {
+                    interpreter->CallStack[interpreter->CallStackC++] =
+                        (prm != NULL) ? prm : fnValue;
+                    argc = _ReadInt32(uf->Codes, ip);
+                    Forward(4);
+                    key = Popp();  // method
+                    obj = Popp();  // 'this' object
+                    res = DoCallMethod(interpreter, obj, key, argc);
+                    --interpreter->CallStackC;
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    break;
+                }
+            case OP_NOT:
+                {
+                    rhs = Popp();
+                    res = DoNot(interpreter, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_POS:
+                {
+                    rhs = Popp();
+                    res = DoPos(interpreter, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_NEG:
+                {
+                    rhs = Popp();
+                    res = DoNeg(interpreter, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_AWAIT:
+                {
+                    if (!ValueIsPromise(Peek()))
+                        break;
+                    val = Popp();  // The awaited promise
+
+                    StateMachineAwait(sm, ip, val);
+                    sm->CallEnv = interpreter->CallEnv;
+
+                    // 1. Calculate the exact size of the current stack frame
+                    int size    = interpreter->StackC - sm->StackBot;
+                    int envsize = interpreter->EnvC - sm->EnvBot;
+
+                    // Now your Panic message makes perfect sense!
+                    if (size < 0)
+                        Panic("Invalid stack state: StackC (%d) is less than StackBot (%d)",
+                              interpreter->StackC,
+                              sm->StackBot);
+
+                    // 2. Free old memory (Make sure 'free' matches 'Allocate'!)
+                    if (sm->Stacks != NULL) {
+                        free(sm->Stacks);  // Or your engine's equivalent memory freer
+                        sm->Stacks = NULL;
+                    }
+
+                    if (sm->EnvStack != NULL) {
+                        free(sm->EnvStack);  // Or your engine's equivalent memory freer
+                        sm->EnvStack = NULL;
+                    }
+
+                    sm->StackTop = size;
+                    sm->EnvTop   = envsize;
+
+                    // 3. Allocate and copy ONLY this function's variables
+                    if (size > 0) {
+                        sm->Stacks = Allocate(sizeof(Value*) * size);
+
+                        // This now perfectly copies exactly from StackBot to StackC
+                        memcpy(sm->Stacks,
+                               &interpreter->Stacks[sm->StackBot],
+                               sizeof(Value*) * size);
+                    }
+
+                    if (envsize > 0) {
+                        sm->EnvStack = Allocate(sizeof(Value*) * envsize);
+
+                        // This now perfectly copies exactly from EnvBot to EnvC
+                        memcpy(sm->EnvStack,
+                               &interpreter->Envs[sm->EnvBot],
+                               sizeof(Value*) * envsize);
+                    }
+
+                    // 4. Update StackC to reflect that this function's variables are popped off the
+                    // main stack
+                    interpreter->StackC = sm->StackBot;
+
+                    // 5. Update EnvC to reflect that this function's variables are popped off the
+                    // main env stack
+                    interpreter->EnvC = sm->EnvBot;
+
+                    // =================================================================
+                    // 6. FIX: RESTORE THE CALLER'S ENVIRONMENT BEFORE RETURNING
+                    // =================================================================
+                    if (interpreter->EnvC > 0) {
+                        interpreter->CallEnv = interpreter->Envs[interpreter->EnvC - 1];
+                    } else {
+                        // Fallback: If the stack is empty, we are back at the top level.
+                        // Replace 'interpreter->GlobalEnv' with whatever your global env is
+                        // actually named!
+                        interpreter->CallEnv = interpreter->RootEnv;
+                    }
+                    // =================================================================
+
+                    StateMachine* awaitedSM = CoerceToStateMachine(val);
+
+                    if (awaitedSM->State == FULFILLED) {
+                        _EnqueueTask(interpreter, prm);
+                    } else {
+                        StateMachineAddWaitList(awaitedSM, prm);
+                    }
+
+                    Push(prm);
+                    return;
+                }
+            case OP_GET_AWAITED_VALUE:
+                {
+                    Push(CoerceToStateMachine(sm->WaitFor)->Value);
+                    break;
+                }
+            case OP_MUL:
+                {
+                    rhs = Popp();
+                    lhs = Popp();
+                    res = DoMul(interpreter, lhs, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_DIV:
+                {
+                    rhs = Popp();
+                    lhs = Popp();
+                    res = DoDiv(interpreter, lhs, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_MOD:
+                {
+                    rhs = Popp();
+                    lhs = Popp();
+                    res = DoMod(interpreter, lhs, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_POSTINC:
+                {
+                    // bot [obj, key, val] top
+                    lhs = Popp();  // old value
+                    res = DoInc(interpreter, lhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    Push(lhs);
+                    break;
+                }
+            case OP_INC:
+                {
+                    rhs = Popp();
+                    res = DoInc(interpreter, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_ADD:
+                {
+                    rhs = Popp();
+                    lhs = Popp();
+                    res = DoAdd(interpreter, lhs, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_POSTDEC:
+                {
+                    // bot [obj, key, val] top
+                    lhs = Popp();  // old value
+                    res = DoDec(interpreter, lhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    Push(lhs);
+                    break;
+                }
+            case OP_DEC:
+                {
+                    rhs = Popp();
+                    res = DoDec(interpreter, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_SUB:
+                {
+                    rhs = Popp();
+                    lhs = Popp();
+                    res = DoSub(interpreter, lhs, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_LSHFT:
+                {
+                    rhs = Popp();
+                    lhs = Popp();
+                    res = DoLShift(interpreter, lhs, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_RSHFT:
+                {
+                    rhs = Popp();
+                    lhs = Popp();
+                    res = DoRShift(interpreter, lhs, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_LT:
+                {
+                    rhs = Popp();
+                    lhs = Popp();
+                    res = DoLT(interpreter, lhs, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_LTE:
+                {
+                    rhs = Popp();
+                    lhs = Popp();
+                    res = DoLTE(interpreter, lhs, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_GT:
+                {
+                    rhs = Popp();
+                    lhs = Popp();
+                    res = DoGT(interpreter, lhs, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_GTE:
+                {
+                    rhs = Popp();
+                    lhs = Popp();
+                    res = DoGTE(interpreter, lhs, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_EQ:
+                {
+                    rhs = Popp();
+                    lhs = Popp();
+                    res = DoEQ(interpreter, lhs, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_NE:
+                {
+                    rhs = Popp();
+                    lhs = Popp();
+                    res = DoNE(interpreter, lhs, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_AND:
+                {
+                    rhs = Popp();
+                    lhs = Popp();
+                    res = DoAnd(interpreter, lhs, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_OR:
+                {
+                    rhs = Popp();
+                    lhs = Popp();
+                    res = DoOr(interpreter, lhs, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_XOR:
+                {
+                    rhs = Popp();
+                    lhs = Popp();
+                    res = DoXor(interpreter, lhs, rhs);
+                    if (ValueIsError(res)) {
+                        _RaiseError(interpreter, uf, &ip, res);
+                        break;
+                    }
+                    Push(res);
+                    break;
+                }
+            case OP_STORE_CAPTURE:
+                {
+                    offset = _ReadInt32(uf->Codes, ip);
+                    SetCap(uf, offset, Popp());
+                    Forward(4);
+                    break;
+                }
+            case OP_STORE_NAME:
+                {
+                    offset = _ReadInt32(uf->Codes, ip);
+                    SetVar(interpreter->RootEnv, offset, Popp());
+                    Forward(4);
+                    break;
+                }
+            case OP_STORE_LOCAL:
+                {
+                    offset = _ReadInt32(uf->Codes, ip);
+                    SetVar(interpreter->CallEnv, offset, Popp());
+                    Forward(4);
+                    break;
+                }
+            case OP_DUPTOP:
+                {
+                    Push(Peek());
+                    break;
+                }
+            case OP_DUP2:
+                {
+                    Value* a = PeekAt(1);
+                    Value* b = PeekAt(2);
+                    Push(b);
+                    Push(a);
+                    break;
+                }
+            case OP_POPTOP:
+                {
+                    Popp();
+                    break;
+                }
+            case OP_ROT2:
+                {
+                    // A B -> B A
+                    Value* a                                     = PeekAt(1);
+                    Value* b                                     = PeekAt(2);
+                    interpreter->Stacks[interpreter->StackC - 1] = b;
+                    interpreter->Stacks[interpreter->StackC - 2] = a;
+                    break;
+                }
+            case OP_ROT3:
+                {
+                    // A B C -> C A B
+                    Value* a                                     = PeekAt(1);
+                    Value* b                                     = PeekAt(2);
+                    Value* c                                     = PeekAt(3);
+                    interpreter->Stacks[interpreter->StackC - 1] = c;
+                    interpreter->Stacks[interpreter->StackC - 2] = a;
+                    interpreter->Stacks[interpreter->StackC - 3] = b;
+                    break;
+                }
+            case OP_ROT4:
+                {
+                    // A B C D -> D A B C
+                    Value* d                                     = PeekAt(1);
+                    Value* c                                     = PeekAt(2);
+                    Value* b                                     = PeekAt(3);
+                    Value* a                                     = PeekAt(4);
+                    interpreter->Stacks[interpreter->StackC - 1] = c;
+                    interpreter->Stacks[interpreter->StackC - 2] = b;
+                    interpreter->Stacks[interpreter->StackC - 3] = a;
+                    interpreter->Stacks[interpreter->StackC - 4] = d;
+                    break;
+                }
+            case OP_SETUP_TRY:
+                {
+                    offset = _ReadInt32(uf->Codes, ip);
+                    _PushTry(interpreter, offset);
+                    Forward(4);
+                    break;
+                }
+            case OP_POP_TRY:
+                {
+                    _PoppTry(interpreter);
+                    break;
+                }
+            case OP_POPN_TRY:
+                {
+                    size = _ReadInt32(uf->Codes, ip);
+                    _PopNTry(interpreter, size);
+                    Forward(4);
+                    break;
+                }
+            case OP_ENTER_SCOPE:
+                {
+                    SaveEnv(interpreter, interpreter->CallEnv);
+                    interpreter->CallEnv =
+                        NewEnvironmentValue(interpreter,
+                                            EnvironmentCloneFromValue(interpreter->CallEnv));
+                    break;
+                }
+            case OP_EXIT_SCOPE:
+                {
+                    Environment* src = CoerceToEnvironment(interpreter->CallEnv);
+                    RestoreEnv(interpreter);
+                    Environment* dst = CoerceToEnvironment(interpreter->CallEnv);
+                    EnvironmentSync(src, dst);
+                    break;
+                }
+            case OP_EXITN_SCOPE:
+                {
+                    size = _ReadInt32(uf->Codes, ip);
+                    RestoreNthEnvAndSync(interpreter, size);
+                    Forward(4);
+                    break;
+                }
+            case OP_JUMP_IF_FALSE_OR_POP:
+                {
+                    offset = _ReadInt32(uf->Codes, ip);
+                    val    = Peek();
+                    if (!CoerceToBool(val)) {
+                        JmpFrwd(offset);
+                    } else {
+                        Popp();
+                        Forward(4);
+                    }
+                    break;
+                }
+            case OP_JUMP_IF_TRUE_OR_POP:
+                {
+                    offset = _ReadInt32(uf->Codes, ip);
+                    val    = Peek();
+                    if (CoerceToBool(val)) {
+                        JmpFrwd(offset);
+                    } else {
+                        Popp();
+                        Forward(4);
+                    }
+                    break;
+                }
+            case OP_POP_JUMP_IF_FALSE:
+                {
+                    offset = _ReadInt32(uf->Codes, ip);
+                    val    = Popp();
+                    if (CoerceToBool(val) == false) {
+                        JmpFrwd(offset);
+                    } else {
+                        Forward(4);
+                    }
+                    break;
+                }
+            case OP_POP_JUMP_IF_TRUE:
+                {
+                    offset = _ReadInt32(uf->Codes, ip);
+                    val    = Popp();
+                    if (CoerceToBool(val) == true) {
+                        JmpFrwd(offset);
+                    } else {
+                        Forward(4);
+                    }
+                    break;
+                }
+            case OP_JUMP:
+                {
+                    offset = _ReadInt32(uf->Codes, ip);
+                    JmpFrwd(offset);
+                    break;
+                }
+            case OP_ABSOLUTE_JUMP:
+                {
+                    offset = _ReadInt32(uf->Codes, ip);
+                    JmpFrwd(offset);
+                    break;
+                }
+            case OP_RETURN:
+                {
+                    if (uf->Async) {
+                        val = Popp();
+
+                        StateMachineFulfill(sm, val);
+                        Push(prm);
+
+                        for (int i = 0; i < sm->WaitListC; i++) {
+                            Value* suspendedTask = sm->WaitList[i];
+                            _EnqueueTask(interpreter, suspendedTask);
+                        }
+                    }
+                    return;
+                }
+            default:
+                {
+                    InterpreterPanic("Unknown opcode: %s, %d %d\n",
+                                     uf->Name != NULL ? uf->Name : "<anonymous>",
+                                     opcode,
+                                     OP_LOAD_NAME);
+                    return;
+                }
         }
     }
 }
 
 void _RunProgram(Interpreter* interpreter, Value* fnValue) {
-    UserFunction* uf = CoerceToUserFunction(fnValue);
-    Value* env = NULL, *saveGbl = NULL;
+    UserFunction* uf  = CoerceToUserFunction(fnValue);
+    Value *       env = NULL, *saveGbl = NULL;
     env = saveGbl = NewEnvironmentValue(interpreter, CreateEnvironment(NULL, uf->LocalC));
     SaveRootEnv(interpreter, env);
     Run(interpreter, fnValue);
@@ -1131,10 +1254,11 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 
     int old = interpreter->StackC;
 
-    // Consume all remaining tasks in the task queue (e.g. pending promises) before exiting the program
+    // Consume all remaining tasks in the task queue (e.g. pending promises) before exiting the
+    // program
     Value* task = NULL;
     while ((task = _DequeueTask(interpreter)) != NULL) {
-        interpreter->ActiveTask = task;
+        interpreter->ActiveTask                           = task;
         interpreter->CallStack[interpreter->CallStackC++] = task;
         // Awaited
         StateMachine* sm = CoerceToStateMachine(task);
@@ -1142,14 +1266,17 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
             DoCall(interpreter, task, 0, false);
         } else {
             StateMachine* wait = CoerceToStateMachine(sm->WaitFor);
-            if (wait->State != FULFILLED) Panic("internal error: expected awaited state machine to be fulfilled when resuming callback, but got state %d", wait->State);
-            
+            if (wait->State != FULFILLED)
+                Panic("internal error: expected awaited state machine to be fulfilled when "
+                      "resuming callback, but got state %d",
+                      wait->State);
+
             // 1. Push value
             Push(wait->Value);
 
             // 2. Call the callback
             DoCall(interpreter, sm->Function, 1, false);
-            
+
             // 3. Fulfill the state machine with the callback's return value
             StateMachineFulfill(sm, Popp());
 
@@ -1171,11 +1298,10 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 
     if (interpreter->StackC != 1) {
         DumpStack();
-        InterpreterPanic(
-            "internal error: stack not cleaned up after function '%s' execution, expected 1 value on stack but got %d values", 
-            uf->Name != NULL ? uf->Name : "<anonymous>", 
-            interpreter->StackC
-        );
+        InterpreterPanic("internal error: stack not cleaned up after function '%s' execution, "
+                         "expected 1 value on stack but got %d values",
+                         uf->Name != NULL ? uf->Name : "<anonymous>",
+                         interpreter->StackC);
     }
     ForceGarbageCollect(interpreter);
 }
@@ -1187,7 +1313,8 @@ void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/) {
 void FreeInterpreter(Interpreter* interpreter) {
     bf_context_end(&interpreter->BfContext);
     FreeHashMap(interpreter->Imports);
-    if (interpreter->ExecPath) free(interpreter->ExecPath);
+    if (interpreter->ExecPath)
+        free(interpreter->ExecPath);
     free(interpreter->Constants);
     free(interpreter->Functions);
     free(interpreter);

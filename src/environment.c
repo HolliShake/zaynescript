@@ -15,7 +15,7 @@ Environment* CreateEnvironment(Value* parent, int localC) {
     environment->LocalC      = localC;
 
     // Initialize
-    for (int i = 0;i < localC;i++) {
+    for (int i = 0; i < localC; i++) {
         environment->Locals[i] = CreateEnvCell(NULL);
     }
 
@@ -32,13 +32,13 @@ EnvCell* EnvironmentGetLocal(Environment* environment, int offset) {
 
 Environment* EnvironmentCloneFromValue(Value* envValue) {
     Environment* environment = CoerceToEnvironment(envValue);
-    Environment* newEnv = Allocate(sizeof(Environment));
-    newEnv->Parent      = environment->Parent;
-    newEnv->Locals      = Callocate(environment->LocalC, sizeof(EnvCell));
-    newEnv->LocalC      = environment->LocalC;
+    Environment* newEnv      = Allocate(sizeof(Environment));
+    newEnv->Parent           = environment->Parent;
+    newEnv->Locals           = Callocate(environment->LocalC, sizeof(EnvCell));
+    newEnv->LocalC           = environment->LocalC;
 
     // Initialize
-    for (int i = 0;i < environment->LocalC;i++) {
+    for (int i = 0; i < environment->LocalC; i++) {
         newEnv->Locals[i] = CreateEnvCell(environment->Locals[i]->Value);
     }
 
@@ -47,7 +47,9 @@ Environment* EnvironmentCloneFromValue(Value* envValue) {
 
 void EnvironmentSync(Environment* src, Environment* dst) {
     if (dst->LocalC != src->LocalC) {
-        Panic("EnvironmentSync: Local variable count mismatch (%d vs %d)\n", dst->LocalC, src->LocalC);
+        Panic("EnvironmentSync: Local variable count mismatch (%d vs %d)\n",
+              dst->LocalC,
+              src->LocalC);
     }
 
     for (int i = 0; i < src->LocalC; i++) {

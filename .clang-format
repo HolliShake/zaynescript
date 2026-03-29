@@ -1,0 +1,251 @@
+# ==============================================================================
+# .clang-format — Clean C Style (1TBS variant)
+# Based on: LLVM + project overrides
+# Compatible with: clang-format 14+
+# ==============================================================================
+
+Language: C
+BasedOnStyle: LLVM
+
+# ==============================================================================
+# INDENTATION & SPACING
+# ==============================================================================
+
+IndentWidth:                   4
+TabWidth:                      4
+UseTab:                        Never
+ColumnLimit:                   100
+ContinuationIndentWidth:       4        # Wrapped lines indent by one level (not 2x)
+IndentPPDirectives:            AfterHash  # Nested macros show depth:  #  ifdef / #    if
+
+# ==============================================================================
+# POINTERS & REFERENCES
+# ==============================================================================
+
+# "Environment* src" — type carries the pointer, not the name.
+PointerAlignment:              Left
+ReferenceAlignment:            Left
+DerivePointerAlignment:        false    # Never guess; always enforce Left
+
+# ==============================================================================
+# BRACES & CONTROL FLOW  —  1TBS
+# Control statements cuddle their brace: if (x) {
+# Functions get a fresh line:           int main()\n{
+# ==============================================================================
+
+BreakBeforeBraces:             Custom
+BraceWrapping:
+  AfterCaseLabel:              false    # case FOO: {  — cuddles
+  AfterControlStatement:       false    # if/for/while {  — cuddles
+  AfterFunction:               false    # return-type + name, then {
+  AfterStruct:                 false    # struct Foo {  — cuddles
+  AfterUnion:                  false    # union Val {   — cuddles
+  AfterEnum:                   false    # enum Op {     — cuddles
+  BeforeElse:                  false    # } else {      — classic 1TBS
+  BeforeWhile:                 false    # } while (x);  — do/while cuddles
+  IndentBraces:                false
+  SplitEmptyFunction:          false    # void noop() {}  on one line is fine
+  SplitEmptyRecord:            false    # struct Empty {}  on one line is fine
+
+# Never hide logic on one line — always expand.
+AllowShortIfStatementsOnASingleLine:  Never
+AllowShortLoopsOnASingleLine:         false
+AllowShortBlocksOnASingleLine:        Empty   # Only truly empty {}
+AllowShortFunctionsOnASingleLine:     Empty   # Only truly empty {}
+AllowShortCaseLabelsOnASingleLine:    false
+AllowShortEnumsOnASingleLine:         false
+
+# Ternary — break before ? and : for readability
+BreakBeforeTernaryOperators:   true
+
+# Binary operators — break before the operator so the operator leads the line
+BreakBeforeBinaryOperators:    NonAssignment
+
+# ==============================================================================
+# SWITCH STATEMENTS  —  Critical for VM dispatch loops
+# switch (op) {
+#     case OP_ADD: {
+#         ...
+#     }
+# }
+# Both IndentCaseLabels + IndentCaseBlocks give you two clean indent levels.
+# ==============================================================================
+
+IndentCaseLabels:              true
+IndentCaseBlocks:              true
+
+# ==============================================================================
+# ALIGNMENT  —  The "clean table" look
+# ==============================================================================
+
+# Consecutive assignments:
+#   int   x      = 1;
+#   float ratio  = 2.0f;
+#   char* label  = "foo";
+AlignConsecutiveAssignments:
+  Enabled:          true
+  AcrossEmptyLines: false   # A blank line resets the group
+  AcrossComments:   false   # A comment line resets the group
+  AlignCompound:    true    # Also aligns +=, -=, *=, etc.
+  PadOperators:     true    # Pads shorter operators to match longest
+
+# Consecutive declarations (types + names line up):
+#   int         count;
+#   float       scale;
+#   const char* name;
+AlignConsecutiveDeclarations:
+  Enabled:          true
+  AcrossEmptyLines: false
+  AcrossComments:   false
+
+# Consecutive macro definitions:
+#   #define MAX_STACK   256
+#   #define MAX_LOCALS  64
+#   #define FRAME_SIZE  (MAX_LOCALS + 8)
+AlignConsecutiveMacros:
+  Enabled:          true
+  AcrossEmptyLines: false
+  AcrossComments:   false
+
+# Align trailing // comments into a column:
+#   int x = 1;   // first
+#   int foo = 2; // second
+AlignTrailingComments:
+  Kind:           Always
+  OverEmptyLines: 1
+
+# Align the backslashes in multi-line macros flush to column 100:
+AlignEscapedNewlines:          Right
+
+# Align binary operands vertically when they wrap:
+#   result = alpha * x
+#           + beta  * y
+#           + gamma * z;
+AlignOperands:                 Align
+
+# ==============================================================================
+# FUNCTION PARAMETERS & CALL ARGUMENTS
+# If args exceed 100 cols -> each arg on its own line, aligned to the '('
+#
+#   some_function(arg1,
+#                 arg2,
+#                 arg3);
+# ==============================================================================
+
+AlignAfterOpenBracket:         Align
+BinPackArguments:              false
+BinPackParameters:             false
+AllowAllArgumentsOnNextLine:            false
+AllowAllParametersOfDeclarationOnNextLine: false
+
+# ==============================================================================
+# SPACES
+# ==============================================================================
+
+SpaceAfterCStyleCast:          true     # (int) x  — readable cast
+SpaceAfterLogicalNot:          false    # !cond  (not ! cond)
+SpaceBeforeAssignmentOperators: true    # x = y
+SpaceBeforeCaseColon:          false    # case 1:  (not "case 1 :")
+SpaceBeforeParens:             ControlStatements  # if ( / while ( / for (
+SpaceBeforeSquareBrackets:     false    # arr[i]
+SpaceInEmptyBlock:             false    # {}
+SpaceInEmptyParentheses:       false    # func()
+SpacesBeforeTrailingComments:  2        # Two spaces before inline //
+SpacesInAngles:                Never
+SpacesInCStyleCastParentheses: false    # (int)x  not ( int )x
+SpacesInConditionalStatement:  false    # if (x)  not if ( x )
+SpacesInParentheses:           false
+SpacesInSquareBrackets:        false
+
+# ==============================================================================
+# INCLUDES  —  Grouped and sorted
+# Order: matching header -> project headers -> system headers
+# ==============================================================================
+
+SortIncludes:                  CaseInsensitive
+IncludeBlocks:                 Regroup
+IncludeCategories:
+  - Regex:        '^"[^/]+"'   # "foo.h" — the companion header for this .c
+    Priority:     1
+  - Regex:        '^"'         # "path/to/header.h" — project-local
+    Priority:     2
+  - Regex:        '^<'         # <stdio.h>, <stdlib.h> — system / third-party
+    Priority:     3
+
+# ==============================================================================
+# EMPTY LINES
+# ==============================================================================
+
+MaxEmptyLinesToKeep:                    2
+KeepEmptyLinesAtTheStartOfBlocks:       false   # No blank line at top of {
+SeparateDefinitionBlocks:              Always   # Blank line between top-level defs
+EmptyLineBeforeAccessModifier:         Always
+
+# ==============================================================================
+# COMMENTS
+# ==============================================================================
+
+ReflowComments:                true     # Wrap long // and /* */ to ColumnLimit
+
+# ==============================================================================
+# MACROS  —  Teach clang-format about project-specific macros
+# ==============================================================================
+
+AttributeMacros:
+  - __attribute__
+  - __declspec
+  - PACKED
+  - NORETURN
+  - UNUSED
+  - DEPRECATED
+  - LIKELY
+  - UNLIKELY
+
+# ==============================================================================
+# MISCELLANEOUS
+# ==============================================================================
+
+RemoveBracesLLVM:              false    # NEVER silently remove braces
+InsertTrailingCommas:          None
+Cpp11BracedListStyle:          false    # C-style: {1, 2, 3}  not {1,2,3}
+DisableFormat:                 false
+SortUsingDeclarations:         false    # N/A for C
+
+# ==============================================================================
+# QUICK REFERENCE
+# ==============================================================================
+#
+# Key decisions vs plain LLVM defaults:
+#
+#   PointerAlignment: Left
+#     Environment* env  — the pointer is part of the type, not the name.
+#     Matches how you think about types in function signatures.
+#
+#   1TBS braces
+#     Control flow cuddles: if (x) { ... } else {
+#     Functions get own line: int main()\n{
+#     Clearest middle ground — no Allman verbosity, no K&R ambiguity.
+#
+#   IndentCaseLabels + IndentCaseBlocks: both true
+#     Essential for VM dispatch loops. Two visible indent levels:
+#       switch (op) {
+#           case OP_ADD: {    <- case label indented
+#               ...           <- case body indented again
+#           }
+#       }
+#
+#   AlignConsecutive*: table-style alignment across assignments,
+#     declarations, and macros within the same logical group.
+#     A blank line or comment resets the group — so it never goes haywire.
+#
+#   AlignAfterOpenBracket: Align  +  BinPack: false
+#     Args that overflow 100 cols each get their own line,
+#     vertically aligned to the opening parenthesis.
+#
+# To apply in-place:
+#   clang-format -i --style=file src/**/*.c src/**/*.h
+#
+# To check (CI / pre-commit):
+#   clang-format --dry-run --Werror --style=file src/**/*.c src/**/*.h
+#
+# ==============================================================================

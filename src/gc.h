@@ -5,14 +5,14 @@
  * and reclaim unused objects in the interpreter.
  */
 
-#include "./global.h"
 #include "./environment.h"
 #include "./function.h"
+#include "./global.h"
 #include "./hashmap.h"
 #include "./statemachine.h"
 
 #ifndef GC_H
-#define GC_H
+#    define GC_H
 
 /*
  * Mark - Marks a value as reachable during garbage collection

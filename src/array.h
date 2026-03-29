@@ -1,7 +1,7 @@
 #include "./global.h"
 
 #ifndef ARRAY_H
-#define ARRAY_H
+#    define ARRAY_H
 
 /**
  * CreateArray - Creates a new dynamic array

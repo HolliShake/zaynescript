@@ -2,7 +2,7 @@
 
 Parser* CreateParser(Lexer* lexer) {
     Parser* parser = Allocate(sizeof(Parser));
-    parser->Lexer = lexer;
+    parser->Lexer  = lexer;
     return parser;
 }
 
@@ -12,11 +12,12 @@ Parser* CreateParser(Lexer* lexer) {
 
 #define ACCEPTV(v) _AcceptTokenV(parser, v)
 
-#define ACCEPTV_FREE(v) { \
-    String value = parser->Next.Value; \
-    _AcceptTokenV(parser, v); \
-    free(value); \
-} \
+#define ACCEPTV_FREE(v)                                                                            \
+    {                                                                                              \
+        String value = parser->Next.Value;                                                         \
+        _AcceptTokenV(parser, v);                                                                  \
+        free(value);                                                                               \
+    }
 
 #define ACCEPTT(t) _AcceptTokenT(parser, t)
 
@@ -40,11 +41,9 @@ static String _GetTokenTypeName(TokenKind type) {
 }
 
 static int _CheckTokenV(Parser* parser, String value) {
-    return strcmp(parser->Next.Value, value) == 0 && (
-        parser->Next.Type == TK_IDN ||
-        parser->Next.Type == TK_KEY ||
-        parser->Next.Type == TK_SYM
-    );
+    return strcmp(parser->Next.Value, value) == 0
+           && (parser->Next.Type == TK_IDN || parser->Next.Type == TK_KEY
+               || parser->Next.Type == TK_SYM);
 }
 
 static int _CheckTokenT(Parser* parser, TokenKind type) {
@@ -52,35 +51,35 @@ static int _CheckTokenT(Parser* parser, TokenKind type) {
 }
 
 static void _AcceptTokenV(Parser* parser, String value) {
-    if (parser->Next.Type == TK_EOF) return;
+    if (parser->Next.Type == TK_EOF)
+        return;
     if (_CheckTokenV(parser, value)) {
         parser->Next = NextToken(parser->Lexer);
         return;
     }
     char message[256];
-    snprintf(message, sizeof(message), "expected token value %s, got %s", value, parser->Next.Value);
-    ThrowError(
-        parser->Lexer->Path, 
-        parser->Lexer->Data, 
-        parser->Next.Position, 
-        message
-    );
+    snprintf(message,
+             sizeof(message),
+             "expected token value %s, got %s",
+             value,
+             parser->Next.Value);
+    ThrowError(parser->Lexer->Path, parser->Lexer->Data, parser->Next.Position, message);
 }
 
 static void _AcceptTokenT(Parser* parser, TokenKind type) {
-    if (parser->Next.Type == TK_EOF) return;
+    if (parser->Next.Type == TK_EOF)
+        return;
     if (_CheckTokenT(parser, type)) {
         parser->Next = NextToken(parser->Lexer);
         return;
     }
     char message[256];
-    snprintf(message, sizeof(message), "expected token type %s, got %s", _GetTokenTypeName(type), _GetTokenTypeName(parser->Next.Type));
-    ThrowError(
-        parser->Lexer->Path, 
-        parser->Lexer->Data, 
-        parser->Next.Position, 
-        message
-    );
+    snprintf(message,
+             sizeof(message),
+             "expected token type %s, got %s",
+             _GetTokenTypeName(type),
+             _GetTokenTypeName(parser->Next.Type));
+    ThrowError(parser->Lexer->Path, parser->Lexer->Data, parser->Next.Position, message);
 }
 
 static Ast* _Expression(Parser* parser);
@@ -90,81 +89,66 @@ static Ast* _ListOfExpressions(Parser* parser);
 static Ast* _Terminal(Parser* parser) {
     Ast* node = NULL;
     switch (parser->Next.Type) {
-        case TK_IDN: {
-            node = AstName(
-                parser->Next.Value, 
-                parser->Next.Position
-            );
-            ACCEPTT(TK_IDN);
-            break;
-        }
-        case TK_INT: {
-            node = AstInteger(
-                parser->Next.Value, 
-                parser->Next.Position
-            );
-            ACCEPTT(TK_INT);
-            break;
-        }
-        case TK_BINT: {
-            node = AstBigInteger(
-                parser->Next.Value, 
-                parser->Next.Position
-            );
-            ACCEPTT(TK_BINT);
-            break;
-        }
-        case TK_NUM: {
-            node = AstNumber(
-                parser->Next.Value, 
-                parser->Next.Position
-            );
-            ACCEPTT(TK_NUM);
-            break;
-        }
-        case TK_BNUM: {
-            node = AstBigNumber(
-                parser->Next.Value, 
-                parser->Next.Position
-            );
-            ACCEPTT(TK_BNUM);
-            break;
-        }
-        case TK_STR: {
-            node = AstString(
-                parser->Next.Value, 
-                parser->Next.Position
-            );
-            ACCEPTT(TK_STR);
-            break;
-        }
-        case TK_KEY: {
-            String key = parser->Next.Value;
-            if (strcmp(key, KEY_TRUE) == 0 || strcmp(key, KEY_FALSE) == 0) {
-                node = AstBool(
-                    strcmp(parser->Next.Value, KEY_TRUE) == 0, 
-                    parser->Next.Position
-                );
-                ACCEPTT(TK_KEY);
-                free(key);
-            } else if (strcmp(key, KEY_NULL) == 0) {
-                node = AstNull(parser->Next.Position);
-                ACCEPTT(TK_KEY);
-                free(key);
-            } else if (strcmp(key, KEY_THIS) == 0) {
-                node = AstThis(parser->Next.Position);
-                ACCEPTT(TK_KEY);
-                free(key);
-            } else {
-                ThrowError(
-                    parser->Lexer->Path, 
-                    parser->Lexer->Data, 
-                    parser->Next.Position, 
-                    "expected true, false, or null"
-                ); 
+        case TK_IDN:
+            {
+                node = AstName(parser->Next.Value, parser->Next.Position);
+                ACCEPTT(TK_IDN);
+                break;
             }
-            break;
-        }
+        case TK_INT:
+            {
+                node = AstInteger(parser->Next.Value, parser->Next.Position);
+                ACCEPTT(TK_INT);
+                break;
+            }
+        case TK_BINT:
+            {
+                node = AstBigInteger(parser->Next.Value, parser->Next.Position);
+                ACCEPTT(TK_BINT);
+                break;
+            }
+        case TK_NUM:
+            {
+                node = AstNumber(parser->Next.Value, parser->Next.Position);
+                ACCEPTT(TK_NUM);
+                break;
+            }
+        case TK_BNUM:
+            {
+                node = AstBigNumber(parser->Next.Value, parser->Next.Position);
+                ACCEPTT(TK_BNUM);
+                break;
+            }
+        case TK_STR:
+            {
+                node = AstString(parser->Next.Value, parser->Next.Position);
+                ACCEPTT(TK_STR);
+                break;
+            }
+        case TK_KEY:
+            {
+                String key = parser->Next.Value;
+                if (strcmp(key, KEY_TRUE) == 0 || strcmp(key, KEY_FALSE) == 0) {
+                    node =
+                        AstBool(strcmp(parser->Next.Value, KEY_TRUE) == 0, parser->Next.Position);
+                    ACCEPTT(TK_KEY);
+                    free(key);
+                } else if (strcmp(key, KEY_NULL) == 0) {
+                    node = AstNull(parser->Next.Position);
+                    ACCEPTT(TK_KEY);
+                    free(key);
+                } else if (strcmp(key, KEY_THIS) == 0) {
+                    node = AstThis(parser->Next.Position);
+                    ACCEPTT(TK_KEY);
+                    free(key);
+                } else {
+                    ThrowError(parser->Lexer->Path,
+                               parser->Lexer->Data,
+                               parser->Next.Position,
+                               "expected true, false, or null");
+                }
+                break;
+            }
         default:
             return NULL;
     }
@@ -185,12 +169,10 @@ static Ast* _Group(Parser* parser) {
         ACCEPTV_FREE("(");
         Ast* expr = _Expression(parser);
         if (expr == NULL) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                parser->Next.Position, 
-                "expected an expression"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       parser->Next.Position,
+                       "expected an expression");
         }
         ACCEPTV_FREE(")");
         return expr;
@@ -205,17 +187,12 @@ static Ast* _ListElement(Parser* parser) {
         ACCEPTV_FREE("...");
         Ast* spreadValue = _Expression(parser);
         if (spreadValue == NULL) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                parser->Next.Position, 
-                "expected an expression after spread operator"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       parser->Next.Position,
+                       "expected an expression after spread operator");
         }
-        return AstSpread(
-            spreadValue, 
-            spreadValue->Position
-        );
+        return AstSpread(spreadValue, spreadValue->Position);
     }
 
     return _Expression(parser);
@@ -224,68 +201,59 @@ static Ast* _ListElement(Parser* parser) {
 static Ast* _List(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
     ACCEPTV_FREE("[");
-    
+
     Ast* head = NULL;
     Ast* tail = NULL;
-    
+
     Ast* element = _ListElement(parser);
     if (element != NULL) {
         head = element;
         tail = element;
-        
+
         while (CHECKTV(",")) {
             ACCEPTV_FREE(",");
             element = _ListElement(parser);
             if (element == NULL) {
-                ThrowError(
-                    parser->Lexer->Path, 
-                    parser->Lexer->Data, 
-                    tail->Position, 
-                    "expected list element after comma"
-                );
+                ThrowError(parser->Lexer->Path,
+                           parser->Lexer->Data,
+                           tail->Position,
+                           "expected list element after comma");
             }
             tail->Next = element;
-            tail = element;
+            tail       = element;
         }
     }
-    
+
     ended = parser->Next.Position;
     ACCEPTV_FREE("]");
-    
+
     return AstListLiteral(head, MergePositions(start, ended));
 }
 
-static Ast*_ObjectElement(Parser* parser) {
+static Ast* _ObjectElement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
-    Ast* element = NULL;
+    Ast*     element = NULL;
     if (CHECKTV("...")) {
         ACCEPTV_FREE("...");
         Ast* spreadValue = _Expression(parser);
         if (spreadValue == NULL) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                parser->Next.Position, 
-                "expected an expression after spread operator"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       parser->Next.Position,
+                       "expected an expression after spread operator");
         }
         ended = spreadValue->Position;
-        return AstSpread(
-            spreadValue, 
-            MergePositions(start, ended)
-        );
+        return AstSpread(spreadValue, MergePositions(start, ended));
     }
     element = _Terminal(parser);
     if (element == NULL) {
         return NULL;
     }
     if (element->Type != AST_NAME) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            element->Position, 
-            "expected an identifier or name for object key"
-        );
+        ThrowError(parser->Lexer->Path,
+                   parser->Lexer->Data,
+                   element->Position,
+                   "expected an identifier or name for object key");
     }
     if (!CHECKTV(":")) {
         return element;
@@ -293,18 +261,13 @@ static Ast*_ObjectElement(Parser* parser) {
     ACCEPTV_FREE(":");
     element->B = _Expression(parser);
     if (element->B == NULL) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            parser->Next.Position, 
-            "expected an expression after ':'"
-        );
+        ThrowError(parser->Lexer->Path,
+                   parser->Lexer->Data,
+                   parser->Next.Position,
+                   "expected an expression after ':'");
     }
     ended = element->B->Position;
-    return AstObjectKeyVal(
-        element, 
-        MergePositions(start, ended)
-    );
+    return AstObjectKeyVal(element, MergePositions(start, ended));
 }
 
 static Ast* _Object(Parser* parser) {
@@ -313,48 +276,44 @@ static Ast* _Object(Parser* parser) {
 
     Ast* head = NULL;
     Ast* tail = NULL;
-    
+
     Ast* element = _ObjectElement(parser);
     if (element != NULL) {
         head = element;
         tail = element;
-        
+
         while (CHECKTV(",")) {
             ACCEPTV_FREE(",");
             element = _ObjectElement(parser);
             if (element == NULL) {
-                ThrowError(
-                    parser->Lexer->Path, 
-                    parser->Lexer->Data, 
-                    tail->Position, 
-                    "expected object element after comma"
-                );
+                ThrowError(parser->Lexer->Path,
+                           parser->Lexer->Data,
+                           tail->Position,
+                           "expected object element after comma");
             }
             tail->Next = element;
-            tail = element;
+            tail       = element;
         }
     }
-    
+
     ended = parser->Next.Position;
     ACCEPTV_FREE("}");
-    
+
     return AstObjectLiteral(head, MergePositions(start, ended));
 }
 
 static Ast* _FunctionExpression(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
-    Ast* parameters = NULL, *current = parameters, *body = NULL;
+    Ast *    parameters = NULL, *current = parameters, *body = NULL;
     ACCEPTV_FREE(KEY_FN);
     ACCEPTV_FREE("(");
     current = parameters = _ListOfExpressions(parser);
     while (current != NULL) {
         if (current->Type != AST_NAME) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                current->Position, 
-                "expected an identifier or name"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       current->Position,
+                       "expected an identifier or name");
         }
         current = current->Next;
     }
@@ -376,26 +335,20 @@ static Ast* _Allocation(Parser* parser) {
         ACCEPTV_FREE("new");
 
         Ast* cls = _Group(parser);
-        
+
         if (cls == NULL) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                parser->Next.Position, 
-                "expected a class"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       parser->Next.Position,
+                       "expected a class");
         }
 
         ACCEPTV_FREE("(");
         Ast* arguments = _ListOfExpressions(parser);
-        ended = parser->Next.Position;
+        ended          = parser->Next.Position;
         ACCEPTV_FREE(")");
 
-        return AstAllocation(
-            cls, 
-            arguments, 
-            MergePositions(start, ended)
-        );
+        return AstAllocation(cls, arguments, MergePositions(start, ended));
     }
     return _Group(parser);
 }
@@ -413,59 +366,41 @@ static Ast* _MemberOrCall(Parser* parser) {
             Ast* member = _Terminal(parser);
 
             if (member == NULL || member->Type != AST_NAME) {
-                ThrowError(
-                    parser->Lexer->Path, 
-                    parser->Lexer->Data, 
-                    call->Position, 
-                    "expected a member name"
-                );
+                ThrowError(parser->Lexer->Path,
+                           parser->Lexer->Data,
+                           call->Position,
+                           "expected a member name");
             }
 
-            call = AstMember(
-                call, 
-                member, 
-                MergePositions(call->Position, member->Position)
-            );
+            call = AstMember(call, member, MergePositions(call->Position, member->Position));
         } else if (CHECKTV("[")) {
             ACCEPTV_FREE("[");
 
             Ast* index = _Expression(parser);
 
             if (index == NULL) {
-                ThrowError(
-                    parser->Lexer->Path, 
-                    parser->Lexer->Data, 
-                    call->Position, 
-                    "expected an expression"
-                );
+                ThrowError(parser->Lexer->Path,
+                           parser->Lexer->Data,
+                           call->Position,
+                           "expected an expression");
             }
 
             Position ended = parser->Next.Position;
             ACCEPTV_FREE("]");
 
-            call = AstIndex(
-                call, 
-                index, 
-                MergePositions(call->Position, ended)
-            );
+            call = AstIndex(call, index, MergePositions(call->Position, ended));
         } else if (CHECKTV("(")) {
             ACCEPTV_FREE("(");
-            Ast* arguments = _ListOfExpressions(parser);
-            Position ended = parser->Next.Position;
+            Ast*     arguments = _ListOfExpressions(parser);
+            Position ended     = parser->Next.Position;
             ACCEPTV_FREE(")");
 
-            call = AstCall(
-                call, 
-                arguments, 
-                MergePositions(call->Position, ended)
-            );
+            call = AstCall(call, arguments, MergePositions(call->Position, ended));
         } else {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                call->Position, 
-                "expected a member name, index, or call"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       call->Position,
+                       "expected a member name, index, or call");
         }
     }
 
@@ -482,13 +417,9 @@ static Ast* _Postfix(Parser* parser) {
         String op = parser->Next.Value;
         ACCEPTT(TK_SYM);
 
-        node = AstSingle(
-            strcmp(op, "++") == 0 
-                ? AST_POST_INC 
-                : AST_POST_DEC,
-            node, 
-            MergePositions(node->Position, node->Position)
-        );
+        node = AstSingle(strcmp(op, "++") == 0 ? AST_POST_INC : AST_POST_DEC,
+                         node,
+                         MergePositions(node->Position, node->Position));
 
         free(op);
     }
@@ -497,8 +428,8 @@ static Ast* _Postfix(Parser* parser) {
 }
 
 static Ast* _Unary(Parser* parser) {
-    String op = NULL;
-    Ast* node = NULL;
+    String op   = NULL;
+    Ast*   node = NULL;
     if (CHECKTV("+") || CHECKTV("-") || CHECKTV("!")) {
         op = parser->Next.Value;
         ACCEPTT(TK_SYM);
@@ -507,23 +438,17 @@ static Ast* _Unary(Parser* parser) {
 
         if (operand == NULL) {
             free(op);
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                parser->Next.Position, 
-                "expected an expression"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       parser->Next.Position,
+                       "expected an expression");
         }
 
-        node = AstSingle(
-            strcmp(op, "+") == 0 
-                ? AST_POSITIVE 
-                : strcmp(op, "-") == 0 
-                    ? AST_NEGATIVE 
-                    : AST_LOGICAL_NOT,
-            operand, 
-            MergePositions(operand->Position, operand->Position)
-        );
+        node = AstSingle(strcmp(op, "+") == 0   ? AST_POSITIVE
+                         : strcmp(op, "-") == 0 ? AST_NEGATIVE
+                                                : AST_LOGICAL_NOT,
+                         operand,
+                         MergePositions(operand->Position, operand->Position));
 
         free(op);
 
@@ -536,62 +461,48 @@ static Ast* _Unary(Parser* parser) {
 
         if (operand == NULL) {
             free(op);
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                parser->Next.Position, 
-                "expected an expression"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       parser->Next.Position,
+                       "expected an expression");
         }
 
-        node = AstSingle(
-            strcmp(op, "++") == 0 
-                ? AST_PRE_INC 
-                : AST_PRE_DEC,
-            operand, 
-            MergePositions(operand->Position, operand->Position)
-        );
+        node = AstSingle(strcmp(op, "++") == 0 ? AST_PRE_INC : AST_PRE_DEC,
+                         operand,
+                         MergePositions(operand->Position, operand->Position));
 
         free(op);
 
         return node;
-    } else if (CHECKTV(KEY_AWAIT))  {
+    } else if (CHECKTV(KEY_AWAIT)) {
         ACCEPTV_FREE(KEY_AWAIT);
 
         Ast* operand = _Unary(parser);
 
         if (operand == NULL) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                parser->Next.Position, 
-                "expected an expression"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       parser->Next.Position,
+                       "expected an expression");
         }
 
         if (operand->Type != AST_CALL) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                operand->Position, 
-                "await can only be applied to function calls"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       operand->Position,
+                       "await can only be applied to function calls");
         }
 
-        return AstSingle(
-            AST_AWAIT,
-            operand, 
-            MergePositions(operand->Position, operand->Position)
-        );
+        return AstSingle(AST_AWAIT, operand, MergePositions(operand->Position, operand->Position));
     }
 
     return _Postfix(parser);
 }
 
 static Ast* _Multiplicative(Parser* parser) {
-    String op = NULL;
-    Ast* lhs  = _Unary(parser), *rhs = NULL;
-    
+    String op  = NULL;
+    Ast *  lhs = _Unary(parser), *rhs = NULL;
+
     if (lhs == NULL) {
         return NULL;
     }
@@ -605,24 +516,18 @@ static Ast* _Multiplicative(Parser* parser) {
 
         if (rhs == NULL) {
             free(op);
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                lhs->Position, 
-                "missing right operand"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       lhs->Position,
+                       "missing right operand");
         }
 
-        lhs = AstBinary(
-            strcmp(op, "*") == 0 
-                ? AST_MUL 
-                : strcmp(op, "/") == 0
-                    ? AST_DIV
-                    : AST_MOD,
-            lhs, 
-            rhs, 
-            MergePositions(lhs->Position, rhs->Position)
-        );
+        lhs = AstBinary(strcmp(op, "*") == 0   ? AST_MUL
+                        : strcmp(op, "/") == 0 ? AST_DIV
+                                               : AST_MOD,
+                        lhs,
+                        rhs,
+                        MergePositions(lhs->Position, rhs->Position));
 
         free(op);
     }
@@ -631,9 +536,9 @@ static Ast* _Multiplicative(Parser* parser) {
 }
 
 static Ast* _Addetive(Parser* parser) {
-    String op = NULL;
-    Ast* lhs  = _Multiplicative(parser), *rhs = NULL;
-    
+    String op  = NULL;
+    Ast *  lhs = _Multiplicative(parser), *rhs = NULL;
+
     if (lhs == NULL) {
         return NULL;
     }
@@ -647,22 +552,16 @@ static Ast* _Addetive(Parser* parser) {
 
         if (rhs == NULL) {
             free(op);
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                lhs->Position, 
-                "missing right operand"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       lhs->Position,
+                       "missing right operand");
         }
 
-        lhs = AstBinary(
-            strcmp(op, "+") == 0
-                ? AST_ADD
-                : AST_SUB,
-            lhs, 
-            rhs, 
-            MergePositions(lhs->Position, rhs->Position)
-        );
+        lhs = AstBinary(strcmp(op, "+") == 0 ? AST_ADD : AST_SUB,
+                        lhs,
+                        rhs,
+                        MergePositions(lhs->Position, rhs->Position));
 
         free(op);
     }
@@ -671,9 +570,9 @@ static Ast* _Addetive(Parser* parser) {
 }
 
 static Ast* _Shift(Parser* parser) {
-    String op = NULL;
-    Ast* lhs  = _Addetive(parser), *rhs = NULL;
-    
+    String op  = NULL;
+    Ast *  lhs = _Addetive(parser), *rhs = NULL;
+
     if (lhs == NULL) {
         return NULL;
     }
@@ -684,25 +583,19 @@ static Ast* _Shift(Parser* parser) {
         ACCEPTT(TK_SYM);
 
         rhs = _Addetive(parser);
-        
+
         if (rhs == NULL) {
             free(op);
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                lhs->Position, 
-                "missing right operand"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       lhs->Position,
+                       "missing right operand");
         }
 
-        lhs = AstBinary(
-            strcmp(op, "<<") == 0 
-                ? AST_LSHFT 
-                : AST_RSHFT,
-            lhs, 
-            rhs, 
-            MergePositions(lhs->Position, rhs->Position)
-        );
+        lhs = AstBinary(strcmp(op, "<<") == 0 ? AST_LSHFT : AST_RSHFT,
+                        lhs,
+                        rhs,
+                        MergePositions(lhs->Position, rhs->Position));
 
         free(op);
     }
@@ -711,9 +604,9 @@ static Ast* _Shift(Parser* parser) {
 }
 
 static Ast* _Relational(Parser* parser) {
-    String op = NULL;
-    Ast* lhs  = _Shift(parser), *rhs = NULL;
-    
+    String op  = NULL;
+    Ast *  lhs = _Shift(parser), *rhs = NULL;
+
     if (lhs == NULL) {
         return NULL;
     }
@@ -724,29 +617,22 @@ static Ast* _Relational(Parser* parser) {
         ACCEPTT(TK_SYM);
 
         rhs = _Shift(parser);
-        
+
         if (rhs == NULL) {
             free(op);
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                lhs->Position, 
-                "missing right operand"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       lhs->Position,
+                       "missing right operand");
         }
 
-        lhs = AstBinary(
-            strcmp(op, "<") == 0 
-                ? AST_LT 
-                : strcmp(op, "<=") == 0
-                    ? AST_LTE
-                    : strcmp(op, ">") == 0
-                        ? AST_GT
-                        : AST_GTE,
-            lhs, 
-            rhs, 
-            MergePositions(lhs->Position, rhs->Position)
-        );
+        lhs = AstBinary(strcmp(op, "<") == 0    ? AST_LT
+                        : strcmp(op, "<=") == 0 ? AST_LTE
+                        : strcmp(op, ">") == 0  ? AST_GT
+                                                : AST_GTE,
+                        lhs,
+                        rhs,
+                        MergePositions(lhs->Position, rhs->Position));
 
         free(op);
     }
@@ -755,9 +641,9 @@ static Ast* _Relational(Parser* parser) {
 }
 
 static Ast* _Equality(Parser* parser) {
-    String op = NULL;
-    Ast* lhs  = _Relational(parser), *rhs = NULL;
-    
+    String op  = NULL;
+    Ast *  lhs = _Relational(parser), *rhs = NULL;
+
     if (lhs == NULL) {
         return NULL;
     }
@@ -768,25 +654,19 @@ static Ast* _Equality(Parser* parser) {
         ACCEPTT(TK_SYM);
 
         rhs = _Relational(parser);
-        
+
         if (rhs == NULL) {
             free(op);
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                lhs->Position, 
-                "missing right operand"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       lhs->Position,
+                       "missing right operand");
         }
 
-        lhs = AstBinary(
-            strcmp(op, "==") == 0 
-                ? AST_EQ 
-                : AST_NE,
-            lhs, 
-            rhs, 
-            MergePositions(lhs->Position, rhs->Position)
-        );
+        lhs = AstBinary(strcmp(op, "==") == 0 ? AST_EQ : AST_NE,
+                        lhs,
+                        rhs,
+                        MergePositions(lhs->Position, rhs->Position));
 
         free(op);
     }
@@ -795,9 +675,9 @@ static Ast* _Equality(Parser* parser) {
 }
 
 static Ast* _Bitwise(Parser* parser) {
-    String op = NULL;
-    Ast* lhs  = _Equality(parser), *rhs = NULL;
-    
+    String op  = NULL;
+    Ast *  lhs = _Equality(parser), *rhs = NULL;
+
     if (lhs == NULL) {
         return NULL;
     }
@@ -808,27 +688,21 @@ static Ast* _Bitwise(Parser* parser) {
         ACCEPTT(TK_SYM);
 
         rhs = _Equality(parser);
-        
+
         if (rhs == NULL) {
             free(op);
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                lhs->Position, 
-                "missing right operand"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       lhs->Position,
+                       "missing right operand");
         }
 
-        lhs = AstBinary(
-            strcmp(op, "&") == 0 
-                ? AST_AND 
-                : strcmp(op, "|") == 0
-                    ? AST_OR
-                    : AST_XOR,
-            lhs, 
-            rhs, 
-            MergePositions(lhs->Position, rhs->Position)
-        );
+        lhs = AstBinary(strcmp(op, "&") == 0   ? AST_AND
+                        : strcmp(op, "|") == 0 ? AST_OR
+                                               : AST_XOR,
+                        lhs,
+                        rhs,
+                        MergePositions(lhs->Position, rhs->Position));
 
         free(op);
     }
@@ -837,9 +711,9 @@ static Ast* _Bitwise(Parser* parser) {
 }
 
 static Ast* _Logical(Parser* parser) {
-    String op = NULL;
-    Ast* lhs  = _Bitwise(parser), *rhs = NULL;
-    
+    String op  = NULL;
+    Ast *  lhs = _Bitwise(parser), *rhs = NULL;
+
     if (lhs == NULL) {
         return NULL;
     }
@@ -850,25 +724,19 @@ static Ast* _Logical(Parser* parser) {
         ACCEPTT(TK_SYM);
 
         rhs = _Bitwise(parser);
-        
+
         if (rhs == NULL) {
             free(op);
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                lhs->Position, 
-                "missing right operand"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       lhs->Position,
+                       "missing right operand");
         }
 
-        lhs = AstBinary(
-            strcmp(op, "&&") == 0 
-                ? AST_LAND 
-                : AST_LOR,
-            lhs, 
-            rhs, 
-            MergePositions(lhs->Position, rhs->Position)
-        );
+        lhs = AstBinary(strcmp(op, "&&") == 0 ? AST_LAND : AST_LOR,
+                        lhs,
+                        rhs,
+                        MergePositions(lhs->Position, rhs->Position));
 
         free(op);
     }
@@ -891,76 +759,61 @@ static Ast* _SwitchExpression(Parser* parser) {
 
     ACCEPTV_FREE(KEY_SWITCH);
     ACCEPTV_FREE("{");
-    Ast* cases = NULL, *current = cases, *defaultCase = NULL;
+    Ast *cases = NULL, *current = cases, *defaultCase = NULL;
 
     while (CHECKTV(KEY_CASE) || CHECKTV(KEY_DEFAULT)) {
         if (CHECKTV(KEY_CASE)) {
             ACCEPTV_FREE(KEY_CASE);
             Ast* caseValue = _ListOfExpressions(parser);
             if (caseValue == NULL) {
-                ThrowError(
-                    parser->Lexer->Path, 
-                    parser->Lexer->Data, 
-                    parser->Next.Position, 
-                    "expected an expression after 'case'"
-                );
+                ThrowError(parser->Lexer->Path,
+                           parser->Lexer->Data,
+                           parser->Next.Position,
+                           "expected an expression after 'case'");
             }
             ACCEPTV_FREE("=>");
             Ast* caseBody = _Expression(parser);
             if (caseBody == NULL) {
-                ThrowError(
-                    parser->Lexer->Path, 
-                    parser->Lexer->Data, 
-                    parser->Next.Position, 
-                    "expected an expression for case body"
-                );
+                ThrowError(parser->Lexer->Path,
+                           parser->Lexer->Data,
+                           parser->Next.Position,
+                           "expected an expression for case body");
             }
 
-            Ast* newCase = AstSwitchCase(
-                caseValue, 
-                caseBody, 
-                MergePositions(caseValue->Position, caseBody->Position)
-            );
+            Ast* newCase = AstSwitchCase(caseValue,
+                                         caseBody,
+                                         MergePositions(caseValue->Position, caseBody->Position));
 
             if (cases == NULL) {
-                cases = newCase;
+                cases   = newCase;
                 current = newCase;
             } else {
                 current->Next = newCase;
-                current = newCase;
+                current       = newCase;
             }
 
         } else if (CHECKTV(KEY_DEFAULT)) {
             if (defaultCase != NULL) {
-                ThrowError(
-                    parser->Lexer->Path, 
-                    parser->Lexer->Data, 
-                    parser->Next.Position, 
-                    "multiple default cases are not allowed"
-                );
+                ThrowError(parser->Lexer->Path,
+                           parser->Lexer->Data,
+                           parser->Next.Position,
+                           "multiple default cases are not allowed");
             }
             ACCEPTV_FREE(KEY_DEFAULT);
             ACCEPTV_FREE("=>");
             defaultCase = _Expression(parser);
             if (defaultCase == NULL) {
-                ThrowError(
-                    parser->Lexer->Path, 
-                    parser->Lexer->Data, 
-                    parser->Next.Position, 
-                    "expected an expression for default case body"
-                );
+                ThrowError(parser->Lexer->Path,
+                           parser->Lexer->Data,
+                           parser->Next.Position,
+                           "expected an expression for default case body");
             }
         }
     }
 
     ended = parser->Next.Position;
     ACCEPTV_FREE("}");
-    return AstSwitch(
-        node, 
-        cases, 
-        defaultCase, 
-        MergePositions(start, ended)
-    );
+    return AstSwitch(node, cases, defaultCase, MergePositions(start, ended));
 }
 
 static Ast* _TernaryOrIf(Parser* parser) {
@@ -970,39 +823,31 @@ static Ast* _TernaryOrIf(Parser* parser) {
     }
     if (CHECKTV("?")) {
         ACCEPTV_FREE("?");
-        Ast* trueBranch = _TernaryOrIf(parser), *falseBranch = NULL;
+        Ast *trueBranch = _TernaryOrIf(parser), *falseBranch = NULL;
         if (trueBranch == NULL) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                conditionOrTrue->Position, 
-                "expected a true branch"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       conditionOrTrue->Position,
+                       "expected a true branch");
         }
         if (!CHECKTV(":")) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                parser->Next.Position, 
-                "expected a colon"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       parser->Next.Position,
+                       "expected a colon");
         }
         ACCEPTV_FREE(":");
         falseBranch = _TernaryOrIf(parser);
         if (falseBranch == NULL) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                conditionOrTrue->Position, 
-                "expected a false branch"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       conditionOrTrue->Position,
+                       "expected a false branch");
         }
-        return AstTernary(
-            conditionOrTrue, 
-            trueBranch, 
-            falseBranch, 
-            MergePositions(conditionOrTrue->Position, falseBranch->Position)
-        );
+        return AstTernary(conditionOrTrue,
+                          trueBranch,
+                          falseBranch,
+                          MergePositions(conditionOrTrue->Position, falseBranch->Position));
 
     } else if (CHECKTV(KEY_IF)) {
         ACCEPTV_FREE(KEY_IF);
@@ -1010,37 +855,31 @@ static Ast* _TernaryOrIf(Parser* parser) {
         Ast* condition = _TernaryOrIf(parser);
         ACCEPTV_FREE(")");
         if (condition == NULL) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                parser->Next.Position, 
-                "expected a condition"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       parser->Next.Position,
+                       "expected a condition");
         }
         ACCEPTV_FREE(KEY_ELSE);
         Ast* elseBranch = _TernaryOrIf(parser);
         if (elseBranch == NULL) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                parser->Next.Position, 
-                "expected a else branch"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       parser->Next.Position,
+                       "expected a else branch");
         }
-        return AstTernary(
-            condition, 
-            conditionOrTrue, 
-            elseBranch, 
-            MergePositions(conditionOrTrue->Position, elseBranch->Position)
-        );
+        return AstTernary(condition,
+                          conditionOrTrue,
+                          elseBranch,
+                          MergePositions(conditionOrTrue->Position, elseBranch->Position));
     }
     return conditionOrTrue;
 }
 
 static Ast* _Assignment(Parser* parser) {
-    String op = NULL;
-    Ast* lhs  = _TernaryOrIf(parser), *rhs = NULL;
-    
+    String op  = NULL;
+    Ast *  lhs = _TernaryOrIf(parser), *rhs = NULL;
+
     if (lhs == NULL) {
         return NULL;
     }
@@ -1051,23 +890,16 @@ static Ast* _Assignment(Parser* parser) {
         ACCEPTT(TK_SYM);
 
         rhs = _TernaryOrIf(parser);
-        
+
         if (rhs == NULL) {
             free(op);
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                lhs->Position, 
-                "missing right operand"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       lhs->Position,
+                       "missing right operand");
         }
 
-        lhs = AstBinary(
-            AST_ASSIGN,
-            lhs, 
-            rhs, 
-            MergePositions(lhs->Position, rhs->Position)
-        );
+        lhs = AstBinary(AST_ASSIGN, lhs, rhs, MergePositions(lhs->Position, rhs->Position));
 
         free(op);
     }
@@ -1076,9 +908,9 @@ static Ast* _Assignment(Parser* parser) {
 }
 
 static Ast* _AugmentedMuliplicative(Parser* parser) {
-    String op = NULL;
-    Ast* lhs  = _Assignment(parser), *rhs = NULL;
-    
+    String op  = NULL;
+    Ast *  lhs = _Assignment(parser), *rhs = NULL;
+
     if (lhs == NULL) {
         return NULL;
     }
@@ -1089,27 +921,21 @@ static Ast* _AugmentedMuliplicative(Parser* parser) {
         ACCEPTT(TK_SYM);
 
         rhs = _Assignment(parser);
-        
+
         if (rhs == NULL) {
             free(op);
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                lhs->Position, 
-                "missing right operand"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       lhs->Position,
+                       "missing right operand");
         }
 
-        lhs = AstBinary(
-            (strcmp(op, "*=") == 0 
-                ? AST_MUL_ASSIGN 
-                : strcmp(op, "/=") == 0
-                    ? AST_DIV_ASSIGN
-                    : AST_MOD_ASSIGN),
-            lhs, 
-            rhs, 
-            MergePositions(lhs->Position, rhs->Position)
-        );
+        lhs = AstBinary((strcmp(op, "*=") == 0   ? AST_MUL_ASSIGN
+                         : strcmp(op, "/=") == 0 ? AST_DIV_ASSIGN
+                                                 : AST_MOD_ASSIGN),
+                        lhs,
+                        rhs,
+                        MergePositions(lhs->Position, rhs->Position));
 
         free(op);
     }
@@ -1118,9 +944,9 @@ static Ast* _AugmentedMuliplicative(Parser* parser) {
 }
 
 static Ast* _AugmentedAddetive(Parser* parser) {
-    String op = NULL;
-    Ast* lhs  = _AugmentedMuliplicative(parser), *rhs = NULL;
-    
+    String op  = NULL;
+    Ast *  lhs = _AugmentedMuliplicative(parser), *rhs = NULL;
+
     if (lhs == NULL) {
         return NULL;
     }
@@ -1131,25 +957,19 @@ static Ast* _AugmentedAddetive(Parser* parser) {
         ACCEPTT(TK_SYM);
 
         rhs = _AugmentedMuliplicative(parser);
-        
+
         if (rhs == NULL) {
             free(op);
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                lhs->Position, 
-                "missing right operand"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       lhs->Position,
+                       "missing right operand");
         }
 
-        lhs = AstBinary(
-            (strcmp(op, "+=") == 0 
-                ? AST_ADD_ASSIGN 
-                : AST_SUB_ASSIGN),
-            lhs, 
-            rhs, 
-            MergePositions(lhs->Position, rhs->Position)
-        );
+        lhs = AstBinary((strcmp(op, "+=") == 0 ? AST_ADD_ASSIGN : AST_SUB_ASSIGN),
+                        lhs,
+                        rhs,
+                        MergePositions(lhs->Position, rhs->Position));
 
         free(op);
     }
@@ -1158,9 +978,9 @@ static Ast* _AugmentedAddetive(Parser* parser) {
 }
 
 static Ast* _AugmentedShift(Parser* parser) {
-    String op = NULL;
-    Ast* lhs  = _AugmentedAddetive(parser), *rhs = NULL;
-    
+    String op  = NULL;
+    Ast *  lhs = _AugmentedAddetive(parser), *rhs = NULL;
+
     if (lhs == NULL) {
         return NULL;
     }
@@ -1171,25 +991,19 @@ static Ast* _AugmentedShift(Parser* parser) {
         ACCEPTT(TK_SYM);
 
         rhs = _AugmentedAddetive(parser);
-        
+
         if (rhs == NULL) {
             free(op);
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                lhs->Position, 
-                "missing right operand"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       lhs->Position,
+                       "missing right operand");
         }
 
-        lhs = AstBinary(
-            (strcmp(op, "<<=") == 0 
-                ? AST_LSHFT_ASSIGN 
-                : AST_RSHFT_ASSIGN),
-            lhs, 
-            rhs, 
-            MergePositions(lhs->Position, rhs->Position)
-        );
+        lhs = AstBinary((strcmp(op, "<<=") == 0 ? AST_LSHFT_ASSIGN : AST_RSHFT_ASSIGN),
+                        lhs,
+                        rhs,
+                        MergePositions(lhs->Position, rhs->Position));
 
         free(op);
     }
@@ -1198,9 +1012,9 @@ static Ast* _AugmentedShift(Parser* parser) {
 }
 
 static Ast* _AugmentedBitwise(Parser* parser) {
-    String op = NULL;
-    Ast* lhs  = _AugmentedShift(parser), *rhs = NULL;
-    
+    String op  = NULL;
+    Ast *  lhs = _AugmentedShift(parser), *rhs = NULL;
+
     if (lhs == NULL) {
         return NULL;
     }
@@ -1211,27 +1025,21 @@ static Ast* _AugmentedBitwise(Parser* parser) {
         ACCEPTT(TK_SYM);
 
         rhs = _AugmentedShift(parser);
-        
+
         if (rhs == NULL) {
             free(op);
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                lhs->Position, 
-                "missing right operand"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       lhs->Position,
+                       "missing right operand");
         }
 
-        lhs = AstBinary(
-            (strcmp(op, "&=") == 0 
-                ? AST_AND_ASSIGN 
-                : strcmp(op, "|=") == 0
-                    ? AST_OR_ASSIGN
-                    : AST_XOR_ASSIGN),
-            lhs, 
-            rhs, 
-            MergePositions(lhs->Position, rhs->Position)
-        );
+        lhs = AstBinary((strcmp(op, "&=") == 0   ? AST_AND_ASSIGN
+                         : strcmp(op, "|=") == 0 ? AST_OR_ASSIGN
+                                                 : AST_XOR_ASSIGN),
+                        lhs,
+                        rhs,
+                        MergePositions(lhs->Position, rhs->Position));
 
         free(op);
     }
@@ -1246,28 +1054,26 @@ static Ast* _Expression(Parser* parser) {
 static Ast* _ListOfExpressions(Parser* parser) {
     Ast* head = NULL;
     Ast* tail = NULL;
-    
+
     Ast* expression = _Expression(parser);
     if (expression != NULL) {
         head = expression;
         tail = expression;
-        
+
         while (CHECKTV(",")) {
             ACCEPTV_FREE(",");
             expression = _Expression(parser);
             if (expression == NULL) {
-                ThrowError(
-                    parser->Lexer->Path, 
-                    parser->Lexer->Data, 
-                    tail->Position, 
-                    "expected expression after comma"
-                );
+                ThrowError(parser->Lexer->Path,
+                           parser->Lexer->Data,
+                           tail->Position,
+                           "expected expression after comma");
             }
             tail->Next = expression;
-            tail = expression;
+            tail       = expression;
         }
     }
-    
+
     return head;
 }
 
@@ -1286,30 +1092,24 @@ static Ast* _ClassMember(Parser* parser) {
     if (CHECKTV(KEY_FN)) {
         node = _Function(parser);
         if (strcmp(node->A->Value, CONSTRUCTOR_NAME) == 0 && _static_) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                node->Position, 
-                "constructor cannot be static"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       node->Position,
+                       "constructor cannot be static");
         }
     } else if (_static_ && CHECKTT(TK_IDN)) {
         node = _Assignment(parser);
         if (node->Type != AST_ASSIGN) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                node->Position, 
-                "expected a method or function declaration"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       node->Position,
+                       "expected a method or function declaration");
         }
         if (node->A->Type != AST_NAME) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                node->A->Position, 
-                "expected an identifier or name for member"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       node->A->Position,
+                       "expected an identifier or name for member");
         }
         ACCEPTV_FREE(";");
     }
@@ -1318,67 +1118,54 @@ static Ast* _ClassMember(Parser* parser) {
         return NULL;
     }
 
-    return AstClassMember(
-        _static_,
-        node,
-        node->Position
-    );
+    return AstClassMember(_static_, node, node->Position);
 }
 
 static Ast* _ListOfClassMembers(Parser* parser) {
     Ast* head = NULL;
     Ast* tail = NULL;
-    
+
     Ast* member = _ClassMember(parser);
     if (member != NULL) {
         head = member;
         tail = member;
-        
+
         while (true) {
             member = _ClassMember(parser);
             if (member == NULL) {
                 break;
             }
             tail->Next = member;
-            tail = member;
+            tail       = member;
         }
     }
-    
+
     return head;
 }
 
 static Ast* _Class(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
-    Ast* className = NULL, *body = NULL;
+    Ast *    className = NULL, *body = NULL;
     ACCEPTV_FREE(KEY_CLASS);
     className = _Terminal(parser);
     if (className == NULL) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            start, 
-            "expected a class name"
-        );
+        ThrowError(parser->Lexer->Path, parser->Lexer->Data, start, "expected a class name");
     }
     if (className->Type != AST_NAME) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            className->Position, 
-            "expected an identifier or name"
-        );
+        ThrowError(parser->Lexer->Path,
+                   parser->Lexer->Data,
+                   className->Position,
+                   "expected an identifier or name");
     }
     Ast* superClass = NULL;
     if (CHECKTV("(")) {
         ACCEPTV_FREE("(");
         superClass = _Expression(parser);
         if (superClass == NULL) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                start, 
-                "expected a superclass name"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       start,
+                       "expected a superclass name");
         }
         ACCEPTV_FREE(")");
     }
@@ -1386,45 +1173,31 @@ static Ast* _Class(Parser* parser) {
     body  = _ListOfClassMembers(parser);
     ended = parser->Next.Position;
     ACCEPTV_FREE("}");
-    return AstClass(
-        className,
-        superClass,
-        body,
-        MergePositions(start, ended)
-    );
+    return AstClass(className, superClass, body, MergePositions(start, ended));
 }
 
 static Ast* _Function(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
-    Ast* fnName = NULL, *parameters = NULL, *current = parameters, *body = NULL;
+    Ast *    fnName = NULL, *parameters = NULL, *current = parameters, *body = NULL;
     ACCEPTV_FREE(KEY_FN);
     fnName = _Terminal(parser);
     if (fnName == NULL) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            start, 
-            "expected a function name"
-        );
+        ThrowError(parser->Lexer->Path, parser->Lexer->Data, start, "expected a function name");
     }
     if (fnName->Type != AST_NAME) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            fnName->Position, 
-            "expected an identifier or name"
-        );
+        ThrowError(parser->Lexer->Path,
+                   parser->Lexer->Data,
+                   fnName->Position,
+                   "expected an identifier or name");
     }
     ACCEPTV_FREE("(");
     current = parameters = _ListOfExpressions(parser);
     while (current != NULL) {
         if (current->Type != AST_NAME) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                current->Position, 
-                "expected an identifier or name"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       current->Position,
+                       "expected an identifier or name");
         }
         current = current->Next;
     }
@@ -1437,38 +1210,28 @@ static Ast* _Function(Parser* parser) {
     body  = _ListOfStatements(parser);
     ended = parser->Next.Position;
     ACCEPTV_FREE("}");
-    return AstFunction(
-        fnName,
-        parameters,
-        body,
-        async,
-        MergePositions(start, ended)
-    );
+    return AstFunction(fnName, parameters, body, async, MergePositions(start, ended));
 }
 
 static Ast* _ImportStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
     ACCEPTV_FREE(KEY_IMPORT);
-    Ast* current = NULL, *imports = current;
+    Ast *current = NULL, *imports = current;
     if (CHECKTV("{")) {
         ACCEPTV_FREE("{");
         current = _ListOfExpressions(parser), imports = current;
         if (current == NULL) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                start, 
-                "expected a list of imports"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       start,
+                       "expected a list of imports");
         }
         while (current != NULL) {
             if (current->Type != AST_NAME) {
-                ThrowError(
-                    parser->Lexer->Path, 
-                    parser->Lexer->Data, 
-                    current->Position, 
-                    "expected an identifier or name"
-                );
+                ThrowError(parser->Lexer->Path,
+                           parser->Lexer->Data,
+                           current->Position,
+                           "expected an identifier or name");
             }
             current = current->Next;
         }
@@ -1477,47 +1240,34 @@ static Ast* _ImportStatement(Parser* parser) {
     }
     Ast* moduleName = _Terminal(parser);
     if (moduleName == NULL) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            start, 
-            "expected a module name"
-        );
+        ThrowError(parser->Lexer->Path, parser->Lexer->Data, start, "expected a module name");
     }
     if (moduleName->Type != AST_STR) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            moduleName->Position, 
-            "expected a string or path"
-        );
+        ThrowError(parser->Lexer->Path,
+                   parser->Lexer->Data,
+                   moduleName->Position,
+                   "expected a string or path");
     }
     ACCEPTV_FREE(";");
-    return AstImport(
-        imports,
-        moduleName, 
-        MergePositions(start, ended)
-    );
+    return AstImport(imports, moduleName, MergePositions(start, ended));
 }
 
 static Ast* _DeclarationList(Parser* parser);
 
 static Ast* _InitializerConditionMutator(Parser* parser) {
-    String op = NULL;
-    Ast* lhs  = _Expression(parser), *rhs = NULL;
-    
+    String op  = NULL;
+    Ast *  lhs = _Expression(parser), *rhs = NULL;
+
     if (lhs == NULL) {
         return NULL;
     }
 
     while (CHECKTV(":=")) {
         if (lhs->Type != AST_NAME) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                lhs->Position, 
-                "expected an identifier or name"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       lhs->Position,
+                       "expected an identifier or name");
         }
 
         // :=
@@ -1525,23 +1275,16 @@ static Ast* _InitializerConditionMutator(Parser* parser) {
         ACCEPTT(TK_SYM);
 
         rhs = _Expression(parser);
-        
+
         if (rhs == NULL) {
             free(op);
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                lhs->Position, 
-                "missing right operand"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       lhs->Position,
+                       "missing right operand");
         }
 
-        lhs = AstBinary(
-            AST_SHORT_ASSIGN,
-            lhs, 
-            rhs, 
-            MergePositions(lhs->Position, rhs->Position)
-        );
+        lhs = AstBinary(AST_SHORT_ASSIGN, lhs, rhs, MergePositions(lhs->Position, rhs->Position));
 
         free(op);
     }
@@ -1553,76 +1296,58 @@ static Ast* _VarStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
     ACCEPTV_FREE(KEY_VAR);
     Ast* declarations = _DeclarationList(parser);
-    ended = parser->Next.Position;
+    ended             = parser->Next.Position;
     ACCEPTV_FREE(";");
-    return AstVarDeclaration(
-        AST_VAR_DECLARATION,
-        declarations,
-        MergePositions(start, ended)
-    );
+    return AstVarDeclaration(AST_VAR_DECLARATION, declarations, MergePositions(start, ended));
 }
 
 static Ast* _ConstStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
     ACCEPTV_FREE(KEY_CONST);
     Ast* declarations = _DeclarationList(parser);
-    ended = parser->Next.Position;
+    ended             = parser->Next.Position;
     ACCEPTV_FREE(";");
-    return AstVarDeclaration(
-        AST_CONST_DECLARATION,
-        declarations,
-        MergePositions(start, ended)
-    );
+    return AstVarDeclaration(AST_CONST_DECLARATION, declarations, MergePositions(start, ended));
 }
 
 static Ast* _LocalStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
     ACCEPTV_FREE(KEY_LOCAL);
     Ast* declarations = _DeclarationList(parser);
-    ended = parser->Next.Position;
+    ended             = parser->Next.Position;
     ACCEPTV_FREE(";");
-    return AstVarDeclaration(
-        AST_LOCAL_DECLARATION,
-        declarations,
-        MergePositions(start, ended)
-    );
+    return AstVarDeclaration(AST_LOCAL_DECLARATION, declarations, MergePositions(start, ended));
 }
 
 static Ast* _DeclarationList(Parser* parser) {
     Ast* head = NULL;
     Ast* tail = NULL;
-    
+
     do {
         Ast* dec = _Terminal(parser);
 
         if (dec == NULL) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                parser->Next.Position, 
-                "expected a declaration"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       parser->Next.Position,
+                       "expected a declaration");
         }
 
         if (dec->Type != AST_NAME) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                dec->Position, 
-                "expected an identifier or name"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       dec->Position,
+                       "expected an identifier or name");
         }
 
         if (CHECKTV("=")) {
             ACCEPTV_FREE("=");
             Ast* value = _Expression(parser);
             if (value == NULL) {
-                ThrowError(
-                    parser->Lexer->Path, 
-                    parser->Lexer->Data, 
-                    dec->Position, 
-                    "expected an expression"
-                );
+                ThrowError(parser->Lexer->Path,
+                           parser->Lexer->Data,
+                           dec->Position,
+                           "expected an expression");
             }
             dec->B = value;
         }
@@ -1632,7 +1357,7 @@ static Ast* _DeclarationList(Parser* parser) {
             tail = dec;
         } else {
             tail->Next = dec;
-            tail = dec;
+            tail       = dec;
         }
 
         if (!CHECKTV(",")) {
@@ -1640,66 +1365,44 @@ static Ast* _DeclarationList(Parser* parser) {
         }
         ACCEPTV_FREE(",");
     } while (1);
-    
+
     return head;
 }
 
 static Ast* _IfStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
-    Ast* initializerCondition = NULL, *thenBranch = NULL, *elseBranch = NULL;
+    Ast *    initializerCondition = NULL, *thenBranch = NULL, *elseBranch = NULL;
     ACCEPTV_FREE(KEY_IF);
     ACCEPTV_FREE("(");
     initializerCondition = _InitializerConditionMutator(parser);
     if (initializerCondition == NULL) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            start, 
-            "expected a condition"
-        );
+        ThrowError(parser->Lexer->Path, parser->Lexer->Data, start, "expected a condition");
     }
     if (CHECKTV(";")) {
         ACCEPTV_FREE(";");
         initializerCondition->Next = _Expression(parser);
         if (initializerCondition->Next == NULL) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                parser->Next.Position, 
-                "expected a condition"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       parser->Next.Position,
+                       "expected a condition");
         }
     }
     ACCEPTV_FREE(")");
     thenBranch = _Statement(parser);
     if (thenBranch == NULL) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            start, 
-            "expected a then branch"
-        );
+        ThrowError(parser->Lexer->Path, parser->Lexer->Data, start, "expected a then branch");
     }
     if (CHECKTV(KEY_ELSE)) {
         ACCEPTV_FREE(KEY_ELSE);
         elseBranch = _Statement(parser);
         if (elseBranch == NULL) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                start, 
-                "expected an else branch"
-            );
+            ThrowError(parser->Lexer->Path, parser->Lexer->Data, start, "expected an else branch");
         }
         ended = parser->Next.Position;
     }
-    
-    return AstIf(
-        initializerCondition,
-        thenBranch, 
-        elseBranch, 
-        MergePositions(start, ended)
-    );
+
+    return AstIf(initializerCondition, thenBranch, elseBranch, MergePositions(start, ended));
 }
 
 static Ast* _SwitchStatement(Parser* parser) {
@@ -1707,91 +1410,74 @@ static Ast* _SwitchStatement(Parser* parser) {
     ACCEPTV_FREE(KEY_SWITCH);
     ACCEPTV_FREE("(");
     Ast* node = _Expression(parser);
-    if (node == NULL)  {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            parser->Next.Position, 
-            "expected an expression"
-        );
+    if (node == NULL) {
+        ThrowError(parser->Lexer->Path,
+                   parser->Lexer->Data,
+                   parser->Next.Position,
+                   "expected an expression");
     }
     ACCEPTV_FREE(")");
     ACCEPTV_FREE("{");
-    Ast* cases = NULL, *current = cases, *defaultCase = NULL;
+    Ast *cases = NULL, *current = cases, *defaultCase = NULL;
 
     while (CHECKTV(KEY_CASE) || CHECKTV(KEY_DEFAULT)) {
         if (CHECKTV(KEY_CASE)) {
             ACCEPTV_FREE(KEY_CASE);
             Ast* caseValue = _ListOfExpressions(parser);
             if (caseValue == NULL) {
-                ThrowError(
-                    parser->Lexer->Path, 
-                    parser->Lexer->Data, 
-                    parser->Next.Position, 
-                    "expected an expression after 'case'"
-                );
+                ThrowError(parser->Lexer->Path,
+                           parser->Lexer->Data,
+                           parser->Next.Position,
+                           "expected an expression after 'case'");
             }
             ACCEPTV_FREE(":");
             Ast* caseBody = _Statement(parser);
             if (caseBody == NULL) {
-                ThrowError(
-                    parser->Lexer->Path, 
-                    parser->Lexer->Data, 
-                    parser->Next.Position, 
-                    "expected a statement for case body"
-                );
+                ThrowError(parser->Lexer->Path,
+                           parser->Lexer->Data,
+                           parser->Next.Position,
+                           "expected a statement for case body");
             }
 
-            Ast* newCase = AstSwitchCase(
-                caseValue, 
-                caseBody, 
-                MergePositions(caseValue->Position, caseBody->Position)
-            );
+            Ast* newCase = AstSwitchCase(caseValue,
+                                         caseBody,
+                                         MergePositions(caseValue->Position, caseBody->Position));
 
             if (cases == NULL) {
-                cases = newCase;
+                cases   = newCase;
                 current = newCase;
             } else {
                 current->Next = newCase;
-                current = newCase;
+                current       = newCase;
             }
 
         } else if (CHECKTV(KEY_DEFAULT)) {
             if (defaultCase != NULL) {
-                ThrowError(
-                    parser->Lexer->Path, 
-                    parser->Lexer->Data, 
-                    parser->Next.Position, 
-                    "multiple default cases are not allowed"
-                );
+                ThrowError(parser->Lexer->Path,
+                           parser->Lexer->Data,
+                           parser->Next.Position,
+                           "multiple default cases are not allowed");
             }
             ACCEPTV_FREE(KEY_DEFAULT);
             ACCEPTV_FREE(":");
             defaultCase = _Statement(parser);
             if (defaultCase == NULL) {
-                ThrowError(
-                    parser->Lexer->Path, 
-                    parser->Lexer->Data, 
-                    parser->Next.Position, 
-                    "expected a statement block for default case body"
-                );
+                ThrowError(parser->Lexer->Path,
+                           parser->Lexer->Data,
+                           parser->Next.Position,
+                           "expected a statement block for default case body");
             }
         }
     }
 
     ended = parser->Next.Position;
     ACCEPTV_FREE("}");
-    return AstSwitch(
-        node, 
-        cases, 
-        defaultCase, 
-        MergePositions(start, ended)
-    );
+    return AstSwitch(node, cases, defaultCase, MergePositions(start, ended));
 }
 
 static Ast* _ForStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
-    Ast* initializerConditionMutator = NULL, *body = NULL;
+    Ast *    initializerConditionMutator = NULL, *body = NULL;
     ACCEPTV_FREE(KEY_FOR);
     ACCEPTV_FREE("(");
     initializerConditionMutator = _InitializerConditionMutator(parser);
@@ -1806,34 +1492,20 @@ static Ast* _ForStatement(Parser* parser) {
     ACCEPTV_FREE(")");
     body = _Statement(parser);
     if (body == NULL) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            start, 
-            "expected a body"
-        );
+        ThrowError(parser->Lexer->Path, parser->Lexer->Data, start, "expected a body");
     }
     ended = body->Position;
-    return AstFor(
-        initializerConditionMutator,
-        body, 
-        MergePositions(start, ended)
-    );
+    return AstFor(initializerConditionMutator, body, MergePositions(start, ended));
 }
 
 static Ast* _WhileStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
-    Ast* initializerConditionMutator = NULL, *body = NULL;
+    Ast *    initializerConditionMutator = NULL, *body = NULL;
     ACCEPTV_FREE(KEY_WHILE);
     ACCEPTV_FREE("(");
     initializerConditionMutator = _InitializerConditionMutator(parser);
     if (initializerConditionMutator == NULL) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            start, 
-            "expected a condition"
-        );
+        ThrowError(parser->Lexer->Path, parser->Lexer->Data, start, "expected a condition");
     }
 
     if (CHECKTV(";")) {
@@ -1841,12 +1513,10 @@ static Ast* _WhileStatement(Parser* parser) {
         ACCEPTV_FREE(";");
         initializerConditionMutator->Next = _Expression(parser);
         if (initializerConditionMutator->Next == NULL) {
-            ThrowError(
-                parser->Lexer->Path, 
-                parser->Lexer->Data, 
-                parser->Next.Position, 
-                "expected a condition"
-            );
+            ThrowError(parser->Lexer->Path,
+                       parser->Lexer->Data,
+                       parser->Next.Position,
+                       "expected a condition");
         }
 
         if (CHECKTV(";")) {
@@ -1854,144 +1524,90 @@ static Ast* _WhileStatement(Parser* parser) {
             ACCEPTV_FREE(";");
             initializerConditionMutator->Next->Next = _Expression(parser);
             if (initializerConditionMutator->Next->Next == NULL) {
-                ThrowError(
-                    parser->Lexer->Path, 
-                    parser->Lexer->Data, 
-                    parser->Next.Position, 
-                    "expected a mutator"
-                );
+                ThrowError(parser->Lexer->Path,
+                           parser->Lexer->Data,
+                           parser->Next.Position,
+                           "expected a mutator");
             }
         }
     }
     ACCEPTV_FREE(")");
     body = _Statement(parser);
     if (body == NULL) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            start, 
-            "expected a body"
-        );
+        ThrowError(parser->Lexer->Path, parser->Lexer->Data, start, "expected a body");
     }
     ended = body->Position;
-    return AstWhile(
-        initializerConditionMutator, 
-        body, 
-        MergePositions(start, ended)
-    );
+    return AstWhile(initializerConditionMutator, body, MergePositions(start, ended));
 }
 
 static Ast* _DoWhileStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
-    Ast* body = NULL, *condition = NULL;
+    Ast *    body = NULL, *condition = NULL;
     ACCEPTV_FREE(KEY_DO);
     body = _Statement(parser);
     if (body == NULL) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            start, 
-            "expected a body"
-        );
+        ThrowError(parser->Lexer->Path, parser->Lexer->Data, start, "expected a body");
     }
     ACCEPTV_FREE("while");
     ACCEPTV_FREE("(");
     condition = _Expression(parser);
     if (condition == NULL) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            start, 
-            "expected a condition"
-        );
+        ThrowError(parser->Lexer->Path, parser->Lexer->Data, start, "expected a condition");
     }
     ended = parser->Next.Position;
     ACCEPTV_FREE(")");
-    return AstDoWhile(
-        condition, 
-        body, 
-        MergePositions(start, ended)
-    );
+    return AstDoWhile(condition, body, MergePositions(start, ended));
 }
 
 static Ast* _TryCatchStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
-    Ast* tryBlock = NULL, *catchBlock = NULL, *errorName = NULL;
+    Ast *    tryBlock = NULL, *catchBlock = NULL, *errorName = NULL;
     ACCEPTV_FREE(KEY_TRY);
     tryBlock = _Statement(parser);
     if (tryBlock == NULL) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            start, 
-            "expected a try block"
-        );
+        ThrowError(parser->Lexer->Path, parser->Lexer->Data, start, "expected a try block");
     }
     if (tryBlock->Type != AST_BLOCK) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            tryBlock->Position, 
-            "expected a block statement"
-        );
+        ThrowError(parser->Lexer->Path,
+                   parser->Lexer->Data,
+                   tryBlock->Position,
+                   "expected a block statement");
     }
     ACCEPTV_FREE(KEY_CATCH);
     ACCEPTV_FREE("(");
     errorName = _Terminal(parser);
     if (errorName == NULL) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            start, 
-            "expected an error name"
-        );
+        ThrowError(parser->Lexer->Path, parser->Lexer->Data, start, "expected an error name");
     }
     if (errorName->Type != AST_NAME) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            errorName->Position, 
-            "expected an identifier or name"
-        );
+        ThrowError(parser->Lexer->Path,
+                   parser->Lexer->Data,
+                   errorName->Position,
+                   "expected an identifier or name");
     }
     ACCEPTV_FREE(")");
     catchBlock = _Statement(parser);
     if (catchBlock == NULL) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            start, 
-            "expected a catch block"
-        );
+        ThrowError(parser->Lexer->Path, parser->Lexer->Data, start, "expected a catch block");
     }
     if (catchBlock->Type != AST_BLOCK) {
-        ThrowError(
-            parser->Lexer->Path, 
-            parser->Lexer->Data, 
-            tryBlock->Position, 
-            "expected a block statement"
-        );
+        ThrowError(parser->Lexer->Path,
+                   parser->Lexer->Data,
+                   tryBlock->Position,
+                   "expected a block statement");
     }
     ended = parser->Next.Position;
-    return AstTryCatch(
-        tryBlock,
-        errorName,
-        catchBlock,
-        MergePositions(start, ended)
-    );
+    return AstTryCatch(tryBlock, errorName, catchBlock, MergePositions(start, ended));
 }
 
 static Ast* _BlockStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
-    Ast* statements = NULL;
+    Ast*     statements = NULL;
     ACCEPTV_FREE("{");
     statements = _ListOfStatements(parser);
-    ended = parser->Next.Position;
+    ended      = parser->Next.Position;
     ACCEPTV_FREE("}");
-    return AstBlock(
-        statements, 
-        MergePositions(start, ended)
-    );
+    return AstBlock(statements, MergePositions(start, ended));
 }
 
 static Ast* _ContinueStatement(Parser* parser) {
@@ -1999,9 +1615,7 @@ static Ast* _ContinueStatement(Parser* parser) {
     ACCEPTV_FREE(KEY_CONTINUE);
     ended = parser->Next.Position;
     ACCEPTV_FREE(";");
-    return AstContinue(
-        MergePositions(start, ended)
-    );
+    return AstContinue(MergePositions(start, ended));
 }
 
 static Ast* _BreakStatement(Parser* parser) {
@@ -2009,26 +1623,21 @@ static Ast* _BreakStatement(Parser* parser) {
     ACCEPTV_FREE(KEY_BREAK);
     ended = parser->Next.Position;
     ACCEPTV_FREE(";");
-    return AstBreak(
-        MergePositions(start, ended)
-    );
+    return AstBreak(MergePositions(start, ended));
 }
 
 static Ast* _ReturnStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
     ACCEPTV_FREE(KEY_RETURN);
     Ast* expression = _Expression(parser);
-    ended = parser->Next.Position;
+    ended           = parser->Next.Position;
     ACCEPTV_FREE(";");
-    return AstReturn(
-        expression, 
-        MergePositions(start, ended)
-    );
+    return AstReturn(expression, MergePositions(start, ended));
 }
 
 static Ast* _ExpressionStatement(Parser* parser) {
-    Position start  = parser->Next.Position, ended = start;
-    Ast* expression = _Expression(parser);
+    Position start = parser->Next.Position, ended = start;
+    Ast*     expression = _Expression(parser);
     if (expression == NULL) {
         if (CHECKTV(";")) {
             while (CHECKTV(";")) {
@@ -2036,9 +1645,7 @@ static Ast* _ExpressionStatement(Parser* parser) {
                 ACCEPTV_FREE(";");
             }
 
-            return AstEmptyStatement(
-                MergePositions(start, ended)
-            );
+            return AstEmptyStatement(MergePositions(start, ended));
         }
         return NULL;
     }
@@ -2046,10 +1653,7 @@ static Ast* _ExpressionStatement(Parser* parser) {
         ended = parser->Next.Position;
         ACCEPTV_FREE(";");
     }
-    return AstExpressionStatement(
-        expression, 
-        MergePositions(start, ended)
-    );
+    return AstExpressionStatement(expression, MergePositions(start, ended));
 }
 
 static Ast* _Statement(Parser* parser) {
@@ -2077,7 +1681,7 @@ static Ast* _Statement(Parser* parser) {
         return _DoWhileStatement(parser);
     } else if (CHECKTV(KEY_TRY)) {
         return _TryCatchStatement(parser);
-    }else if (CHECKTV(KEY_CONTINUE)) {
+    } else if (CHECKTV(KEY_CONTINUE)) {
         return _ContinueStatement(parser);
     } else if (CHECKTV(KEY_BREAK)) {
         return _BreakStatement(parser);
@@ -2092,27 +1696,27 @@ static Ast* _Statement(Parser* parser) {
 static Ast* _ListOfStatements(Parser* parser) {
     Ast* head = NULL;
     Ast* tail = NULL;
-    
+
     while (CHECKTT(TK_EOF) == false) {
         Ast* statement = _Statement(parser);
         if (statement == NULL) {
             break;
         }
-        
+
         if (head == NULL) {
             head = statement;
             tail = statement;
         } else {
             tail->Next = statement;
-            tail = statement;
+            tail       = statement;
         }
     }
-    
+
     return head;
 }
 
 static Ast* _ParseProgram(Parser* parser) {
-    Ast* ast = AstProgram(_ListOfStatements(parser), parser->Next.Position);
+    Ast*   ast = AstProgram(_ListOfStatements(parser), parser->Next.Position);
     String eof = parser->Next.Value;
     ACCEPTT(TK_EOF);
     free(eof);

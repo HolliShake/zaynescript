@@ -11,15 +11,15 @@
 #include "../value.h"
 
 #ifndef CORE_OS_H
-#define CORE_OS_H
+#    define CORE_OS_H
 
 
 /**
  * @brief Loads the core OS module
- * 
+ *
  * @param  interpreter The interpreter instance to load the OS module into
  * @return Value* Pointer to the loaded OS module
  */
-Value* LoadCoreOs(Interpreter*  interpreter);
+Value* LoadCoreOs(Interpreter* interpreter);
 
 #endif /* CORE_OS_H */

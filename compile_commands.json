@@ -1,0 +1,482 @@
+[
+  {
+    "file": "main.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "main.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/array.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/array.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/astnode.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/astnode.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/class.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/class.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/compiler.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/compiler.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/decompiler.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/decompiler.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/environment.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/environment.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/function.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/function.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/gc.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/gc.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/global.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/global.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/hashmap.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/hashmap.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/interpreter.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/interpreter.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/lexer.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/lexer.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/operation.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/operation.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/parser.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/parser.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/position.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/position.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/scope.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/scope.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/statemachine.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/statemachine.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/value.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/value.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/core/array.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/core/array.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/core/date.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/core/date.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/core/io.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/core/io.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/core/loader.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/core/loader.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/core/math.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/core/math.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/core/os.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/core/os.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "src/core/promise.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "src/core/promise.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "utf/utf.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "utf/utf.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "utf/utf8proc/utf8proc.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "utf/utf8proc/utf8proc.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "libbf/cutils.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "libbf/cutils.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  },
+  {
+    "file": "libbf/libbf.c",
+    "arguments": [
+      "clang",
+      "-Wno-pointer-sign",
+      "-fsanitize=address,leak",
+      "-g3",
+      "-fno-omit-frame-pointer",
+      "-O0",
+      "libbf/libbf.c",
+      "-o",
+      "zscript.exe"
+    ],
+    "directory": "/home/andydevs69420/Documents/LanguageX",
+    "output": "zscript.exe"
+  }
+]

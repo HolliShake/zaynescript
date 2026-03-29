@@ -28,6 +28,11 @@ if [[ "$1" == "--compile" ]]; then
     else
         echo "Error: Failed to build zscript.exe"
     fi
+elif [[ "$1" == "--format" ]]; then
+    echo "Running clang-format..."
+    find src/ -name '*.c' -o -name '*.h' | xargs clang-format -i
+    clang-format -i main.c
+    echo "Formatting complete."
 elif [[ "$1" == "--dbg" ]]; then
     if [[ -f zscript.exe ]]; then
         gdb -ex run -ex bt --args ./zscript.exe --run "$2"

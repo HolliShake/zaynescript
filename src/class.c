@@ -1,11 +1,11 @@
 #include "./class.h"
 
 Class* CreateUserClass(String name, Value* base) {
-    Class* cls = Allocate(sizeof(Class));
-    cls->Name              = AllocateString(name);
-    cls->Base              = base;
-    cls->StaticMembers     = CreateHashMap(16);
-    cls->InstanceMembers   = CreateHashMap(16);
+    Class* cls           = Allocate(sizeof(Class));
+    cls->Name            = AllocateString(name);
+    cls->Base            = base;
+    cls->StaticMembers   = CreateHashMap(16);
+    cls->InstanceMembers = CreateHashMap(16);
     return cls;
 }
 
@@ -38,7 +38,7 @@ extern bool ValueIsCallable(Value*);
 bool ClassHasMember(Class* cls, String key, bool isStatic, bool callable) {
     // if callable is -1, ignore callable check
     HashMap* members = isStatic ? cls->StaticMembers : cls->InstanceMembers;
-    Value* member    = HashMapGet(members, key);
+    Value*   member  = HashMapGet(members, key);
     if (member == NULL) {
         return false;
     }
@@ -61,23 +61,23 @@ String ClassToString(Class* cls) {
 
 ClassInstance* CreateClassInstance(Value* proto) {
     ClassInstance* instance = Allocate(sizeof(ClassInstance));
-    instance->Proto   = proto;
-    instance->Members = CreateHashMap(16);
+    instance->Proto         = proto;
+    instance->Members       = CreateHashMap(16);
     return instance;
 }
 
 String ClassInstanceToString(ClassInstance* instance) {
-    HashMap* members = instance->Members;
-    String className = ClassToString(CoerceToUserClass(instance->Proto));
-    
+    HashMap* members   = instance->Members;
+    String   className = ClassToString(CoerceToUserClass(instance->Proto));
+
     // Start building the string
     size_t bufferSize = 1024;
-    String buffer = Allocate(bufferSize);
+    String buffer     = Allocate(bufferSize);
     size_t currentPos = 0;
-    
+
     // Add class name and opening brace
     currentPos += snprintf(buffer + currentPos, bufferSize - currentPos, "%s { ", className);
-    
+
     // Iterate through members
     bool first = true;
     for (size_t i = 0; i < members->Size; i++) {
@@ -86,34 +86,37 @@ String ClassInstanceToString(ClassInstance* instance) {
             // Ensure buffer is large enough
             size_t needed = currentPos + strlen(node->Key) + 100;
             if (needed > bufferSize) {
-                bufferSize = needed * 2;
+                bufferSize       = needed * 2;
                 String newBuffer = Allocate(bufferSize);
                 memcpy(newBuffer, buffer, currentPos);
                 free(buffer);
                 buffer = newBuffer;
             }
-            
+
             if (!first) {
                 currentPos += snprintf(buffer + currentPos, bufferSize - currentPos, ", ");
             }
             first = false;
-            
-            String valueStr = ValueToString((Value*)node->Val);
-            currentPos += snprintf(buffer + currentPos, bufferSize - currentPos, 
-                                  "%s: %s", node->Key, valueStr);
-            
+
+            String valueStr  = ValueToString((Value*) node->Val);
+            currentPos      += snprintf(buffer + currentPos,
+                                        bufferSize - currentPos,
+                                        "%s: %s",
+                                        node->Key,
+                                        valueStr);
+
             free(valueStr);
-            
+
             node = node->Next;
         }
     }
-    
+
     // Add closing brace
     currentPos += snprintf(buffer + currentPos, bufferSize - currentPos, " }");
-    
+
     // Create final string
     String result = AllocateString(buffer);
     free(buffer);
-    
+
     return result;
 }

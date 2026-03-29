@@ -10,17 +10,17 @@
 #include "../value.h"
 
 #ifndef CORE_MATH_H
-#define CORE_MATH_H
+#    define CORE_MATH_H
 
 /**
  * @brief Loads the core Math module
  *
  * Initializes and loads the core Math module into the interpreter,
  * registering all mathematical functions and constants.
- * 
+ *
  * @param  interpreter The interpreter instance to load the module into
  * @return Value* Pointer to the loaded core Math module, or NULL on failure
  */
-Value* LoadCoreMath(Interpreter*  interpreter);
+Value* LoadCoreMath(Interpreter* interpreter);
 
 #endif /* MATH_H */

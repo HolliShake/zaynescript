@@ -1,7 +1,7 @@
 #include "./global.h"
 
 #ifndef DECOMPILER_H
-#define DECOMPILER_H
+#    define DECOMPILER_H
 
 /**
  * @brief Decompiles a user function back into source code

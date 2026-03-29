@@ -1,6 +1,5 @@
 
 import { println} from "core:io";
-import "./test_import";
 
 class Animal {
     fn greet() {

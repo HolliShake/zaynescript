@@ -1,15 +1,15 @@
 #include "./astnode.h"
 
 static Ast* InitAst(AstType type, Position position) {
-    Ast* ast       = Allocate(sizeof(Ast));
-    ast->Type      = type;
-    ast->Position  = position;
-    ast->Value     = NULL;
-    ast->A         = NULL;
-    ast->B         = NULL;
-    ast->C         = NULL;
-    ast->D         = NULL;
-    ast->Next      = NULL;
+    Ast* ast      = Allocate(sizeof(Ast));
+    ast->Type     = type;
+    ast->Position = position;
+    ast->Value    = NULL;
+    ast->A        = NULL;
+    ast->B        = NULL;
+    ast->C        = NULL;
+    ast->D        = NULL;
+    ast->Next     = NULL;
     return ast;
 }
 
@@ -18,7 +18,6 @@ Ast* AstName(String name, Position position) {
     ast->Value = name;
     return ast;
 }
-
 
 Ast* AstInteger(String value, Position position) {
     Ast* ast   = InitAst(AST_INT, position);
@@ -151,7 +150,7 @@ Ast* AstBreak(Position position) {
 
 Ast* AstReturn(Ast* expression, Position position) {
     Ast* ast = InitAst(AST_RETURN, position);
-    ast->A = expression;
+    ast->A   = expression;
     return ast;
 }
 
@@ -164,9 +163,7 @@ Ast* AstExpressionStatement(Ast* expression, Position position) {
 Ast* AstClassMember(bool _static_, Ast* node, Position position) {
     Ast* ast   = InitAst(AST_CLASS_MEMBER, position);
     ast->A     = node;
-    ast->Value = (_static_) 
-        ? AllocateString("static") 
-        : AllocateString("instance");
+    ast->Value = (_static_) ? AllocateString("static") : AllocateString("instance");
     return ast;
 }
 
@@ -176,7 +173,7 @@ Ast* AstClass(Ast* name, Ast* super, Ast* body, Position position) {
     ast->B   = super;
     ast->C   = body;
     return ast;
-} 
+}
 
 Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, bool async, Position position) {
     Ast* ast  = InitAst(AST_FUNCTION, position);
@@ -248,7 +245,7 @@ Ast* AstDoWhile(Ast* condition, Ast* body, Position position) {
     return ast;
 }
 
-Ast* AstTryCatch(Ast* tryBlock, Ast* errorName,  Ast* catchBlock, Position position) {
+Ast* AstTryCatch(Ast* tryBlock, Ast* errorName, Ast* catchBlock, Position position) {
     Ast* ast = InitAst(AST_TRY_CATCH, position);
     ast->A   = tryBlock;
     ast->B   = errorName;
@@ -258,7 +255,7 @@ Ast* AstTryCatch(Ast* tryBlock, Ast* errorName,  Ast* catchBlock, Position posit
 
 Ast* AstBlock(Ast* statements, Position position) {
     Ast* ast = InitAst(AST_BLOCK, position);
-    ast->A = statements;
+    ast->A   = statements;
     return ast;
 }
 
