@@ -3,7 +3,7 @@
 #include "./position.h"
 
 #ifndef TOKENIZER_H
-#define TOKENIZER_H
+#    define TOKENIZER_H
 
 /*
  * lexer.h - Lexical analysis and tokenization

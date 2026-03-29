@@ -1,11 +1,11 @@
 #include "./scope.h"
 
 Symbol* CreateSymbol(bool isGlobal, bool isLocalToFn, bool isConstant, int offset) {
-    Symbol* symbol       = Allocate(sizeof(Symbol));
-    symbol->IsGlobal     = isGlobal;
-    symbol->IsLocalToFn  = isLocalToFn;
-    symbol->IsConstant   = isConstant;
-    symbol->Offset       = offset;
+    Symbol* symbol      = Allocate(sizeof(Symbol));
+    symbol->IsGlobal    = isGlobal;
+    symbol->IsLocalToFn = isLocalToFn;
+    symbol->IsConstant  = isConstant;
+    symbol->Offset      = offset;
     return symbol;
 }
 
@@ -31,7 +31,8 @@ void ScopeAddContinueJump(Scope* scope, int offset) {
         return;
     }
     LoopScope->ContinueJumps[LoopScope->ContinueJumpC++] = offset;
-    LoopScope->ContinueJumps = Reallocate(LoopScope->ContinueJumps, sizeof(int) * (LoopScope->ContinueJumpC + 1));
+    LoopScope->ContinueJumps =
+        Reallocate(LoopScope->ContinueJumps, sizeof(int) * (LoopScope->ContinueJumpC + 1));
 }
 
 void ScopeAddBreakJump(Scope* scope, int offset) {
@@ -42,7 +43,8 @@ void ScopeAddBreakJump(Scope* scope, int offset) {
         return;
     }
     LoopScope->BreakJumps[LoopScope->BreakJumpC++] = offset;
-    LoopScope->BreakJumps = Reallocate(LoopScope->BreakJumps, sizeof(int) * (LoopScope->BreakJumpC + 1));
+    LoopScope->BreakJumps =
+        Reallocate(LoopScope->BreakJumps, sizeof(int) * (LoopScope->BreakJumpC + 1));
 }
 
 bool ScopeIs(Scope* scope, ScopeType type) {
@@ -71,15 +73,15 @@ bool ScopeHasName(Scope* scope, String name) {
     if (HashMapContains(scope->Symbols, name)) {
         return true;
     }
-    
+
     if (scope->Parent != NULL) {
         return ScopeHasName(scope->Parent, name);
     }
-    
+
     return false;
 }
 
-bool ScopeIsLocalToGlobal(Scope *scope, String name) {
+bool ScopeIsLocalToGlobal(Scope* scope, String name) {
     Scope* current = scope;
     while (current != NULL) {
         if (HashMapContains(current->Symbols, name)) {
@@ -125,8 +127,14 @@ bool ScopeIsLocalToFn(Scope* scope, String name) {
     return false;
 }
 
-void ScopeSetSymbol(Scope* scope, String name, bool isGlobal, bool isLocalToFn, bool isConstant, int offset) {
-    //Note: memory leak (if 'name' already exists in scope->Symbols, HashMapSet overwrites the old Symbol* without freeing it)
+void ScopeSetSymbol(Scope* scope,
+                    String name,
+                    bool   isGlobal,
+                    bool   isLocalToFn,
+                    bool   isConstant,
+                    int    offset) {
+    // Note: memory leak (if 'name' already exists in scope->Symbols, HashMapSet overwrites the old
+    // Symbol* without freeing it)
     Symbol* symbol = CreateSymbol(isGlobal, isLocalToFn, isConstant, offset);
     HashMapSet(scope->Symbols, name, symbol);
 }
@@ -136,11 +144,11 @@ Symbol* ScopeGetSymbol(Scope* scope, String name, bool recurse) {
     if (symbol != NULL) {
         return symbol;
     }
-    
+
     if (recurse && scope->Parent != NULL) {
         return ScopeGetSymbol(scope->Parent, name, recurse);
     }
-    
+
     return NULL;
 }
 
@@ -157,7 +165,7 @@ int ScopeGetDepthOfSymbol(Scope* scope, String name) {
         scope = scope->Parent;
     }
     Panic("Not found!");
-    return -1; // Not found
+    return -1;  // Not found
 }
 
 bool ScopeHasCapture(Scope* scope, String name) {
@@ -174,12 +182,18 @@ bool ScopeHasCapture(Scope* scope, String name) {
     return false;
 }
 
-void ScopeSetCapture(Scope* scope, String name, bool isGlobal, bool isLocalToFn, bool isConstant, int offset) {
+void ScopeSetCapture(Scope* scope,
+                     String name,
+                     bool   isGlobal,
+                     bool   isLocalToFn,
+                     bool   isConstant,
+                     int    offset) {
     Scope* closureScope = ScopeGetFirst(scope, SCOPE_FUNCTION);
     if (closureScope == NULL) {
         return;
     }
-    //Note: memory leak (if 'name' already exists in closureScope->Captures, HashMapSet overwrites the old Symbol* without freeing it)
+    // Note: memory leak (if 'name' already exists in closureScope->Captures, HashMapSet overwrites
+    // the old Symbol* without freeing it)
     Symbol* symbol = CreateSymbol(isGlobal, isLocalToFn, isConstant, offset);
     HashMapSet(closureScope->Captures, name, symbol);
 }
@@ -226,7 +240,7 @@ static void _FreeHashMapSymbols(HashMap* hashmap) {
     if (hashmap == NULL) {
         return;
     }
-    
+
     for (size_t i = 0; i < hashmap->Size; i++) {
         HashNode* node = &hashmap->Buckets[i];
         while (node != NULL && node->Key != NULL) {

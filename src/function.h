@@ -1,7 +1,7 @@
 #include "./global.h"
 
 #ifndef FUNCTION_H
-#define FUNCTION_H
+#    define FUNCTION_H
 
 /**
  * Creates a new user function.
@@ -58,8 +58,8 @@ String UserFunctionToString(UserFunction* userFunction);
 
 /**
  * Frees a User Defined function
- * 
- * @param userFunction Pointer to the UserFunction structure 
+ *
+ * @param userFunction Pointer to the UserFunction structure
  */
 void FreeUserFunction(UserFunction* userFunction);
 
@@ -71,7 +71,8 @@ void FreeUserFunction(UserFunction* userFunction);
  * @param funcPtr Pointer to the native function implementation.
  * @return Pointer to the newly created NativeFunction structure, or NULL on failure.
  */
-NativeFunction* CreateNativeFunctionMeta(const String name, int argc, NativeFunctionCallback funcPtr);
+NativeFunction*
+CreateNativeFunctionMeta(const String name, int argc, NativeFunctionCallback funcPtr);
 
 /**
  * Converts a native function metadata structure to its string representation.
@@ -83,8 +84,8 @@ String NativeFunctionMetaToString(NativeFunction* meta);
 
 /**
  * Frees a native function
- * 
- * @param nativeFunction Pointer to the NativeFunction structure 
+ *
+ * @param nativeFunction Pointer to the NativeFunction structure
  */
 void FreeNativeFunction(NativeFunction* nativeFunction);
 

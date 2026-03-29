@@ -1,15 +1,12 @@
 #include "./position.h"
 
 Position PositionFromLineAndColm(int line, int colm) {
-    Position position = {
-        .LineStart = line,
-        .LineEnded = line,
-        .ColmStart = colm,
-        .ColmEnded = colm
-    };
+    Position position = { .LineStart = line,
+                          .LineEnded = line,
+                          .ColmStart = colm,
+                          .ColmEnded = colm };
     return position;
 }
-
 
 Position MergePositions(Position a, Position b) {
     Position position;

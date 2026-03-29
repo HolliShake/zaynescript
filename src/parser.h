@@ -1,11 +1,11 @@
 #include "./astnode.h"
 #include "./global.h"
 #include "./keyword.h"
-#include "./position.h"
 #include "./lexer.h"
+#include "./position.h"
 
 #ifndef PARSER_H
-#define PARSER_H
+#    define PARSER_H
 
 /*
  * parser.h - Syntax analysis and Abstract Syntax Tree construction

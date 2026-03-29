@@ -1,7 +1,7 @@
 #include "./global.h"
 
 #ifndef HASHMAP_H
-#define HASHMAP_H
+#    define HASHMAP_H
 
 /**
  * CreateHashMap - Creates and initializes a new hash map

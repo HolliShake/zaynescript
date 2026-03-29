@@ -11,7 +11,7 @@ Array* CreateArray() {
 void ArrayPush(Array* array, void* value) {
     if (array->Count >= array->Capacity) {
         array->Capacity *= 2;
-        array->Items = Reallocate(array->Items, sizeof(void*) * array->Capacity);
+        array->Items     = Reallocate(array->Items, sizeof(void*) * array->Capacity);
     }
     array->Items[array->Count++] = value;
 }
@@ -52,9 +52,10 @@ size_t ArrayLength(Array* array) {
     return array->Count;
 }
 
-void ArrayExtend(Array *array, Array *other) {
-    if (other->Count == 0) return;
-    
+void ArrayExtend(Array* array, Array* other) {
+    if (other->Count == 0)
+        return;
+
     size_t required_capacity = array->Count + other->Count;
     if (required_capacity > array->Capacity) {
         while (array->Capacity < required_capacity) {
@@ -62,7 +63,7 @@ void ArrayExtend(Array *array, Array *other) {
         }
         array->Items = Reallocate(array->Items, sizeof(void*) * array->Capacity);
     }
-    
+
     for (size_t i = 0; i < other->Count; i++) {
         array->Items[array->Count++] = other->Items[i];
     }
@@ -71,10 +72,15 @@ void ArrayExtend(Array *array, Array *other) {
 extern String ValueToString(Value* value);
 
 String ArrayToString(Array* array) {
-    if (array == NULL) return NULL;
+    if (array == NULL)
+        return NULL;
     if (array->Count == 0) {
         String s = Allocate(3);
-        if (s) { s[0] = '['; s[1] = ']'; s[2] = '\0'; }
+        if (s) {
+            s[0] = '[';
+            s[1] = ']';
+            s[2] = '\0';
+        }
         return s;
     }
 
@@ -84,17 +90,21 @@ String ArrayToString(Array* array) {
     // ----------------------------------------------------------------
     // PASS 1: resolve all elements, measure total length
     // ----------------------------------------------------------------
-    String *parts = Allocate(array->Count * sizeof(String));
-    if (!parts) return NULL;
-    size_t *lens = Allocate(array->Count * sizeof(size_t));
-    if (!lens) { free(parts); return NULL; }
+    String* parts = Allocate(array->Count * sizeof(String));
+    if (!parts)
+        return NULL;
+    size_t* lens = Allocate(array->Count * sizeof(size_t));
+    if (!lens) {
+        free(parts);
+        return NULL;
+    }
 
     // '[' + (Count-1)*", " + ']' + '\0'
     size_t total = 1 + (array->Count - 1) * 2 + 1 + 1;
 
     for (size_t i = 0; i < array->Count; i++) {
-        if (array->Items[i] == (Value*)array) {
-            parts[i] = NULL;        // NULL sentinel = self-reference
+        if (array->Items[i] == (Value*) array) {
+            parts[i] = NULL;  // NULL sentinel = self-reference
             lens[i]  = SELF_LEN;
         } else {
             parts[i] = ValueToString(array->Items[i]);
@@ -107,13 +117,17 @@ String ArrayToString(Array* array) {
     // PASS 2: single allocation, memcpy everything in
     // ----------------------------------------------------------------
     String buffer = Allocate(total);
-    if (!buffer) goto cleanup;
+    if (!buffer)
+        goto cleanup;
 
     String p = buffer;
-    *p++ = '[';
+    *p++     = '[';
 
     for (size_t i = 0; i < array->Count; i++) {
-        if (i > 0) { *p++ = ','; *p++ = ' '; }
+        if (i > 0) {
+            *p++ = ',';
+            *p++ = ' ';
+        }
 
         if (parts[i] == NULL) {
             memcpy(p, SELF, SELF_LEN);
@@ -132,7 +146,7 @@ String ArrayToString(Array* array) {
 
 cleanup:
     for (size_t i = 0; i < array->Count; i++)
-        free(parts[i]); // NULL-safe, only hits on alloc failure path
+        free(parts[i]);  // NULL-safe, only hits on alloc failure path
     free(parts);
     free(lens);
 

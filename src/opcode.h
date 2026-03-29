@@ -2,5 +2,4 @@
 #define OPCODE_H
 
 
-
 #endif

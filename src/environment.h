@@ -1,13 +1,13 @@
 #include "./global.h"
 
 #ifndef ENVIRONMENT_H
-#define ENVIRONMENT_H
+#    define ENVIRONMENT_H
 
 
 /**
  * CreateEnvCell - Creates a new environment cell
  * @value: The value to store in the environment cell
- * 
+ *
  * Return: Pointer to the newly created EnvCell structure
  */
 EnvCell* CreateEnvCell(Value* value);
@@ -16,7 +16,7 @@ EnvCell* CreateEnvCell(Value* value);
  * CreateEnvironment - Creates a new environment
  * @parent: The parent value
  * @localC: The number of local variables in the environment
- * 
+ *
  * Return: Pointer to the newly created Environment structure
  */
 Environment* CreateEnvironment(Value* parent, int localC);
@@ -27,7 +27,7 @@ Environment* CreateEnvironment(Value* parent, int localC);
  * @environment: The environment to set the local variable in
  * @offset: The offset of the local variable
  * @value: The value to set the local variable to
- * 
+ *
  * Return: void
  */
 void EnvironmentSetLocal(Environment* environment, int offset, Value* value);
@@ -37,7 +37,7 @@ void EnvironmentSetLocal(Environment* environment, int offset, Value* value);
  * EnvironmentGetLocal - Gets a local variable from the environment
  * @environment: The environment to get the local variable from
  * @offset: The offset of the local variable
- * 
+ *
  * Return: The environment cell containing the value of the local variable
  */
 EnvCell* EnvironmentGetLocal(Environment* environment, int offset);
@@ -45,7 +45,7 @@ EnvCell* EnvironmentGetLocal(Environment* environment, int offset);
 /**
  * EnvironmentClone - Clones an environment
  * @envValue: The environment to clone
- * 
+ *
  * Return: Pointer to the newly cloned Environment structure
  */
 Environment* EnvironmentCloneFromValue(Value* envValue);
@@ -54,15 +54,15 @@ Environment* EnvironmentCloneFromValue(Value* envValue);
  * EnvironmentSync - Synchronizes the local variables of two environments
  * @src: The source environment to synchronize from
  * @dst: The destination environment to synchronize to
- * 
+ *
  * Return: void
  */
 void EnvironmentSync(Environment* src, Environment* dst);
 
 /**
  * Frees Environment
- * 
- * @param environment Pointer to the Environment Structure 
+ *
+ * @param environment Pointer to the Environment Structure
  */
 void FreeEnvironment(Environment* environment);
 

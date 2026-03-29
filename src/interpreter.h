@@ -21,7 +21,7 @@
 #include "./value.h"
 
 #ifndef INTERPRETER_H
-#define INTERPRETER_H
+#    define INTERPRETER_H
 
 /**
  * Creates and initializes a new interpreter instance.
@@ -29,8 +29,9 @@
  * Allocates and initializes a new interpreter with default settings.
  * The interpreter manages execution state, call stack, and runtime
  * environment for program execution.
- * 
- * @param execPath Optional directory path of the executable, used for resolving imports. Can be NULL.
+ *
+ * @param execPath Optional directory path of the executable, used for resolving imports. Can be
+ * NULL.
  * @return Pointer to newly allocated Interpreter structure, or NULL on failure.
  *
  * @note The caller is responsible for freeing the interpreter using
@@ -45,7 +46,7 @@ Interpreter* CreateInterpreter(String execPath);
  *
  * Interprets and executes the user function contained in the provided
  * Value structure. This is the main entry point for program execution.
- * 
+ *
  * @param interpreter Pointer to the interpreter instance.
  * @param fnValue     Pointer to the Value containing the UserFunction to execute.
  *
@@ -56,7 +57,7 @@ Interpreter* CreateInterpreter(String execPath);
  *
  * @see CreateInterpreter()
  */
-void Interpret(Interpreter* interpreter, Value* fnValue/*UserFunction*/);
+void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/);
 
 /**
  * Frees the interpreter and all associated memory.
@@ -64,7 +65,7 @@ void Interpret(Interpreter* interpreter, Value* fnValue/*UserFunction*/);
  * Deallocates the interpreter instance and releases all associated
  * resources including execution stack, environment, and any other
  * dynamically allocated memory.
- * 
+ *
  * @param interpreter Pointer to the interpreter instance to free.
  *
  * @note After calling this function, the interpreter pointer becomes invalid
