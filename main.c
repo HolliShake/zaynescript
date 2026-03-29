@@ -277,11 +277,11 @@ void PrintHelp() {
     printf("║  License:  MIT License                                                                   ║\n");
     printf("║  Author:   Philipp Andrew Redondo                                                        ║\n");
     printf("║                                                                                          ║\n");
-    printf("║  usage: main [--run <file.zs> | --tests | --help]                                        ║\n");
+    printf("║  usage: zscript [--run <file.zs> | --tests | --help]                                     ║\n");
     printf("╚══════════════════════════════════════════════════════════════════════════════════════════╝\n");
     printf("\n");
     printf("USAGE:\n");
-    printf("  %s [OPTIONS] [FILE]\n", "main");
+    printf("  %s [OPTIONS] [FILE]\n", "zscript");
     printf("\n");
     printf("OPTIONS:\n");
     printf("  --tests              Run all test files in ./tests/ directory\n");
@@ -289,8 +289,8 @@ void PrintHelp() {
     printf("  --help, -h           Display this help message\n");
     printf("\n");
     printf("EXAMPLES:\n");
-    printf("  %s --tests           # Run all tests\n", "main");
-    printf("  %s --run script.zs   # Run script.zs\n", "main");
+    printf("  %s --tests           # Run all tests\n", "zscript");
+    printf("  %s --run script.zs   # Run script.zs\n", "zscript");
     printf("\n");
 }
 
@@ -329,8 +329,6 @@ int main(int argc, char** argv) {
         PrintHelp();
         return EXIT_SUCCESS;
     }
-
-    printf("=== ZayneScript - Interpreter ===\n\n");
 
     Interpreter* interpreter = CreateInterpreter();
 

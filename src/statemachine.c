@@ -14,6 +14,8 @@ StateMachine* CreateStateMachine(StateMachineState initial, bool isCallback, siz
     sm->Stacks       = NULL;
     sm->WaitListC    = 0;
     sm->WaitList     = Allocate(sizeof(Value*)), sm->WaitList[0] = NULL; // initial capacity for wait list
+    sm->EnvStack     = NULL;
+    sm->EnvTop       = 0;
     return sm;
 }
 
@@ -49,6 +51,8 @@ void StateMachineAddWaitList(StateMachine* stateMachine, Value* value) {
 }
 
 void FreeStateMachine(StateMachine* sm) {
-    free(sm->WaitList);
+    if (sm->Stacks   != NULL) free(sm->Stacks);
+    if (sm->EnvStack != NULL) free(sm->EnvStack);
+    if (sm->WaitList != NULL) free(sm->WaitList);
     free(sm);
 }

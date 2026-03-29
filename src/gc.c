@@ -210,8 +210,11 @@ void Mark(Value* value) {
                 Mark(sm->WaitFor);
                 Mark(sm->Value);
                 Mark(sm->Function);
-                for (int i = 0; i < sm->StackTop; i++) {
-                    if (sm->Stacks != NULL) Mark(sm->Stacks[i]);
+                if (sm->EnvStack != NULL) for (int i = 0; i < sm->EnvTop; i++) {
+                    Mark(sm->EnvStack[i]);
+                }
+                if (sm->Stacks != NULL) for (int i = 0; i < sm->StackTop; i++) {
+                    Mark(sm->Stacks[i]);
                 }
                 for (int i = 0; i < sm->WaitListC; i++) {
                     Mark(sm->WaitList[i]);

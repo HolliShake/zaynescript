@@ -437,32 +437,36 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
         _PopN(argc);
         StateMachine* sm = CoerceToStateMachine(fn);
         if (sm->WaitFor == NULL) Panic("Attempted to resume a promise that is not waiting on any value!");
+        
         if (sm->State == PENDING) {
             // 2. ANCHOR: Set the new bottom to the CURRENT top of the stack
+            sm->EnvBot   = interp->EnvC;
             sm->StackBot = interp->StackC;
 
-            // 3. Restore to the OFFSET position (interp->Stacks + sm->StackBot)
-            if (sm->Stacks != NULL && sm->StackTop > 0) {
+            if (sm->EnvStack != NULL && sm->EnvTop > 0) {
+                memcpy(&interp->Envs[sm->EnvBot], sm->EnvStack, sizeof(Value*) * sm->EnvTop);
+                
+                // 3. Advance the global env stack pointer
+                interp->EnvC = sm->EnvBot + sm->EnvTop;
+            }
+
+            // 4. Restore to the OFFSET position (interp->Stacks + sm->StackBot)
+            if (sm->Stacks != NULL && sm->StackTop > 0) {                
                 memcpy(&interp->Stacks[sm->StackBot], sm->Stacks, sizeof(Value*) * sm->StackTop);
                 
-                // 4. Advance the global stack pointer
+                // 5. Advance the global stack pointer
                 interp->StackC = sm->StackBot + sm->StackTop;
             }
         } else {
             Panic("Attempted to resume a promise that is not pending (current state: %d)\n", sm->State);
         }
 
-        // 1. Save
-        interp->Envs[interp->EnvC++] = interp->CallEnv;
-        interp->CallEnv = env = sm->CallEnv;
+        // =========================================================
+        // FIX: Save the caller's state in C variables, not the VM array!
+        // =========================================================
+        interp->CallEnv = sm->CallEnv;
         
-        // 2. Run
         Run(interp, fn);
-
-        // 3. Restore
-        env = interp->Envs[--interp->EnvC];
-        interp->Envs[interp->EnvC] = NULL;
-        interp->CallEnv = env;
 
         return interp->Null;
     }

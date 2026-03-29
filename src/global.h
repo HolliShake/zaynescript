@@ -789,6 +789,9 @@ typedef struct state_machine_struct {
     Value**           Stacks;
     Value**           WaitList;
     size_t            WaitListC;
+    Value**           EnvStack;
+    size_t            EnvTop;
+    size_t            EnvBot;
 } StateMachine;
 
 // -----------------------------------------------------------------------------
