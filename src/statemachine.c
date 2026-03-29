@@ -51,8 +51,8 @@ void StateMachineAddWaitList(StateMachine* stateMachine, Value* value) {
 }
 
 void FreeStateMachine(StateMachine* sm) {
-    free(sm->Stacks);
-    free(sm->EnvStack);
-    free(sm->WaitList);
+    if (sm->Stacks   != NULL) free(sm->Stacks);
+    if (sm->EnvStack != NULL) free(sm->EnvStack);
+    if (sm->WaitList != NULL) free(sm->WaitList);
     free(sm);
 }
