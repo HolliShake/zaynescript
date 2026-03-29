@@ -255,13 +255,16 @@ _JumpToAbsoluteLabel(Compiler* compiler, UserFunction* uf, int sourceOffset, int
 
 static void _CompileStatement(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* node);
 
-static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* exp);
+static void _CompileAssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* exp);
+static void _CompileAugmentedAssignOp(Compiler*     compiler,
+                                      UserFunction* uf,
+                                      Scope*        scope,
+                                      Ast*          exp,
+                                      OpcodeEnum    opcode);
 static void
-_AugmentedAssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* exp, OpcodeEnum opcode);
+_CompileAssignOpRhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* lhs, bool postfix);
 static void
-_AssignOpRhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* lhs, bool postfix);
-static void
-_AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* lhs, bool postfix);
+_CompileAssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* lhs, bool postfix);
 
 static void
 _CompileIdentifier(Compiler* compiler, UserFunction* uf, Scope* scope, String name, Position pos) {
@@ -702,38 +705,38 @@ static Value* _CompileExpressionMain(Compiler*     compiler,
             }
         case AST_POST_INC:
             {
-                _AssignOpRhs(compiler, uf, scope, node->A, true);
+                _CompileAssignOpRhs(compiler, uf, scope, node->A, true);
                 _EmitLine(compiler, uf, node->Position);
                 _Emit(compiler, uf, OP_POSTINC);
-                _AssignOpLhs(compiler, uf, scope, node->A, true);
+                _CompileAssignOpLhs(compiler, uf, scope, node->A, true);
                 break;
             }
         case AST_POST_DEC:
             {
-                _AssignOpRhs(compiler, uf, scope, node->A, true);
+                _CompileAssignOpRhs(compiler, uf, scope, node->A, true);
                 _EmitLine(compiler, uf, node->Position);
                 _Emit(compiler, uf, OP_POSTDEC);
-                _AssignOpLhs(compiler, uf, scope, node->A, true);
+                _CompileAssignOpLhs(compiler, uf, scope, node->A, true);
                 break;
             }
         case AST_PRE_INC:
             {
-                _AssignOpRhs(compiler, uf, scope, node->A, false);
+                _CompileAssignOpRhs(compiler, uf, scope, node->A, false);
                 _EmitLine(compiler, uf, node->Position);
                 _Emit(compiler, uf, OP_INC);
                 _EmitLine(compiler, uf, node->Position);
                 _Emit(compiler, uf, OP_DUPTOP);
-                _AssignOpLhs(compiler, uf, scope, node->A, false);
+                _CompileAssignOpLhs(compiler, uf, scope, node->A, false);
                 break;
             }
         case AST_PRE_DEC:
             {
-                _AssignOpRhs(compiler, uf, scope, node->A, false);
+                _CompileAssignOpRhs(compiler, uf, scope, node->A, false);
                 _EmitLine(compiler, uf, node->Position);
                 _Emit(compiler, uf, OP_DEC);
                 _EmitLine(compiler, uf, node->Position);
                 _Emit(compiler, uf, OP_DUPTOP);
-                _AssignOpLhs(compiler, uf, scope, node->A, false);
+                _CompileAssignOpLhs(compiler, uf, scope, node->A, false);
                 break;
             }
         case AST_AWAIT:
@@ -1292,57 +1295,57 @@ static Value* _CompileExpressionMain(Compiler*     compiler,
             }
         case AST_ASSIGN:
             {
-                _AssignOp(compiler, uf, scope, node);
+                _CompileAssignOp(compiler, uf, scope, node);
                 break;
             }
         case AST_MUL_ASSIGN:
             {
-                _AugmentedAssignOp(compiler, uf, scope, node, OP_MUL);
+                _CompileAugmentedAssignOp(compiler, uf, scope, node, OP_MUL);
                 break;
             }
         case AST_DIV_ASSIGN:
             {
-                _AugmentedAssignOp(compiler, uf, scope, node, OP_DIV);
+                _CompileAugmentedAssignOp(compiler, uf, scope, node, OP_DIV);
                 break;
             }
         case AST_MOD_ASSIGN:
             {
-                _AugmentedAssignOp(compiler, uf, scope, node, OP_MOD);
+                _CompileAugmentedAssignOp(compiler, uf, scope, node, OP_MOD);
                 break;
             }
         case AST_ADD_ASSIGN:
             {
-                _AugmentedAssignOp(compiler, uf, scope, node, OP_ADD);
+                _CompileAugmentedAssignOp(compiler, uf, scope, node, OP_ADD);
                 break;
             }
         case AST_SUB_ASSIGN:
             {
-                _AugmentedAssignOp(compiler, uf, scope, node, OP_SUB);
+                _CompileAugmentedAssignOp(compiler, uf, scope, node, OP_SUB);
                 break;
             }
         case AST_LSHFT_ASSIGN:
             {
-                _AugmentedAssignOp(compiler, uf, scope, node, OP_LSHFT);
+                _CompileAugmentedAssignOp(compiler, uf, scope, node, OP_LSHFT);
                 break;
             }
         case AST_RSHFT_ASSIGN:
             {
-                _AugmentedAssignOp(compiler, uf, scope, node, OP_RSHFT);
+                _CompileAugmentedAssignOp(compiler, uf, scope, node, OP_RSHFT);
                 break;
             }
         case AST_AND_ASSIGN:
             {
-                _AugmentedAssignOp(compiler, uf, scope, node, OP_AND);
+                _CompileAugmentedAssignOp(compiler, uf, scope, node, OP_AND);
                 break;
             }
         case AST_OR_ASSIGN:
             {
-                _AugmentedAssignOp(compiler, uf, scope, node, OP_OR);
+                _CompileAugmentedAssignOp(compiler, uf, scope, node, OP_OR);
                 break;
             }
         case AST_XOR_ASSIGN:
             {
-                _AugmentedAssignOp(compiler, uf, scope, node, OP_XOR);
+                _CompileAugmentedAssignOp(compiler, uf, scope, node, OP_XOR);
                 break;
             }
         default:
@@ -1357,7 +1360,7 @@ static Value* _CompileExpressionMain(Compiler*     compiler,
     return val;
 }
 
-static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* exp) {
+static void _CompileAssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* exp) {
     Ast* lhs = exp->A;
     Ast* rhs = exp->B;
     switch (lhs->Type) {
@@ -1447,11 +1450,11 @@ static void _AssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* e
     }
 }
 
-static void _AugmentedAssignOp(Compiler*     compiler,
-                               UserFunction* uf,
-                               Scope*        scope,
-                               Ast*          exp,
-                               OpcodeEnum    opcode) {
+static void _CompileAugmentedAssignOp(Compiler*     compiler,
+                                      UserFunction* uf,
+                                      Scope*        scope,
+                                      Ast*          exp,
+                                      OpcodeEnum    opcode) {
     Ast* lhs = exp->A;
     Ast* rhs = exp->B;
     switch (lhs->Type) {
@@ -1569,7 +1572,7 @@ static void _AugmentedAssignOp(Compiler*     compiler,
 }
 
 static void
-_AssignOpRhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* rhs, bool postfix) {
+_CompileAssignOpRhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* rhs, bool postfix) {
     switch (rhs->Type) {
         case AST_NAME:
             {
@@ -1614,7 +1617,7 @@ _AssignOpRhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* rhs, bool 
 }
 
 static void
-_AssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* lhs, bool postfix) {
+_CompileAssignOpLhs(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* lhs, bool postfix) {
     switch (lhs->Type) {
         case AST_NAME:
             {

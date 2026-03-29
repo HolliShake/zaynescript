@@ -50,6 +50,7 @@ Value* Compile(Compiler* compiler);
  * or analysis after compilation.
  *
  * @param compiler Pointer to the compiler instance containing the parser and interpreter.
+ * @param programAst Pointer to the root AST node to compile.
  * @return Pointer to a Value containing the compiled UserFunction on success, or NULL on
  * compilation failure.
  */

@@ -230,7 +230,7 @@ static Ast* _ParseList(Parser* parser) {
     return AstListLiteral(head, MergePositions(start, ended));
 }
 
-static Ast* _ObjectElement(Parser* parser) {
+static Ast* _ParseObjectElement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
     Ast*     element = NULL;
     if (CHECKTV("...")) {
@@ -277,14 +277,14 @@ static Ast* _ParseObject(Parser* parser) {
     Ast* head = NULL;
     Ast* tail = NULL;
 
-    Ast* element = _ObjectElement(parser);
+    Ast* element = _ParseObjectElement(parser);
     if (element != NULL) {
         head = element;
         tail = element;
 
         while (CHECKTV(",")) {
             ACCEPTV_FREE(",");
-            element = _ObjectElement(parser);
+            element = _ParseObjectElement(parser);
             if (element == NULL) {
                 ThrowError(parser->Lexer->Path,
                            parser->Lexer->Data,

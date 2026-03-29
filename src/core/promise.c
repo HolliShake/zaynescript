@@ -42,20 +42,20 @@ Value* _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
     return newPromise;
 }
 
-Value* _PromiseCatch(Interpreter* interpreter, int argc, Value** arguments) {
+Value* _PromiseError(Interpreter* interpreter, int argc, Value** arguments) {
     if (argc != 2) {
-        return NewErrorValue(interpreter, "Promise.catch expects 2 arguments");
+        return NewErrorValue(interpreter, "Promise.error expects 2 arguments");
     }
 
     Value* thisArg       = arguments[0];
     Value* catchCallback = arguments[1];
 
     if (!ValueIsPromise(thisArg)) {
-        return NewErrorValue(interpreter, "First argument to Promise.catch must be a promise");
+        return NewErrorValue(interpreter, "First argument to Promise.error must be a promise");
     }
 
     if (!ValueIsCallable(catchCallback)) {
-        return NewErrorValue(interpreter, "Second argument to Promise.catch must be a function");
+        return NewErrorValue(interpreter, "Second argument to Promise.error must be a function");
     }
 
     int argNeeded = ValueIsNativeFunction(catchCallback)
@@ -65,7 +65,7 @@ Value* _PromiseCatch(Interpreter* interpreter, int argc, Value** arguments) {
     if (argNeeded != 1 && argNeeded != VARARG) {
         return NewErrorValue(
             interpreter,
-            "Callback function for Promise.catch must take exactly 1 argument (error)");
+            "Callback function for Promise.error must take exactly 1 argument (error)");
     }
 
     StateMachine* sm =
@@ -83,9 +83,9 @@ static ModuleFunction _PromiseClassMethods[] = {
       .Argc      = 2,
       .CFunction = (NativeFunctionCallback) _PromiseThen,
       .Value     = NULL },
-    { .Name      = "catch",
+    { .Name      = "error",
       .Argc      = 2,
-      .CFunction = (NativeFunctionCallback) _PromiseCatch,
+      .CFunction = (NativeFunctionCallback) _PromiseError,
       .Value     = NULL },
     // end of module functions
     { .Name = NULL }

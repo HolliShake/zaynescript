@@ -39,12 +39,12 @@ Ast* AstInteger(String value, Position position);
 /**
  * Creates an AST node representing a big integer literal.
  *
- * Allocates and initializes an AST_B
- * INT node that represents a big integer constant in the source code.
+ * Allocates and initializes an AST_BIGINT node that represents a big integer
+ * constant in the source code.
  *
  * @param value String representation of the big integer value.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST
+ * @return Pointer to newly allocated AST_BIGINT node, or NULL on allocation failure.
  */
 Ast* AstBigInteger(String value, Position position);
 
@@ -250,11 +250,11 @@ Ast* AstBinary(AstType type, Ast* lhs, Ast* rhs, Position position);
  * Creates an AST node representing a ternary conditional operation.
  *
  * Allocates and initializes an AST_TERNARY node that represents
- * a ternary conditional expression (condition ? trueBranch : falseBranch).
+ * a ternary conditional expression (condition ? thenBranch : elseBranch).
  *
  * @param condition Pointer to the condition AST node.
- * @param trueBranch Pointer to the true branch AST node.
- * @param falseBranch Pointer to the false branch AST node.
+ * @param thenBranch Pointer to the then-branch AST node.
+ * @param elseBranch Pointer to the else-branch AST node.
  * @param position Source code location information.
  * @return Pointer to newly allocated AST_TERNARY node, or NULL on allocation failure.
  */

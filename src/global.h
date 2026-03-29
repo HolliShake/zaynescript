@@ -36,6 +36,10 @@
 
 // Constants & Macros
 
+/**
+ * @def GC_GROWTH_FACTOR
+ * @brief Growth factor for the garbage collection threshold after each cycle.
+ */
 #define GC_GROWTH_FACTOR 2
 
 /**
@@ -62,10 +66,24 @@
  */
 #define CONSTRUCTOR_NAME "init"
 
+/**
+ * @def PREC_INT
+ * @brief Precision for integer big-number operations (exact).
+ */
 #define PREC_INT 0
 
+/**
+ * @def PREC_DBL
+ * @brief Precision for double-precision big-number operations (53-bit mantissa).
+ */
 #define PREC_DBL 53
 
+/**
+ * @def PREC_NUM
+ * @brief Computes the precision in bits for a big-number value of given limb length.
+ *
+ * @param len Number of limbs.
+ */
 #define PREC_NUM(len) (uint64_t) len* LIMB_BITS
 
 /**
@@ -490,7 +508,7 @@ typedef enum opcode_enum {
  * @brief Metadata for captured variables in closures.
  *
  * Describes how a variable from an outer scope is captured by a closure,
- * including whether it's global and the source/destination indices.
+ * including the scope depth and the source/destination indices.
  */
 typedef struct capture_meta_struct {
     int Depth; /**< Depth of the captured variable's scope relative to the closure */
@@ -698,6 +716,17 @@ typedef struct module_function_struct {
 // -----------------------------------------------------------------------------
 
 /**
+ * @struct stack_trace_struct
+ * @brief Represents a single entry in the call stack for debugging.
+ *
+ * Stores the line information and function value for a particular call frame.
+ */
+typedef struct stack_trace {
+    LineInfo line;
+    Value*   Function;
+} StackTrace;
+
+/**
  * @struct interpreter_struct
  * @brief Main interpreter state structure containing execution context.
  *
@@ -733,10 +762,10 @@ struct interpreter_struct {
     Value*       TaskQueue[STACK_SIZE]; /**< Queue for pending tasks (e.g. resolved promises) */
     int          TaskQueueHead;         /**< Head index (next item to dequeue) */
     int          TaskQueueC;            /**< Count of pending tasks in the task queue */
-    Value*
-        CallStack[STACK_SIZE]; /**< Call stack for function calls (stores return addresses, etc.) */
-    int CallStackC;            /**< Call stack pointer */
-    Value* ActiveTask;         /**< Currently active task being processed */
+    StackTrace   CallStack[STACK_SIZE]; /**< Call stack for debugging (stores line info and function
+                                           for each call frame) */
+    int    CallStackC;                  /**< Call stack pointer/count */
+    Value* ActiveTask;                  /**< Currently active task being processed */
 };
 
 /**
@@ -758,7 +787,7 @@ typedef struct compiler_struct {
  *
  * @var PENDING
  *      State indicating that the operation is still in progress.
- * @var COMPLETE
+ * @var FULFILLED
  *      State indicating that the operation has completed successfully.
  * @var REJECTED
  *      State indicating that the operation has failed or been rejected.
@@ -774,40 +803,55 @@ typedef enum state_machine_state_enum {
  * @brief Represents a state machine for managing asynchronous operations.
  *
  * @var StateMachine::State
- *      The current state of the state machine (PENDING, COMPLETE, or REJECTED).
+ *      The current state of the state machine (PENDING, FULFILLED, or REJECTED).
  * @var StateMachine::StackTop
  *      The current top index of the execution stack for this state machine.
  * @var StateMachine::StackBot
  *      The base index of the execution stack for this state machine.
+ * @var StateMachine::IsCallback
+ *      True if this state machine is a callback (e.g. then/catch handler).
+ * @var StateMachine::CallEnv
+ *      The execution environment active when the state machine was created.
  * @var StateMachine::WaitFor
  *      Pointer to a value that the state machine is waiting on (e.g. a promise).
  * @var StateMachine::Value
  *      Pointer to the resulting value produced by the state machine operation.
- * @var StateMachine::Then
- *      Pointer to a callback value to be executed upon successful completion.
- * @var StateMachine::Catch
- *      Pointer to a callback value to be executed upon rejection or error.
  * @var StateMachine::Function
  *      Pointer to the primary function or operation being executed by the state machine.
  * @var StateMachine::Ip
  *      Instruction pointer; tracks the execution position within the state machine.
+ * @var StateMachine::Line
+ *      Line information for debugging.
+ * @var StateMachine::Stacks
+ *      Saved execution stack for this state machine's context.
+ * @var StateMachine::WaitList
+ *      Array of values (promises) that this state machine is waiting on.
+ * @var StateMachine::WaitListC
+ *      Count of items in the WaitList.
+ * @var StateMachine::EnvStack
+ *      Saved environment stack for this state machine's context.
+ * @var StateMachine::EnvTop
+ *      Top index of the saved environment stack.
+ * @var StateMachine::EnvBot
+ *      Base index of the saved environment stack.
  */
 typedef struct state_machine_struct {
-    StateMachineState State;
-    size_t            StackTop;
-    size_t            StackBot;
-    bool              IsCallback;
-    Value*            CallEnv;
-    Value*            WaitFor;
-    Value*            Value;
-    Value*            Function;
-    size_t            Ip;
-    Value**           Stacks;
-    Value**           WaitList;
-    size_t            WaitListC;
-    Value**           EnvStack;
-    size_t            EnvTop;
-    size_t            EnvBot;
+    StateMachineState State;      /**< Current state (PENDING, FULFILLED, or REJECTED) */
+    size_t            StackTop;   /**< Top index of the execution stack */
+    size_t            StackBot;   /**< Base index of the execution stack */
+    bool              IsCallback; /**< True if this is a callback state machine */
+    Value*            CallEnv;    /**< Execution environment when created */
+    Value*            WaitFor;    /**< Value being awaited (e.g. a promise) */
+    Value*            Value;      /**< Resulting value of the operation */
+    Value*            Function;   /**< Function being executed */
+    size_t            Ip;         /**< Instruction pointer */
+    LineInfo          Line;       /**< Line information for debugging */
+    Value**           Stacks;     /**< Saved execution stack */
+    Value**           WaitList;   /**< Array of awaited values */
+    size_t            WaitListC;  /**< Count of items in WaitList */
+    Value**           EnvStack;   /**< Saved environment stack */
+    size_t            EnvTop;     /**< Top index of saved environment stack */
+    size_t            EnvBot;     /**< Base index of saved environment stack */
 } StateMachine;
 
 // -----------------------------------------------------------------------------
@@ -1144,14 +1188,14 @@ String FormatString(String format, ...);
 String BFIntToString(bf_t* value);
 
 /**
- * @brief Converts a big integer value to a string.
+ * @brief Converts a big numeric (float) value to a string.
  *
- * Uses the libbf library to convert a big integer (bf_t) to its string
+ * Uses the libbf library to convert a big numeric (bf_t) to its string
  * representation. The returned string is allocated using the tracked
  * allocation system.
  *
- * @param value Pointer to the big integer value.
- * @return String representation of the big integer.
+ * @param value Pointer to the big numeric value.
+ * @return String representation of the big numeric value.
  */
 String BFNumToString(bf_t* value);
 
