@@ -7,7 +7,7 @@
 [x] Add for loop and while loop similar to golang
 [x] Add do while
 [x] Add Try/catch
-[ ] Add Switch Expression and Switch Statement
+[x] Add Switch Expression and Switch Statement
 [x] Add async/await and state machine
 [ ] Add null coalescing operator (??)
 [ ] Add optional chaining (?.)

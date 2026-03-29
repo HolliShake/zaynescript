@@ -33,6 +33,7 @@
     -   `if`/`else` conditionals with optional initializer (`:=`).
     -   `for`, `while` (with optional initializer), and `do-while` loops.
     -   `break` and `continue` statements.
+    -   `switch` statements and expression-position `switch`.
     -   `try`/`catch` blocks for error handling.
     -   Ternary expressions: `cond ? a : b` and postfix `value if (cond) else alt`.
 -   **Operators**:
@@ -161,6 +162,23 @@ fn makeAdder(x) {
 
 const add5 = makeAdder(5);
 println(add5(10)); // 15
+```
+
+Closures capture and mutate variables from their enclosing scope:
+
+```javascript
+fn counter() {
+    local count = 0;
+    return fn() {
+        count = count + 1;
+        return count;
+    };
+}
+
+var c = counter();
+println(c()); // 1
+println(c()); // 2
+println(c()); // 3
 ```
 
 #### Async Functions
@@ -325,6 +343,41 @@ var n = 0;
 do {
     println(n++);
 } while (n < 5)
+```
+
+#### `switch` Statement
+
+Two forms are supported: **statement-position** and **expression-position**.
+
+Statement-position `switch` uses `case` with `:` and block bodies. Multiple values can be matched in a single `case` by separating them with commas:
+
+```javascript
+const num = 0;
+
+switch (num) {
+    case 0, 1: {
+        println("matched 0 or 1");
+    }
+    case 2, 3: {
+        println("matched 2 or 3");
+    }
+    default: {
+        println("no match");
+    }
+}
+```
+
+Expression-position `switch` uses `=>` and returns a value. Place it after the value being matched:
+
+```javascript
+const label = 100 switch {
+    case 10       => "Ten"
+    case 20       => "Twenty"
+    case 10, 30, 100 => "A Hundred"
+    default       => "Unknown"
+};
+
+println(label); // A Hundred
 ```
 
 #### `try` / `catch`
