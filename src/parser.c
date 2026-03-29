@@ -947,7 +947,7 @@ static Ast* _SwitchExpression(Parser* parser) {
                     parser->Lexer->Path, 
                     parser->Lexer->Data, 
                     parser->Next.Position, 
-                    "expected a statement block for default case body"
+                    "expected an expression for default case body"
                 );
             }
         }
@@ -1702,6 +1702,93 @@ static Ast* _IfStatement(Parser* parser) {
     );
 }
 
+static Ast* _SwitchStatement(Parser* parser) {
+    Position start = parser->Next.Position, ended = start;
+    ACCEPTV_FREE(KEY_SWITCH);
+    ACCEPTV_FREE("(");
+    Ast* node = _Expression(parser);
+    if (node == NULL)  {
+        ThrowError(
+            parser->Lexer->Path, 
+            parser->Lexer->Data, 
+            parser->Next.Position, 
+            "expected an expression"
+        );
+    }
+    ACCEPTV_FREE(")");
+    ACCEPTV_FREE("{");
+    Ast* cases = NULL, *current = cases, *defaultCase = NULL;
+
+    while (CHECKTV(KEY_CASE) || CHECKTV(KEY_DEFAULT)) {
+        if (CHECKTV(KEY_CASE)) {
+            ACCEPTV_FREE(KEY_CASE);
+            Ast* caseValue = _ListOfExpressions(parser);
+            if (caseValue == NULL) {
+                ThrowError(
+                    parser->Lexer->Path, 
+                    parser->Lexer->Data, 
+                    parser->Next.Position, 
+                    "expected an expression after 'case'"
+                );
+            }
+            ACCEPTV_FREE(":");
+            Ast* caseBody = _Statement(parser);
+            if (caseBody == NULL) {
+                ThrowError(
+                    parser->Lexer->Path, 
+                    parser->Lexer->Data, 
+                    parser->Next.Position, 
+                    "expected a statement for case body"
+                );
+            }
+
+            Ast* newCase = AstSwitchCase(
+                caseValue, 
+                caseBody, 
+                MergePositions(caseValue->Position, caseBody->Position)
+            );
+
+            if (cases == NULL) {
+                cases = newCase;
+                current = newCase;
+            } else {
+                current->Next = newCase;
+                current = newCase;
+            }
+
+        } else if (CHECKTV(KEY_DEFAULT)) {
+            if (defaultCase != NULL) {
+                ThrowError(
+                    parser->Lexer->Path, 
+                    parser->Lexer->Data, 
+                    parser->Next.Position, 
+                    "multiple default cases are not allowed"
+                );
+            }
+            ACCEPTV_FREE(KEY_DEFAULT);
+            ACCEPTV_FREE(":");
+            defaultCase = _Statement(parser);
+            if (defaultCase == NULL) {
+                ThrowError(
+                    parser->Lexer->Path, 
+                    parser->Lexer->Data, 
+                    parser->Next.Position, 
+                    "expected a statement block for default case body"
+                );
+            }
+        }
+    }
+
+    ended = parser->Next.Position;
+    ACCEPTV_FREE("}");
+    return AstSwitch(
+        node, 
+        cases, 
+        defaultCase, 
+        MergePositions(start, ended)
+    );
+}
+
 static Ast* _ForStatement(Parser* parser) {
     Position start = parser->Next.Position, ended = start;
     Ast* initializerConditionMutator = NULL, *body = NULL;
@@ -1980,6 +2067,8 @@ static Ast* _Statement(Parser* parser) {
         return _LocalStatement(parser);
     } else if (CHECKTV(KEY_IF)) {
         return _IfStatement(parser);
+    } else if (CHECKTV(KEY_SWITCH)) {
+        return _SwitchStatement(parser);
     } else if (CHECKTV(KEY_FOR)) {
         return _ForStatement(parser);
     } else if (CHECKTV(KEY_WHILE)) {
