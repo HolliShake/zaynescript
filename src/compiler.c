@@ -12,15 +12,20 @@ Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser) {
     Compiler* compiler    = Allocate(sizeof(Compiler));
     compiler->Interpreter = interpreter;
     compiler->Parser      = parser;
+    compiler->ModulePath  = NULL;
     return compiler;
 }
 
 static void _InitModule(Compiler* compiler) {
-    compiler->ModulePath = AllocateString(compiler->Parser->Lexer->Path);
+    compiler->ModulePath = AbsolutePath(compiler->Parser->Lexer->Path);
 }
 
 static String _GetModule(Compiler* compiler) {
     return compiler->ModulePath;
+}
+
+static Position _ToLastPosition(Position pos) {
+    return PositionFromLineAndColm(pos.LineEnded, pos.ColmEnded);
 }
 
 static bool _IsAstConstant(Compiler* compiler, Ast* node) {
@@ -585,16 +590,18 @@ static Value* _ExpressionMain(Compiler* compiler, UserFunction* uf, Scope* scope
                 body = body->Next;
             }
 
-            _EmitLine(compiler, fn, node->Position);
+            Position last = _ToLastPosition(node->Position);
+
+            _EmitLine(compiler, fn, last);
             _Emit(compiler, fn, OP_LOAD_NULL);
-            _EmitLine(compiler, fn, node->Position);
+            _EmitLine(compiler, fn, last);
             _Emit(compiler, fn, OP_RETURN);
 
             // Create the function
             Value* fnValue = NewUserFunctionValue(compiler->Interpreter, fn);
             int funcOffset = _SaveFunction(compiler, fnValue);
 
-            _EmitLine(compiler, uf, node->Position);
+            _EmitLine(compiler, uf, last);
             _EmitArg(compiler, uf, OP_LOAD_FUNCTION_CLOSURE, funcOffset);
             FreeScope(fnScope);
             break;
@@ -1805,7 +1812,7 @@ static void _ClassDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope
                 Ast* params = actualBody->B;
                 Ast* body   = actualBody->C;
 
-                UserFunction* fn = CreateUserFunction(AllocateString(fnName->Value), 0, actualBody->Flag);
+                UserFunction* fn = CreateUserFunction(fnName->Value, 0, actualBody->Flag);
 
                 // First, count parameters
                 int paramc = 0;
@@ -1862,19 +1869,21 @@ static void _ClassDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope
                     _Statement(compiler, fn, fnScope, body);
                     body = body->Next;
                 }
+
+                Position last = _ToLastPosition(actualBody->Position);
                 
-                _EmitLine(compiler, fn, node->Position);
+                _EmitLine(compiler, fn, last);
                 _Emit(compiler, fn, OP_LOAD_NULL);
-                _EmitLine(compiler, fn, node->Position);
+                _EmitLine(compiler, fn, last);
                 _Emit(compiler, fn, OP_RETURN);
 
                 // Create the function
                 Value* fnValue = NewUserFunctionValue(compiler->Interpreter, fn);
                 int funcOffset = _SaveFunction(compiler, fnValue);
 
-                _EmitLine(compiler, uf, node->Position);
+                _EmitLine(compiler, uf, last);
                 _EmitArg(compiler, uf, OP_LOAD_FUNCTION, funcOffset);
-                _EmitLine(compiler, uf, node->Position);
+                _EmitLine(compiler, uf, last);
                 _EmitString(compiler, uf, OP_LOAD_STRING, fnName->Value);
 
                 if (ScopeHasLocal(classScope, fnName->Value)) {
@@ -1899,11 +1908,14 @@ static void _ClassDeclaration(Compiler* compiler, UserFunction* uf, Scope* scope
                 );
             }
         }
-        _EmitLine(compiler, uf, body->Position);
+
+        _EmitLine(compiler, uf, _ToLastPosition(actualBody->Position));
         _Emit(compiler, uf, isStatic ? OP_CLASS_DEFINE_STATIC_MEMBER : OP_CLASS_DEFINE_INSTANCE_MEMBER);
         body = body->Next;
     }
-    _EmitLine(compiler, uf, node->Position);
+
+    // End class
+    _EmitLine(compiler, uf, _ToLastPosition(node->Position));
     _EmitArg(compiler, uf, OP_STORE_NAME, nameOffset);
     FreeScope(classScope);
 }
@@ -1937,7 +1949,7 @@ static void _FunctionDeclaration(Compiler* compiler, UserFunction* uf, Scope* sc
 
     int nameOffset = symbol->Offset;
 
-    UserFunction* fn = CreateUserFunction(AllocateString(fnName->Value), 0, node->Flag);
+    UserFunction* fn = CreateUserFunction(fnName->Value, 0, node->Flag);
 
     int paramc = 0;
     while (params != NULL) {
@@ -1967,18 +1979,20 @@ static void _FunctionDeclaration(Compiler* compiler, UserFunction* uf, Scope* sc
         body = body->Next;
     }
 
-    _EmitLine(compiler, fn, node->Position);
+    Position last = _ToLastPosition(node->Position);
+
+    _EmitLine(compiler, fn, last);
     _Emit(compiler, fn, OP_LOAD_NULL);
-    _EmitLine(compiler, fn, node->Position);
+    _EmitLine(compiler, fn, last);
     _Emit(compiler, fn, OP_RETURN);
 
     // Create the function
     Value* fnValue = NewUserFunctionValue(compiler->Interpreter, fn);
     int funcOffset = _SaveFunction(compiler, fnValue);
 
-    _EmitLine(compiler, uf, node->Position);
+    _EmitLine(compiler, uf, last);
     _EmitArg(compiler, uf, OP_LOAD_FUNCTION, funcOffset);
-    _EmitLine(compiler, uf, node->Position);
+    _EmitLine(compiler, uf, last);
     _EmitArg(compiler, uf, OP_STORE_NAME, nameOffset);
     FreeScope(fnScope);
 }
@@ -1996,8 +2010,12 @@ static void _ImportStatement(Compiler* compiler, UserFunction* uf, Scope* scope,
     Ast* imports    = node->A;
     Ast* moduleName = node->B;
 
+    bool isTryingRelative =
+        (!StringStartsWith(moduleName->Value, "core:") && !StringStartsWith(moduleName->Value, "lib:")) &&
+        (StringStartsWith(moduleName->Value, "./") || StringStartsWith(moduleName->Value, "../"));
+
     // Validate, should not contain spaces, dots, or special characters
-    if (strpbrk(moduleName->Value, " ./><=!@#$%^&*()_+-=[]{}|\\;'\"`~") != NULL) {
+    if (strpbrk(moduleName->Value, " .><=!@#$%^&*()_+-=[]{}|\\;'\"`~") != NULL && !isTryingRelative) {
         ThrowError(
             compiler->Parser->Lexer->Path, 
             compiler->Parser->Lexer->Data, 
@@ -2006,35 +2024,61 @@ static void _ImportStatement(Compiler* compiler, UserFunction* uf, Scope* scope,
         );
     }
 
+    String modulePrefix = NULL;
+    int prefixLen = 0;
+    int8_t type = 0; 
+
     if (StringStartsWith(moduleName->Value, "core:")) {
-        _EmitLine(compiler, uf, moduleName->Position);
-        _EmitString(compiler, uf, OP_IMPORT_CORE, moduleName->Value + 5);
-        if (imports == NULL) {
-            // store as object
-            _EmitLine(compiler, uf, moduleName->Position);
-            _Emit(compiler, uf, OP_DUPTOP);
-
-            if (ScopeHasLocal(scope, moduleName->Value + 5)) {
-                ThrowError(
-                    compiler->Parser->Lexer->Path, 
-                    compiler->Parser->Lexer->Data, 
-                    moduleName->Position, 
-                    "duplicate import name"
-                );
-            }
-
-            int offset = UserFunctionEmitLocal(uf);
-            ScopeSetSymbol(scope, moduleName->Value + 5, true, true, true, offset);
-            _EmitLine(compiler, uf, moduleName->Position);
-            _EmitArg(compiler, uf, OP_STORE_NAME, offset);
-        }
+        type = OP_IMPORT_CORE;
+        modulePrefix = moduleName->Value + 5;
+        prefixLen = 5;
+    } else if (StringStartsWith(moduleName->Value, "lib:")) {
+        type = OP_IMPORT_LIB;
+        modulePrefix = moduleName->Value + 4;
+        prefixLen = 4;
+    } else if (isTryingRelative) {
+        type = OP_IMPORT_RELATIVE;
+        String fileDir = Dirname(_GetModule(compiler));
+        modulePrefix = AbsolutePathFromBase(fileDir, moduleName->Value);
+        free(fileDir);
     } else {
         ThrowError(
             compiler->Parser->Lexer->Path, 
             compiler->Parser->Lexer->Data, 
             moduleName->Position, 
-            "invalid module name"
+            "invalid module name, expected 'core:' or 'lib:' prefix"
         );
+    }
+
+    _EmitLine(compiler, uf, moduleName->Position);
+    _EmitString(compiler, uf, (OpcodeEnum) type, modulePrefix);
+
+    if (imports == NULL) {
+        // store as object
+        _EmitLine(compiler, uf, moduleName->Position);
+        _Emit(compiler, uf, OP_DUPTOP);
+
+        if (ScopeHasLocal(scope, modulePrefix)) {
+            ThrowError(
+                compiler->Parser->Lexer->Path, 
+                compiler->Parser->Lexer->Data, 
+                moduleName->Position, 
+                "duplicate import name"
+            );
+        }
+
+        String cleanName = Basename(modulePrefix);
+
+        int offset = UserFunctionEmitLocal(uf);
+        ScopeSetSymbol(scope, cleanName, true, true, true, offset);
+        _EmitLine(compiler, uf, moduleName->Position);
+        _EmitArg(compiler, uf, OP_STORE_NAME, offset);
+
+        free(cleanName);
+    }
+
+    if (type == OP_IMPORT_RELATIVE) {
+        free(modulePrefix);
     }
 
     while (imports != NULL) {
@@ -2319,10 +2363,12 @@ static void _SwitchStatement(Compiler* compiler, UserFunction* uf, Scope* scope,
         _JumpToLabel(compiler, uf, gotoEndSwitch[i]);
     }
 
+    Position last = _ToLastPosition(node->Position);
+
     // Cleanup
-    _EmitLine(compiler, uf, node->Position);
+    _EmitLine(compiler, uf, last);
     _Emit(compiler, uf, OP_ROT2);
-    _EmitLine(compiler, uf, node->Position);
+    _EmitLine(compiler, uf, last);
     _Emit(compiler, uf, OP_POPTOP);
     free(gotoEndSwitch);
 }
@@ -2693,10 +2739,9 @@ static void _Statement(Compiler* compiler, UserFunction* userFunction, Scope* sc
         case AST_IF:
             _IfStatement(compiler, userFunction, scope, node);
             break;
-        case AST_SWITCH: {
+        case AST_SWITCH:
             _SwitchStatement(compiler, userFunction, scope, node);
             break;
-        }
         case AST_FOR:
             _ForStatement(compiler, userFunction, scope, node);
             break;
@@ -2737,7 +2782,7 @@ static void _Statement(Compiler* compiler, UserFunction* userFunction, Scope* sc
     }
 }
 
-static Value* _Program(Compiler* compiler, Ast* node) {
+static Value* _Program(Compiler* compiler, Ast* node, bool isModule) {
     _InitModule(compiler);
     Scope* scope = CreateScope(SCOPE_GLOBAL, NULL);
     UserFunction* uf = CreateMainUserFunction(_GetModule(compiler), 0);
@@ -2752,9 +2797,35 @@ static Value* _Program(Compiler* compiler, Ast* node) {
         current = current->Next;
     }
 
-    _EmitLine(compiler, uf, node->Position);
-    _Emit(compiler, uf, OP_LOAD_NULL);
-    _EmitLine(compiler, uf, node->Position);
+    Position last = _ToLastPosition(node->Position);
+    int exports = 0;
+
+    if (isModule) {
+        HashMap* names = scope->Symbols;
+        for (int i = 0; i < names->Size; i++) {
+            HashNode* node = &names->Buckets[i];
+            while (node != NULL && node->Key != NULL) {
+                String name = (String) node->Key;
+                Symbol* symbol = (Symbol*) node->Val;
+                _EmitLine(compiler, uf, last);
+                _EmitArg(compiler, uf, OP_LOAD_NAME, symbol->Offset);
+                _EmitLine(compiler, uf, last);
+                _EmitString(compiler, uf, OP_LOAD_STRING, name);
+                ++exports;
+                node = node->Next;
+            }
+        }
+    }
+
+    if (isModule) {
+        _EmitLine(compiler, uf, last);
+        _EmitArg(compiler, uf, OP_OBJECT_MAKE, exports);
+    } else {
+        _EmitLine(compiler, uf, last);
+        _Emit(compiler, uf, OP_LOAD_NULL);
+    }
+    
+    _EmitLine(compiler, uf, last);
     _Emit(compiler, uf, OP_RETURN);
 
     FreeScope(scope);
@@ -2764,12 +2835,17 @@ static Value* _Program(Compiler* compiler, Ast* node) {
 
 Value* Compile(Compiler* compiler) {
     Ast* program = Parse(compiler->Parser);
-    Value* value = _Program(compiler, program);
+    Value* value = _Program(compiler, program, false);
     FreeAst(program);
     return value;
 }
 
+Value* CompileAst(Compiler* compiler, Ast* programAst) {
+    return _Program(compiler, programAst, true);
+}
+
 void FreeCompiler(Compiler* compiler) {
+    free(compiler->ModulePath);
     free(compiler);
 }
 

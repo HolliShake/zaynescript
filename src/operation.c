@@ -319,6 +319,159 @@ Value* DoImportCore(Interpreter* interp, String moduleName) {
     return result;
 }
 
+extern Lexer* CreateLexer(String filePath, Rune* data);
+extern void FreeLexer(Lexer* lexer);
+extern Parser* CreateParser(Lexer* lexer);
+extern Ast* Parse(Parser* parser);
+extern void FreeParser(Parser* parser);
+extern void FreeAst(Ast* ast);
+extern Compiler* CreateCompiler(Interpreter* interp, Parser* parser);
+extern Ast* Parse(Parser* parser);
+extern Value* CompileAst(Compiler* compiler, Ast* programAst);
+extern void FreeCompiler(Compiler* compiler);
+extern void Interpret(Interpreter* interp, Value* compiled);
+
+Value* DoImportLib(Interpreter* interp, String moduleName) {
+    bool windows = false;
+    #ifdef _WIN32
+        windows = true;
+    #endif
+
+    // Build file path: <ExecPath>/lib/<moduleName>.zs
+    // linux -> /usr/local/lib/zscript/lib/<moduleName>.zs
+    String basePath = interp->ExecPath;
+    String filePath = windows
+        ? FormatString("%slib\\%s.zs", basePath, moduleName)
+        : FormatString("/usr/local/lib/zscript/lib/%s.zs", moduleName);
+
+    // Read the file
+    FILE* file = fopen(filePath, "rb");
+
+    // Search for relative lib
+    if (!file) {
+        free(filePath);
+        filePath = FormatString("%slib/%s.zs", basePath, moduleName);
+        file = fopen(filePath, "rb");
+    }
+
+    if (!file) {
+        String errMsg = FormatString("%s: lib module '%s' not found (searched '%s')", IMPORT_ERROR, moduleName, filePath);
+        Value* errVal = NewErrorValue(interp, errMsg);
+        free(errMsg);
+        free(filePath);
+        return errVal;
+    }
+
+    if (HashMapContains(interp->Imports, filePath)) {
+        Value* mod = (Value*) HashMapGet(interp->Imports, filePath);
+        fclose(file);
+        free(filePath);
+        return mod;
+    }
+
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    String buffer = Allocate(size + 1);
+
+    fread(buffer, 1, size, file);
+    buffer[size] = '\0';
+    fclose(file);
+
+    Rune* data = StringToRunes(buffer);
+    free(buffer);
+
+    // Lex, parse, compile, interpret
+    Lexer*    lexer      = CreateLexer(filePath, data);
+    Parser*   parser     = CreateParser(lexer);
+    Ast*      programAst = Parse(parser);
+    Compiler* compiler   = CreateCompiler(interp, parser);
+    Value*    compiled   = CompileAst(compiler, programAst);
+
+    DoCall(interp, compiled, 0, false);
+    Value* result = _Popp();
+
+    // After interpret, the module's exports should be on the stack
+    // Return null — the compiler handles binding imports from the stack
+    HashMapSet(interp->Imports, filePath, result);
+
+    FreeLexer(lexer);
+    FreeParser(parser);
+    FreeAst(programAst);
+    FreeCompiler(compiler);
+    free(filePath);
+    free(data);
+
+    return result;
+}
+
+Value* DoImportFile(Interpreter* interp, String filePathNoExt) {
+    bool windows = false;
+    #ifdef _WIN32
+        windows = true;
+    #endif
+
+    String filePath = FormatString("%s.zs", filePathNoExt);
+
+    // Build file path: <ExecPath>/lib/<moduleName>.zs
+    // linux -> /usr/local/lib/zscript/lib/<moduleName>.zs
+
+    // Read the file
+    FILE* file = fopen(filePath, "rb");
+
+    if (!file) {
+        String errMsg = FormatString("%s: file '%s' not found", IMPORT_ERROR, filePath);
+        Value* errVal = NewErrorValue(interp, errMsg);
+        free(filePath);
+        free(errMsg);
+        return errVal;
+    }
+
+    if (HashMapContains(interp->Imports, filePath)) {
+        Value* mod = (Value*) HashMapGet(interp->Imports, filePath);
+        free(filePath);
+        fclose(file);
+        return mod;
+    }
+
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    String buffer = Allocate(size + 1);
+
+    fread(buffer, 1, size, file);
+    buffer[size] = '\0';
+    fclose(file);
+
+    Rune* data = StringToRunes(buffer);
+    free(buffer);
+
+    // Lex, parse, compile, interpret
+    Lexer*    lexer      = CreateLexer(filePath, data);
+    Parser*   parser     = CreateParser(lexer);
+    Ast*      programAst = Parse(parser);
+    Compiler* compiler   = CreateCompiler(interp, parser);
+    Value*    compiled   = CompileAst(compiler, programAst);
+
+    DoCall(interp, compiled, 0, false);
+    Value* result = _Popp();
+
+    // After interpret, the module's exports should be on the stack
+    // Return null — the compiler handles binding imports from the stack
+    HashMapSet(interp->Imports, filePath, result);
+
+    FreeLexer(lexer);
+    FreeParser(parser);
+    FreeAst(programAst);
+    FreeCompiler(compiler);
+    free(filePath);
+    free(data);
+
+    return result;
+}
+
 Value* DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val) {
     String hashKey = ValueToString(index);
     if (ValueIsArray(obj)) {
@@ -521,10 +674,6 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
         return errVal;
     }
 
-    if (uf->Scope == NULL) {
-        Panic("User function '%s' has null Scope\n", uf->Name != NULL ? uf->Name : "<anonymous>");
-    }
-
     // 1. Save
     interp->Envs[interp->EnvC++] = interp->CallEnv;
     interp->CallEnv = env = NewEnvironmentValue(
@@ -534,6 +683,10 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
             uf->LocalC
         )
     );
+    Value* oldRoot = interp->RootEnv;
+    if (uf->Scope == NULL)  {
+        interp->RootEnv = env;
+    }
 
     // 2. Run the function
     Run(interp, fn);
@@ -542,6 +695,7 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
     env = interp->Envs[--interp->EnvC];
     interp->Envs[interp->EnvC] = NULL;
     interp->CallEnv = env;
+    interp->RootEnv = oldRoot;
 
     return interp->Null;
 }

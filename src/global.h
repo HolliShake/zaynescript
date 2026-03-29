@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 #include "../libbf/libbf.h"
 #include "../libbf/cutils.h"
 
@@ -398,6 +399,8 @@ struct value_struct {
  */
 typedef enum opcode_enum {
     OP_IMPORT_CORE,                  /**< Import core library */
+    OP_IMPORT_LIB,                   /**< Import user library */
+    OP_IMPORT_RELATIVE,              /**< Import a relative module */
     OP_LOAD_CAPTURE,                 /**< Load a captured variable */
     OP_LOAD_NAME,                    /**< Load a variable by name */
     OP_LOAD_LOCAL,                   /**< Load a local variable */
@@ -695,6 +698,7 @@ typedef struct module_function_struct {
  */
 struct interpreter_struct {
     bf_context_t BfContext;                              /**< Context for the libbf library (memory management, etc.) */
+    String       ExecPath;                               /**< Directory path of the executable */
     HashMap*     Imports;                                /**< Imports map */
     Value*       Array;                                  /**< Built-in Array class */
     Value*       Date;                                   /**< Built-in Date class */
@@ -1140,5 +1144,63 @@ String BFIntToString(bf_t* value);
  * @return String representation of the big integer.
  */
 String BFNumToString(bf_t* value);
+
+/**
+ * @brief Normalizes a file path string.
+ * 
+ * Converts all directory separators to the platform-specific separator,
+ * removes redundant separators, and resolves any "." or ".." components.
+ * The resulting path is in a consistent format for internal use.
+ * 
+ * @param pathStr The input path string.
+ * @return The normalized path string.
+ */
+String NormalizePath(String pathStr);
+
+/**
+ * @brief Gets the base name of a path.
+ * 
+ * Extracts the file name component from a file path. If the path ends
+ * with a directory separator, an empty string is returned.
+ * 
+ * @param pathStr The input path string.
+ * @return The base name.
+ */
+String Basename(String pathStr);
+
+/**
+ * @brief Gets the directory name of a path.
+ * 
+ * Extracts the directory component from a file path. If the path does not contain a directory separator, an empty string is returned.
+ * 
+ * @param pathStr The input path string.
+ * @return The directory name.
+ */
+String Dirname(String pathStr);
+
+/**
+ * @brief Converts a relative path to an absolute path based on a given base path.
+ * 
+ * If the input path is already absolute, it is returned as-is. Otherwise, it is combined
+ * with the base path to produce an absolute path. The resulting path is normalized
+ * to remove any redundant components (e.g. "." or "..").
+ * 
+ * @param baseStr The base path to resolve against (must be an absolute path).
+ * @param pathStr The input path string (relative or absolute).
+ * @return An absolute path string.
+ */
+String AbsolutePathFromBase(String baseStr, String pathStr);
+
+/**
+ * @brief Converts a relative path to an absolute path based on the current working directory.
+ * 
+ * If the input path is already absolute, it is returned as-is. Otherwise, it is combined
+ * with the current working directory to produce an absolute path. The resulting path is
+ * normalized to remove any redundant components (e.g. "." or "..").
+ * 
+ * @param pathStr The input path string (relative or absolute).
+ * @return An absolute path string.
+ */
+String AbsolutePath(String pathStr);
 
 #endif
