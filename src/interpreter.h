@@ -30,6 +30,7 @@
  * The interpreter manages execution state, call stack, and runtime
  * environment for program execution.
  * 
+ * @param execPath Optional directory path of the executable, used for resolving imports. Can be NULL.
  * @return Pointer to newly allocated Interpreter structure, or NULL on failure.
  *
  * @note The caller is responsible for freeing the interpreter using
@@ -37,7 +38,7 @@
  *
  * @see FreeInterpreter()
  */
-Interpreter* CreateInterpreter();
+Interpreter* CreateInterpreter(String execPath);
 
 /**
  * Executes the parsed program using the given interpreter.

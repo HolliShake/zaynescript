@@ -81,6 +81,17 @@ Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* index, bool f
 Value* DoImportCore(Interpreter* interp, String moduleName);
 
 /**
+ * Performs import lib operation.
+ * Loads a user library module by reading and compiling a .zs file.
+ * 
+ * @param interp      The interpreter instance
+ * @param moduleName  The name/path of the module to import (e.g., "request/app")
+ * 
+ * @return Module value, or error value if not found
+ */
+Value* DoImportLib(Interpreter* interp, String moduleName);
+
+/**
  * Sets an index on an object.
  * Supports arrays (by numeric index), objects (by key),
  * class instances (member), and classes (static member).

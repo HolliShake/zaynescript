@@ -320,6 +320,35 @@ int main(int argc, char** argv) {
         return EXIT_SUCCESS;
     }
 
+    // Exe path
+    char execBuf[512];
+    String execPath = NULL;
+#ifdef _WIN32
+    GetModuleFileNameA(NULL, execBuf, sizeof(execBuf));
+    for (char* p = execBuf; *p; p++) {
+        if (*p == '/') *p = '\\';
+    }
+#else
+    ssize_t execLen = readlink("/proc/self/exe", execBuf, sizeof(execBuf) - 1);
+    if (execLen != -1) {
+        execBuf[execLen] = '\0';
+    } else {
+        strcpy(execBuf, argv[0]);
+    }
+#endif
+    // Extract directory from executable path
+    {
+        char* lastSep = strrchr(execBuf, '/');
+#ifdef _WIN32
+        char* lastBackSep = strrchr(execBuf, '\\');
+        if (lastBackSep > lastSep) lastSep = lastBackSep;
+#endif
+        if (lastSep) {
+            *(lastSep + 1) = '\0';
+        }
+        execPath = AllocateString(execBuf);
+    }
+
     // Check if --run flag is provided with a file path
     String path = NULL;
     if (argc > 2 && strcmp(argv[1], "--run") == 0) {
@@ -330,11 +359,12 @@ int main(int argc, char** argv) {
         return EXIT_SUCCESS;
     }
 
-    Interpreter* interpreter = CreateInterpreter();
+    Interpreter* interpreter = CreateInterpreter(execPath);
 
     //NOTE: memory leak (ReadFile allocates a buffer, StringToRunes reads it, but the buffer is never freed)
     String fileContent = ReadInternalFile(path);
     if (!fileContent) {
+        free(execPath);
         free(path);
         ForceGarbageCollect(interpreter);
         FreeInterpreter(interpreter);
@@ -355,6 +385,7 @@ int main(int argc, char** argv) {
     FreeParser(parser);
     FreeCompiler(compiler);
     FreeInterpreter(interpreter);
+    free(execPath);
     free(path);
     free(data);
     printf("Program Finished!\n");

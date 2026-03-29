@@ -472,3 +472,86 @@ String BFNumToString(bf_t* value) {
     free(str);
     return formattedStr;
 }
+
+#ifdef _WIN32
+    #define getcwd _getcwd
+    #define PATH_SEPARATOR "\\"
+#else
+    #define PATH_SEPARATOR "/"
+#endif
+
+String AbsolutePath(String pathStr) {
+    // 0. Extract raw char* from your String type (adjust to your API)
+    // Example: const char* path = String_GetRaw(pathStr);
+    const char* path = pathStr; 
+    
+    if (!path || path[0] == '\0') {
+        return NULL; // Or return an empty String depending on your needs
+    }
+
+    // 1. Check if the path is already absolute
+    bool is_absolute = false;
+#ifdef _WIN32
+    // Windows absolute path: starts with Drive Letter (C:\) or UNC path (\\server)
+    if (isalpha(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/')) {
+        is_absolute = true;
+    } else if ((path[0] == '\\' && path[1] == '\\') || (path[0] == '/' && path[1] == '/')) {
+        is_absolute = true;
+    }
+#else
+    // Unix/Linux/macOS absolute path: starts with a forward slash
+    if (path[0] == '/') {
+        is_absolute = true;
+    }
+#endif
+
+    if (is_absolute) {
+        // Path is already absolute. Return a copy or reference.
+        // Example: return String_Duplicate(pathStr);
+        return AllocateString(pathStr); // Adjust to your String API
+    }
+
+    // 2. Get the Current Working Directory
+    char cwd[4096]; // 4096 safely covers most OS max path limits
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        // CWD retrieval failed (e.g., path too long or directory deleted)
+        return NULL; 
+    }
+
+    // 3. Resolve the path with the CWD
+    size_t cwd_len = strlen(cwd);
+    
+    // Check if CWD already ends with a separator (e.g., root directory "C:\" or "/")
+    bool needs_separator = true;
+    if (cwd_len > 0) {
+        char last_char = cwd[cwd_len - 1];
+        if (last_char == '/' || last_char == '\\') {
+            needs_separator = false;
+        }
+    }
+
+    // Skip leading separators in the relative path to avoid double separators (e.g., "C:\/" )
+    while (path[0] == '/' || path[0] == '\\') {
+        path++;
+    }
+
+    // Allocate memory for: CWD + Separator + Path + Null Terminator
+    size_t total_len = cwd_len + (needs_separator ? 1 : 0) + strlen(path) + 1;
+    char* resolved_raw_path = (char*)malloc(total_len);
+    
+    if (!resolved_raw_path) {
+        return NULL; // Memory allocation failed
+    }
+
+    // Assemble the final string
+    strcpy(resolved_raw_path, cwd);
+    if (needs_separator) {
+        strcat(resolved_raw_path, PATH_SEPARATOR);
+    }
+    strcat(resolved_raw_path, path);
+
+    // 4. Convert back to your custom String type
+    String final_path = AllocateString(resolved_raw_path);
+    free(resolved_raw_path);
+    return final_path;
+}

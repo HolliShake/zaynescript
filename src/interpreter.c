@@ -10,9 +10,10 @@ static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
     return realloc(ptr, size); 
 }
 
-Interpreter* CreateInterpreter() {
+Interpreter* CreateInterpreter(String execPath) {
     Interpreter* interpreter                = Allocate(sizeof(Interpreter));
     bf_context_init(&(interpreter->BfContext), interpreter_bf_realloc, NULL);
+    interpreter->ExecPath                   = AllocateString(execPath);
     interpreter->Imports                    = CreateHashMap(16);
     interpreter->Allocated                  = 0;
     interpreter->GcRoot                     = NULL;
@@ -359,6 +360,19 @@ void Run(Interpreter* interpreter, Value* fnValue) {
             case OP_IMPORT_CORE: {
                 str = _ReadString(uf->Codes, ip);
                 res = DoImportCore(interpreter, str);
+                if (ValueIsError(res)) {
+                    free(str);
+                    _RaiseError(interpreter, uf, &ip, res);
+                    break;
+                }
+                Push(res);
+                Forward(strlen(str) + 1);
+                free(str);
+                break;
+            }
+            case OP_IMPORT_LIB: {
+                str = _ReadString(uf->Codes, ip);
+                res = DoImportLib(interpreter, str);
                 if (ValueIsError(res)) {
                     free(str);
                     _RaiseError(interpreter, uf, &ip, res);
@@ -1160,6 +1174,7 @@ void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/) {
 void FreeInterpreter(Interpreter* interpreter) {
     bf_context_end(&interpreter->BfContext);
     FreeHashMap(interpreter->Imports);
+    if (interpreter->ExecPath) free(interpreter->ExecPath);
     free(interpreter->Constants);
     free(interpreter->Functions);
     free(interpreter);

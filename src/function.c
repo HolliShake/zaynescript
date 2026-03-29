@@ -3,7 +3,7 @@
 UserFunction* CreateUserFunction(String name, int argc, bool async) {
     UserFunction* userFunction  = Allocate(sizeof(UserFunction));
     userFunction->Scope         = NULL;
-    userFunction->Name          = name;
+    userFunction->Name          = name != NULL ? AllocateString(name) : NULL;
     userFunction->Async         = async;
     userFunction->Codes         = Allocate(sizeof(uint8_t) * 1);
     userFunction->Codes[0]      = 255;
@@ -21,7 +21,7 @@ UserFunction* CreateUserFunction(String name, int argc, bool async) {
 UserFunction* CreateMainUserFunction(String name, int argc) {
     UserFunction* userFunction  = Allocate(sizeof(UserFunction));
     userFunction->Scope         = NULL;
-    userFunction->Name          = name;
+    userFunction->Name          = name != NULL ? AllocateString(name) : NULL;
     userFunction->Async         = false;
     userFunction->Codes         = Allocate(sizeof(uint8_t) * 1);
     userFunction->Codes[0]      = 255;

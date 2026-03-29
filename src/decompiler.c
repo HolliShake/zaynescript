@@ -66,6 +66,13 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
                 free(str);
                 break;
             }
+            case OP_IMPORT_LIB: {
+                String str = _ReadString(uf->Codes, ip);
+                _AppendFmt(&result, "OP_IMPORT_LIB \"%s\"\n", str);
+                ip += strlen(str) + 1;
+                free(str);
+                break;
+            }
             case OP_LOAD_CAPTURE: {
                 int offset = _ReadOffset(uf->Codes, ip);
                 _AppendFmt(&result, "OP_LOAD_CAPTURE %d\n", offset);

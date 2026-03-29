@@ -99,6 +99,9 @@ install: release
 	@echo "Installing $(TARGET) → $(BINDIR)/zscript"
 	install -d $(BINDIR)
 	install -m 755 $(TARGET) $(BINDIR)/zscript
+	@echo "Installing lib → $(LIBDIR)/lib/"
+	install -d $(LIBDIR)/lib
+	install -m 644 lib/*.zs $(LIBDIR)/lib/
 	@echo "Installing tests → $(LIBDIR)/tests/"
 	install -d $(LIBDIR)/tests
 	install -m 644 tests/*.zs $(LIBDIR)/tests/
