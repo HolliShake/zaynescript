@@ -40,7 +40,7 @@
  * @def GC_THRESHOLD
  * @brief The allocation threshold for triggering garbage collection.
  */
-#define GC_THRESHOLD 2048
+#define GC_THRESHOLD 20483
 
 /**
  * @def VARARG
@@ -789,6 +789,9 @@ typedef struct state_machine_struct {
     Value**           Stacks;
     Value**           WaitList;
     size_t            WaitListC;
+    Value**           EnvStack;
+    size_t            EnvTop;
+    size_t            EnvBot;
 } StateMachine;
 
 // -----------------------------------------------------------------------------

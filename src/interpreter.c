@@ -325,15 +325,18 @@ void Run(Interpreter* interpreter, Value* fnValue) {
             /*Function   */ fnValue
         );
         sm->StackBot = interpreter->StackC;
+        sm->EnvBot   = interpreter->EnvC;
         prm = NewPromiseValue(interpreter, sm);
     } else if (ValueIsPromise(fnValue)) {
         // Restore
         prm = fnValue;
         sm  = CoerceToStateMachine(prm);
         sm->StackBot = interpreter->StackC;
+        sm->EnvBot   = interpreter->EnvC;
         uf  = CoerceToUserFunction(sm->Function);
         ip  = sm->Ip;
         interpreter->StackC = sm->StackBot;
+        interpreter->EnvC   = sm->EnvBot;
         restored = true;
     }
  
@@ -629,9 +632,11 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 val = Popp(); // The awaited promise
 
                 StateMachineAwait(sm, ip, val);
+                sm->CallEnv = interpreter->CallEnv;
 
-                // 1. FIX: Calculate the exact size of the current stack frame
+                // 1. Calculate the exact size of the current stack frame
                 int size = interpreter->StackC - sm->StackBot;
+                int envsize = interpreter->EnvC - sm->EnvBot;
 
                 // Now your Panic message makes perfect sense!
                 if (size < 0) Panic("Invalid stack state: StackC (%d) is less than StackBot (%d)", interpreter->StackC, sm->StackBot);
@@ -642,7 +647,13 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                     sm->Stacks = NULL;
                 }
 
+                if (sm->EnvStack != NULL) {
+                    free(sm->EnvStack); // Or your engine's equivalent memory freer
+                    sm->EnvStack = NULL;
+                }
+
                 sm->StackTop = size;
+                sm->EnvTop = envsize;
 
                 // 3. Allocate and copy ONLY this function's variables
                 if (size > 0) {
@@ -652,8 +663,30 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                     memcpy(sm->Stacks, &interpreter->Stacks[sm->StackBot], sizeof(Value*) * size);
                 }
 
+                if (envsize > 0) {
+                    sm->EnvStack = Allocate(sizeof(Value*) * envsize);
+                    
+                    // This now perfectly copies exactly from EnvBot to EnvC
+                    memcpy(sm->EnvStack, &interpreter->Envs[sm->EnvBot], sizeof(Value*) * envsize);
+                }
+
                 // 4. Update StackC to reflect that this function's variables are popped off the main stack
                 interpreter->StackC = sm->StackBot;
+
+                // 5. Update EnvC to reflect that this function's variables are popped off the main env stack
+                interpreter->EnvC = sm->EnvBot;
+
+                // =================================================================
+                // 6. FIX: RESTORE THE CALLER'S ENVIRONMENT BEFORE RETURNING
+                // =================================================================
+                if (interpreter->EnvC > 0) {
+                    interpreter->CallEnv = interpreter->Envs[interpreter->EnvC - 1];
+                } else {
+                    // Fallback: If the stack is empty, we are back at the top level.
+                    // Replace 'interpreter->GlobalEnv' with whatever your global env is actually named!
+                    interpreter->CallEnv = interpreter->RootEnv; 
+                }
+                // =================================================================
 
                 StateMachine* awaitedSM = CoerceToStateMachine(val);
 
@@ -975,9 +1008,10 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 break;
             }
             case OP_EXIT_SCOPE: {
-                Environment* current = CoerceToEnvironment(interpreter->CallEnv);
+                Environment* src = CoerceToEnvironment(interpreter->CallEnv);
                 RestoreEnv(interpreter);
-                EnvironmentSync(current, CoerceToEnvironment(interpreter->CallEnv));
+                Environment* dst = CoerceToEnvironment(interpreter->CallEnv);
+                EnvironmentSync(src, dst);
                 break;
             }
             case OP_EXITN_SCOPE: {
