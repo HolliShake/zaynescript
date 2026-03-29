@@ -8,8 +8,11 @@
 #    define VALUE_H
 
 /**
- * @enum ValueType
- * @brief Enumeration of possible value types in the interpreter
+ * @brief Creates a new error value with a message string
+ *
+ * @param interpreter Pointer to the interpreter instance
+ * @param message The error message string
+ * @return Pointer to newly allocated Value structure containing the error
  */
 Value* NewErrorValue(Interpreter* interpreter, String message);
 
@@ -205,11 +208,10 @@ bool ValueIsNum(Value* value);
 bool ValueIsBigNum(Value* value);
 
 /**
- * @brief Creates a new string value
+ * @brief Checks if a value is any numeric type (int, num, bigint, or bignum)
  *
- * @param interpreter Pointer to the interpreter instance
- * @param value The string to store
- * @return Pointer to newly allocated Value structure containing the string
+ * @param value Pointer to the Value to check
+ * @return true if the value is any numeric type, false otherwise
  */
 bool ValueIsAnyNum(Value* value);
 

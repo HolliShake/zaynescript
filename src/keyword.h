@@ -1,4 +1,14 @@
 
+/**
+ * @file keyword.h
+ * @brief Language keyword string constants
+ *
+ * Defines string constants for all reserved keywords in the language.
+ * These are used by the lexer to identify keyword tokens during tokenization.
+ */
+
+#ifndef KEYWORD_H
+#define KEYWORD_H
 
 #define KEY_CLASS    "class"
 #define KEY_ENUM     "enum"
@@ -29,3 +39,5 @@
 #define KEY_NEW      "new"
 #define KEY_AWAIT    "await"
 #define KEY_THIS     "this"
+
+#endif /* KEYWORD_H */

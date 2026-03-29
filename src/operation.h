@@ -16,14 +16,20 @@
  * This file contains function declarations for operations such as method lookup,
  * attribute access, function calls, and other core behaviors of the language.
  */
+
+/**
+ * Saves an environment as the root environment on the interpreter's environment stack.
+ *
+ * @param interp The interpreter instance
+ * @param env    The environment value to save as root
+ */
 void SaveRootEnv(Interpreter* interp, Value* env);
 
 /**
- * @file operation.h
- * @brief Declarations for core operations and utilities used by the interpreter.
+ * Pushes the current environment onto the interpreter's environment stack.
  *
- * This file contains function declarations for operations such as method lookup,
- * attribute access, function calls, and other core behaviors of the language.
+ * @param interp   The interpreter instance
+ * @param envObj   The environment value to save
  */
 void SaveEnv(Interpreter* interp, Value* envObj);
 

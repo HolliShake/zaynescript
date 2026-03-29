@@ -10,6 +10,22 @@
  * This header defines the StateMachine structure and related functions for managing
  * the state of asynchronous operations, including pending, fulfilled, and rejected states.
  */
+
+/**
+ * @brief Creates a new StateMachine instance.
+ *
+ * Allocates and initializes a StateMachine with the given initial state and
+ * execution context. The state machine is used to track the lifecycle of
+ * asynchronous operations such as promises.
+ *
+ * @param initial    The initial state of the state machine (e.g., PENDING).
+ * @param isCallback Whether this state machine is a callback (e.g., then/catch handler).
+ * @param ip         The instruction pointer for execution within the state machine.
+ * @param env        The environment value associated with this state machine.
+ * @param waitFor    The value this state machine is waiting on (e.g., a promise), or NULL.
+ * @param function   The function being executed by this state machine.
+ * @return Pointer to a newly allocated StateMachine, or NULL on allocation failure.
+ */
 StateMachine* CreateStateMachine(StateMachineState initial,
                                  bool              isCallback,
                                  size_t            ip,
