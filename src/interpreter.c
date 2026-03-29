@@ -108,6 +108,14 @@ Interpreter* CreateInterpreter(String execPath) {
         break;                                                                                     \
     }
 
+String ReadString(uint8_t* codes, int alignStart) {
+    String str    = (String) (codes + alignStart);
+    int    length = strlen(str);
+    String new    = Allocate(length + 1);
+    memcpy(new, str, length + 1);
+    return new;
+}
+
 static int _ReadInt32(uint8_t* codes, int alignStart) {
     int offset  = 0;
     offset     |= codes[alignStart + 0] << 24;
@@ -115,14 +123,6 @@ static int _ReadInt32(uint8_t* codes, int alignStart) {
     offset     |= codes[alignStart + 2] << 8;
     offset     |= codes[alignStart + 3] << 0;
     return offset;
-}
-
-static String _ReadString(uint8_t* codes, int alignStart) {
-    String str    = (String) (codes + alignStart);
-    int    length = strlen(str);
-    String new    = Allocate(length + 1);
-    memcpy(new, str, length + 1);
-    return new;
 }
 
 static int _GetArgc(Value* fn) {
@@ -367,7 +367,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
         switch (opcode) {
             case OP_IMPORT_CORE:
                 {
-                    str = _ReadString(uf->Codes, ip);
+                    str = ReadString(uf->Codes, ip);
                     res = DoImportCore(interpreter, str);
                     if (ValueIsError(res)) {
                         free(str);
@@ -381,7 +381,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 }
             case OP_IMPORT_LIB:
                 {
-                    str = _ReadString(uf->Codes, ip);
+                    str = ReadString(uf->Codes, ip);
                     res = DoImportLib(interpreter, str);
                     if (ValueIsError(res)) {
                         free(str);
@@ -395,7 +395,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 }
             case OP_IMPORT_RELATIVE:
                 {
-                    str = _ReadString(uf->Codes, ip);
+                    str = ReadString(uf->Codes, ip);
                     res = DoImportFile(interpreter, str);
                     if (ValueIsError(res)) {
                         free(str);
@@ -476,7 +476,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 }
             case OP_LOAD_STRING:
                 {
-                    str = _ReadString(uf->Codes, ip);
+                    str = ReadString(uf->Codes, ip);
                     Push(NewStrValue(interpreter, str));
                     Forward(strlen(str) + 1);
                     free(str);
@@ -559,7 +559,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 }
             case OP_OBJECT_PLUCK_ATTRIBUTE:
                 {
-                    str = _ReadString(uf->Codes, ip);
+                    str = ReadString(uf->Codes, ip);
                     obj = Peek();
                     map = CoerceToHashMap(obj);
                     val = HashMapGet(map, str);
@@ -585,7 +585,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 }
             case OP_CLASS_MAKE:
                 {
-                    str = _ReadString(uf->Codes, ip);
+                    str = ReadString(uf->Codes, ip);
                     obj = NewClassValue(interpreter, CreateUserClass(str, NULL));
                     Push(obj);
                     Forward(strlen(str) + 1);

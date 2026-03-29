@@ -35,7 +35,7 @@ PREFIX   ?= /usr/local
 BINDIR   ?= $(PREFIX)/bin
 LIBDIR   ?= $(PREFIX)/lib/zscript
 
-.PHONY: all release debug clean run install uninstall
+.PHONY: all release debug clean run install uninstall amalgamate
 
 all: debug
 
@@ -71,3 +71,8 @@ uninstall:
 
 run: debug
 	ASAN_OPTIONS=fast_unwind_on_malloc=0:malloc_context_size=30 LC_ALL=en_US.UTF-8 ./$(TARGET)
+
+amalgamate:
+	@echo "Running amalgamation..."
+	python3 amalgamate.py
+	@echo "Amalgamated files in dist/"

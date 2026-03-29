@@ -2,3 +2,4 @@
 .pgo-data
 /tests/*.js
 /tests/*.py
+/dist

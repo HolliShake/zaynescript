@@ -1,5 +1,7 @@
 #include "./decompiler.h"
 
+extern String ReadString(uint8_t* codes, int alignStart);
+
 extern String ValueToString(Value* value);
 
 static int _ReadOffset(uint8_t* codes, int alignStart) {
@@ -9,14 +11,6 @@ static int _ReadOffset(uint8_t* codes, int alignStart) {
     offset     |= codes[alignStart + 2] << 8;
     offset     |= codes[alignStart + 3] << 0;
     return offset;
-}
-
-static String _ReadString(uint8_t* codes, int alignStart) {
-    String str    = (String) (codes + alignStart);
-    int    length = strlen(str);
-    String new    = Allocate(length + 1);
-    memcpy(new, str, length + 1);
-    return new;
 }
 
 static void _Append(String* dest, String src) {
@@ -65,7 +59,7 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
         switch (opcode) {
             case OP_IMPORT_CORE:
                 {
-                    String str = _ReadString(uf->Codes, ip);
+                    String str = ReadString(uf->Codes, ip);
                     _AppendFmt(&result, "OP_IMPORT_CORE \"%s\"\n", str);
                     ip += strlen(str) + 1;
                     free(str);
@@ -73,7 +67,7 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
                 }
             case OP_IMPORT_LIB:
                 {
-                    String str = _ReadString(uf->Codes, ip);
+                    String str = ReadString(uf->Codes, ip);
                     _AppendFmt(&result, "OP_IMPORT_LIB \"%s\"\n", str);
                     ip += strlen(str) + 1;
                     free(str);
@@ -128,7 +122,7 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
                 }
             case OP_LOAD_STRING:
                 {
-                    String str = _ReadString(uf->Codes, ip);
+                    String str = ReadString(uf->Codes, ip);
                     _AppendFmt(&result, "OP_LOAD_STRING \"%s\"\n", str);
                     ip += strlen(str) + 1;
                     free(str);
@@ -152,7 +146,7 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
                 break;
             case OP_OBJECT_PLUCK_ATTRIBUTE:
                 {
-                    String str = _ReadString(uf->Codes, ip);
+                    String str = ReadString(uf->Codes, ip);
                     _AppendFmt(&result, "OP_PLUCK_ATTRIBUTE \"%s\"\n", str);
                     ip += strlen(str) + 1;
                     free(str);
@@ -170,7 +164,7 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
                 break;
             case OP_CLASS_MAKE:
                 {
-                    String str = _ReadString(uf->Codes, ip);
+                    String str = ReadString(uf->Codes, ip);
                     _AppendFmt(&result, "OP_CLASS_MAKE \"%s\"\n", str);
                     ip += strlen(str) + 1;
                     free(str);
