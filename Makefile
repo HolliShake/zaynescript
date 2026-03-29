@@ -57,11 +57,11 @@ install: release
 	install -d $(BINDIR)
 	install -m 755 $(TARGET) $(BINDIR)/zscript
 	@echo "Installing lib → $(LIBDIR)/lib/"
-	install -d $(LIBDIR)/lib
-	install -m 644 lib/*.zs $(LIBDIR)/lib/
+	cd lib && find . -type d -exec install -d $(LIBDIR)/lib/{} \; \
+	       && find . -type f -exec install -m 644 {} $(LIBDIR)/lib/{} \;
 	@echo "Installing tests → $(LIBDIR)/tests/"
-	install -d $(LIBDIR)/tests
-	install -m 644 tests/*.zs $(LIBDIR)/tests/
+	cd tests && find . -type d -exec install -d $(LIBDIR)/tests/{} \; \
+	         && find . -type f -exec install -m 644 {} $(LIBDIR)/tests/{} \;
 
 uninstall:
 	@echo "Removing $(BINDIR)/zscript"
