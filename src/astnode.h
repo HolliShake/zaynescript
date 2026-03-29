@@ -399,6 +399,33 @@ Ast* AstEmptyStatement(Position position);
 Ast* AstIf(Ast* condition, Ast* thenBranch, Ast* elseBranch, Position position);
 
 /**
+ * Creates an AST node representing a switch statement.
+ * 
+ * Allocates and initializes an AST_SWITCH node that represents
+ * a switch statement with cases and optional default case.
+ * 
+ * @param expression Pointer to the switch expression AST node.
+ * @param cases Pointer to AST node containing the list of cases.
+ * @param defaultCase Pointer to the default case AST node, or NULL if no default.
+ * @param position Source code location information.
+ * @return Pointer to newly allocated AST_SWITCH node, or NULL on allocation failure.
+ */
+Ast* AstSwitch(Ast* expression, Ast* cases, Ast* defaultCase, Position position);
+
+/**
+ * Creates an AST node representing a switch case.
+ * 
+ * Allocates and initializes an AST_SWITCH_CASE node that represents
+ * a single case within a switch statement, including the case value and body.
+ * 
+ * @param value Pointer to the case value AST node.
+ * @param body Pointer to the case body AST node.
+ * @param position Source code location information.
+ * @return Pointer to newly allocated AST_SWITCH_CASE node, or NULL on allocation failure.
+ */
+Ast* AstSwitchCase(Ast* value, Ast* body, Position position);
+
+/**
  * Creates an AST node representing a for statement.
  * 
  * Allocates and initializes an AST_FOR node that represents

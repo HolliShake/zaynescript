@@ -1052,6 +1052,16 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 }
                 break;
             }
+            case OP_POP_JUMP_IF_TRUE: {
+                offset = _ReadInt32(uf->Codes, ip);
+                val    = Popp();
+                if (CoerceToBool(val) == true) {
+                    JmpFrwd(offset);
+                } else {
+                    Forward(4);
+                }
+                break;
+            }
             case OP_JUMP: {
                 offset = _ReadInt32(uf->Codes, ip);
                 JmpFrwd(offset);
