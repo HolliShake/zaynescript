@@ -1,5 +1,7 @@
 #include "./statemachine.h"
 
+#include "global.h"
+
 StateMachine* CreateStateMachine(StateMachineState initial,
                                  bool              isCallback,
                                  size_t            ip,
@@ -8,8 +10,6 @@ StateMachine* CreateStateMachine(StateMachineState initial,
                                  Value*            function) {
     StateMachine* sm = Allocate(sizeof(StateMachine));
     sm->State        = initial;
-    sm->StackTop     = 0;
-    sm->StackBot     = 0;
     sm->IsCallback   = isCallback;
     sm->CallEnv      = env;
     sm->WaitFor      = promise;
@@ -17,11 +17,13 @@ StateMachine* CreateStateMachine(StateMachineState initial,
     sm->Function     = function;
     sm->Ip           = ip;
     sm->Stacks       = NULL;
+    sm->StckTop      = 0;
+    sm->StckBot      = 0;
+    sm->WaitList     = NULL;
     sm->WaitListC    = 0;
-    sm->WaitList     = Allocate(sizeof(Value*)),
-    sm->WaitList[0]  = NULL;  // initial capacity for wait list
     sm->EnvStack     = NULL;
-    sm->EnvTop       = 0;
+    sm->EnvrTop      = 0;
+    sm->EnvrBot      = 0;
     return sm;
 }
 

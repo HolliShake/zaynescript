@@ -1,5 +1,7 @@
 #include "./operation.h"
 
+#include "global.h"
+
 #define FreeTempBf(interp, bf, val)                                                                \
     do {                                                                                           \
         if ((val)->Type == VLT_INT || (val)->Type == VLT_NUM) {                                    \
@@ -599,41 +601,42 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
     if (fn == NULL)
         Panic("Attempted to call a null value!");
 
+    if (ValueIsUserFunction(fn) && CoerceToUserFunction(fn)->Async) {
+        // Where calling an  async function here so we cast it immediately as statemachine
+        fn = NewPromiseValue(interp,
+                             CreateStateMachine(PENDING, false, 0, interp->CallEnv, NULL, fn));
+    }
+
     if (ValueIsPromise(fn)) {
-        // Resume only
-        _PopN(argc);
         StateMachine* sm = CoerceToStateMachine(fn);
-        if (sm->WaitFor == NULL)
-            Panic("Attempted to resume a promise that is not waiting on any value!");
 
         if (sm->State == PENDING) {
             // 2. ANCHOR: Set the new bottom to the CURRENT top of the stack
-            sm->EnvBot   = interp->EnvC;
-            sm->StackBot = interp->StackC;
+            sm->EnvrBot = interp->EnvC;
+            sm->StckBot = interp->StackC;
 
-            if (sm->EnvStack != NULL && sm->EnvTop > 0) {
-                memcpy(&interp->Envs[sm->EnvBot], sm->EnvStack, sizeof(Value*) * sm->EnvTop);
+
+            if (sm->EnvStack != NULL && sm->EnvrTop > 0) {
+                memcpy(&interp->Envs[sm->EnvrBot], sm->EnvStack, sizeof(Value*) * sm->EnvrTop);
 
                 // 3. Advance the global env stack pointer
-                interp->EnvC = sm->EnvBot + sm->EnvTop;
+                interp->EnvC = sm->EnvrBot + sm->EnvrTop;
             }
 
             // 4. Restore to the OFFSET position (interp->Stacks + sm->StackBot)
-            if (sm->Stacks != NULL && sm->StackTop > 0) {
-                memcpy(&interp->Stacks[sm->StackBot], sm->Stacks, sizeof(Value*) * sm->StackTop);
+            if (sm->Stacks != NULL && sm->StckTop > 0) {
+                memcpy(&interp->Stacks[sm->StckBot], sm->Stacks, sizeof(Value*) * sm->StckTop);
 
                 // 5. Advance the global stack pointer
-                interp->StackC = sm->StackBot + sm->StackTop;
+                interp->StackC = sm->StckBot + sm->StckTop;
             }
+
+            // 5 ANCHOR: Restore the caller's environment from the state machine's saved env
+            interp->CallEnv = sm->CallEnv;
         } else {
             Panic("Attempted to resume a promise that is not pending (current state: %d)\n",
                   sm->State);
         }
-
-        // =========================================================
-        // FIX: Save the caller's state in C variables, not the VM array!
-        // =========================================================
-        interp->CallEnv = sm->CallEnv;
 
         Run(interp, fn);
 
@@ -642,12 +645,10 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
 
     if (!ValueIsCallable(fn)) {
         _PopN(argc);
-        // Note: memory leak (ValueToString(fn) allocates a string passed to NewErrorFValue but
-        // never freed)
         return NewErrorFValue(interp,
                               "%s: invalid operation: attempted to call a non-callable value (%s)",
                               TYPE_ERROR,
-                              ValueToString(fn));
+                              ValueTypeOf(fn));
     }
 
     if (ValueIsNativeFunction(fn)) {
@@ -677,7 +678,6 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
 
         for (int i = argc - 1; i >= end; i--) {
             args[i] = _Popp();
-            args[i];
         }
 
         Value* res = nativeFunc(interp, argc, args);

@@ -326,8 +326,10 @@ static Value* _DequeueTaskAt(Interpreter* interpreter, int index) {
 
 /******* Main interpreter loop */
 void Run(Interpreter* interpreter, Value* fnValue) {
-    StateMachine* sm      = NULL;
-    UserFunction* uf      = ValueIsUserFunction(fnValue) ? CoerceToUserFunction(fnValue) : NULL;
+    StateMachine* sm = NULL;
+    UserFunction* uf = ValueIsUserFunction(fnValue)
+                           ? CoerceToUserFunction(fnValue)
+                           : CoerceToUserFunction((sm = CoerceToStateMachine(fnValue))->Function);
     uint8_t       opcode  = 0;
     Value*        lhs     = NULL;
     Value*        rhs     = NULL;
@@ -339,7 +341,6 @@ void Run(Interpreter* interpreter, Value* fnValue) {
     Value*        key     = NULL;
     Value*        val     = NULL;
     Value*        err     = NULL;
-    Value*        prm     = NULL;
     Environment*  env     = NULL;
     HashMap*      map     = NULL;
     Array*        array   = NULL;
@@ -351,45 +352,16 @@ void Run(Interpreter* interpreter, Value* fnValue) {
     bool          catched = false;
     String        str     = NULL;
 
-    bool restored = false;
-
-    if (uf != NULL && uf->Async) {
-        // Initial call
-        sm = CreateStateMachine(
-            /*Status     */ PENDING,
-            /*IsCallback */ false,
-            /*Ip         */ 0,
-            /*Env        */ interpreter->CallEnv,
-            /*WaitFor    */ NULL,
-            /*Function   */ fnValue);
-        sm->StackBot = interpreter->StackC;
-        sm->EnvBot   = interpreter->EnvC;
-        prm          = NewPromiseValue(interpreter, sm);
-    } else if (ValueIsPromise(fnValue)) {
-        // Restore
-        prm                 = fnValue;
-        sm                  = CoerceToStateMachine(prm);
-        sm->StackBot        = interpreter->StackC;
-        sm->EnvBot          = interpreter->EnvC;
-        uf                  = CoerceToUserFunction(sm->Function);
-        ip                  = sm->Ip;
-        interpreter->StackC = sm->StackBot;
-        interpreter->EnvC   = sm->EnvBot;
-        restored            = true;
-    }
-
 #define Forward(size) (ip += size)
 #define JmpFrwd(addr) (ip = addr)
 
     while (ip != uf->CodeC) {
         if (interpreter->Allocated >= interpreter->GcThreshold) {
             Mark(fnValue);
-            Mark(prm);
             GarbageCollect(interpreter);
         }
 
-        opcode = uf->Codes[ip++];
-
+        opcode  = uf->Codes[ip++];
         catched = interpreter->ExceptionHandlerStackC != 0;
 
         switch (opcode) {
@@ -669,7 +641,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 {
                     interpreter->CallStack[interpreter->CallStackC++] = (StackTrace){
                         .line     = _GetLineFromPc(uf, ip),
-                        .Function = (prm != NULL) ? prm : fnValue,
+                        .Function = fnValue,
                     };
                     argc = _ReadInt32(uf->Codes, ip);
                     Forward(4);
@@ -686,7 +658,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 {
                     interpreter->CallStack[interpreter->CallStackC++] = (StackTrace){
                         .line     = _GetLineFromPc(uf, ip),
-                        .Function = (prm != NULL) ? prm : fnValue,
+                        .Function = fnValue,
                     };
                     argc = _ReadInt32(uf->Codes, ip);
                     Forward(4);
@@ -703,7 +675,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                 {
                     interpreter->CallStack[interpreter->CallStackC++] = (StackTrace){
                         .line     = _GetLineFromPc(uf, ip),
-                        .Function = (prm != NULL) ? prm : fnValue,
+                        .Function = fnValue,
                     };
                     argc = _ReadInt32(uf->Codes, ip);
                     Forward(4);
@@ -761,14 +733,14 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                     sm->CallEnv = interpreter->CallEnv;
 
                     // 1. Calculate the exact size of the current stack frame
-                    int size    = interpreter->StackC - sm->StackBot;
-                    int envsize = interpreter->EnvC - sm->EnvBot;
+                    int size    = interpreter->StackC - sm->StckBot;
+                    int envsize = interpreter->EnvC - sm->EnvrBot;
 
                     // Now your Panic message makes perfect sense!
                     if (size < 0)
                         Panic("Invalid stack state: StackC (%d) is less than StackBot (%d)",
                               interpreter->StackC,
-                              sm->StackBot);
+                              (int) sm->StckBot);
 
                     // 2. Free old memory (Make sure 'free' matches 'Allocate'!)
                     if (sm->Stacks != NULL) {
@@ -781,8 +753,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                         sm->EnvStack = NULL;
                     }
 
-                    sm->StackTop = size;
-                    sm->EnvTop   = envsize;
+                    sm->StckTop = size;
+                    sm->EnvrTop = envsize;
 
                     // 3. Allocate and copy ONLY this function's variables
                     if (size > 0) {
@@ -790,7 +762,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 
                         // This now perfectly copies exactly from StackBot to StackC
                         memcpy(sm->Stacks,
-                               &interpreter->Stacks[sm->StackBot],
+                               &interpreter->Stacks[sm->StckBot],
                                sizeof(Value*) * size);
                     }
 
@@ -799,17 +771,17 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 
                         // This now perfectly copies exactly from EnvBot to EnvC
                         memcpy(sm->EnvStack,
-                               &interpreter->Envs[sm->EnvBot],
+                               &interpreter->Envs[sm->EnvrBot],
                                sizeof(Value*) * envsize);
                     }
 
                     // 4. Update StackC to reflect that this function's variables are popped off the
                     // main stack
-                    interpreter->StackC = sm->StackBot;
+                    interpreter->StackC = sm->StckBot;
 
                     // 5. Update EnvC to reflect that this function's variables are popped off the
                     // main env stack
-                    interpreter->EnvC = sm->EnvBot;
+                    interpreter->EnvC = sm->EnvrBot;
 
                     // =================================================================
                     // 6. FIX: RESTORE THE CALLER'S ENVIRONMENT BEFORE RETURNING
@@ -827,12 +799,12 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                     StateMachine* awaitedSM = CoerceToStateMachine(val);
 
                     if (awaitedSM->State == FULFILLED) {
-                        _EnqueueTask(interpreter, prm);
+                        _EnqueueTask(interpreter, fnValue);
                     } else {
-                        StateMachineAddWaitList(awaitedSM, prm);
+                        StateMachineAddWaitList(awaitedSM, fnValue);
                     }
 
-                    Push(prm);
+                    Push(fnValue);
                     return;
                 }
             case OP_GET_AWAITED_VALUE:
@@ -1258,7 +1230,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                         val = Popp();
 
                         StateMachineFulfill(sm, val);
-                        Push(prm);
+                        Push(fnValue);
 
                         for (int i = 0; i < sm->WaitListC; i++) {
                             Value* suspendedTask = sm->WaitList[i];
@@ -1306,10 +1278,6 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
             DoCall(interpreter, task, 0, false);
         } else {
             StateMachine* wait = CoerceToStateMachine(sm->WaitFor);
-            // if (wait->State != FULFILLED)
-            //     Panic("internal error: expected awaited state machine to be fulfilled when "
-            //           "resuming callback, but got state %d",
-            //           wait->State);
 
             // 1. Push value
             Push(wait->Value);
