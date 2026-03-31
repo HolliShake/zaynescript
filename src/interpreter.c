@@ -352,6 +352,17 @@ void Run(Interpreter* interpreter, Value* fnValue) {
     bool          catched = false;
     String        str     = NULL;
 
+    if (ValueIsPromise(fnValue)) {
+        // Restore
+        sm->StckBot         = interpreter->StackC;
+        sm->EnvrBot         = interpreter->EnvC;
+        interpreter->StackC = sm->StckBot;
+        interpreter->EnvC   = sm->EnvrBot;
+        ip                  = sm->Ip;
+    }
+
+    if (uf == NULL) InterpreterPanic("Attempted to run a non-function value of type %s", ValueTypeOf(fnValue));
+
 #define Forward(size) (ip += size)
 #define JmpFrwd(addr) (ip = addr)
 
@@ -1230,11 +1241,11 @@ void Run(Interpreter* interpreter, Value* fnValue) {
                         val = Popp();
 
                         StateMachineFulfill(sm, val);
-                        Push(fnValue);
+                        Push(val);
 
                         for (int i = 0; i < sm->WaitListC; i++) {
-                            Value* suspendedTask = sm->WaitList[i];
-                            _EnqueueTask(interpreter, suspendedTask);
+                            // Queue all listeners waiting on this state machine to be resumed
+                            _EnqueueTask(interpreter, sm->WaitList[i]);
                         }
                     }
                     return;
@@ -1277,29 +1288,30 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
         if (!sm->IsCallback) {
             DoCall(interpreter, task, 0, false);
         } else {
-            StateMachine* wait = CoerceToStateMachine(sm->WaitFor);
+            DoCall(interpreter, task, 0, false);
+            // StateMachine* wait = CoerceToStateMachine(sm->WaitFor);
 
             // 1. Push value
-            Push(wait->Value);
+            // Push(wait->Value);
 
             // 2. Call the callback
-            interpreter->CallStack[interpreter->CallStackC++] = (StackTrace){
-                .line     = sm->Line,
-                .Function = task,
-            };
+            // interpreter->CallStack[interpreter->CallStackC++] = (StackTrace){
+            //     .line     = sm->Line,
+            //     .Function = task,
+            // };
 
-            DoCall(interpreter, sm->Function, 1, false);
+            // DoCall(interpreter, task, 1, false);
 
-            --interpreter->CallStackC;
+            // --interpreter->CallStackC;
 
-            // 3. Fulfill the state machine with the callback's return value
-            (ValueIsError(Peek()) ? StateMachineReject(sm, Popp())
-                                  : StateMachineFulfill(sm, Popp()));
+            // // 3. Fulfill the state machine with the callback's return value
+            // (ValueIsError(Peek()) ? StateMachineReject(sm, Popp())
+            //                       : StateMachineFulfill(sm, Popp()));
 
-            // 4. Enqueue all tasks waiting on this state machine
-            for (size_t i = 0; i < sm->WaitListC; i++) {
-                _EnqueueTask(interpreter, sm->WaitList[i]);
-            }
+            // // 4. Enqueue all tasks waiting on this state machine
+            // for (size_t i = 0; i < sm->WaitListC; i++) {
+            //     _EnqueueTask(interpreter, sm->WaitList[i]);
+            // }
         }
 
         --interpreter->CallStackC;

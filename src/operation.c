@@ -603,18 +603,30 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
 
     if (ValueIsUserFunction(fn) && CoerceToUserFunction(fn)->Async) {
         // Where calling an  async function here so we cast it immediately as statemachine
+        UserFunction* asyncFn = CoerceToUserFunction(fn);
+        env = interp->CallEnv;
+        StateMachine* sm =
+             CreateStateMachine(PENDING, false, 0, env, NULL, fn);
         fn = NewPromiseValue(interp,
-                             CreateStateMachine(PENDING, false, 0, interp->CallEnv, NULL, fn));
+                             sm);
+        sm->StckBot = interp->StackC;
+        sm->EnvrBot = interp->EnvC;
     }
 
     if (ValueIsPromise(fn)) {
+        Value* oldEnv = interp->CallEnv;
+
         StateMachine* sm = CoerceToStateMachine(fn);
 
+        if (sm->State == FULFILLED || sm->State == REJECTED) {
+            // If the promise is already fulfilled, just return the value
+            _Push(sm->Value);
+            return sm->Value;
+        }
         if (sm->State == PENDING) {
             // 2. ANCHOR: Set the new bottom to the CURRENT top of the stack
             sm->EnvrBot = interp->EnvC;
             sm->StckBot = interp->StackC;
-
 
             if (sm->EnvStack != NULL && sm->EnvrTop > 0) {
                 memcpy(&interp->Envs[sm->EnvrBot], sm->EnvStack, sizeof(Value*) * sm->EnvrTop);
@@ -638,7 +650,13 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis) {
                   sm->State);
         }
 
-        Run(interp, fn);
+        if (sm->Ip == 0) {
+            SaveEnv(interp, sm->CallEnv);
+            Run(interp, fn);
+            RestoreEnv(interp);
+        } else {
+            Run(interp, fn);
+        }
 
         return interp->Null;
     }

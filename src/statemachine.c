@@ -19,7 +19,7 @@ StateMachine* CreateStateMachine(StateMachineState initial,
     sm->Stacks       = NULL;
     sm->StckTop      = 0;
     sm->StckBot      = 0;
-    sm->WaitList     = NULL;
+    sm->WaitList     = Allocate(sizeof(Value*)), sm->WaitList[0] = NULL;
     sm->WaitListC    = 0;
     sm->EnvStack     = NULL;
     sm->EnvrTop      = 0;

@@ -39,8 +39,6 @@ const v = awaitable()
 
 println(">>", v);
 
-
-
 fn toCall() async {
     return 3;
 }
