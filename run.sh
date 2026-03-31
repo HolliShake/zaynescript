@@ -34,6 +34,9 @@ elif [[ "$1" == "--format" ]]; then
     clang-format -i main.c
     echo "Formatting complete."
 elif [[ "$1" == "--dbg" ]]; then
+    # compile first
+    echo "Building in debug mode..."
+    gcc -g -O3 -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c ./libbf/*.c -o zscript.exe -lm -ldl -lpthread
     if [[ -f zscript.exe ]]; then
         gdb -ex run -ex bt --args ./zscript.exe --run "$2"
     else

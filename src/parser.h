@@ -5,7 +5,7 @@
 #include "./position.h"
 
 #ifndef PARSER_H
-#    define PARSER_H
+#	define PARSER_H
 
 /*
  * parser.h - Syntax analysis and Abstract Syntax Tree construction
@@ -27,7 +27,8 @@
  *   lexer - Pointer to the lexer that will provide the token stream
  *
  * Returns:
- *   Pointer to the newly created Parser structure, or NULL on allocation failure
+ *   Pointer to the newly created Parser structure, or NULL on allocation
+ * failure
  */
 Parser* CreateParser(Lexer* lexer);
 
@@ -35,9 +36,9 @@ Parser* CreateParser(Lexer* lexer);
  * Parse - Parses the token stream and constructs an Abstract Syntax Tree
  *
  * Performs syntax analysis on the token stream provided by the parser's lexer,
- * constructing an AST that represents the program structure. The parser validates
- * that the token sequence conforms to the language grammar and reports syntax
- * errors if invalid constructs are encountered.
+ * constructing an AST that represents the program structure. The parser
+ * validates that the token sequence conforms to the language grammar and
+ * reports syntax errors if invalid constructs are encountered.
  *
  * The resulting AST can be traversed for semantic analysis, optimization, and
  * code generation.
@@ -46,7 +47,8 @@ Parser* CreateParser(Lexer* lexer);
  *   parser - Pointer to the parser instance to use for parsing
  *
  * Returns:
- *   Pointer to the root Ast node representing the parsed program, or NULL on parse failure
+ *   Pointer to the root Ast node representing the parsed program, or NULL on
+ * parse failure
  */
 Ast* Parse(Parser* parser);
 

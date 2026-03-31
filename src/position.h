@@ -1,28 +1,30 @@
 #include "global.h"
 
 #ifndef POSITION_H
-#    define POSITION_H
+#	define POSITION_H
 
 /*
  * Source code position tracking for error reporting and debugging
  *
- * This module provides functionality for tracking positions in source code files.
- * Positions are used throughout the compiler to associate tokens, AST nodes, and
- * errors with their original locations in the source code, enabling accurate
- * error messages and debugging information.
+ * This module provides functionality for tracking positions in source code
+ * files. Positions are used throughout the compiler to associate tokens, AST
+ * nodes, and errors with their original locations in the source code, enabling
+ * accurate error messages and debugging information.
  */
 
 /*
- * PositionFromLineAndColm - Creates a position structure from line and column numbers
+ * PositionFromLineAndColm - Creates a position structure from line and column
+ * numbers
  *
- * Constructs a Position structure representing a single point in the source code.
- * Both the start and end of the position are set to the same line and column,
- * representing a zero-width position at the specified location.
+ * Constructs a Position structure representing a single point in the source
+ * code. Both the start and end of the position are set to the same line and
+ * column, representing a zero-width position at the specified location.
  *
  * line: The line number in the source file (1-indexed)
  * colm: The column number in the source file (1-indexed)
  *
- * Returns: Position structure with both start and end set to the given line and column
+ * Returns: Position structure with both start and end set to the given line and
+ * column
  */
 Position PositionFromLineAndColm(int line, int colm);
 
@@ -41,7 +43,8 @@ Position PositionFromLineAndColm(int line, int colm);
  * a: First position structure
  * b: Second position structure
  *
- * Returns: Merged position structure spanning from the earliest start to the latest end
+ * Returns: Merged position structure spanning from the earliest start to the
+ * latest end
  */
 Position MergePositions(Position a, Position b);
 

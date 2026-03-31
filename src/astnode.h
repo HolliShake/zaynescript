@@ -3,14 +3,14 @@
  * @brief Abstract Syntax Tree (AST) node creation and management interface
  *
  * This header defines the interface for creating and managing AST nodes that
- * represent the syntactic structure of parsed source code. Each function creates
- * a specific type of AST node for different language constructs.
+ * represent the syntactic structure of parsed source code. Each function
+ * creates a specific type of AST node for different language constructs.
  */
 
 #include "./global.h"
 
 #ifndef ASTNODE_H
-#    define ASTNODE_H
+#	define ASTNODE_H
 
 /**
  * Creates an AST node representing an identifier/name.
@@ -20,7 +20,8 @@
  *
  * @param name String value of the identifier.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_NAME node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_NAME node, or NULL on allocation
+ * failure.
  */
 Ast* AstName(String name, Position position);
 
@@ -32,7 +33,8 @@ Ast* AstName(String name, Position position);
  *
  * @param value String representation of the integer value.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_INT node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_INT node, or NULL on allocation
+ * failure.
  */
 Ast* AstInteger(String value, Position position);
 
@@ -44,7 +46,8 @@ Ast* AstInteger(String value, Position position);
  *
  * @param value String representation of the big integer value.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_BIGINT node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_BIGINT node, or NULL on allocation
+ * failure.
  */
 Ast* AstBigInteger(String value, Position position);
 
@@ -56,7 +59,8 @@ Ast* AstBigInteger(String value, Position position);
  *
  * @param value String representation of the number value.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_NUM node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_NUM node, or NULL on allocation
+ * failure.
  */
 Ast* AstNumber(String value, Position position);
 
@@ -68,7 +72,8 @@ Ast* AstNumber(String value, Position position);
  *
  * @param value String representation of the big number value.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_BIGNUMBER node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_BIGNUMBER node, or NULL on allocation
+ * failure.
  */
 Ast* AstBigNumber(String value, Position position);
 
@@ -80,7 +85,8 @@ Ast* AstBigNumber(String value, Position position);
  *
  * @param value String content of the literal.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_STR node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_STR node, or NULL on allocation
+ * failure.
  */
 Ast* AstString(String value, Position position);
 
@@ -92,7 +98,8 @@ Ast* AstString(String value, Position position);
  *
  * @param value Boolean value (true or false).
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_BOOL node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_BOOL node, or NULL on allocation
+ * failure.
  */
 Ast* AstBool(bool value, Position position);
 
@@ -103,7 +110,8 @@ Ast* AstBool(bool value, Position position);
  * constant in the source code.
  *
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_NULL node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_NULL node, or NULL on allocation
+ * failure.
  */
 Ast* AstNull(Position position);
 
@@ -115,7 +123,8 @@ Ast* AstNull(Position position);
  * to the current instance.
  *
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_THIS node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_THIS node, or NULL on allocation
+ * failure.
  */
 Ast* AstThis(Position position);
 
@@ -127,7 +136,8 @@ Ast* AstThis(Position position);
  *
  * @param expression Pointer to the expression AST node to spread.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_SPREAD_OPERATOR node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_SPREAD_OPERATOR node, or NULL on
+ * allocation failure.
  */
 Ast* AstSpread(Ast* expression, Position position);
 
@@ -139,7 +149,8 @@ Ast* AstSpread(Ast* expression, Position position);
  *
  * @param elements Pointer to AST node containing the list elements.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_LIST_LITERAL node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_LIST_LITERAL node, or NULL on
+ * allocation failure.
  */
 Ast* AstListLiteral(Ast* elements, Position position);
 
@@ -151,7 +162,8 @@ Ast* AstListLiteral(Ast* elements, Position position);
  *
  * @param key Pointer to the key AST node.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_OBJECT_KEY_VAL node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_OBJECT_KEY_VAL node, or NULL on
+ * allocation failure.
  */
 Ast* AstObjectKeyVal(Ast* key, Position position);
 
@@ -163,7 +175,8 @@ Ast* AstObjectKeyVal(Ast* key, Position position);
  *
  * @param properties Pointer to AST node containing the object properties.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_OBJECT_LITERAL node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_OBJECT_LITERAL node, or NULL on
+ * allocation failure.
  */
 Ast* AstObjectLiteral(Ast* properties, Position position);
 
@@ -176,7 +189,8 @@ Ast* AstObjectLiteral(Ast* properties, Position position);
  * @param cls Pointer to the class AST node.
  * @param arguments Pointer to the constructor arguments AST node.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_ALLOCATION node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_ALLOCATION node, or NULL on allocation
+ * failure.
  */
 Ast* AstAllocation(Ast* cls, Ast* arguments, Position position);
 
@@ -189,7 +203,8 @@ Ast* AstAllocation(Ast* cls, Ast* arguments, Position position);
  * @param object Pointer to the object AST node.
  * @param member Pointer to the member AST node.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_MEMBER node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_MEMBER node, or NULL on allocation
+ * failure.
  */
 Ast* AstMember(Ast* object, Ast* member, Position position);
 
@@ -202,7 +217,8 @@ Ast* AstMember(Ast* object, Ast* member, Position position);
  * @param object Pointer to the object AST node.
  * @param index Pointer to the index AST node.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_INDEX node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_INDEX node, or NULL on allocation
+ * failure.
  */
 Ast* AstIndex(Ast* object, Ast* index, Position position);
 
@@ -215,7 +231,8 @@ Ast* AstIndex(Ast* object, Ast* index, Position position);
  * @param object Pointer to the callable object AST node.
  * @param arguments Pointer to the arguments AST node.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_CALL node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_CALL node, or NULL on allocation
+ * failure.
  */
 Ast* AstCall(Ast* object, Ast* arguments, Position position);
 
@@ -228,7 +245,8 @@ Ast* AstCall(Ast* object, Ast* arguments, Position position);
  * @param type The type of unary operation (e.g., negation, logical NOT).
  * @param operand Pointer to the operand AST node.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_UNARY node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_UNARY node, or NULL on allocation
+ * failure.
  */
 Ast* AstSingle(AstType type, Ast* operand, Position position);
 
@@ -242,7 +260,8 @@ Ast* AstSingle(AstType type, Ast* operand, Position position);
  * @param lhs Pointer to the left-hand side operand AST node.
  * @param rhs Pointer to the right-hand side operand AST node.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_BINARY node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_BINARY node, or NULL on allocation
+ * failure.
  */
 Ast* AstBinary(AstType type, Ast* lhs, Ast* rhs, Position position);
 
@@ -256,9 +275,13 @@ Ast* AstBinary(AstType type, Ast* lhs, Ast* rhs, Position position);
  * @param thenBranch Pointer to the then-branch AST node.
  * @param elseBranch Pointer to the else-branch AST node.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_TERNARY node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_TERNARY node, or NULL on allocation
+ * failure.
  */
-Ast* AstTernary(Ast* condition, Ast* thenBranch, Ast* elseBranch, Position position);
+Ast* AstTernary(Ast*	 condition,
+				Ast*	 thenBranch,
+				Ast*	 elseBranch,
+				Position position);
 
 /**
  * Creates an AST node representing a continue statement.
@@ -267,7 +290,8 @@ Ast* AstTernary(Ast* condition, Ast* thenBranch, Ast* elseBranch, Position posit
  * a continue statement in a loop.
  *
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_CONTINUE node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_CONTINUE node, or NULL on allocation
+ * failure.
  */
 Ast* AstContinue(Position position);
 
@@ -278,7 +302,8 @@ Ast* AstContinue(Position position);
  * a break statement in a loop or switch.
  *
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_BREAK node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_BREAK node, or NULL on allocation
+ * failure.
  */
 Ast* AstBreak(Position position);
 
@@ -288,9 +313,11 @@ Ast* AstBreak(Position position);
  * Allocates and initializes an AST_RETURN node that represents
  * a return statement with an optional expression.
  *
- * @param expression Pointer to the expression AST node, or NULL for empty return.
+ * @param expression Pointer to the expression AST node, or NULL for empty
+ * return.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_RETURN node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_RETURN node, or NULL on allocation
+ * failure.
  */
 Ast* AstReturn(Ast* expression, Position position);
 
@@ -302,7 +329,8 @@ Ast* AstReturn(Ast* expression, Position position);
  *
  * @param expression Pointer to the expression AST node.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_EXPRESSION_STATEMENT node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_EXPRESSION_STATEMENT node, or NULL on
+ * allocation failure.
  */
 Ast* AstExpressionStatement(Ast* expression, Position position);
 
@@ -315,7 +343,8 @@ Ast* AstExpressionStatement(Ast* expression, Position position);
  * @param _static_ Boolean indicating if the member is static.
  * @param node Pointer to the member AST node.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_CLASS_MEMBER node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_CLASS_MEMBER node, or NULL on
+ * allocation failure.
  */
 Ast* AstClassMember(bool _static_, Ast* node, Position position);
 
@@ -326,10 +355,12 @@ Ast* AstClassMember(bool _static_, Ast* node, Position position);
  * a class declaration with optional inheritance.
  *
  * @param name Pointer to AST node containing the class name.
- * @param super Pointer to AST node containing the superclass, or NULL if no inheritance.
+ * @param super Pointer to AST node containing the superclass, or NULL if no
+ * inheritance.
  * @param body Pointer to AST node containing the class body.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_CLASS node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_CLASS node, or NULL on allocation
+ * failure.
  */
 Ast* AstClass(Ast* name, Ast* super, Ast* body, Position position);
 
@@ -344,9 +375,14 @@ Ast* AstClass(Ast* name, Ast* super, Ast* body, Position position);
  * @param body Pointer to AST node containing the function body.
  * @param async Boolean indicating if the function is asynchronous.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_FUNCTION node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_FUNCTION node, or NULL on allocation
+ * failure.
  */
-Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, bool async, Position position);
+Ast* AstFunction(Ast*	  fnName,
+				 Ast*	  parameters,
+				 Ast*	  body,
+				 bool	  async,
+				 Position position);
 
 /**
  * Creates an AST node representing an import statement.
@@ -357,7 +393,8 @@ Ast* AstFunction(Ast* fnName, Ast* parameters, Ast* body, bool async, Position p
  * @param imports Pointer to AST node containing the list of imports.
  * @param moduleName Pointer to AST node containing the module name.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_IMPORT node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_IMPORT node, or NULL on allocation
+ * failure.
  */
 Ast* AstImport(Ast* imports, Ast* moduleName, Position position);
 
@@ -370,7 +407,8 @@ Ast* AstImport(Ast* imports, Ast* moduleName, Position position);
  * @param type The type of the variable declaration (e.g., var, local, const).
  * @param declarations Pointer to AST node containing the variable declarations.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_VAR_DECLARATION node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_VAR_DECLARATION node, or NULL on
+ * allocation failure.
  */
 Ast* AstVarDeclaration(AstType type, Ast* declarations, Position position);
 
@@ -380,7 +418,8 @@ Ast* AstVarDeclaration(AstType type, Ast* declarations, Position position);
  * Allocates and initializes an AST_EMPTY_STMNT node that represents noop
  *
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_EMPTY_STMNT node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_EMPTY_STMNT node, or NULL on
+ * allocation failure.
  */
 Ast* AstEmptyStatement(Position position);
 
@@ -394,7 +433,8 @@ Ast* AstEmptyStatement(Position position);
  * @param thenBranch Pointer to the then branch AST node.
  * @param elseBranch Pointer to the else branch AST node, or NULL if no else.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_IF node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_IF node, or NULL on allocation
+ * failure.
  */
 Ast* AstIf(Ast* condition, Ast* thenBranch, Ast* elseBranch, Position position);
 
@@ -406,11 +446,16 @@ Ast* AstIf(Ast* condition, Ast* thenBranch, Ast* elseBranch, Position position);
  *
  * @param expression Pointer to the switch expression AST node.
  * @param cases Pointer to AST node containing the list of cases.
- * @param defaultCase Pointer to the default case AST node, or NULL if no default.
+ * @param defaultCase Pointer to the default case AST node, or NULL if no
+ * default.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_SWITCH node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_SWITCH node, or NULL on allocation
+ * failure.
  */
-Ast* AstSwitch(Ast* expression, Ast* cases, Ast* defaultCase, Position position);
+Ast* AstSwitch(Ast*		expression,
+			   Ast*		cases,
+			   Ast*		defaultCase,
+			   Position position);
 
 /**
  * Creates an AST node representing a switch case.
@@ -421,7 +466,8 @@ Ast* AstSwitch(Ast* expression, Ast* cases, Ast* defaultCase, Position position)
  * @param value Pointer to the case value AST node.
  * @param body Pointer to the case body AST node.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_SWITCH_CASE node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_SWITCH_CASE node, or NULL on
+ * allocation failure.
  */
 Ast* AstSwitchCase(Ast* value, Ast* body, Position position);
 
@@ -431,10 +477,12 @@ Ast* AstSwitchCase(Ast* value, Ast* body, Position position);
  * Allocates and initializes an AST_FOR node that represents
  * a for loop with initializer, condition, and mutator.
  *
- * @param initializerConditionMutator Pointer to the initializer, condition, and mutator AST node.
+ * @param initializerConditionMutator Pointer to the initializer, condition, and
+ * mutator AST node.
  * @param body Pointer to the body AST node.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_FOR node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_FOR node, or NULL on allocation
+ * failure.
  */
 Ast* AstFor(Ast* initializerConditionMutator, Ast* body, Position position);
 
@@ -447,7 +495,8 @@ Ast* AstFor(Ast* initializerConditionMutator, Ast* body, Position position);
  * @param condition Pointer to the condition AST node.
  * @param body Pointer to the body AST node.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_WHILE node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_WHILE node, or NULL on allocation
+ * failure.
  */
 Ast* AstWhile(Ast* condition, Ast* body, Position position);
 
@@ -460,7 +509,8 @@ Ast* AstWhile(Ast* condition, Ast* body, Position position);
  * @param condition Pointer to the condition AST node.
  * @param body Pointer to the body AST node.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_DO_WHILE node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_DO_WHILE node, or NULL on allocation
+ * failure.
  */
 Ast* AstDoWhile(Ast* condition, Ast* body, Position position);
 
@@ -474,9 +524,13 @@ Ast* AstDoWhile(Ast* condition, Ast* body, Position position);
  * @param errorName Pointer to the error name AST node for the catch clause.
  * @param catchBlock Pointer to the catch block AST node.
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_TRY_CATCH node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_TRY_CATCH node, or NULL on allocation
+ * failure.
  */
-Ast* AstTryCatch(Ast* tryBlock, Ast* errorName, Ast* catchBlock, Position position);
+Ast* AstTryCatch(Ast*	  tryBlock,
+				 Ast*	  errorName,
+				 Ast*	  catchBlock,
+				 Position position);
 
 /**
  * Creates an AST node representing a block statement.
@@ -486,7 +540,8 @@ Ast* AstTryCatch(Ast* tryBlock, Ast* errorName, Ast* catchBlock, Position positi
  *
  * @param statements Pointer to child AST nodes (statements).
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_BLOCK node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_BLOCK node, or NULL on allocation
+ * failure.
  */
 Ast* AstBlock(Ast* statements, Position position);
 
@@ -498,7 +553,8 @@ Ast* AstBlock(Ast* statements, Position position);
  *
  * @param children Pointer to child AST nodes (statements/declarations).
  * @param position Source code location information.
- * @return Pointer to newly allocated AST_PROGRAM node, or NULL on allocation failure.
+ * @return Pointer to newly allocated AST_PROGRAM node, or NULL on allocation
+ * failure.
  */
 Ast* AstProgram(Ast* children, Position position);
 

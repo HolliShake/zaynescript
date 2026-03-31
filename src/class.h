@@ -11,7 +11,7 @@
 #include "./hashmap.h"
 
 #ifndef CLASS_H
-#    define CLASS_H
+#	define CLASS_H
 
 /**
  * Creates a new user-defined class.
@@ -21,7 +21,8 @@
  *
  * @param name Name of the class.
  * @param base Pointer to the base class Value, or NULL if no inheritance.
- * @return Pointer to the newly created Class structure, or NULL on allocation failure.
+ * @return Pointer to the newly created Class structure, or NULL on allocation
+ * failure.
  */
 Class* CreateUserClass(String name, Value* base);
 
@@ -47,12 +48,14 @@ void ClassExtend(Class* cls, Value* base);
  * @param cls Pointer to the Class on which to define the member.
  * @param key Pointer to the Value representing the member name.
  * @param value Pointer to the Value representing the member value.
- * @param isStatic Boolean indicating whether the member is static (true) or instance (false).
+ * @param isStatic Boolean indicating whether the member is static (true) or
+ * instance (false).
  */
 void ClassDefineMember(Class* cls, Value* key, Value* value, bool isStatic);
 
 /**
- * Defines a member (static or instance) on a user-defined class using a string key.
+ * Defines a member (static or instance) on a user-defined class using a string
+ * key.
  *
  * Adds or updates a member on the class. Members can be either static
  * (belonging to the class itself) or instance (belonging to instances
@@ -61,9 +64,13 @@ void ClassDefineMember(Class* cls, Value* key, Value* value, bool isStatic);
  * @param cls Pointer to the Class on which to define the member.
  * @param key String name of the member.
  * @param value Pointer to the Value representing the member value.
- * @param isStatic Boolean indicating whether the member is static (true) or instance (false).
+ * @param isStatic Boolean indicating whether the member is static (true) or
+ * instance (false).
  */
-void ClassDefineMemberByString(Class* cls, String key, Value* value, bool isStatic);
+void ClassDefineMemberByString(Class* cls,
+							   String key,
+							   Value* value,
+							   bool	  isStatic);
 
 /**
  * Checks if a user-defined class has a specific member.
@@ -74,8 +81,10 @@ void ClassDefineMemberByString(Class* cls, String key, Value* value, bool isStat
  *
  * @param cls Pointer to the Class to check.
  * @param key String name of the member to look for.
- * @param isStatic Boolean indicating whether to check static (true) or instance (false) members.
- * @param callable Boolean indicating whether to check for callable members only.
+ * @param isStatic Boolean indicating whether to check static (true) or instance
+ * (false) members.
+ * @param callable Boolean indicating whether to check for callable members
+ * only.
  * @return true if the member exists, false otherwise.
  */
 bool ClassHasMember(Class* cls, String key, bool isStatic, bool callable);
@@ -88,8 +97,8 @@ bool ClassHasMember(Class* cls, String key, bool isStatic, bool callable);
  *
  * @param cls Pointer to the Class from which to retrieve the member.
  * @param key String name of the member to retrieve.
- * @param isStatic Boolean indicating whether to look for a static (true) or instance (false)
- * member.
+ * @param isStatic Boolean indicating whether to look for a static (true) or
+ * instance (false) member.
  * @return Pointer to the Value of the member if found, or NULL if not found.
  */
 Value* ClassGetMember(Class* cls, String key, bool isStatic);
@@ -101,8 +110,8 @@ Value* ClassGetMember(Class* cls, String key, bool isStatic);
  * typically including the class name and instance information.
  *
  * @param instance Pointer to the ClassInstance to convert.
- * @return String representation of the class instance. Caller is responsible for freeing the
- * returned string.
+ * @return String representation of the class instance. Caller is responsible
+ * for freeing the returned string.
  */
 String ClassInstanceToString(ClassInstance* instance);
 
@@ -110,10 +119,12 @@ String ClassInstanceToString(ClassInstance* instance);
  * Creates a new instance of a user-defined class.
  *
  * Allocates and initializes a new ClassInstance structure with the specified
- * prototype. The prototype defines the class from which this instance is created.
+ * prototype. The prototype defines the class from which this instance is
+ * created.
  *
  * @param proto Pointer to the prototype Value of the class instance.
- * @return Pointer to the newly created ClassInstance structure, or NULL on allocation failure.
+ * @return Pointer to the newly created ClassInstance structure, or NULL on
+ * allocation failure.
  */
 ClassInstance* CreateClassInstance(Value* proto);
 
@@ -124,8 +135,8 @@ ClassInstance* CreateClassInstance(Value* proto);
  * typically including the class name and type information.
  *
  * @param cls Pointer to the Class to convert.
- * @return String representation of the class. Caller is responsible for freeing the returned
- * string.
+ * @return String representation of the class. Caller is responsible for freeing
+ * the returned string.
  */
 String ClassToString(Class* cls);
 

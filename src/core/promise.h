@@ -6,7 +6,7 @@
 
 
 #ifndef CORE_PROMISE_H
-#    define CORE_PROMISE_H
+#	define CORE_PROMISE_H
 
 /**
  * @brief Creates the Promise class

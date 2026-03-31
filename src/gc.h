@@ -12,7 +12,7 @@
 #include "./statemachine.h"
 
 #ifndef GC_H
-#    define GC_H
+#	define GC_H
 
 /*
  * Mark - Marks a value as reachable during garbage collection

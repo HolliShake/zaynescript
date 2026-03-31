@@ -8,7 +8,7 @@
 
 
 #ifndef CORE_LOADER_H
-#    define CORE_LOADER_H
+#	define CORE_LOADER_H
 
 /**
  * @typedef LoadCoreCallback
@@ -21,8 +21,8 @@ typedef Value* (*LoadCoreCallback)(Interpreter* interpreter);
  * @brief Mapping of core module names to their loader functions
  */
 typedef struct core_module_mapping_struct {
-    String           Name;
-    LoadCoreCallback Loader;
+	String			 Name;
+	LoadCoreCallback Loader;
 } CoreMapper;
 
 /**

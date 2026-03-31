@@ -5,7 +5,7 @@
 #include "./hashmap.h"
 
 #ifndef VALUE_H
-#    define VALUE_H
+#	define VALUE_H
 
 /**
  * @brief Creates a new error value with a message string
@@ -22,7 +22,8 @@ Value* NewErrorValue(Interpreter* interpreter, String message);
  * @param interpreter Pointer to the interpreter instance
  * @param fmt Format string for the error message
  * @param ... Additional arguments for formatting the message
- * @return Pointer to newly allocated Value structure containing the error message
+ * @return Pointer to newly allocated Value structure containing the error
+ * message
  */
 Value* NewErrorFValue(Interpreter* interpreter, String fmt, ...);
 
@@ -92,8 +93,8 @@ Value* NewNullValue(Interpreter* interpreter);
  * @brief Creates a new promise value
  *
  * @param interpreter Pointer to the interpreter instance
- * @param stateMachine Pointer to the StateMachine structure representing the promise's execution
- * state
+ * @param stateMachine Pointer to the StateMachine structure representing the
+ * promise's execution state
  * @return Pointer to newly allocated Value structure representing a promise
  */
 Value* NewPromiseValue(Interpreter* interpreter, StateMachine* stateMachine);
@@ -103,18 +104,22 @@ Value* NewPromiseValue(Interpreter* interpreter, StateMachine* stateMachine);
  *
  * @param interpreter Pointer to the interpreter instance
  * @param userFunction Pointer to the UserFunction structure to wrap
- * @return Pointer to newly allocated Value structure containing the user function
+ * @return Pointer to newly allocated Value structure containing the user
+ * function
  */
-Value* NewUserFunctionValue(Interpreter* interpreter, UserFunction* userFunction);
+Value* NewUserFunctionValue(Interpreter*  interpreter,
+							UserFunction* userFunction);
 
 /**
  * @brief Creates a new native function value
  *
  * @param interpreter Pointer to the interpreter instance
  * @param nativeFunctionMeta Pointer to the NativeFunction structure to wrap
- * @return Pointer to newly allocated Value structure containing the native function
+ * @return Pointer to newly allocated Value structure containing the native
+ * function
  */
-Value* NewNativeFunctionValue(Interpreter* interpreter, NativeFunction* nativeFunctionMeta);
+Value* NewNativeFunctionValue(Interpreter*	  interpreter,
+							  NativeFunction* nativeFunctionMeta);
 
 /**
  * @brief Creates a new environment value
@@ -155,7 +160,8 @@ Value* NewClassValue(Interpreter* interpreter, Class* cls);
  *
  * @param interpreter Pointer to the interpreter instance
  * @param instance Pointer to the ClassInstance structure to wrap
- * @return Pointer to newly allocated Value structure containing the class instance
+ * @return Pointer to newly allocated Value structure containing the class
+ * instance
  */
 Value* NewClassInstanceValue(Interpreter* interpreter, ClassInstance* instance);
 

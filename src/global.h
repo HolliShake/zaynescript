@@ -31,7 +31,7 @@
 
 // Platform-specific includes for aligned allocation
 #if defined(_WIN32)
-#    include <malloc.h>
+#	include <malloc.h>
 #endif
 
 // Constants & Macros
@@ -46,7 +46,7 @@
  * @def GC_THRESHOLD
  * @brief The allocation threshold for triggering garbage collection.
  */
-#define GC_THRESHOLD 2048
+#define GC_THRESHOLD 4096
 
 /**
  * @def VARARG
@@ -74,13 +74,15 @@
 
 /**
  * @def PREC_DBL
- * @brief Precision for double-precision big-number operations (53-bit mantissa).
+ * @brief Precision for double-precision big-number operations (53-bit
+ * mantissa).
  */
 #define PREC_DBL 53
 
 /**
  * @def PREC_NUM
- * @brief Computes the precision in bits for a big-number value of given limb length.
+ * @brief Computes the precision in bits for a big-number value of given limb
+ * length.
  *
  * @param len Number of limbs.
  */
@@ -93,13 +95,13 @@
  * @param message The error message format string.
  * @param ... Additional arguments for the format string.
  */
-#define Panic(message, ...)                                                                        \
-    do {                                                                                           \
-        fprintf(stderr, "[%s:%d]::Panic: ", __FILE__, __LINE__);                                   \
-        fprintf(stderr, message, ##__VA_ARGS__);                                                   \
-        fprintf(stderr, "\n");                                                                     \
-        exit(EXIT_FAILURE);                                                                        \
-    } while (0)
+#define Panic(message, ...)                                                    \
+	do {                                                                       \
+		fprintf(stderr, "[%s:%d]::Panic: ", __FILE__, __LINE__);               \
+		fprintf(stderr, message, ##__VA_ARGS__);                               \
+		fprintf(stderr, "\n");                                                 \
+		exit(EXIT_FAILURE);                                                    \
+	} while (0)
 
 // -----------------------------------------------------------------------------
 // Basic Types
@@ -130,9 +132,9 @@ typedef int Rune;
  * and the allocated capacity.
  */
 typedef struct array_struct {
-    void** Items;    /**< Pointer to the array of items */
-    size_t Capacity; /**< Allocated capacity of the array */
-    size_t Count;    /**< Current number of items in the array */
+	void** Items;	 /**< Pointer to the array of items */
+	size_t Capacity; /**< Allocated capacity of the array */
+	size_t Count;	 /**< Current number of items in the array */
 } Array;
 
 /**
@@ -145,9 +147,10 @@ typedef struct array_struct {
 typedef struct hashnode_struct HashNode;
 
 struct hashnode_struct {
-    String    Key;  /**< The key string for the entry */
-    void*     Val;  /**< The value associated with the key */
-    HashNode* Next; /**< Pointer to the next node in the bucket chain (collision handling) */
+	String	  Key;	/**< The key string for the entry */
+	void*	  Val;	/**< The value associated with the key */
+	HashNode* Next; /**< Pointer to the next node in the bucket chain (collision
+					   handling) */
 };
 
 /**
@@ -158,9 +161,9 @@ struct hashnode_struct {
  * Keys are strings and values are generic pointers.
  */
 typedef struct hashmap_struct {
-    size_t    Size;    /**< Total number of buckets in the hash map */
-    size_t    Count;   /**< Current number of entries in the hash map */
-    HashNode* Buckets; /**< Array of hash node buckets */
+	size_t	  Size;	   /**< Total number of buckets in the hash map */
+	size_t	  Count;   /**< Current number of entries in the hash map */
+	HashNode* Buckets; /**< Array of hash node buckets */
 } HashMap;
 
 // -----------------------------------------------------------------------------
@@ -175,10 +178,10 @@ typedef struct hashmap_struct {
  * of a token or syntax element. All values are 1-based.
  */
 typedef struct position_struct {
-    int LineStart; /**< Starting line number (1-based) */
-    int LineEnded; /**< Ending line number (1-based) */
-    int ColmStart; /**< Starting column number (1-based) */
-    int ColmEnded; /**< Ending column number (1-based) */
+	int LineStart; /**< Starting line number (1-based) */
+	int LineEnded; /**< Ending line number (1-based) */
+	int ColmStart; /**< Starting column number (1-based) */
+	int ColmEnded; /**< Ending column number (1-based) */
 } Position;
 
 /**
@@ -188,15 +191,15 @@ typedef struct position_struct {
  * Defines the lexical token categories recognized by the lexer.
  */
 typedef enum token_kind_enum {
-    TK_KEY,  /**< Keyword token */
-    TK_SYM,  /**< Symbol/Operator token */
-    TK_IDN,  /**< Identifier token */
-    TK_INT,  /**< Integer literal token */
-    TK_BINT, /**< Big integer literal token */
-    TK_NUM,  /**< Numeric (float) literal token */
-    TK_BNUM, /**< Big numeric (float) literal token */
-    TK_STR,  /**< String literal token */
-    TK_EOF,  /**< End-of-file token */
+	TK_KEY,	 /**< Keyword token */
+	TK_SYM,	 /**< Symbol/Operator token */
+	TK_IDN,	 /**< Identifier token */
+	TK_INT,	 /**< Integer literal token */
+	TK_BINT, /**< Big integer literal token */
+	TK_NUM,	 /**< Numeric (float) literal token */
+	TK_BNUM, /**< Big numeric (float) literal token */
+	TK_STR,	 /**< String literal token */
+	TK_EOF,	 /**< End-of-file token */
 } TokenKind;
 
 /**
@@ -206,9 +209,9 @@ typedef enum token_kind_enum {
  * Contains the token type, its string value, and its position in the source.
  */
 typedef struct token_struct {
-    TokenKind Type;     /**< The type of the token */
-    String    Value;    /**< The string value of the token */
-    Position  Position; /**< The location of the token in the source code */
+	TokenKind Type;		/**< The type of the token */
+	String	  Value;	/**< The string value of the token */
+	Position  Position; /**< The location of the token in the source code */
 } Token;
 
 /**
@@ -219,11 +222,11 @@ typedef struct token_struct {
  * tokenization functionality.
  */
 typedef struct lexer_struct {
-    String Path; /**< Path to the source file being lexed */
-    Rune*  Data; /**< The source code content as runes */
-    int    Line; /**< Current line number */
-    int    Colm; /**< Current column number */
-    int    Indx; /**< Current index in the Data array */
+	String Path; /**< Path to the source file being lexed */
+	Rune*  Data; /**< The source code content as runes */
+	int	   Line; /**< Current line number */
+	int	   Colm; /**< Current column number */
+	int	   Indx; /**< Current index in the Data array */
 } Lexer;
 
 /**
@@ -233,8 +236,8 @@ typedef struct lexer_struct {
  * Consumes tokens from the lexer and builds an abstract syntax tree.
  */
 typedef struct parser_struct {
-    Lexer* Lexer; /**< Pointer to the lexer instance */
-    Token  Next;  /**< The next token to be consumed (lookahead) */
+	Lexer* Lexer; /**< Pointer to the lexer instance */
+	Token  Next;  /**< The next token to be consumed (lookahead) */
 } Parser;
 
 // -----------------------------------------------------------------------------
@@ -250,87 +253,88 @@ typedef struct parser_struct {
  * and operators.
  */
 typedef enum ast_type_enum {
-    AST_PROGRAM,              /**< Root program node */
-    AST_EXPR,                 /**< Expression statement */
-    AST_CONTINUE,             /**< Continue statement */
-    AST_BREAK,                /**< Break statement */
-    AST_RETURN,               /**< Return statement */
-    AST_FUNCTION,             /**< Function declaration */
-    AST_IMPORT,               /**< Import statement */
-    AST_VAR_DECLARATION,      /**< Variable declaration (var) */
-    AST_CONST_DECLARATION,    /**< Constant declaration (const) */
-    AST_LOCAL_DECLARATION,    /**< Local declaration (local) */
-    AST_EMPTY_STATEMENT,      /**<  Empty statement (;;) */
-    AST_CLASS,                /**< Class declaration */
-    AST_CLASS_MEMBER,         /**< Class member definition */
-    AST_EXPRESSION_STATEMENT, /**< Statement wrapping an expression */
-    AST_IF,                   /**< If statement */
-    AST_SWITCH,               /**< Switch statement */
-    AST_SWITCH_CASE,          /**< Case within a switch statement */
-    AST_FOR,                  /**< For loop statement */
-    AST_WHILE,                /**< While loop statement */
-    AST_DO_WHILE,             /**< Do-while loop statement */
-    AST_BLOCK,                /**< Block of statements */
-    AST_TRY_CATCH,            /**< Try-catch block */
-    // Literals
-    AST_NAME,           /**< Identifier/Name */
-    AST_INT,            /**< Integer literal */
-    AST_BINT,           /**< Big integer literal */
-    AST_NUM,            /**< Number literal */
-    AST_BNUM,           /**< Big numeric (float) literal */
-    AST_STR,            /**< String literal */
-    AST_BOOL,           /**< Boolean literal */
-    AST_NULL,           /**< Null literal */
-    AST_THIS,           /**< This keyword */
-    AST_SPREAD,         /**< Spread operator (...) */
-    AST_LIST_LITERAL,   /**< List literal ([...]) */
-    AST_OBJECT_KEY_VAL, /**< Object key-value pair */
-    AST_OBJECT_LITERAL, /**< Object literal ({...}) */
-    AST_ALLOCATION,     /**< Allocation expression (new Class(...)) */
-    AST_MEMBER,         /**< Member access (obj.prop) */
-    AST_INDEX,          /**< Index access (obj[index]) */
-    AST_CALL,           /**< Function call */
-    // Unary Operators
-    AST_POST_INC,    /**< Post-increment (i++) */
-    AST_POST_DEC,    /**< Post-decrement (i--) */
-    AST_POSITIVE,    /**< Unary plus (+) */
-    AST_NEGATIVE,    /**< Unary minus (-) */
-    AST_LOGICAL_NOT, /**< Logical NOT (!) */
-    AST_PRE_INC,     /**< Pre-increment (++i) */
-    AST_PRE_DEC,     /**< Pre-decrement (--i) */
-    AST_AWAIT,       /**< Await expression (await promise) */
-    // Binary Operators
-    AST_MUL,          /**< Multiplication (*) */
-    AST_DIV,          /**< Division (/) */
-    AST_MOD,          /**< Modulo (%) */
-    AST_ADD,          /**< Addition (+) */
-    AST_SUB,          /**< Subtraction (-) */
-    AST_LSHFT,        /**< Left shift (<<) */
-    AST_RSHFT,        /**< Right shift (>>) */
-    AST_LT,           /**< Less than (<) */
-    AST_LTE,          /**< Less than or equal (<=) */
-    AST_GT,           /**< Greater than (>) */
-    AST_GTE,          /**< Greater than or equal (>=) */
-    AST_EQ,           /**< Equality (==) */
-    AST_NE,           /**< Inequality (!=) */
-    AST_AND,          /**< Bitwise AND (&) */
-    AST_OR,           /**< Bitwise OR (|) */
-    AST_XOR,          /**< Bitwise XOR (^) */
-    AST_LAND,         /**< Logical AND (&&) */
-    AST_LOR,          /**< Logical OR (||) */
-    AST_TERNARY,      /**< Ternary operator (condition ? true : false) */
-    AST_ASSIGN,       /**< Assignment (=) */
-    AST_SHORT_ASSIGN, /**< Short assignment (e.g. +=, -=) - specific type determined by operation */
-    AST_MUL_ASSIGN,   /**< Multiply assignment (*=) */
-    AST_DIV_ASSIGN,   /**< Divide assignment (/=) */
-    AST_MOD_ASSIGN,   /**< Modulo assignment (%=) */
-    AST_ADD_ASSIGN,   /**< Add assignment (+=) */
-    AST_SUB_ASSIGN,   /**< Subtract assignment (-=) */
-    AST_LSHFT_ASSIGN, /**< Left shift assignment (<<=) */
-    AST_RSHFT_ASSIGN, /**< Right shift assignment (>>=) */
-    AST_AND_ASSIGN,   /**< Bitwise AND assignment (&=) */
-    AST_OR_ASSIGN,    /**< Bitwise OR assignment (|=) */
-    AST_XOR_ASSIGN,   /**< Bitwise XOR assignment (^=) */
+	AST_PROGRAM,			  /**< Root program node */
+	AST_EXPR,				  /**< Expression statement */
+	AST_CONTINUE,			  /**< Continue statement */
+	AST_BREAK,				  /**< Break statement */
+	AST_RETURN,				  /**< Return statement */
+	AST_FUNCTION,			  /**< Function declaration */
+	AST_IMPORT,				  /**< Import statement */
+	AST_VAR_DECLARATION,	  /**< Variable declaration (var) */
+	AST_CONST_DECLARATION,	  /**< Constant declaration (const) */
+	AST_LOCAL_DECLARATION,	  /**< Local declaration (local) */
+	AST_EMPTY_STATEMENT,	  /**<  Empty statement (;;) */
+	AST_CLASS,				  /**< Class declaration */
+	AST_CLASS_MEMBER,		  /**< Class member definition */
+	AST_EXPRESSION_STATEMENT, /**< Statement wrapping an expression */
+	AST_IF,					  /**< If statement */
+	AST_SWITCH,				  /**< Switch statement */
+	AST_SWITCH_CASE,		  /**< Case within a switch statement */
+	AST_FOR,				  /**< For loop statement */
+	AST_WHILE,				  /**< While loop statement */
+	AST_DO_WHILE,			  /**< Do-while loop statement */
+	AST_BLOCK,				  /**< Block of statements */
+	AST_TRY_CATCH,			  /**< Try-catch block */
+	// Literals
+	AST_NAME,			/**< Identifier/Name */
+	AST_INT,			/**< Integer literal */
+	AST_BINT,			/**< Big integer literal */
+	AST_NUM,			/**< Number literal */
+	AST_BNUM,			/**< Big numeric (float) literal */
+	AST_STR,			/**< String literal */
+	AST_BOOL,			/**< Boolean literal */
+	AST_NULL,			/**< Null literal */
+	AST_THIS,			/**< This keyword */
+	AST_SPREAD,			/**< Spread operator (...) */
+	AST_LIST_LITERAL,	/**< List literal ([...]) */
+	AST_OBJECT_KEY_VAL, /**< Object key-value pair */
+	AST_OBJECT_LITERAL, /**< Object literal ({...}) */
+	AST_ALLOCATION,		/**< Allocation expression (new Class(...)) */
+	AST_MEMBER,			/**< Member access (obj.prop) */
+	AST_INDEX,			/**< Index access (obj[index]) */
+	AST_CALL,			/**< Function call */
+	// Unary Operators
+	AST_POST_INC,	 /**< Post-increment (i++) */
+	AST_POST_DEC,	 /**< Post-decrement (i--) */
+	AST_POSITIVE,	 /**< Unary plus (+) */
+	AST_NEGATIVE,	 /**< Unary minus (-) */
+	AST_LOGICAL_NOT, /**< Logical NOT (!) */
+	AST_PRE_INC,	 /**< Pre-increment (++i) */
+	AST_PRE_DEC,	 /**< Pre-decrement (--i) */
+	AST_AWAIT,		 /**< Await expression (await promise) */
+	// Binary Operators
+	AST_MUL,		  /**< Multiplication (*) */
+	AST_DIV,		  /**< Division (/) */
+	AST_MOD,		  /**< Modulo (%) */
+	AST_ADD,		  /**< Addition (+) */
+	AST_SUB,		  /**< Subtraction (-) */
+	AST_LSHFT,		  /**< Left shift (<<) */
+	AST_RSHFT,		  /**< Right shift (>>) */
+	AST_LT,			  /**< Less than (<) */
+	AST_LTE,		  /**< Less than or equal (<=) */
+	AST_GT,			  /**< Greater than (>) */
+	AST_GTE,		  /**< Greater than or equal (>=) */
+	AST_EQ,			  /**< Equality (==) */
+	AST_NE,			  /**< Inequality (!=) */
+	AST_AND,		  /**< Bitwise AND (&) */
+	AST_OR,			  /**< Bitwise OR (|) */
+	AST_XOR,		  /**< Bitwise XOR (^) */
+	AST_LAND,		  /**< Logical AND (&&) */
+	AST_LOR,		  /**< Logical OR (||) */
+	AST_TERNARY,	  /**< Ternary operator (condition ? true : false) */
+	AST_ASSIGN,		  /**< Assignment (=) */
+	AST_SHORT_ASSIGN, /**< Short assignment (e.g. +=, -=) - specific type
+						 determined by operation */
+	AST_MUL_ASSIGN,	  /**< Multiply assignment (*=) */
+	AST_DIV_ASSIGN,	  /**< Divide assignment (/=) */
+	AST_MOD_ASSIGN,	  /**< Modulo assignment (%=) */
+	AST_ADD_ASSIGN,	  /**< Add assignment (+=) */
+	AST_SUB_ASSIGN,	  /**< Subtract assignment (-=) */
+	AST_LSHFT_ASSIGN, /**< Left shift assignment (<<=) */
+	AST_RSHFT_ASSIGN, /**< Right shift assignment (>>=) */
+	AST_AND_ASSIGN,	  /**< Bitwise AND assignment (&=) */
+	AST_OR_ASSIGN,	  /**< Bitwise OR assignment (|=) */
+	AST_XOR_ASSIGN,	  /**< Bitwise XOR assignment (^=) */
 } AstType;
 
 /**
@@ -344,15 +348,16 @@ typedef enum ast_type_enum {
 typedef struct ast_struct Ast;
 
 struct ast_struct {
-    AstType  Type;     /**< The type of the AST node */
-    Position Position; /**< The position in the source code */
-    String   Value;    /**< String value (for identifiers, literals, etc.) */
-    bool     Flag;     /**< Generic boolean flag for various uses (e.g. async functions) */
-    Ast*     A;        /**< First child node (usage depends on Type) */
-    Ast*     B;        /**< Second child node (usage depends on Type) */
-    Ast*     C;        /**< Third child node (usage depends on Type) */
-    Ast*     D;        /**< Fourth child node (usage depends on Type) */
-    Ast*     Next;     /**< Next sibling node (for lists/blocks) */
+	AstType	 Type;	   /**< The type of the AST node */
+	Position Position; /**< The position in the source code */
+	String	 Value;	   /**< String value (for identifiers, literals, etc.) */
+	bool Flag; /**< Generic boolean flag for various uses (e.g. async functions)
+				*/
+	Ast* A;	   /**< First child node (usage depends on Type) */
+	Ast* B;	   /**< Second child node (usage depends on Type) */
+	Ast* C;	   /**< Third child node (usage depends on Type) */
+	Ast* D;	   /**< Fourth child node (usage depends on Type) */
+	Ast* Next; /**< Next sibling node (for lists/blocks) */
 };
 
 // -----------------------------------------------------------------------------
@@ -367,22 +372,22 @@ struct ast_struct {
  * functions, and objects.
  */
 typedef enum value_type_enum {
-    VLT_ERROR,          /**< Error value */
-    VLT_INT,            /**< Integer value */
-    VLT_BINT,           /**< Big integer value */
-    VLT_NUM,            /**< Number value */
-    VLT_BNUM,           /**< Big numeric (float) value */
-    VLT_STR,            /**< String value */
-    VLT_BOOL,           /**< Boolean value */
-    VLT_NULL,           /**< Null value */
-    VLT_PROMISE,        /**< Promise value */
-    VLT_ARRAY,          /**< Array value */
-    VLT_OBJECT,         /**< Object value */
-    VLT_CLASS,          /**< Class definition value */
-    VLT_CLASS_INSTANCE, /**< Class instance value */
-    VLT_USER_FUNCTION,  /**< User-defined function value */
-    VLT_NATV_FUNCTION,  /**< Native function value */
-    VLT_ENVIRONMENT,    /**< Environment value */
+	VLT_ERROR,			/**< Error value */
+	VLT_INT,			/**< Integer value */
+	VLT_BINT,			/**< Big integer value */
+	VLT_NUM,			/**< Number value */
+	VLT_BNUM,			/**< Big numeric (float) value */
+	VLT_STR,			/**< String value */
+	VLT_BOOL,			/**< Boolean value */
+	VLT_NULL,			/**< Null value */
+	VLT_PROMISE,		/**< Promise value */
+	VLT_ARRAY,			/**< Array value */
+	VLT_OBJECT,			/**< Object value */
+	VLT_CLASS,			/**< Class definition value */
+	VLT_CLASS_INSTANCE, /**< Class instance value */
+	VLT_USER_FUNCTION,	/**< User-defined function value */
+	VLT_NATV_FUNCTION,	/**< Native function value */
+	VLT_ENVIRONMENT,	/**< Environment value */
 } ValueType;
 
 /**
@@ -396,17 +401,18 @@ typedef enum value_type_enum {
 typedef struct value_struct Value;
 
 struct value_struct {
-    ValueType Type; /**< The type of the value */
+	ValueType Type; /**< The type of the value */
 
-    union value_union {
-        int    I32;    /**< 32-bit integer value */
-        double Num;    /**< Double-precision floating point number */
-        void*  Opaque; /**< Pointer to heap-allocated data (String, Function, Class, etc.) */
-    } Value;
+	union value_union {
+		int	   I32;	   /**< 32-bit integer value */
+		double Num;	   /**< Double-precision floating point number */
+		void*  Opaque; /**< Pointer to heap-allocated data (String, Function,
+						  Class, etc.) */
+	} Value;
 
-    // GC
-    Value* Next;   /**< Next value in the GC tracking list */
-    int    Marked; /**< GC mark flag (0 = unmarked, 1 = marked) */
+	// GC
+	Value* Next;   /**< Next value in the GC tracking list */
+	int	   Marked; /**< GC mark flag (0 = unmarked, 1 = marked) */
 };
 
 // -----------------------------------------------------------------------------
@@ -423,80 +429,80 @@ struct value_struct {
  * manipulation.
  */
 typedef enum opcode_enum {
-    OP_IMPORT_CORE,                  /**< Import core library */
-    OP_IMPORT_LIB,                   /**< Import user library */
-    OP_IMPORT_RELATIVE,              /**< Import a relative module */
-    OP_LOAD_CAPTURE,                 /**< Load a captured variable */
-    OP_LOAD_NAME,                    /**< Load a variable by name */
-    OP_LOAD_LOCAL,                   /**< Load a local variable */
-    OP_LOAD_CONST,                   /**< Load a constant value (takes 4 byte arg) */
-    OP_LOAD_BOOL,                    /**< Load a boolean value (takes 4 byte arg) */
-    OP_LOAD_NULL,                    /**< Load null value */
-    OP_LOAD_STRING,                  /**< Load a string literal */
-    OP_ARRAY_EXTEND,                 /**< Extend an array */
-    OP_ARRAY_PUSH,                   /**< Push to an array */
-    OP_ARRAY_MAKE,                   /**< Create a new array */
-    OP_OBJECT_EXTEND,                /**< Extend an object */
-    OP_OBJECT_PLUCK_ATTRIBUTE,       /**< Extract attribute from object */
-    OP_OBJECT_MAKE,                  /**< Create a new object */
-    OP_CLASS_EXTEND,                 /**< Extend a class */
-    OP_CLASS_MAKE,                   /**< Create a new class */
-    OP_CLASS_DEFINE_STATIC_MEMBER,   /**< Define a static class member */
-    OP_CLASS_DEFINE_INSTANCE_MEMBER, /**< Define an instance class member */
-    OP_SET_INDEX,                    /**< Set value at index */
-    OP_GET_INDEX,                    /**< Get value at index */
-    OP_LOAD_FUNCTION_CLOSURE,        /**< Load a function closure */
-    OP_LOAD_FUNCTION,                /**< Load a function */
-    OP_CALL_CTOR,                    /**< Call a constructor */
-    OP_CALL,                         /**< Call a function */
-    OP_CALL_METHOD,                  /**< Call a method */
-    OP_NOT,                          /**< Logical NOT */
-    OP_POS,                          /**< Unary plus */
-    OP_NEG,                          /**< Unary minus */
-    OP_AWAIT,                        /**< Await a promise */
-    OP_GET_AWAITED_VALUE,            /**< Get the awaited value */
-    OP_MUL,                          /**< Multiply */
-    OP_DIV,                          /**< Divide */
-    OP_MOD,                          /**< Modulo */
-    OP_INC,                          /**< Increment */
-    OP_POSTINC,                      /**< Post-increment */
-    OP_ADD,                          /**< Add */
-    OP_DEC,                          /**< Decrement */
-    OP_POSTDEC,                      /**< Post-decrement */
-    OP_SUB,                          /**< Subtract */
-    OP_LSHFT,                        /**< Left shift */
-    OP_RSHFT,                        /**< Right shift */
-    OP_LT,                           /**< Less than */
-    OP_LTE,                          /**< Less than or equal */
-    OP_GT,                           /**< Greater than */
-    OP_GTE,                          /**< Greater than or equal */
-    OP_EQ,                           /**< Equality */
-    OP_NE,                           /**< Inequality */
-    OP_AND,                          /**< Bitwise AND */
-    OP_OR,                           /**< Bitwise OR */
-    OP_XOR,                          /**< Bitwise XOR */
-    OP_STORE_CAPTURE,                /**< Store to captured variable */
-    OP_STORE_NAME,                   /**< Store to named variable */
-    OP_STORE_LOCAL,                  /**< Store to local variable */
-    OP_DUPTOP,                       /**< Duplicate top of stack */
-    OP_DUP2,                         /**< Duplicate top 2 stack items */
-    OP_POPTOP,                       /**< Pop top of stack */
-    OP_ROT2,                         /**< Rotate top 2 stack items */
-    OP_ROT3,                         /**< Rotate top 3 stack items */
-    OP_ROT4,                         /**< Rotate top 4 stack items */
-    OP_SETUP_TRY,                    /**< Setup try-catch block */
-    OP_POP_TRY,                      /**< Pop try block */
-    OP_POPN_TRY,                     /**< Pop N items from try stack */
-    OP_ENTER_SCOPE,                  /**< Enter a new scope */
-    OP_EXIT_SCOPE,                   /**< Exit current scope */
-    OP_EXITN_SCOPE,                  /**< Exit N scopes */
-    OP_JUMP_IF_FALSE_OR_POP,         /**< Jump if false or pop */
-    OP_JUMP_IF_TRUE_OR_POP,          /**< Jump if true or pop */
-    OP_POP_JUMP_IF_FALSE,            /**< Pop and jump if false */
-    OP_POP_JUMP_IF_TRUE,             /**< Pop and jump if true */
-    OP_JUMP,                         /**< Unconditional jump */
-    OP_ABSOLUTE_JUMP,                /**< Absolute jump */
-    OP_RETURN                        /**< Return from function */
+	OP_IMPORT_CORE,			   /**< Import core library */
+	OP_IMPORT_LIB,			   /**< Import user library */
+	OP_IMPORT_RELATIVE,		   /**< Import a relative module */
+	OP_LOAD_CAPTURE,		   /**< Load a captured variable */
+	OP_LOAD_NAME,			   /**< Load a variable by name */
+	OP_LOAD_LOCAL,			   /**< Load a local variable */
+	OP_LOAD_CONST,			   /**< Load a constant value (takes 4 byte arg) */
+	OP_LOAD_BOOL,			   /**< Load a boolean value (takes 4 byte arg) */
+	OP_LOAD_NULL,			   /**< Load null value */
+	OP_LOAD_STRING,			   /**< Load a string literal */
+	OP_ARRAY_EXTEND,		   /**< Extend an array */
+	OP_ARRAY_PUSH,			   /**< Push to an array */
+	OP_ARRAY_MAKE,			   /**< Create a new array */
+	OP_OBJECT_EXTEND,		   /**< Extend an object */
+	OP_OBJECT_PLUCK_ATTRIBUTE, /**< Extract attribute from object */
+	OP_OBJECT_MAKE,			   /**< Create a new object */
+	OP_CLASS_EXTEND,		   /**< Extend a class */
+	OP_CLASS_MAKE,			   /**< Create a new class */
+	OP_CLASS_DEFINE_STATIC_MEMBER,	 /**< Define a static class member */
+	OP_CLASS_DEFINE_INSTANCE_MEMBER, /**< Define an instance class member */
+	OP_SET_INDEX,					 /**< Set value at index */
+	OP_GET_INDEX,					 /**< Get value at index */
+	OP_LOAD_FUNCTION_CLOSURE,		 /**< Load a function closure */
+	OP_LOAD_FUNCTION,				 /**< Load a function */
+	OP_CALL_CTOR,					 /**< Call a constructor */
+	OP_CALL,						 /**< Call a function */
+	OP_CALL_METHOD,					 /**< Call a method */
+	OP_NOT,							 /**< Logical NOT */
+	OP_POS,							 /**< Unary plus */
+	OP_NEG,							 /**< Unary minus */
+	OP_AWAIT,						 /**< Await a promise */
+	OP_GET_AWAITED_VALUE,			 /**< Get the awaited value */
+	OP_MUL,							 /**< Multiply */
+	OP_DIV,							 /**< Divide */
+	OP_MOD,							 /**< Modulo */
+	OP_INC,							 /**< Increment */
+	OP_POSTINC,						 /**< Post-increment */
+	OP_ADD,							 /**< Add */
+	OP_DEC,							 /**< Decrement */
+	OP_POSTDEC,						 /**< Post-decrement */
+	OP_SUB,							 /**< Subtract */
+	OP_LSHFT,						 /**< Left shift */
+	OP_RSHFT,						 /**< Right shift */
+	OP_LT,							 /**< Less than */
+	OP_LTE,							 /**< Less than or equal */
+	OP_GT,							 /**< Greater than */
+	OP_GTE,							 /**< Greater than or equal */
+	OP_EQ,							 /**< Equality */
+	OP_NE,							 /**< Inequality */
+	OP_AND,							 /**< Bitwise AND */
+	OP_OR,							 /**< Bitwise OR */
+	OP_XOR,							 /**< Bitwise XOR */
+	OP_STORE_CAPTURE,				 /**< Store to captured variable */
+	OP_STORE_NAME,					 /**< Store to named variable */
+	OP_STORE_LOCAL,					 /**< Store to local variable */
+	OP_DUPTOP,						 /**< Duplicate top of stack */
+	OP_DUP2,						 /**< Duplicate top 2 stack items */
+	OP_POPTOP,						 /**< Pop top of stack */
+	OP_ROT2,						 /**< Rotate top 2 stack items */
+	OP_ROT3,						 /**< Rotate top 3 stack items */
+	OP_ROT4,						 /**< Rotate top 4 stack items */
+	OP_SETUP_TRY,					 /**< Setup try-catch block */
+	OP_POP_TRY,						 /**< Pop try block */
+	OP_POPN_TRY,					 /**< Pop N items from try stack */
+	OP_ENTER_SCOPE,					 /**< Enter a new scope */
+	OP_EXIT_SCOPE,					 /**< Exit current scope */
+	OP_EXITN_SCOPE,					 /**< Exit N scopes */
+	OP_JUMP_IF_FALSE_OR_POP,		 /**< Jump if false or pop */
+	OP_JUMP_IF_TRUE_OR_POP,			 /**< Jump if true or pop */
+	OP_POP_JUMP_IF_FALSE,			 /**< Pop and jump if false */
+	OP_POP_JUMP_IF_TRUE,			 /**< Pop and jump if true */
+	OP_JUMP,						 /**< Unconditional jump */
+	OP_ABSOLUTE_JUMP,				 /**< Absolute jump */
+	OP_RETURN						 /**< Return from function */
 } OpcodeEnum;
 
 // -----------------------------------------------------------------------------
@@ -511,9 +517,10 @@ typedef enum opcode_enum {
  * including the scope depth and the source/destination indices.
  */
 typedef struct capture_meta_struct {
-    int Depth; /**< Depth of the captured variable's scope relative to the closure */
-    int Src;   /**< Source index */
-    int Dst;   /**< Destination index */
+	int Depth; /**< Depth of the captured variable's scope relative to the
+				  closure */
+	int Src;   /**< Source index */
+	int Dst;   /**< Destination index */
 } CaptureMeta;
 
 /**
@@ -524,10 +531,10 @@ typedef struct capture_meta_struct {
  * has been captured by a closure to enable proper lifetime management.
  */
 typedef struct envcell_struct {
-    Value* Value;      /**< Pointer to the value stored in the cell */
-    bool   IsCaptured; /**< True if this cell is captured by a closure */
-    int    RefCount;   /**< Reference count for captured variables (optional, can be used for
-                          optimizations) */
+	Value* Value;	   /**< Pointer to the value stored in the cell */
+	bool   IsCaptured; /**< True if this cell is captured by a closure */
+	int RefCount; /**< Reference count for captured variables (optional, can be
+					 used for optimizations) */
 } EnvCell;
 
 /**
@@ -538,9 +545,9 @@ typedef struct envcell_struct {
  * a reference to the parent environment for lexical scoping.
  */
 typedef struct environment_struct {
-    Value*    Parent; /**< Pointer to the parent environment */
-    EnvCell** Locals; /**< Array of local variable cells */
-    int       LocalC; /**< Count of local variables */
+	Value*	  Parent; /**< Pointer to the parent environment */
+	EnvCell** Locals; /**< Array of local variable cells */
+	int		  LocalC; /**< Count of local variables */
 } Environment;
 
 /**
@@ -551,9 +558,9 @@ typedef struct environment_struct {
  * number, enabling meaningful error messages and stack traces.
  */
 typedef struct line_info_struct {
-    String Path; /**< Path to the source file */
-    int    Pc;   /**< Program counter */
-    int    Line; /**< Line number in the source file */
+	String Path; /**< Path to the source file */
+	int	   Pc;	 /**< Program counter */
+	int	   Line; /**< Line number in the source file */
 } LineInfo;
 
 /**
@@ -564,18 +571,19 @@ typedef struct line_info_struct {
  * count, and closure captures for a function defined in the source language.
  */
 typedef struct user_function_struct {
-    Value*                  Scope;        /**< The environment where the function was defined */
-    String                  Name;         /**< Function name (Nullable) */
-    bool                    Async;        /**< True if function is asynchronous */
-    uint8_t*                Codes;        /**< Bytecode instructions */
-    size_t                  CodeC;        /**< Size of bytecode */
-    LineInfo*               Lines;        /**< Line information for each instruction */
-    size_t                  LineC;        /**< Count of line information */
-    int                     Argc;         /**< Argument count */
-    int                     LocalC;       /**< Local variable count */
-    CaptureMeta*            CaptureMetas; /**< Array of capture metadata */
-    int                     CaptureC;     /**< Count of captured variables */
-    struct envcell_struct** Captures;     /**< Array of captured environment cells */
+	Value*		 Scope;	 /**< The environment where the function was defined */
+	String		 Name;	 /**< Function name (Nullable) */
+	bool		 Async;	 /**< True if function is asynchronous */
+	uint8_t*	 Codes;	 /**< Bytecode instructions */
+	size_t		 CodeC;	 /**< Size of bytecode */
+	LineInfo*	 Lines;	 /**< Line information for each instruction */
+	size_t		 LineC;	 /**< Count of line information */
+	int			 Argc;	 /**< Argument count */
+	int			 LocalC; /**< Local variable count */
+	CaptureMeta* CaptureMetas; /**< Array of capture metadata */
+	int			 CaptureC;	   /**< Count of captured variables */
+	struct envcell_struct**
+		Captures;			   /**< Array of captured environment cells */
 } UserFunction;
 
 /**
@@ -586,10 +594,10 @@ typedef struct user_function_struct {
  * including its scope, mutability, and memory location.
  */
 typedef struct symbol_struct {
-    bool IsGlobal;    /**< True if symbol is global */
-    bool IsLocalToFn; /**< True if symbol is local to current function */
-    bool IsConstant;  /**< True if symbol is a constant */
-    int  Offset;      /**< Memory offset or index */
+	bool IsGlobal;	  /**< True if symbol is global */
+	bool IsLocalToFn; /**< True if symbol is local to current function */
+	bool IsConstant;  /**< True if symbol is a constant */
+	int	 Offset;	  /**< Memory offset or index */
 } Symbol;
 
 /**
@@ -600,13 +608,14 @@ typedef struct symbol_struct {
  * which affects variable resolution and control flow handling.
  */
 typedef enum scope_type_enum {
-    SCOPE_GLOBAL,    /**< Global scope */
-    SCOPE_CLASS,     /**< Class scope */
-    SCOPE_FUNCTION,  /**< Function body scope */
-    SCOPE_BLOCK,     /**< Generic block scope */
-    SCOPE_NEW,       /**< Scope for new block with temporary variable such as loop or catch */
-    SCOPE_TRY_BLOCK, /**< Try block scope */
-    SCOPE_LOOP,      /**< Loop scope */
+	SCOPE_GLOBAL,	/**< Global scope */
+	SCOPE_CLASS,	/**< Class scope */
+	SCOPE_FUNCTION, /**< Function body scope */
+	SCOPE_BLOCK,	/**< Generic block scope */
+	SCOPE_NEW, /**< Scope for new block with temporary variable such as loop or
+				  catch */
+	SCOPE_TRY_BLOCK, /**< Try block scope */
+	SCOPE_LOOP,		 /**< Loop scope */
 } ScopeType;
 
 /**
@@ -620,17 +629,17 @@ typedef enum scope_type_enum {
 typedef struct scope_struct Scope;
 
 struct scope_struct {
-    ScopeType Type;     /**< Type of the scope */
-    Scope*    Parent;   /**< Parent scope */
-    HashMap*  Symbols;  /**< Symbol table for this scope */
-    HashMap*  Captures; /**< Captured variables in this scope */
-    // FN
-    bool Returned; /**< True if function returns in this scope */
-    // Loop
-    int* ContinueJumps; /**< Array of jump locations for continue statements */
-    int  ContinueJumpC; /**< Count of continue jumps */
-    int* BreakJumps;    /**< Array of jump locations for break statements */
-    int  BreakJumpC;    /**< Count of break jumps */
+	ScopeType Type;		/**< Type of the scope */
+	Scope*	  Parent;	/**< Parent scope */
+	HashMap*  Symbols;	/**< Symbol table for this scope */
+	HashMap*  Captures; /**< Captured variables in this scope */
+	// FN
+	bool Returned; /**< True if function returns in this scope */
+	// Loop
+	int* ContinueJumps; /**< Array of jump locations for continue statements */
+	int	 ContinueJumpC; /**< Count of continue jumps */
+	int* BreakJumps;	/**< Array of jump locations for break statements */
+	int	 BreakJumpC;	/**< Count of break jumps */
 };
 
 // -----------------------------------------------------------------------------
@@ -645,10 +654,10 @@ struct scope_struct {
  * separate hash maps for static and instance members.
  */
 typedef struct user_class_struct {
-    String   Name;            /**< Class name */
-    Value*   Base;            /**< Base class (must be Class or Nullable) */
-    HashMap* StaticMembers;   /**< Static members map */
-    HashMap* InstanceMembers; /**< Instance members map */
+	String	 Name;			  /**< Class name */
+	Value*	 Base;			  /**< Base class (must be Class or Nullable) */
+	HashMap* StaticMembers;	  /**< Static members map */
+	HashMap* InstanceMembers; /**< Instance members map */
 } Class;
 
 /**
@@ -658,13 +667,14 @@ typedef struct user_class_struct {
  * Links to the class prototype and maintains instance-specific member values.
  */
 typedef struct class_instance_struct {
-    Value*   Proto;   /**< Prototype class (must be Class) */
-    HashMap* Members; /**< Instance members map */
+	Value*	 Proto;	  /**< Prototype class (must be Class) */
+	HashMap* Members; /**< Instance members map */
 } ClassInstance;
 
 /**
  * @struct interpreter_struct
- * @brief Forward declaration of Interpreter structure for NativeFunctionCallback typedef.
+ * @brief Forward declaration of Interpreter structure for
+ * NativeFunctionCallback typedef.
  */
 typedef struct interpreter_struct Interpreter;
 
@@ -681,7 +691,9 @@ typedef struct interpreter_struct Interpreter;
  * @param arguments Array of argument values.
  * @return Value* The return value of the function.
  */
-typedef Value* (*NativeFunctionCallback)(Interpreter* interpreter, int argc, Value** arguments);
+typedef Value* (*NativeFunctionCallback)(Interpreter* interpreter,
+										 int		  argc,
+										 Value**	  arguments);
 
 /**
  * @struct native_function_struct
@@ -691,9 +703,9 @@ typedef Value* (*NativeFunctionCallback)(Interpreter* interpreter, int argc, Val
  * and expected argument count.
  */
 typedef struct native_function_struct {
-    String                 Name;    /**< Function name */
-    int                    Argc;    /**< Expected argument count */
-    NativeFunctionCallback FuncPtr; /**< Pointer to the C function */
+	String				   Name;	/**< Function name */
+	int					   Argc;	/**< Expected argument count */
+	NativeFunctionCallback FuncPtr; /**< Pointer to the C function */
 } NativeFunction;
 
 /**
@@ -705,10 +717,11 @@ typedef struct native_function_struct {
  * pointer or a value pointer.
  */
 typedef struct module_function_struct {
-    const String           Name;      /**< Export name */
-    int                    Argc;      /**< Argument count (for functions) */
-    NativeFunctionCallback CFunction; /**< C function pointer (if is NativeFunctionCallback) */
-    Value*                 Value;     /**< Exported value (if not function) */
+	const String Name; /**< Export name */
+	int			 Argc; /**< Argument count (for functions) */
+	NativeFunctionCallback
+		   CFunction;  /**< C function pointer (if is NativeFunctionCallback) */
+	Value* Value;	   /**< Exported value (if not function) */
 } ModuleFunction;
 
 // -----------------------------------------------------------------------------
@@ -722,8 +735,8 @@ typedef struct module_function_struct {
  * Stores the line information and function value for a particular call frame.
  */
 typedef struct stack_trace {
-    LineInfo line;
-    Value*   Function;
+	LineInfo line;
+	Value*	 Function;
 } StackTrace;
 
 /**
@@ -735,37 +748,40 @@ typedef struct stack_trace {
  * and null. Also maintains exception handler stack for try-catch blocks.
  */
 struct interpreter_struct {
-    bf_context_t BfContext;          /**< Context for the libbf library (memory management, etc.) */
-    String       ExecPath;           /**< Directory path of the executable */
-    HashMap*     Imports;            /**< Imports map */
-    Value*       Array;              /**< Built-in Array class */
-    Value*       Date;               /**< Built-in Date class */
-    Value*       Promise;            /**< Built-in Promise class */
-    Value*       True;               /**< Singleton 'true' value */
-    Value*       False;              /**< Singleton 'false' value */
-    Value*       Null;               /**< Singleton 'null' value */
-    Value*       GcRoot;             /**< Root of the Garbage Collector object graph */
-    Value*       RootEnv;            /**< Root environment of the current program */
-    Value*       CallEnv;            /**< Current execution environment */
-    int          Allocated;          /**< Total allocated bytes since last GC */
-    Value**      Constants;          /**< Array of constant values */
-    int          ConstantC;          /**< Count of constants */
-    Value**      Functions;          /**< Array of function definitions */
-    int          FunctionC;          /**< Count of functions */
-    Value*       Stacks[STACK_SIZE]; /**< Execution stack */
-    int          StackC;             /**< Stack pointer/count */
-    Value*       Envs[STACK_SIZE];   /**< Environment stack for variable scopes */
-    int          EnvC;               /**< Environment stack pointer */
-    int          ExceptionHandlerStacks[STACK_SIZE]; /**< Stack for exception handlers */
-    int          ExceptionHandlerStackC;             /**< Exception handler stack pointer */
-    int          GcThreshold;           /**< Threshold for triggering garbage collection */
-    Value*       TaskQueue[STACK_SIZE]; /**< Queue for pending tasks (e.g. resolved promises) */
-    int          TaskQueueHead;         /**< Head index (next item to dequeue) */
-    int          TaskQueueC;            /**< Count of pending tasks in the task queue */
-    StackTrace   CallStack[STACK_SIZE]; /**< Call stack for debugging (stores line info and function
-                                           for each call frame) */
-    int    CallStackC;                  /**< Call stack pointer/count */
-    Value* ActiveTask;                  /**< Currently active task being processed */
+	bf_context_t BfContext; /**< Context for the libbf library (memory
+							   management, etc.) */
+	String	 ExecPath;		/**< Directory path of the executable */
+	HashMap* Imports;		/**< Imports map */
+	Value*	 Array;			/**< Built-in Array class */
+	Value*	 Date;			/**< Built-in Date class */
+	Value*	 Promise;		/**< Built-in Promise class */
+	Value*	 True;			/**< Singleton 'true' value */
+	Value*	 False;			/**< Singleton 'false' value */
+	Value*	 Null;			/**< Singleton 'null' value */
+	Value*	 GcRoot;		/**< Root of the Garbage Collector object graph */
+	Value*	 RootEnv;		/**< Root environment of the current program */
+	Value*	 CallEnv;		/**< Current execution environment */
+	int		 Allocated;		/**< Total allocated bytes since last GC */
+	Value**	 Constants;		/**< Array of constant values */
+	int		 ConstantC;		/**< Count of constants */
+	Value**	 Functions;		/**< Array of function definitions */
+	int		 FunctionC;		/**< Count of functions */
+	Value*	 Stacks[STACK_SIZE]; /**< Execution stack */
+	int		 StckC;				 /**< Stack pointer/count */
+	Value*	 Envs[STACK_SIZE];	 /**< Environment stack for variable scopes */
+	int		 EnvrC;				 /**< Environment stack pointer */
+	int ExceptionHandlerStacks[STACK_SIZE]; /**< Stack for exception handlers */
+	int ExceptionHandlerStackC; /**< Exception handler stack pointer */
+	int GcThreshold; /**< Threshold for triggering garbage collection */
+	Value* TaskQueue[STACK_SIZE]; /**< Queue for pending tasks (e.g. resolved
+									 promises) */
+	int TaskQueueHead;			  /**< Head index (next item to dequeue) */
+	int TaskQueueC;			   /**< Count of pending tasks in the task queue */
+	StackTrace
+		CallStack[STACK_SIZE]; /**< Call stack for debugging (stores line info
+								  and function for each call frame) */
+	int	   CallStackC;		   /**< Call stack pointer/count */
+	Value* ActiveTask;		   /**< Currently active task being processed */
 };
 
 /**
@@ -776,9 +792,9 @@ struct interpreter_struct {
  * and the interpreter (for registering constants and functions).
  */
 typedef struct compiler_struct {
-    Interpreter* Interpreter; /**< Pointer to the interpreter */
-    String       ModulePath;  /**< Path to the module */
-    Parser*      Parser;      /**< Pointer to the parser */
+	Interpreter* Interpreter; /**< Pointer to the interpreter */
+	String		 ModulePath;  /**< Path to the module */
+	Parser*		 Parser;	  /**< Pointer to the parser */
 } Compiler;
 
 /**
@@ -793,9 +809,9 @@ typedef struct compiler_struct {
  *      State indicating that the operation has failed or been rejected.
  */
 typedef enum state_machine_state_enum {
-    PENDING,
-    FULFILLED,
-    REJECTED,
+	PENDING,
+	FULFILLED,
+	REJECTED,
 } StateMachineState;
 
 /**
@@ -803,7 +819,8 @@ typedef enum state_machine_state_enum {
  * @brief Represents a state machine for managing asynchronous operations.
  *
  * @var StateMachine::State
- *      The current state of the state machine (PENDING, FULFILLED, or REJECTED).
+ *      The current state of the state machine (PENDING, FULFILLED, or
+ * REJECTED).
  * @var StateMachine::StackTop
  *      The current top index of the execution stack for this state machine.
  * @var StateMachine::StackBot
@@ -813,13 +830,16 @@ typedef enum state_machine_state_enum {
  * @var StateMachine::CallEnv
  *      The execution environment active when the state machine was created.
  * @var StateMachine::WaitFor
- *      Pointer to a value that the state machine is waiting on (e.g. a promise).
+ *      Pointer to a value that the state machine is waiting on (e.g. a
+ * promise).
  * @var StateMachine::Value
  *      Pointer to the resulting value produced by the state machine operation.
  * @var StateMachine::Function
- *      Pointer to the primary function or operation being executed by the state machine.
+ *      Pointer to the primary function or operation being executed by the state
+ * machine.
  * @var StateMachine::Ip
- *      Instruction pointer; tracks the execution position within the state machine.
+ *      Instruction pointer; tracks the execution position within the state
+ * machine.
  * @var StateMachine::Line
  *      Line information for debugging.
  * @var StateMachine::Stacks
@@ -836,22 +856,23 @@ typedef enum state_machine_state_enum {
  *      Base index of the saved environment stack.
  */
 typedef struct state_machine_struct {
-    StateMachineState State;      /**< Current state (PENDING, FULFILLED, or REJECTED) */
-    bool              IsCallback; /**< True if this is a callback state machine */
-    Value*            CallEnv;    /**< Execution environment when created */
-    Value*            WaitFor;    /**< Value being awaited (e.g. a promise) */
-    Value*            Value;      /**< Resulting value of the operation */
-    Value*            Function;   /**< Function being executed */
-    size_t            Ip;         /**< Instruction pointer */
-    LineInfo          Line;       /**< Line information for debugging */
-    Value**           WaitList;   /**< Array of awaited values */
-    size_t            WaitListC;  /**< Count of items in WaitList */
-    Value**           Stacks;     /**< Saved execution stack */
-    size_t            StckTop;    /**< Top index of the execution stack */
-    size_t            StckBot;    /**< Base index of the execution stack */
-    Value**           EnvStack;   /**< Saved environment stack */
-    size_t            EnvrTop;    /**< Top index of saved environment stack */
-    size_t            EnvrBot;    /**< Base index of saved environment stack */
+	StateMachineState
+			 State;		 /**< Current state (PENDING, FULFILLED, or REJECTED) */
+	bool	 IsCallback; /**< True if this is a callback state machine */
+	Value*	 CallEnv;	 /**< Execution environment when created */
+	Value*	 WaitFor;	 /**< Value being awaited (e.g. a promise) */
+	Value*	 Value;		 /**< Resulting value of the operation */
+	Value*	 Function;	 /**< Function being executed */
+	size_t	 Ip;		 /**< Instruction pointer */
+	LineInfo Line;		 /**< Line information for debugging */
+	Value**	 WaitList;	 /**< Array of awaited values */
+	size_t	 WaitListC;	 /**< Count of items in WaitList */
+	Value**	 Stacks;	 /**< Saved execution stack */
+	size_t	 StckTop;	 /**< Top index of the execution stack */
+	size_t	 StckBot;	 /**< Base index of the execution stack */
+	Value**	 EnvStack;	 /**< Saved environment stack */
+	size_t	 EnvrTop;	 /**< Top index of saved environment stack */
+	size_t	 EnvrBot;	 /**< Base index of saved environment stack */
 } StateMachine;
 
 // -----------------------------------------------------------------------------
@@ -1026,7 +1047,8 @@ double CoerceToNum(Value* value);
 bf_t* CoerceToBitField(Interpreter* interp, Value* value);
 
 /**
- * @brief Gets the precession (number of decimal places) for a big numeric value.
+ * @brief Gets the precession (number of decimal places) for a big numeric
+ * value.
  *
  * @param value The big numeric value.
  * @return The precession.
@@ -1148,7 +1170,8 @@ StateMachine* CoerceToStateMachine(Value* value);
  * @param message Error message.
  * @return Formatted error string.
  */
-String GetErrorLine(String path, Rune* runes, Position position, String message);
+String
+GetErrorLine(String path, Rune* runes, Position position, String message);
 
 /**
  * @brief Throws a runtime error (prints and exits).
@@ -1225,8 +1248,8 @@ String Basename(String pathStr);
 /**
  * @brief Gets the directory name of a path.
  *
- * Extracts the directory component from a file path. If the path does not contain a directory
- * separator, an empty string is returned.
+ * Extracts the directory component from a file path. If the path does not
+ * contain a directory separator, an empty string is returned.
  *
  * @param pathStr The input path string.
  * @return The directory name.
@@ -1234,11 +1257,12 @@ String Basename(String pathStr);
 String Dirname(String pathStr);
 
 /**
- * @brief Converts a relative path to an absolute path based on a given base path.
+ * @brief Converts a relative path to an absolute path based on a given base
+ * path.
  *
- * If the input path is already absolute, it is returned as-is. Otherwise, it is combined
- * with the base path to produce an absolute path. The resulting path is normalized
- * to remove any redundant components (e.g. "." or "..").
+ * If the input path is already absolute, it is returned as-is. Otherwise, it is
+ * combined with the base path to produce an absolute path. The resulting path
+ * is normalized to remove any redundant components (e.g. "." or "..").
  *
  * @param baseStr The base path to resolve against (must be an absolute path).
  * @param pathStr The input path string (relative or absolute).
@@ -1247,11 +1271,13 @@ String Dirname(String pathStr);
 String AbsolutePathFromBase(String baseStr, String pathStr);
 
 /**
- * @brief Converts a relative path to an absolute path based on the current working directory.
+ * @brief Converts a relative path to an absolute path based on the current
+ * working directory.
  *
- * If the input path is already absolute, it is returned as-is. Otherwise, it is combined
- * with the current working directory to produce an absolute path. The resulting path is
- * normalized to remove any redundant components (e.g. "." or "..").
+ * If the input path is already absolute, it is returned as-is. Otherwise, it is
+ * combined with the current working directory to produce an absolute path. The
+ * resulting path is normalized to remove any redundant components (e.g. "." or
+ * "..").
  *
  * @param pathStr The input path string (relative or absolute).
  * @return An absolute path string.

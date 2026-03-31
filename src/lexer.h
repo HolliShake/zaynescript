@@ -3,29 +3,33 @@
 #include "./position.h"
 
 #ifndef TOKENIZER_H
-#    define TOKENIZER_H
+#	define TOKENIZER_H
 
 /*
  * lexer.h - Lexical analysis and tokenization
  *
- * This module provides functionality for lexical analysis (tokenization) of source
- * code. The lexer scans through source text and converts it into a stream of tokens
- * that can be consumed by the parser. It handles character-by-character processing,
- * recognizing keywords, identifiers, literals, operators, and other language elements.
+ * This module provides functionality for lexical analysis (tokenization) of
+ * source code. The lexer scans through source text and converts it into a
+ * stream of tokens that can be consumed by the parser. It handles
+ * character-by-character processing, recognizing keywords, identifiers,
+ * literals, operators, and other language elements.
  */
 
 /**
  * CreateLexer - Creates a new lexer instance for tokenizing source code
  *
- * Allocates and initializes a Lexer structure that will process the provided source
- * code data. The lexer maintains state during tokenization, including the current
- * position in the source, line and column tracking for error reporting, and lookahead
- * capabilities.
+ * Allocates and initializes a Lexer structure that will process the provided
+ * source code data. The lexer maintains state during tokenization, including
+ * the current position in the source, line and column tracking for error
+ * reporting, and lookahead capabilities.
  *
- * @param path The file path of the source being tokenized (used for error reporting)
- * @param data Pointer to the source code data as an array of runes (Unicode code points)
+ * @param path The file path of the source being tokenized (used for error
+ * reporting)
+ * @param data Pointer to the source code data as an array of runes (Unicode
+ * code points)
  *
- * @return Pointer to the newly created Lexer structure, or NULL on allocation failure
+ * @return Pointer to the newly created Lexer structure, or NULL on allocation
+ * failure
  */
 Lexer* CreateLexer(String path, Rune* data);
 
@@ -43,7 +47,8 @@ Lexer* CreateLexer(String path, Rune* data);
  *
  * @param lexer Pointer to the lexer instance to read from
  *
- * @return The next Token structure containing the token type, lexeme, and position information
+ * @return The next Token structure containing the token type, lexeme, and
+ * position information
  */
 Token NextToken(Lexer* lexer);
 
