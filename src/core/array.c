@@ -1,7 +1,10 @@
 #include "./array.h"
 
-#define Push(value) (interpreter->Stacks[interpreter->StckC++] = value)
-#define Popp()		(interpreter->Stacks[--interpreter->StckC])
+extern void Push(Interpreter* interpreter, Value* value);
+
+extern Value* Popp(Interpreter* interpreter);
+
+extern Value* Peek(Interpreter* interpreter);
 
 extern Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
 
@@ -42,11 +45,11 @@ Value* _ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
 
 	for (size_t i = 0; i < ArrayLength(array); i++) {
 		Value* item	 = ArrayGet(array, i);
-		Value* index = NewIntValue(interpreter, (int) i);
-		Push(index);
-		Push(item);
+		Value* index = NewNumValue(interpreter, (int) i);
+		Push(interpreter, index);
+		Push(interpreter, item);
 		DoCall(interpreter, callback, argc, false);
-		ArrayPush(newArray, Popp());
+		ArrayPush(newArray, Popp(interpreter));
 	}
 
 	return arrayVal;
@@ -89,11 +92,11 @@ Value* _ArrayKeep(Interpreter* interpreter, int argc, Value** arguments) {
 
 	for (size_t i = 0; i < ArrayLength(array); i++) {
 		Value* item	 = ArrayGet(array, i);
-		Value* index = NewIntValue(interpreter, (int) i);
-		Push(index);
-		Push(item);
+		Value* index = NewNumValue(interpreter, (int) i);
+		Push(interpreter, index);
+		Push(interpreter, item);
 		DoCall(interpreter, callback, argc, false);
-		if (CoerceToBool(Popp())) {
+		if (CoerceToBool(Popp(interpreter))) {
 			ArrayPush(newArray, item);
 		}
 	}

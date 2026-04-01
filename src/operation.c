@@ -662,8 +662,7 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 	}
 
 	if (ValueIsPromise(fn)) {
-		sm = CoerceToStateMachine(fn);
-
+		sm			= CoerceToStateMachine(fn);
 		sm->StckBot = interpreter->StckC;
 		sm->EnvrBot = interpreter->EnvrC;
 
@@ -696,12 +695,13 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 
 		if (sm->Ip == 0) {
 			Run(interpreter, fn);
-			if (isfn)
-				RestoreEnv(interpreter);
 		} else {
 			interpreter->CallEnv = sm->CallEnv;
 			Run(interpreter, fn);
 		}
+
+		if (isfn)
+			RestoreEnv(interpreter);
 
 		return interpreter->Null;
 	}
@@ -767,6 +767,9 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 		Value* errVal = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 
+		if (isfn)
+			RestoreEnv(interpreter);
+
 		return errVal;
 	}
 
@@ -781,7 +784,8 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 	Run(interpreter, fn);
 
 	// 3. Restore
-	RestoreEnv(interpreter);
+	if (isfn)
+		RestoreEnv(interpreter);
 	interpreter->RootEnv = oldRoot;
 
 	return interpreter->Null;

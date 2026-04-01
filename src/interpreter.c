@@ -1,5 +1,7 @@
 #include "./interpreter.h"
 
+#include <stdio.h>
+
 static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
 	// libbf uses size == 0 to signal a free() operation
 	if (size == 0) {
@@ -54,7 +56,9 @@ Interpreter* CreateInterpreter(String execPath) {
 
 #define DumpStack()                                                            \
 	do {                                                                       \
-		printf("Stack [%d items]: [ ", interpreter->StckC);                    \
+		printf("Stack [%d items] Pointer(%zu): [ ",                            \
+			   interpreter->StckC,                                             \
+			   (size_t) interpreter->StckC);                                   \
 		for (int i = 0; i < interpreter->StckC; i++) {                         \
 			if (i > 0)                                                         \
 				printf(", ");                                                  \
@@ -111,7 +115,7 @@ Value* Peek(Interpreter* interpreter) {
 }
 
 Value* PeekAt(Interpreter* interpreter, int n) {
-	return interpreter->Stacks[interpreter->StckC - n];
+	return interpreter->Stacks[(interpreter->StckC) - (n)];
 }
 
 String ReadString(uint8_t* codes, int alignStart) {
@@ -565,7 +569,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					arr	  = NewArrayValue(interpreter);
 					array = CoerceToArray(arr);
 					for (int i = 0; i < size; i++) {
-						val = PeekAt(interpreter, size + i);
+						val = PeekAt(interpreter, size - i);
 						ArrayPush(array, val);
 					}
 					PopN(interpreter, size);
@@ -792,39 +796,43 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					sm->Line	= _GetLineFromPc(uf, ip);
 					sm->CallEnv = interpreter->CallEnv;
 
-					// 1. Calculate the exact size of the current stack frame
+					// 1. Calculate the exact size of the current stack
+					// frame
 					int size	= interpreter->StckC - sm->StckBot;
 					int envsize = interpreter->EnvrC - sm->EnvrBot;
 
 					// Now your Panic message makes perfect sense!
 					if (size < 0)
-						Panic("Invalid stack state: StckC (%d) is less than "
+						Panic("Invalid stack state: StckC (%d) is less "
+							  "than "
 							  "StackBot (%d)",
 							  interpreter->StckC,
 							  (int) sm->StckBot);
 
-					// 2. Free old memory (Make sure 'free' matches 'Allocate'!)
+					// 2. Free old memory (Make sure 'free' matches
+					// 'Allocate'!)
 					if (sm->Stacks != NULL) {
-						free(sm->Stacks);  // Or your engine's equivalent memory
-										   // freer
+						free(sm->Stacks);  // Or your engine's
+										   // equivalent memory freer
 						sm->Stacks = NULL;
 					}
 
 					if (sm->EnvStack != NULL) {
-						free(sm->EnvStack);	 // Or your engine's equivalent
-											 // memory freer
+						free(sm->EnvStack);	 // Or your engine's
+											 // equivalent memory freer
 						sm->EnvStack = NULL;
 					}
 
 					sm->StckTop = size;
 					sm->EnvrTop = envsize;
 
-					// 3. Allocate and copy ONLY this function's variables
+					// 3. Allocate and copy ONLY this function's
+					// variables
 					if (size > 0) {
 						sm->Stacks = Allocate(sizeof(Value*) * size);
 
-						// This now perfectly copies exactly from StackBot to
-						// StckC
+						// This now perfectly copies exactly from
+						// StackBot to StckC
 						memcpy(sm->Stacks,
 							   &interpreter->Stacks[sm->StckBot],
 							   sizeof(Value*) * size);
@@ -833,31 +841,33 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					if (envsize > 0) {
 						sm->EnvStack = Allocate(sizeof(Value*) * envsize);
 
-						// This now perfectly copies exactly from EnvBot to
-						// EnvrC
+						// This now perfectly copies exactly from EnvBot
+						// to EnvrC
 						memcpy(sm->EnvStack,
 							   &interpreter->Envs[sm->EnvrBot],
 							   sizeof(Value*) * envsize);
 					}
 
-					// 4. Update StckC to reflect that this function's variables
-					// are popped off the main stack
+					// 4. Update StckC to reflect that this function's
+					// variables are popped off the main stack
 					interpreter->StckC = sm->StckBot;
 
-					// 5. Update EnvrC to reflect that this function's variables
-					// are popped off the main env stack
+					// 5. Update EnvrC to reflect that this function's
+					// variables are popped off the main env stack
 					interpreter->EnvrC = sm->EnvrBot;
 
 					// =================================================================
-					// 6. FIX: RESTORE THE CALLER'S ENVIRONMENT BEFORE RETURNING
+					// 6. FIX: RESTORE THE CALLER'S ENVIRONMENT BEFORE
+					// RETURNING
 					// =================================================================
 					if (interpreter->EnvrC > 0) {
 						interpreter->CallEnv =
 							interpreter->Envs[interpreter->EnvrC - 1];
 					} else {
-						// Fallback: If the stack is empty, we are back at the
-						// top level. Replace 'interpreter->GlobalEnv' with
-						// whatever your global env is actually named!
+						// Fallback: If the stack is empty, we are back
+						// at the top level. Replace
+						// 'interpreter->GlobalEnv' with whatever your
+						// global env is actually named!
 						interpreter->CallEnv = interpreter->RootEnv;
 					}
 					// =================================================================
@@ -1304,8 +1314,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 						Push(interpreter, fnValue);
 
 						for (int i = 0; i < sm->WaitListC; i++) {
-							// Queue all listeners waiting on this state machine
-							// to be resumed
+							// Queue all listeners waiting on this state
+							// machine to be resumed
 							_EnqueueTask(interpreter, sm->WaitList[i]);
 						}
 					}
@@ -1356,19 +1366,20 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 			// 1. Push the resolved/rejected value from the parent promise
 			Push(interpreter, parentSM->Value);
 
-			// 2. Call the callback function directly (not through the promise
-			// wrapper)
+			// 2. Call the callback function directly (not through the
+			// promise wrapper)
 			Value* result = DoCall(interpreter, sm->Function, 1, false);
 			if (ValueIsError(result)) {
-				// If an error is thrown during the callback, reject this state
-				// machine with that error and skip straight to step 3
+				// If an error is thrown during the callback, reject this
+				// state machine with that error and skip straight to step 3
 				StateMachineReject(sm, result);
 				goto ENQUEUE_TASKS;
 			}
 
 			result = Popp(interpreter);
 
-			// 3. Fulfill or reject this state machine based on callback result
+			// 3. Fulfill or reject this state machine based on callback
+			// result
 			if (ValueIsError(result)) {
 				StateMachineReject(sm, result);
 			} else {
