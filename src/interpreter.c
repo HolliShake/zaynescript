@@ -1,7 +1,5 @@
 #include "./interpreter.h"
 
-#include <stdio.h>
-
 static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
 	// libbf uses size == 0 to signal a free() operation
 	if (size == 0) {
