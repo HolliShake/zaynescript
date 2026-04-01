@@ -60,3 +60,8 @@ const rej = callMeMaybe()
     .error(fn(e) {
         println(e);
     });
+
+
+const (
+    x: a, y: b, z
+) = [1, 2, 3];
