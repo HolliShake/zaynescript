@@ -6,7 +6,10 @@ fn  topLevel() async {
 }
 
 fn asyncFn() async {
-    await topLevel();
+    {
+        await topLevel();
+        await topLevel();
+    }
     println("Called!!");
     return "Resolve me!";
 }

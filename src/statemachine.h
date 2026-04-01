@@ -112,7 +112,14 @@ void StateMachineAwait(StateMachine* stateMachine, size_t ip, Value* value);
 void StateMachineFulfill(StateMachine* stateMachine, Value* value);
 
 /**
+ * @brief Transitions the StateMachine to a rejected state with a reason value.
  *
+ * Updates the StateMachine's state to rejected and records the given value
+ * as the rejection reason (e.g., an error or exception). Callbacks
+ * registered via catch handlers will be scheduled to receive this value.
+ *
+ * @param stateMachine Pointer to the StateMachine instance to update.
+ * @param value The rejection reason value (e.g., an error Value).
  */
 void StateMachineReject(StateMachine* stateMachine, Value* value);
 

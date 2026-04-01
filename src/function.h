@@ -1,3 +1,14 @@
+/**
+ * @file function.h
+ * @brief User-defined and native function management interface.
+ *
+ * This header defines the interface for creating, cloning, and managing both
+ * user-defined functions (compiled from source) and native functions
+ * (implemented in C). User functions carry bytecode, local variable counts,
+ * and closure capture metadata. Native functions wrap a C callback pointer
+ * with name and argument-count metadata.
+ */
+
 #include "./global.h"
 
 #ifndef FUNCTION_H

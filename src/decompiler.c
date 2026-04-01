@@ -73,6 +73,14 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
 					free(str);
 					break;
 				}
+			case OP_IMPORT_RELATIVE:
+				{
+					String str = ReadString(uf->Codes, ip);
+					_AppendFmt(&result, "OP_IMPORT_RELATIVE \"%s\"\n", str);
+					ip += strlen(str) + 1;
+					free(str);
+					break;
+				}
 			case OP_LOAD_CAPTURE:
 				{
 					int offset = _ReadOffset(uf->Codes, ip);
@@ -229,6 +237,12 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
 			case OP_NEG:
 				_Append(&result, "OP_NEG\n");
 				break;
+			case OP_AWAIT:
+				_Append(&result, "OP_AWAIT\n");
+				break;
+			case OP_GET_AWAITED_VALUE:
+				_Append(&result, "OP_GET_AWAITED_VALUE\n");
+				break;
 			case OP_MUL:
 				_Append(&result, "OP_MUL\n");
 				break;
@@ -376,6 +390,13 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
 				{
 					int offset = _ReadOffset(uf->Codes, ip);
 					_AppendFmt(&result, "OP_POP_JUMP_IF_FALSE %d\n", offset);
+					ip += 4;
+					break;
+				}
+			case OP_POP_JUMP_IF_TRUE:
+				{
+					int offset = _ReadOffset(uf->Codes, ip);
+					_AppendFmt(&result, "OP_POP_JUMP_IF_TRUE %d\n", offset);
 					ip += 4;
 					break;
 				}

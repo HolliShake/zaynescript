@@ -1,3 +1,13 @@
+/**
+ * @file operation.h
+ * @brief Core runtime operation declarations used by the interpreter.
+ *
+ * Provides function declarations for environment management, attribute access,
+ * index get/set, constructor calls, method dispatch, function calls, all
+ * arithmetic and bitwise operators, comparison operators, and module import.
+ * These operations form the building blocks of the interpreter's dispatch loop.
+ */
+
 #include "./core/loader.h"
 #include "./environment.h"
 #include "./error.h"
@@ -8,16 +18,6 @@
 
 #ifndef OPERATION_H
 #	define OPERATION_H
-
-/**
- * @file operation.h
- * @brief Declarations for core operations and utilities used by the
- * interpreter.
- *
- * This file contains function declarations for operations such as method
- * lookup, attribute access, function calls, and other core behaviors of the
- * language.
- */
 
 /**
  * Saves an environment as the root environment on the interpreter's environment
