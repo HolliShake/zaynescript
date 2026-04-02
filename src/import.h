@@ -1,3 +1,11 @@
+/**
+ * @file import.h
+ * @brief Module import graph and dependency tracking interface.
+ *
+ * Provides structures and functions for managing module imports, tracking
+ * dependencies between modules, and detecting circular import chains.
+ */
+
 #include "./global.h"
 
 #ifndef IMPORT_H

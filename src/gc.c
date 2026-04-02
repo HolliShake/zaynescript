@@ -11,6 +11,7 @@ extern String ValueToString(Value* value);
 /**
  * @brief Frees a value and its associated memory
  *
+ * @param interp The interpreter instance (used for big-number context cleanup)
  * @param value The value to free
  */
 static void _Free(Interpreter* interp, Value* value) {

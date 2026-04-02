@@ -1,3 +1,11 @@
+/**
+ * @file loader.h
+ * @brief Core module loader interface.
+ *
+ * Defines the CoreMapper structure and the LoadCoreModule function for
+ * resolving and loading built-in modules by name at runtime.
+ */
+
 #include "../global.h"
 #include "./array.h"
 #include "./date.h"

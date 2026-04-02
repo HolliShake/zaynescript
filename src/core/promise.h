@@ -1,3 +1,12 @@
+/**
+ * @file promise.h
+ * @brief Core Promise module interface.
+ *
+ * Defines the interface for creating the built-in Promise class and loading
+ * the core Promise module, which provides asynchronous operation support
+ * within the interpreter.
+ */
+
 #include "../class.h"
 #include "../function.h"
 #include "../global.h"

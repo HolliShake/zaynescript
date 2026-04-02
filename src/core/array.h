@@ -1,3 +1,12 @@
+/**
+ * @file array.h
+ * @brief Core Array module interface.
+ *
+ * Defines the interface for creating the built-in Array class and loading
+ * the core Array module, which provides array operations within the
+ * interpreter.
+ */
+
 #include "../class.h"
 #include "../function.h"
 #include "../global.h"

@@ -1,3 +1,12 @@
+/**
+ * @file value.h
+ * @brief Runtime value creation, type checking, and comparison interface.
+ *
+ * Provides factory functions for creating typed runtime values (integers,
+ * strings, booleans, functions, classes, etc.), type-inspection predicates,
+ * string conversion, and equality comparison.
+ */
+
 #include "./array.h"
 #include "./class.h"
 #include "./function.h"
