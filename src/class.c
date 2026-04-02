@@ -1,122 +1,142 @@
 #include "./class.h"
 
 Class* CreateUserClass(String name, Value* base) {
-    Class* cls           = Allocate(sizeof(Class));
-    cls->Name            = AllocateString(name);
-    cls->Base            = base;
-    cls->StaticMembers   = CreateHashMap(16);
-    cls->InstanceMembers = CreateHashMap(16);
-    return cls;
+	Class* cls			 = Allocate(sizeof(Class));
+	cls->Name			 = AllocateString(name);
+	cls->Base			 = base;
+	cls->StaticMembers	 = CreateHashMap(16);
+	cls->InstanceMembers = CreateHashMap(16);
+	return cls;
 }
 
 void ClassExtend(Class* cls, Value* base) {
-    cls->Base = base;
+	cls->Base = base;
 }
 
+/**
+ * @brief Converts a Value to its string representation.
+ * @param value The value to convert.
+ * @return A newly allocated string (caller must free).
+ * @origin src/value.c:129
+ */
 extern String ValueToString(Value*);
 
 void ClassDefineMember(Class* cls, Value* key, Value* value, bool isStatic) {
-    String keyStr = ValueToString(key);
-    if (isStatic) {
-        HashMapSet(cls->StaticMembers, keyStr, value);
-    } else {
-        HashMapSet(cls->InstanceMembers, keyStr, value);
-    }
-    free(keyStr);
+	String keyStr = ValueToString(key);
+	if (isStatic) {
+		HashMapSet(cls->StaticMembers, keyStr, value);
+	} else {
+		HashMapSet(cls->InstanceMembers, keyStr, value);
+	}
+	free(keyStr);
 }
 
-void ClassDefineMemberByString(Class* cls, String key, Value* value, bool isStatic) {
-    if (isStatic) {
-        HashMapSet(cls->StaticMembers, key, value);
-    } else {
-        HashMapSet(cls->InstanceMembers, key, value);
-    }
+void ClassDefineMemberByString(Class* cls,
+							   String key,
+							   Value* value,
+							   bool	  isStatic) {
+	if (isStatic) {
+		HashMapSet(cls->StaticMembers, key, value);
+	} else {
+		HashMapSet(cls->InstanceMembers, key, value);
+	}
 }
 
+/**
+ * @brief Checks whether a Value is callable (i.e., a function).
+ * @param value The value to check.
+ * @return true if the value is callable, false otherwise.
+ * @origin src/value.c:325
+ */
 extern bool ValueIsCallable(Value*);
 
 bool ClassHasMember(Class* cls, String key, bool isStatic, bool callable) {
-    // if callable is -1, ignore callable check
-    HashMap* members = isStatic ? cls->StaticMembers : cls->InstanceMembers;
-    Value*   member  = HashMapGet(members, key);
-    if (member == NULL) {
-        return false;
-    }
-    if (callable && callable != (bool) -1) {
-        return ValueIsCallable(member);
-    }
-    return true;
+	// if callable is -1, ignore callable check
+	HashMap* members = isStatic ? cls->StaticMembers : cls->InstanceMembers;
+	Value*	 member	 = HashMapGet(members, key);
+	if (member == NULL) {
+		return false;
+	}
+	if (callable && callable != (bool) -1) {
+		return ValueIsCallable(member);
+	}
+	return true;
 }
 
 Value* ClassGetMember(Class* cls, String key, bool isStatic) {
-    HashMap* members = isStatic ? cls->StaticMembers : cls->InstanceMembers;
-    return HashMapGet(members, key);
+	HashMap* members = isStatic ? cls->StaticMembers : cls->InstanceMembers;
+	return HashMapGet(members, key);
 }
 
 String ClassToString(Class* cls) {
-    return cls->Name;
+	return cls->Name;
 }
 
 //
 
 ClassInstance* CreateClassInstance(Value* proto) {
-    ClassInstance* instance = Allocate(sizeof(ClassInstance));
-    instance->Proto         = proto;
-    instance->Members       = CreateHashMap(16);
-    return instance;
+	ClassInstance* instance = Allocate(sizeof(ClassInstance));
+	instance->Proto			= proto;
+	instance->Members		= CreateHashMap(16);
+	return instance;
 }
 
 String ClassInstanceToString(ClassInstance* instance) {
-    HashMap* members   = instance->Members;
-    String   className = ClassToString(CoerceToUserClass(instance->Proto));
+	HashMap* members   = instance->Members;
+	String	 className = ClassToString(CoerceToUserClass(instance->Proto));
 
-    // Start building the string
-    size_t bufferSize = 1024;
-    String buffer     = Allocate(bufferSize);
-    size_t currentPos = 0;
+	// Start building the string
+	size_t bufferSize = 1024;
+	String buffer	  = Allocate(bufferSize);
+	size_t currentPos = 0;
 
-    // Add class name and opening brace
-    currentPos += snprintf(buffer + currentPos, bufferSize - currentPos, "%s { ", className);
+	// Add class name and opening brace
+	currentPos += snprintf(buffer + currentPos,
+						   bufferSize - currentPos,
+						   "%s { ",
+						   className);
 
-    // Iterate through members
-    bool first = true;
-    for (size_t i = 0; i < members->Size; i++) {
-        HashNode* node = &members->Buckets[i];
-        while (node != NULL && node->Key != NULL) {
-            // Ensure buffer is large enough
-            size_t needed = currentPos + strlen(node->Key) + 100;
-            if (needed > bufferSize) {
-                bufferSize       = needed * 2;
-                String newBuffer = Allocate(bufferSize);
-                memcpy(newBuffer, buffer, currentPos);
-                free(buffer);
-                buffer = newBuffer;
-            }
+	// Iterate through members
+	bool first = true;
+	for (size_t i = 0; i < members->Size; i++) {
+		HashNode* node = &members->Buckets[i];
+		while (node != NULL && node->Key != NULL) {
+			// Ensure buffer is large enough
+			size_t needed = currentPos + strlen(node->Key) + 100;
+			if (needed > bufferSize) {
+				bufferSize		 = needed * 2;
+				String newBuffer = Allocate(bufferSize);
+				memcpy(newBuffer, buffer, currentPos);
+				free(buffer);
+				buffer = newBuffer;
+			}
 
-            if (!first) {
-                currentPos += snprintf(buffer + currentPos, bufferSize - currentPos, ", ");
-            }
-            first = false;
+			if (!first) {
+				currentPos += snprintf(buffer + currentPos,
+									   bufferSize - currentPos,
+									   ", ");
+			}
+			first = false;
 
-            String valueStr  = ValueToString((Value*) node->Val);
-            currentPos      += snprintf(buffer + currentPos,
-                                        bufferSize - currentPos,
-                                        "%s: %s",
-                                        node->Key,
-                                        valueStr);
+			String valueStr	 = ValueToString((Value*) node->Val);
+			currentPos		+= snprintf(buffer + currentPos,
+										bufferSize - currentPos,
+										"%s: %s",
+										node->Key,
+										valueStr);
 
-            free(valueStr);
+			free(valueStr);
 
-            node = node->Next;
-        }
-    }
+			node = node->Next;
+		}
+	}
 
-    // Add closing brace
-    currentPos += snprintf(buffer + currentPos, bufferSize - currentPos, " }");
+	// Add closing brace
+	currentPos += snprintf(buffer + currentPos, bufferSize - currentPos, " }");
 
-    // Create final string
-    String result = AllocateString(buffer);
-    free(buffer);
+	// Create final string
+	String result = AllocateString(buffer);
+	free(buffer);
 
-    return result;
+	return result;
 }

@@ -10,7 +10,7 @@
 #include "../value.h"
 
 #ifndef CORE_MATH_H
-#    define CORE_MATH_H
+#	define CORE_MATH_H
 
 /**
  * @brief Loads the core Math module

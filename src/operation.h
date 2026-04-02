@@ -1,24 +1,28 @@
+/**
+ * @file operation.h
+ * @brief Core runtime operation declarations used by the interpreter.
+ *
+ * Provides function declarations for environment management, attribute access,
+ * index get/set, constructor calls, method dispatch, function calls, all
+ * arithmetic and bitwise operators, comparison operators, and module import.
+ * These operations form the building blocks of the interpreter's dispatch loop.
+ */
+
 #include "./core/loader.h"
 #include "./environment.h"
 #include "./error.h"
 #include "./gc.h"
 #include "./global.h"
+#include "./import.h"
 #include "./value.h"
 
 
 #ifndef OPERATION_H
-#    define OPERATION_H
+#	define OPERATION_H
 
 /**
- * @file operation.h
- * @brief Declarations for core operations and utilities used by the interpreter.
- *
- * This file contains function declarations for operations such as method lookup,
- * attribute access, function calls, and other core behaviors of the language.
- */
-
-/**
- * Saves an environment as the root environment on the interpreter's environment stack.
+ * Saves an environment as the root environment on the interpreter's environment
+ * stack.
  *
  * @param interp The interpreter instance
  * @param env    The environment value to save as root
@@ -41,8 +45,8 @@ void SaveEnv(Interpreter* interp, Value* envObj);
 void RestoreEnv(Interpreter* interp);
 
 /**
- * Restores the nth environment from the environment stack and synchronizes it with the current
- * CallEnv.
+ * Restores the nth environment from the environment stack and synchronizes it
+ * with the current CallEnv.
  *
  * @param interp The interpreter instance
  * @param n The index of the environment to restore (0-based)
@@ -65,16 +69,21 @@ bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method);
 /**
  * Generic attribute retrieval function.
  * Handles arrays (by index or prototype), objects (by key or prototype),
- * classes (static members), and class instances (instance members or prototype).
+ * classes (static members), and class instances (instance members or
+ * prototype).
  *
  * @param interp        The interpreter instance
  * @param obj           The object to retrieve the attribute from
  * @param index         The attribute/key to retrieve
- * @param forMethodCall Whether the attribute is being retrieved for a method call
+ * @param forMethodCall Whether the attribute is being retrieved for a method
+ * call
  *
  * @return The retrieved attribute value, or Null value if not found
  */
-Value* GenericGetAttribute(Interpreter* interp, Value* obj, Value* index, bool forMethodCall);
+Value* GenericGetAttribute(Interpreter* interp,
+						   Value*		obj,
+						   Value*		index,
+						   bool			forMethodCall);
 
 /**
  * Performs import core operation.
@@ -92,7 +101,8 @@ Value* DoImportCore(Interpreter* interp, String moduleName);
  * Loads a user library module by reading and compiling a .zs file.
  *
  * @param interp      The interpreter instance
- * @param moduleName  The name/path of the module to import (e.g., "request/app")
+ * @param moduleName  The name/path of the module to import (e.g.,
+ * "request/app")
  *
  * @return Module value, or error value if not found
  */
@@ -160,7 +170,8 @@ Value* DoCallCtor(Interpreter* interp, Value* clsValue, int argc);
  *
  * @return Null value on success, or error value on failure
  */
-Value* DoCallMethod(Interpreter* interp, Value* obj, Value* methodName, int argc);
+Value*
+DoCallMethod(Interpreter* interp, Value* obj, Value* methodName, int argc);
 
 /**
  * Performs function call operation.
@@ -218,7 +229,8 @@ Value* DoNeg(Interpreter* interp, Value* val);
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Resulting value of the multiplication, or error value for invalid operands
+ * @return Resulting value of the multiplication, or error value for invalid
+ * operands
  */
 Value* DoMul(Interpreter* interp, Value* lhs, Value* rhs);
 
@@ -255,7 +267,8 @@ Value* DoMod(Interpreter* interp, Value* lhs, Value* rhs);
  * @param interp The interpreter instance
  * @param val    The value to increment
  *
- * @return Resulting value of the increment operation, or error value for invalid operand
+ * @return Resulting value of the increment operation, or error value for
+ * invalid operand
  */
 Value* DoInc(Interpreter* interp, Value* val);
 
@@ -279,7 +292,8 @@ Value* DoAdd(Interpreter* interp, Value* lhs, Value* rhs);
  * @param interp The interpreter instance
  * @param val    The value to decrement
  *
- * @return Resulting value of the decrement operation, or error value for invalid operand
+ * @return Resulting value of the decrement operation, or error value for
+ * invalid operand
  */
 Value* DoDec(Interpreter* interp, Value* val);
 
@@ -291,7 +305,8 @@ Value* DoDec(Interpreter* interp, Value* val);
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Resulting value of the subtraction, or error value for invalid operands
+ * @return Resulting value of the subtraction, or error value for invalid
+ * operands
  */
 Value* DoSub(Interpreter* interp, Value* lhs, Value* rhs);
 
@@ -303,7 +318,8 @@ Value* DoSub(Interpreter* interp, Value* lhs, Value* rhs);
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Resulting value of the left shift operation, or error value for invalid operands
+ * @return Resulting value of the left shift operation, or error value for
+ * invalid operands
  */
 Value* DoLShift(Interpreter* interp, Value* lhs, Value* rhs);
 
@@ -315,7 +331,8 @@ Value* DoLShift(Interpreter* interp, Value* lhs, Value* rhs);
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Resulting value of the right shift operation, or error value for invalid operands
+ * @return Resulting value of the right shift operation, or error value for
+ * invalid operands
  */
 Value* DoRShift(Interpreter* interp, Value* lhs, Value* rhs);
 
@@ -399,7 +416,8 @@ Value* DoNE(Interpreter* interp, Value* lhs, Value* rhs);
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Resulting value of the bitwise AND operation, or error value for invalid operands
+ * @return Resulting value of the bitwise AND operation, or error value for
+ * invalid operands
  */
 Value* DoAnd(Interpreter* interp, Value* lhs, Value* rhs);
 
@@ -411,7 +429,8 @@ Value* DoAnd(Interpreter* interp, Value* lhs, Value* rhs);
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Resulting value of the bitwise OR operation, or error value for invalid operands
+ * @return Resulting value of the bitwise OR operation, or error value for
+ * invalid operands
  */
 Value* DoOr(Interpreter* interp, Value* lhs, Value* rhs);
 
@@ -423,7 +442,8 @@ Value* DoOr(Interpreter* interp, Value* lhs, Value* rhs);
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Resulting value of the bitwise XOR operation, or error value for invalid operands
+ * @return Resulting value of the bitwise XOR operation, or error value for
+ * invalid operands
  */
 Value* DoXor(Interpreter* interp, Value* lhs, Value* rhs);
 

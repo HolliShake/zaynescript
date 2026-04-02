@@ -3,16 +3,16 @@
 
 
 #ifndef SCOPE_H
-#    define SCOPE_H
+#	define SCOPE_H
 
 /**
  * @file scope.h
  * @brief Scope management for variable tracking and symbol resolution
  *
- * This module provides functionality for managing lexical scopes during compilation.
- * It handles symbol tables, variable captures for closures, and scope hierarchy
- * traversal. Scopes track local variables, captured variables, and control flow
- * jump points for loops.
+ * This module provides functionality for managing lexical scopes during
+ * compilation. It handles symbol tables, variable captures for closures, and
+ * scope hierarchy traversal. Scopes track local variables, captured variables,
+ * and control flow jump points for loops.
  */
 
 /**
@@ -24,10 +24,13 @@
  * @param isGlobal Whether the symbol is global (true) or local (false)
  * @param isLocalToFn Whether the symbol is local to a function scope
  * @param isConstant Whether the symbol is constant (immutable)
- * @param offset The offset of the symbol in the function's local variables array
- * @return Pointer to the newly created Symbol structure, or NULL on allocation failure
+ * @param offset The offset of the symbol in the function's local variables
+ * array
+ * @return Pointer to the newly created Symbol structure, or NULL on allocation
+ * failure
  */
-Symbol* CreateSymbol(bool isGlobal, bool isLocalToFn, bool isConstant, int offset);
+Symbol*
+CreateSymbol(bool isGlobal, bool isLocalToFn, bool isConstant, int offset);
 
 /**
  * @brief Creates a new scope
@@ -35,9 +38,12 @@ Symbol* CreateSymbol(bool isGlobal, bool isLocalToFn, bool isConstant, int offse
  * Allocates and initializes a Scope structure with the given type and parent.
  * Scopes form a tree structure representing the lexical nesting of code blocks.
  *
- * @param type The type of scope (e.g., ST_GLOBAL, ST_FUNCTION, ST_BLOCK, ST_LOOP)
- * @param parent The parent scope in the scope hierarchy, or NULL for the global scope
- * @return Pointer to the newly created Scope structure, or NULL on allocation failure
+ * @param type The type of scope (e.g., ST_GLOBAL, ST_FUNCTION, ST_BLOCK,
+ * ST_LOOP)
+ * @param parent The parent scope in the scope hierarchy, or NULL for the global
+ * scope
+ * @return Pointer to the newly created Scope structure, or NULL on allocation
+ * failure
  */
 Scope* CreateScope(ScopeType type, Scope* parent);
 
@@ -45,11 +51,13 @@ Scope* CreateScope(ScopeType type, Scope* parent);
  * @brief Adds a continue jump offset to the nearest loop scope
  *
  * Registers a bytecode offset that needs to be patched with the continue target
- * address. This is used during compilation to handle continue statements in loops.
- * The function traverses up the scope chain to find the nearest loop scope.
+ * address. This is used during compilation to handle continue statements in
+ * loops. The function traverses up the scope chain to find the nearest loop
+ * scope.
  *
  * @param scope Pointer to the current scope
- * @param offset The bytecode offset of the continue jump instruction to be patched
+ * @param offset The bytecode offset of the continue jump instruction to be
+ * patched
  */
 void ScopeAddContinueJump(Scope* scope, int offset);
 
@@ -85,7 +93,8 @@ bool ScopeIs(Scope* scope, ScopeType type);
  *
  * @param scope Pointer to the scope to check
  * @param type The type of scope to check for
- * @return true if the scope or any ancestor is of the given type, false otherwise
+ * @return true if the scope or any ancestor is of the given type, false
+ * otherwise
  */
 bool ScopeInside(Scope* scope, ScopeType type);
 
@@ -97,7 +106,8 @@ bool ScopeInside(Scope* scope, ScopeType type);
  *
  * @param scope Pointer to the scope to check
  * @param name The name of the variable to check for
- * @return true if the scope has a local variable with the given name, false otherwise
+ * @return true if the scope has a local variable with the given name, false
+ * otherwise
  */
 bool ScopeHasLocal(Scope* scope, String name);
 
@@ -109,15 +119,16 @@ bool ScopeHasLocal(Scope* scope, String name);
  *
  * @param scope Pointer to the scope to check
  * @param name The name of the variable to check for
- * @return true if the scope or any ancestor has a variable with the given name, false otherwise
+ * @return true if the scope or any ancestor has a variable with the given name,
+ * false otherwise
  */
 bool ScopeHasName(Scope* scope, String name);
 
 /**
  * @brief Checks if a variable is local to the global scope
  *
- * Determines whether a variable with the given name is defined in the global scope.
- * This is used to distinguish between global and local variable access.
+ * Determines whether a variable with the given name is defined in the global
+ * scope. This is used to distinguish between global and local variable access.
  *
  * @param scope Pointer to the scope to check
  * @param name The name of the variable to check for
@@ -148,14 +159,15 @@ bool ScopeIsLocalToFn(Scope* scope, String name);
  * @param isGlobal Whether the symbol is global
  * @param isLocalToFn Whether the symbol is local to a function
  * @param isConstant Whether the symbol is constant (immutable)
- * @param offset The offset of the symbol in the function's local variables array
+ * @param offset The offset of the symbol in the function's local variables
+ * array
  */
 void ScopeSetSymbol(Scope* scope,
-                    String name,
-                    bool   isGlobal,
-                    bool   isLocalToFn,
-                    bool   isConstant,
-                    int    offset);
+					String name,
+					bool   isGlobal,
+					bool   isLocalToFn,
+					bool   isConstant,
+					int	   offset);
 
 /**
  * @brief Gets a symbol from a scope
@@ -173,15 +185,15 @@ Symbol* ScopeGetSymbol(Scope* scope, String name, bool recurse);
 /**
  * @brief Gets the depth of a symbol in the scope chain
  *
- * Traverses up the scope chain to find how many levels deep the specified symbol
- * is located. The depth is counted from the starting scope (depth 0) upwards through
- * parent scopes. This is useful for determining variable shadowing levels or closure
- * capture distances.
+ * Traverses up the scope chain to find how many levels deep the specified
+ * symbol is located. The depth is counted from the starting scope (depth 0)
+ * upwards through parent scopes. This is useful for determining variable
+ * shadowing levels or closure capture distances.
  *
  * @param scope Pointer to the scope to start searching from
  * @param name The name of the symbol to search for
- * @return The depth level where the symbol is found (0 = current scope, 1 = parent, etc.),
- *         or -1 if the symbol is not found in any parent scope
+ * @return The depth level where the symbol is found (0 = current scope, 1 =
+ * parent, etc.), or -1 if the symbol is not found in any parent scope
  */
 int ScopeGetDepthOfSymbol(Scope* scope, String name);
 
@@ -193,29 +205,32 @@ int ScopeGetDepthOfSymbol(Scope* scope, String name);
  *
  * @param scope Pointer to the scope to check
  * @param name The name of the variable to check for
- * @return true if the scope has a captured variable with the given name, false otherwise
+ * @return true if the scope has a captured variable with the given name, false
+ * otherwise
  */
 bool ScopeHasCapture(Scope* scope, String name);
 
 /**
  * @brief Sets a captured variable in a scope
  *
- * Adds or updates a captured variable in the scope's capture table. This is used
- * during compilation to track variables that need to be captured for closures.
+ * Adds or updates a captured variable in the scope's capture table. This is
+ * used during compilation to track variables that need to be captured for
+ * closures.
  *
  * @param scope Pointer to the scope to set the captured variable in
  * @param name The name of the captured variable
  * @param isGlobal Whether the captured variable is global
  * @param isLocalToFn Whether the captured variable is local to a function
  * @param isConstant Whether the captured variable is constant
- * @param offset The offset of the captured variable in the function's local variables array
+ * @param offset The offset of the captured variable in the function's local
+ * variables array
  */
 void ScopeSetCapture(Scope* scope,
-                     String name,
-                     bool   isGlobal,
-                     bool   isLocalToFn,
-                     bool   isConstant,
-                     int    offset);
+					 String name,
+					 bool	isGlobal,
+					 bool	isLocalToFn,
+					 bool	isConstant,
+					 int	offset);
 
 /**
  * @brief Gets a captured variable from a scope
@@ -234,7 +249,8 @@ Symbol* ScopeGetCapture(Scope* scope, String name, bool recurse);
  * @brief Gets the first scope of a given type
  *
  * Traverses up the scope chain to find the first (nearest) scope that matches
- * the specified type. This is useful for finding enclosing function or loop scopes.
+ * the specified type. This is useful for finding enclosing function or loop
+ * scopes.
  *
  * @param scope Pointer to the scope to start searching from
  * @param type The type of scope to search for
@@ -258,7 +274,8 @@ int ScopeCountNested(Scope* scope, ScopeType type);
  * @brief Frees all memory associated with a scope
  *
  * Recursively frees a scope and all its child scopes, including their symbol
- * tables and capture tables. This should be called when compilation is complete.
+ * tables and capture tables. This should be called when compilation is
+ * complete.
  *
  * @param scope Pointer to the scope to free (can be NULL)
  */

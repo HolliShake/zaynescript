@@ -6,7 +6,10 @@ fn  topLevel() async {
 }
 
 fn asyncFn() async {
-    await topLevel();
+    {
+        await topLevel();
+        await topLevel();
+    }
     println("Called!!");
     return "Resolve me!";
 }
@@ -38,8 +41,6 @@ const v = awaitable()
     .then(println);
 
 println(">>", v);
-
-
 
 fn toCall() async {
     return 3;
