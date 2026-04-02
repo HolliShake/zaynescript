@@ -152,6 +152,21 @@ static Token TokenizeString(Lexer* lexer) {
 	while (lexer->Data[scan] != 0 && lexer->Data[scan] != quote) {
 		if (lexer->Data[scan] == '\\' && lexer->Data[scan + 1] != 0) {
 			scan++;		  // Skip the backslash
+			// For \xHH, skip the hex digits (they produce 1 rune)
+			if (lexer->Data[scan] == 'x') {
+				scan++;	 // skip 'x'
+				while (lexer->Data[scan] != 0
+					   && ((lexer->Data[scan] >= '0'
+							 && lexer->Data[scan] <= '9')
+						   || (lexer->Data[scan] >= 'a'
+							   && lexer->Data[scan] <= 'f')
+						   || (lexer->Data[scan] >= 'A'
+							   && lexer->Data[scan] <= 'F'))) {
+					scan++;
+				}
+				maxLength++;  // \xHH produces one character
+				continue;
+			}
 			maxLength++;  // Count the escaped character
 		}
 		maxLength++;
@@ -180,6 +195,25 @@ static Token TokenizeString(Lexer* lexer) {
 				case 'e':
 					decoded[decodedLength++] = '\033';
 					break;	// The ANSI Escape!
+				case 'x': {
+					// \xHH hex escape
+					Advance(lexer);  // skip 'x'
+					Rune value = 0;
+					while (CurrentRune(lexer) != 0) {
+						Rune c = CurrentRune(lexer);
+						if (c >= '0' && c <= '9')
+							value = value * 16 + (c - '0');
+						else if (c >= 'a' && c <= 'f')
+							value = value * 16 + (c - 'a' + 10);
+						else if (c >= 'A' && c <= 'F')
+							value = value * 16 + (c - 'A' + 10);
+						else
+							break;
+						Advance(lexer);
+					}
+					decoded[decodedLength++] = value;
+					continue;  // already advanced past digits
+				}
 				case '\\':
 					decoded[decodedLength++] = '\\';
 					break;

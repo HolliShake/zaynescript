@@ -285,73 +285,134 @@ void RunTests() {
 	}
 }
 
+/* ANSI color codes for terminal output */
+#define CLR		 "\033[0m"
+#define CLR_BOLD "\033[1m"
+#define CLR_DIM	 "\033[2m"
+#define CLR_CYN	 "\033[36m"
+#define CLR_YEL	 "\033[33m"
+#define CLR_GRN	 "\033[32m"
+#define CLR_BCYN "\033[1;36m"
+#define CLR_BYEL "\033[1;33m"
+#define CLR_BGRN "\033[1;32m"
+#define CLR_BWHT "\033[1;37m"
+
 void PrintHelp() {
 #ifdef _WIN32
-	// Set console to UTF-8 on Windows
+	// Set console to UTF-8 and enable ANSI escape processing on Windows
 	SetConsoleOutputCP(CP_UTF8);
+	{
+		HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+		if (hOut != INVALID_HANDLE_VALUE) {
+			DWORD dwMode = 0;
+			if (GetConsoleMode(hOut, &dwMode))
+				SetConsoleMode(hOut, dwMode | 0x0004);
+		}
+	}
 #endif
 
+	/* Box top */
 	printf(
+		CLR_CYN
 		"╔════════════════════════════════════════════════════════════════════"
-		"══════════════════════╗\n");
+		"══════════════════════╗\n" CLR);
+	/* Empty */
 	printf(
-		"║                                                                    "
-		"                      ║\n");
-	printf("║  ███████╗ █████╗ ██╗   ██╗███╗   ██╗███████╗███████╗ "
-		   "██████╗██████╗ ██╗██████╗ ████████╗ ║\n");
-	printf("║  ╚══███╔╝██╔══██╗╚██╗ ██╔╝████╗  "
-		   "██║██╔════╝██╔════╝██╔════╝██╔══██╗██║██╔══██╗╚══██╔══╝ ║\n");
-	printf("║    ███╔╝ ███████║ ╚████╔╝ ██╔██╗ ██║█████╗  ███████╗██║     "
-		   "██████╔╝██║██████╔╝   ██║    ║\n");
-	printf("║   ███╔╝  ██╔══██║  ╚██╔╝  ██║╚██╗██║██╔══╝  ╚════██║██║     "
-		   "██╔══██╗██║██╔═══╝    ██║    ║\n");
-	printf("║  ███████╗██║  ██║   ██║   ██║ ╚████║███████╗███████║╚██████╗██║  "
-		   "██║██║██║        ██║    ║\n");
-	printf("║  ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═══╝╚══════╝╚══════╝ ╚═════╝╚═╝  "
-		   "╚═╝╚═╝╚═╝        ╚═╝    ║\n");
+		CLR_CYN
+		"║" CLR
+		"                                                                    "
+		"                      " CLR_CYN "║\n" CLR);
+	/* ASCII banner */
+	printf(CLR_CYN "║" CLR_BYEL
+				   "  ███████╗ █████╗ ██╗   ██╗███╗   ██╗███████╗███████╗ "
+				   "██████╗██████╗ ██╗██████╗ ████████╗ " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN
+		   "║" CLR_BYEL "  ╚══███╔╝██╔══██╗╚██╗ ██╔╝████╗  "
+		   "██║██╔════╝██╔════╝██╔════╝██╔══██╗██║██╔══██╗╚══██╔══╝ " CLR_CYN
+		   "║\n" CLR);
+	printf(CLR_CYN
+		   "║" CLR_BYEL
+		   "    ███╔╝ ███████║ ╚████╔╝ ██╔██╗ ██║█████╗  ███████╗██║     "
+		   "██████╔╝██║██████╔╝   ██║    " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN
+		   "║" CLR_BYEL
+		   "   ███╔╝  ██╔══██║  ╚██╔╝  ██║╚██╗██║██╔══╝  ╚════██║██║     "
+		   "██╔══██╗██║██╔═══╝    ██║    " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN
+		   "║" CLR_BYEL
+		   "  ███████╗██║  ██║   ██║   ██║ ╚████║███████╗███████║╚██████╗██║  "
+		   "██║██║██║        ██║    " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN
+		   "║" CLR_BYEL
+		   "  ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═══╝╚══════╝╚══════╝ ╚═════╝╚═╝  "
+		   "╚═╝╚═╝╚═╝        ╚═╝    " CLR_CYN "║\n" CLR);
+	/* Empty */
 	printf(
-		"║                                                                    "
-		"                      ║\n");
+		CLR_CYN
+		"║" CLR
+		"                                                                    "
+		"                      " CLR_CYN "║\n" CLR);
+	/* Subtitle */
+	printf(CLR_CYN "║" CLR "                                " CLR_BWHT
+				   "A Custom Programming Language" CLR
+				   "                             " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN "║" CLR "                                      " CLR_DIM
+				   "Implemented in C" CLR
+				   "                                    " CLR_CYN "║\n" CLR);
+	/* Empty */
 	printf(
-		"║                                A Custom Programming Language       "
-		"                      ║\n");
+		CLR_CYN
+		"║" CLR
+		"                                                                    "
+		"                      " CLR_CYN "║\n" CLR);
+	/* Info section */
+	printf(CLR_CYN "║" CLR "  " CLR_BWHT "Features:" CLR
+				   " Dynamic Typing • Functions • Arrays • Objects • Classes "
+				   "                      " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN "║" CLR "  " CLR_BWHT "License:" CLR
+				   "  MIT License                                             "
+				   "                      " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN "║" CLR "  " CLR_BWHT "Author:" CLR
+				   "   Philipp Andrew Redondo                                  "
+				   "                      " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN "║" CLR "  " CLR_BWHT "Build:" CLR "    " CLR_YEL
+				   "%-78s" CLR CLR_CYN "║\n" CLR,
+		   BUILD_DATE);
+	/* Empty */
 	printf(
-		"║                                      Implemented in C              "
-		"                      ║\n");
+		CLR_CYN
+		"║" CLR
+		"                                                                    "
+		"                      " CLR_CYN "║\n" CLR);
+	/* Usage */
+	printf(CLR_CYN
+		   "║" CLR "  " CLR_BOLD "usage:" CLR
+		   " zscript [--run <file.zs> | --tests | --help]               "
+		   "                      " CLR_CYN "║\n" CLR);
+	/* Box bottom */
 	printf(
-		"║                                                                    "
-		"                      ║\n");
-	printf(
-		"║  Features: Dynamic Typing • Functions • Arrays • Objects • Classes "
-		"                      ║\n");
-	printf(
-		"║  License:  MIT License                                             "
-		"                      ║\n");
-	printf(
-		"║  Author:   Philipp Andrew Redondo                                  "
-		"                      ║\n");
-	printf("║  Build:    %-78s║\n", BUILD_DATE);
-	printf(
-		"║                                                                    "
-		"                      ║\n");
-	printf(
-		"║  usage: zscript [--run <file.zs> | --tests | --help]               "
-		"                      ║\n");
-	printf(
+		CLR_CYN
 		"╚════════════════════════════════════════════════════════════════════"
-		"══════════════════════╝\n");
+		"══════════════════════╝\n" CLR);
 	printf("\n");
-	printf("USAGE:\n");
+	printf(CLR_BCYN "USAGE:\n" CLR);
 	printf("  %s [OPTIONS] [FILE]\n", "zscript");
 	printf("\n");
-	printf("OPTIONS:\n");
-	printf("  --tests              Run all test files in ./tests/ directory\n");
-	printf("  --run <file>         Run a specific .zs file\n");
-	printf("  --help, -h           Display this help message\n");
+	printf(CLR_BCYN "OPTIONS:\n" CLR);
+	printf("  " CLR_BGRN "--tests" CLR
+		   "              Run all test files in ./tests/ directory\n");
+	printf("  " CLR_BGRN "--run <file>" CLR
+		   "         Run a specific .zs file\n");
+	printf("  " CLR_BGRN "--help, -h" CLR
+		   "           Display this help message\n");
 	printf("\n");
-	printf("EXAMPLES:\n");
-	printf("  %s --tests           # Run all tests\n", "zscript");
-	printf("  %s --run script.zs   # Run script.zs\n", "zscript");
+	printf(CLR_BCYN "EXAMPLES:\n" CLR);
+	printf("  " CLR_GRN "%s --tests" CLR "           " CLR_DIM
+		   "# Run all tests\n" CLR,
+		   "zscript");
+	printf("  " CLR_GRN "%s --run script.zs" CLR "   " CLR_DIM
+		   "# Run script.zs\n" CLR,
+		   "zscript");
 	printf("\n");
 }
 

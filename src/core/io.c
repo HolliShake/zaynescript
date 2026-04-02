@@ -50,11 +50,11 @@ static Value* _IoGenericPrint(Interpreter* interpreter,
 	*p = '\0';
 
 	// single write syscall — faster than printf format processing
-	fputs("\x1B[93m", stdout);
 	fwrite(buffer, 1, total - 1, stdout);  // total-1 excludes '\0'
-	fputs("\x1B[0m", stdout);
 	if (newline)
 		putchar('\n');
+		
+	fflush(stdout);
 
 	free(buffer);
 
