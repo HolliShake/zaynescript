@@ -1,3 +1,4 @@
+// Core (Priority)
 [x] Add anonymous function
 [x] Add Array and Object
 [x] Add BigInt and BigNum
@@ -12,3 +13,8 @@
 [ ] Add null coalescing operator (??)
 [ ] Add optional chaining (?.)
 [x] Fix memory leak for bitfields/bignum implementation/operations
+
+// Needs to be Checked
+[ ] [Parser] if a "local", "var", "const" statement was followed by an identifier or group assignment
+[ ] [Parser] if a "new" operator was followed by an expression then "(" args* ")"
+[x] [Parser] if a "class" was followed by identifier

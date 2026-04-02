@@ -1,8 +1,10 @@
-/*
- * gc.h - Garbage collection interface for the interpreter
+/**
+ * @file gc.h
+ * @brief Garbage collection interface for the interpreter.
  *
- * This header defines the garbage collection API used to manage memory
- * and reclaim unused objects in the interpreter.
+ * Defines the three-function API used to drive the mark-and-sweep garbage
+ * collector. The collector traces all reachable values starting from the
+ * interpreter's root set and reclaims any unreachable memory.
  */
 
 #include "./environment.h"
@@ -12,34 +14,40 @@
 #include "./statemachine.h"
 
 #ifndef GC_H
-#    define GC_H
+#	define GC_H
 
-/*
- * Mark - Marks a value as reachable during garbage collection
- * @value: Pointer to the value to mark. Must not be NULL.
+/**
+ * @brief Marks a value and all values reachable from it as live.
  *
- * This function marks a value and its dependencies as reachable, preventing
- * them from being collected during the mark-and-sweep garbage collection phase.
+ * Recursively traverses the object graph starting from the given value,
+ * setting the Marked flag on every reachable Value. Called during the
+ * mark phase of garbage collection to prevent live objects from being
+ * collected.
+ *
+ * @param value Pointer to the Value to mark. Must not be NULL.
  */
 void Mark(Value* value);
 
-/*
- * GarbageCollect - Performs garbage collection on the interpreter
- * @interpreter: Pointer to the interpreter instance. Must not be NULL.
+/**
+ * @brief Performs a garbage collection cycle on the interpreter.
  *
- * Executes a garbage collection cycle to reclaim memory from unreachable
- * objects. This is typically called automatically when memory pressure
- * reaches a threshold.
+ * Runs a full mark-and-sweep cycle: marks all values reachable from the
+ * interpreter's root set, then sweeps the heap to free unreachable objects.
+ * Typically triggered automatically when the number of allocations exceeds
+ * the current GC threshold.
+ *
+ * @param interpreter Pointer to the Interpreter instance. Must not be NULL.
  */
 void GarbageCollect(Interpreter* interpreter);
 
-/*
- * ForceGarbageCollect - Forces an immediate garbage collection cycle
- * @interpreter: Pointer to the interpreter instance. Must not be NULL.
+/**
+ * @brief Forces an immediate garbage collection cycle regardless of threshold.
  *
- * Triggers garbage collection regardless of current memory pressure or
- * allocation thresholds. This is useful for testing or when deterministic
- * cleanup is required.
+ * Triggers a full mark-and-sweep cycle unconditionally, bypassing the
+ * allocation threshold check. Useful for testing, deterministic cleanup,
+ * or situations where memory must be reclaimed immediately.
+ *
+ * @param interpreter Pointer to the Interpreter instance. Must not be NULL.
  */
 void ForceGarbageCollect(Interpreter* interpreter);
 

@@ -11,11 +11,14 @@ if exist zscript.exe (
     )
 )
 
+for /f "tokens=2 delims==." %%I in ('wmic os get localdatetime /value') do set "DT=%%I"
+set "BUILD_DATE=%DT:~0,4%-%DT:~4,2%-%DT:~6,2% %DT:~8,2%:%DT:~10,2%:%DT:~12,2%"
+
 if "%1"=="--release" (
     echo Building in release mode...
-    gcc -O3 -DNDEBUG -Wno-pointer-sign main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c -o zscript.exe -lm -ldl -lpthread
+    gcc -O3 -DNDEBUG -DBUILD_DATE="\"%BUILD_DATE%\"" -Wno-pointer-sign main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c -o zscript.exe -lm -ldl -lpthread
 ) else (
-    gcc -g -O3 -Wno-pointer-sign main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c -o zscript.exe -lm -ldl -lpthread
+    gcc -g -O3 -DBUILD_DATE="\"%BUILD_DATE%\"" -Wno-pointer-sign main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c -o zscript.exe -lm -ldl -lpthread
 )
 
 chcp 65001 >nul

@@ -19,6 +19,9 @@ CFLAGS_OPT := -O3 -march=native -mtune=native \
 
 LDFLAGS_OPT := -flto=thin -fuse-ld=lld -Wl,--gc-sections -Wl,-O2 -Wl,--strip-all
 
+# Build date stamp
+BUILD_DATE := $(shell date '+%Y-%m-%d %H:%M:%S')
+
 # Source files
 SRCS     := main.c \
             $(wildcard src/*.c) \
@@ -41,12 +44,12 @@ all: debug
 
 release:
 	@echo "Building in release mode (clang, super-optimized)..."
-	$(CC) $(CFLAGSR) $(CFLAGS_OPT) $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_OPT)
+	$(CC) $(CFLAGSR) $(CFLAGS_OPT) -DBUILD_DATE='"$(BUILD_DATE)"' $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_OPT)
 	@echo "Build successful → $(TARGET)"
 
 debug:
 	@echo "Building in debug mode..."
-	$(CC) $(CFLAGS) -O0 $(SRCS) -o $(TARGET) $(LDFLAGS)
+	$(CC) $(CFLAGS) -O0 -DBUILD_DATE='"$(BUILD_DATE)"' $(SRCS) -o $(TARGET) $(LDFLAGS)
 	@echo "Build successful → $(TARGET)"
 
 clean:

@@ -1,7 +1,17 @@
+/**
+ * @file hashmap.h
+ * @brief Hash map (string-keyed dictionary) interface.
+ *
+ * Implements a hash table with separate chaining for collision resolution.
+ * Keys are null-terminated C strings; values are generic void pointers.
+ * Provides creation, insertion, lookup, extension, membership test,
+ * string conversion, and deallocation operations.
+ */
+
 #include "./global.h"
 
 #ifndef HASHMAP_H
-#    define HASHMAP_H
+#	define HASHMAP_H
 
 /**
  * CreateHashMap - Creates and initializes a new hash map
