@@ -235,6 +235,12 @@ int HashMapContains(HashMap* hashmap, String key) {
 	return HashMapGet(hashmap, key) != NULL;
 }
 
+/**
+ * @brief Converts a Value to its string representation.
+ * @param value The value to convert.
+ * @return A newly allocated string (caller must free).
+ * @origin src/value.c:129
+ */
 extern String ValueToString(Value* value);
 
 String HashMapToString(HashMap* hashmap) {

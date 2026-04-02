@@ -13,6 +13,12 @@ void ClassExtend(Class* cls, Value* base) {
 	cls->Base = base;
 }
 
+/**
+ * @brief Converts a Value to its string representation.
+ * @param value The value to convert.
+ * @return A newly allocated string (caller must free).
+ * @origin src/value.c:129
+ */
 extern String ValueToString(Value*);
 
 void ClassDefineMember(Class* cls, Value* key, Value* value, bool isStatic) {
@@ -36,6 +42,12 @@ void ClassDefineMemberByString(Class* cls,
 	}
 }
 
+/**
+ * @brief Checks whether a Value is callable (i.e., a function).
+ * @param value The value to check.
+ * @return true if the value is callable, false otherwise.
+ * @origin src/value.c:325
+ */
 extern bool ValueIsCallable(Value*);
 
 bool ClassHasMember(Class* cls, String key, bool isStatic, bool callable) {

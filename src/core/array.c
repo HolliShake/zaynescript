@@ -1,11 +1,38 @@
 #include "./array.h"
 
+/**
+ * @brief Pushes a value onto the interpreter's stack.
+ * @param interpreter The interpreter instance.
+ * @param value The value to push.
+ * @origin src/interpreter.c:101
+ */
 extern void Push(Interpreter* interpreter, Value* value);
 
+/**
+ * @brief Pops and returns the top value from the interpreter's stack.
+ * @param interpreter The interpreter instance.
+ * @return The popped value.
+ * @origin src/interpreter.c:105
+ */
 extern Value* Popp(Interpreter* interpreter);
 
+/**
+ * @brief Peeks at the top value on the interpreter's stack without removing it.
+ * @param interpreter The interpreter instance.
+ * @return The top value on the stack.
+ * @origin src/interpreter.c:113
+ */
 extern Value* Peek(Interpreter* interpreter);
 
+/**
+ * @brief Calls a function value with the given arguments.
+ * @param interp The interpreter instance.
+ * @param fn The function value to call.
+ * @param argc The number of arguments.
+ * @param withThis Whether the call includes a 'this' context.
+ * @return The return value of the function call.
+ * @origin src/operation.c:617
+ */
 extern Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
 
 Value* _ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {

@@ -21,13 +21,36 @@
 
 #define GetOffset() (interpreter->ConstantC)
 
-// Extern: Located at Interpreter.c
+/**
+ * @brief Pushes a value onto the interpreter's stack.
+ * @param interpreter The interpreter instance.
+ * @param value The value to push.
+ * @origin src/interpreter.c:101
+ */
 extern void Push(Interpreter* interpreter, Value* value);
-// Extern: Located at Interpreter.c
+
+/**
+ * @brief Pops and returns the top value from the interpreter's stack.
+ * @param interpreter The interpreter instance.
+ * @return The popped value.
+ * @origin src/interpreter.c:105
+ */
 extern Value* Popp(Interpreter* interpreter);
-// Extern: Located at Interpreter.c
+
+/**
+ * @brief Pops N values from the interpreter's stack.
+ * @param interpreter The interpreter instance.
+ * @param n The number of values to pop.
+ * @origin src/interpreter.c:109
+ */
 extern void PopN(Interpreter* interpreter, int n);
-// Extern: Located at Interpreter.c
+
+/**
+ * @brief Peeks at the top value on the interpreter's stack without removing it.
+ * @param interpreter The interpreter instance.
+ * @return The top value on the stack.
+ * @origin src/interpreter.c:113
+ */
 extern Value* Peek(Interpreter* interpreter);
 
 static int _GetConstantOffset(Interpreter* interpreter, Value* value) {
@@ -57,8 +80,18 @@ static void _DupTop(Interpreter* interpreter) {
 	Push(interpreter, Peek(interpreter));
 }
 
+/**
+ * @brief Runs the interpreter's main execution loop on a function value.
+ * @param interpreter The interpreter instance.
+ * @param fnValue The compiled function value to execute.
+ * @origin src/interpreter.c:363
+ */
 extern void Run(Interpreter* interpreter, Value* fnValue);
 
+/**
+ * @brief Array of core module mappers for built-in module resolution.
+ * @origin src/core/loader.c:4
+ */
 extern CoreMapper _CoreModuleMappers[];
 
 void SaveRootEnv(Interpreter* interpreter, Value* env) {
@@ -350,17 +383,84 @@ Value* DoImportCore(Interpreter* interpreter, String moduleName) {
 	return result;
 }
 
-extern Lexer*	 CreateLexer(String filePath, Rune* data);
-extern void		 FreeLexer(Lexer* lexer);
-extern Parser*	 CreateParser(Lexer* lexer);
-extern Ast*		 Parse(Parser* parser);
-extern void		 FreeParser(Parser* parser);
-extern void		 FreeAst(Ast* ast);
+/**
+ * @brief Creates a new lexer for tokenizing source code.
+ * @param filePath The path of the source file.
+ * @param data The source code as a Rune array.
+ * @return A new Lexer instance.
+ * @origin src/lexer.c:270
+ */
+extern Lexer* CreateLexer(String filePath, Rune* data);
+
+/**
+ * @brief Frees a lexer and its associated resources.
+ * @param lexer The lexer to free.
+ * @origin src/lexer.c:341
+ */
+extern void FreeLexer(Lexer* lexer);
+
+/**
+ * @brief Creates a new parser from a lexer.
+ * @param lexer The lexer to read tokens from.
+ * @return A new Parser instance.
+ * @origin src/parser.c:3
+ */
+extern Parser* CreateParser(Lexer* lexer);
+
+/**
+ * @brief Parses the token stream into an AST.
+ * @param parser The parser instance.
+ * @return The root AST node of the parsed program.
+ * @origin src/parser.c:1817
+ */
+extern Ast* Parse(Parser* parser);
+
+/**
+ * @brief Frees a parser and its associated resources.
+ * @param parser The parser to free.
+ * @origin src/parser.c:1822
+ */
+extern void FreeParser(Parser* parser);
+
+/**
+ * @brief Frees an AST and all its child nodes.
+ * @param ast The AST to free.
+ * @origin src/astnode.c:285
+ */
+extern void FreeAst(Ast* ast);
+
+/**
+ * @brief Creates a new compiler from an interpreter and parser.
+ * @param interpreter The interpreter instance.
+ * @param parser The parser to read AST from.
+ * @return A new Compiler instance.
+ * @origin src/compiler.c:14
+ */
 extern Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
-extern Ast*		 Parse(Parser* parser);
-extern Value*	 CompileAst(Compiler* compiler, Ast* programAst);
-extern void		 FreeCompiler(Compiler* compiler);
-extern void		 Interpret(Interpreter* interpreter, Value* compiled);
+
+/**
+ * @brief Compiles an AST into a callable function value (bytecode).
+ * @param compiler The compiler instance.
+ * @param programAst The AST to compile.
+ * @return The compiled function value.
+ * @origin src/compiler.c:3049
+ */
+extern Value* CompileAst(Compiler* compiler, Ast* programAst);
+
+/**
+ * @brief Frees a compiler and its associated resources.
+ * @param compiler The compiler to free.
+ * @origin src/compiler.c:3053
+ */
+extern void FreeCompiler(Compiler* compiler);
+
+/**
+ * @brief Interprets a compiled function value.
+ * @param interpreter The interpreter instance.
+ * @param compiled The compiled function value to interpret.
+ * @origin src/interpreter.c:1418
+ */
+extern void Interpret(Interpreter* interpreter, Value* compiled);
 
 static Value* DoImportFileOrLib(Interpreter* interpreter,
 								String		 moduleNameOrPath,

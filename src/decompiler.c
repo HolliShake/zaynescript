@@ -1,7 +1,20 @@
 #include "./decompiler.h"
 
+/**
+ * @brief Reads a string from a bytecode array at the given offset.
+ * @param codes The bytecode array.
+ * @param alignStart The byte offset to start reading from.
+ * @return The decoded string.
+ * @origin src/interpreter.c:121
+ */
 extern String ReadString(uint8_t* codes, int alignStart);
 
+/**
+ * @brief Converts a Value to its string representation.
+ * @param value The value to convert.
+ * @return A newly allocated string (caller must free).
+ * @origin src/value.c:129
+ */
 extern String ValueToString(Value* value);
 
 static int _ReadOffset(uint8_t* codes, int alignStart) {
