@@ -14,6 +14,8 @@ Interpreter* CreateInterpreter(String execPath) {
 	Interpreter* interpreter = Allocate(sizeof(Interpreter));
 	bf_context_init(&(interpreter->BfContext), interpreter_bf_realloc, NULL);
 	interpreter->ExecPath	  = AllocateString(execPath);
+	interpreter->ModulePath	  = NULL;
+	interpreter->ImportHead	  = NULL;
 	interpreter->Imports	  = CreateHashMap(16);
 	interpreter->Allocated	  = 0;
 	interpreter->GcRoot		  = NULL;
@@ -1337,6 +1339,7 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 	Value *		  env = NULL, *saveGbl = NULL;
 	env = saveGbl =
 		NewEnvironmentValue(interpreter, CreateEnvironment(NULL, uf->LocalC));
+	interpreter->ModulePath = uf->Name;
 	SaveRootEnv(interpreter, env);
 	Run(interpreter, fnValue);
 	RestoreEnv(interpreter);
@@ -1419,6 +1422,7 @@ void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/) {
 void FreeInterpreter(Interpreter* interpreter) {
 	bf_context_end(&interpreter->BfContext);
 	FreeHashMap(interpreter->Imports);
+	FreeImportNode(interpreter->ImportHead);
 	if (interpreter->ExecPath)
 		free(interpreter->ExecPath);
 	free(interpreter->Constants);

@@ -362,54 +362,95 @@ extern Value*	 CompileAst(Compiler* compiler, Ast* programAst);
 extern void		 FreeCompiler(Compiler* compiler);
 extern void		 Interpret(Interpreter* interpreter, Value* compiled);
 
-Value* DoImportLib(Interpreter* interpreter, String moduleName) {
-	bool windows = false;
+static Value* DoImportFileOrLib(Interpreter* interpreter,
+								String		 moduleNameOrPath,
+								bool		 isLib) {
+	String		currentModuleName = interpreter->ModulePath;
+	ImportNode* currentModule =
+		CreateOrGetImportNode(interpreter, currentModuleName);
+
+	String filePath = NULL;
+	FILE*  file		= NULL;
+
+	// 1. Resolve Path and Open File based on Import Type
+	if (isLib) {
+		String basePath = interpreter->ExecPath;
 #ifdef _WIN32
-	windows = true;
+		filePath = FormatString("%slib\\%s.zs", basePath, moduleNameOrPath);
+#else
+		filePath =
+			FormatString("/usr/local/lib/zscript/lib/%s.zs", moduleNameOrPath);
 #endif
+		file = fopen(filePath, "rb");
 
-	// Build file path: <ExecPath>/lib/<moduleName>.zs
-	// linux -> /usr/local/lib/zscript/lib/<moduleName>.zs
-	String basePath = interpreter->ExecPath;
-	String filePath =
-		windows ? FormatString("%slib\\%s.zs", basePath, moduleName)
-				: FormatString("/usr/local/lib/zscript/lib/%s.zs", moduleName);
-
-	// Read the file
-	FILE* file = fopen(filePath, "rb");
-
-	// Search for relative lib
-	if (!file) {
-		free(filePath);
-		filePath = FormatString("%slib/%s.zs", basePath, moduleName);
+		// Search for relative lib fallback
+		if (!file) {
+			free(filePath);
+			filePath = FormatString("%slib/%s.zs", basePath, moduleNameOrPath);
+			file	 = fopen(filePath, "rb");
+		}
+	} else {
+		filePath = FormatString("%s.zs", moduleNameOrPath);
 		file	 = fopen(filePath, "rb");
 	}
 
+	// 2. Handle File Not Found
 	if (!file) {
-		String errMsg =
-			FormatString("%s: lib module '%s' not found (searched '%s')",
-						 IMPORT_ERROR,
-						 moduleName,
-						 filePath);
+		String errMsg;
+		if (isLib) {
+			errMsg =
+				FormatString("%s: lib module '%s' not found (searched '%s')",
+							 IMPORT_ERROR,
+							 moduleNameOrPath,
+							 filePath);
+		} else {
+			errMsg =
+				FormatString("%s: file '%s' not found", IMPORT_ERROR, filePath);
+		}
 		Value* errVal = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 		free(filePath);
 		return errVal;
 	}
 
+	// 3. Cycle Detection
+	ImportNode* newNode = CreateOrGetImportNode(interpreter, filePath);
+
+	if (newNode->State == VISITING) {
+		String errMsg =
+			FormatString("%s: circular dependency detected when importing '%s'",
+						 IMPORT_ERROR,
+						 filePath);
+		Value* errVal = NewErrorValue(interpreter, errMsg);
+		free(errMsg);
+		free(filePath);
+		fclose(file);
+		return errVal;
+	}
+
+	// Note: I removed your old `ImportNodeHasCircularDependency(currentModule,
+	// filePath)` check here because checking `newNode->State == VISITING` does
+	// the exact same thing in O(1) time without traversing the whole graph!
+
+	ImportNodeAddDependency(currentModule, newNode);
+
+	// 4. Cache Check
 	if (HashMapContains(interpreter->Imports, filePath)) {
 		Value* mod = (Value*) HashMapGet(interpreter->Imports, filePath);
-		fclose(file);
 		free(filePath);
+		fclose(file);
+		newNode->State = SAFE;
 		return mod;
 	}
 
+	newNode->State = VISITING;
+
+	// 5. Read File
 	fseek(file, 0, SEEK_END);
 	long size = ftell(file);
 	fseek(file, 0, SEEK_SET);
 
 	String buffer = Allocate(size + 1);
-
 	fread(buffer, 1, size, file);
 	buffer[size] = '\0';
 	fclose(file);
@@ -417,20 +458,24 @@ Value* DoImportLib(Interpreter* interpreter, String moduleName) {
 	Rune* data = StringToRunes(buffer);
 	free(buffer);
 
-	// Lex, parse, compile, interpret
+	// 6. Lex, parse, compile, interpret
 	Lexer*	  lexer		 = CreateLexer(filePath, data);
 	Parser*	  parser	 = CreateParser(lexer);
 	Ast*	  programAst = Parse(parser);
 	Compiler* compiler	 = CreateCompiler(interpreter, parser);
 	Value*	  compiled	 = CompileAst(compiler, programAst);
 
+	UserFunction* uf		= CoerceToUserFunction(compiled);
+	interpreter->ModulePath = uf->Name;
+
 	DoCall(interpreter, compiled, 0, false);
 	Value* result = Popp(interpreter);
 
-	// After interpret, the module's exports should be on the stack
-	// Return null — the compiler handles binding imports from the
-	// stack
+	interpreter->ModulePath = currentModuleName;
+
+	// 7. Cache & Cleanup
 	HashMapSet(interpreter->Imports, filePath, result);
+	newNode->State = SAFE;
 
 	FreeLexer(lexer);
 	FreeParser(parser);
@@ -442,72 +487,12 @@ Value* DoImportLib(Interpreter* interpreter, String moduleName) {
 	return result;
 }
 
+Value* DoImportLib(Interpreter* interpreter, String moduleName) {
+	return DoImportFileOrLib(interpreter, moduleName, true);
+}
+
 Value* DoImportFile(Interpreter* interpreter, String filePathNoExt) {
-	bool windows = false;
-#ifdef _WIN32
-	windows = true;
-#endif
-
-	String filePath = FormatString("%s.zs", filePathNoExt);
-
-	// Build file path: <ExecPath>/lib/<moduleName>.zs
-	// linux -> /usr/local/lib/zscript/lib/<moduleName>.zs
-
-	// Read the file
-	FILE* file = fopen(filePath, "rb");
-
-	if (!file) {
-		String errMsg =
-			FormatString("%s: file '%s' not found", IMPORT_ERROR, filePath);
-		Value* errVal = NewErrorValue(interpreter, errMsg);
-		free(filePath);
-		free(errMsg);
-		return errVal;
-	}
-
-	if (HashMapContains(interpreter->Imports, filePath)) {
-		Value* mod = (Value*) HashMapGet(interpreter->Imports, filePath);
-		free(filePath);
-		fclose(file);
-		return mod;
-	}
-
-	fseek(file, 0, SEEK_END);
-	long size = ftell(file);
-	fseek(file, 0, SEEK_SET);
-
-	String buffer = Allocate(size + 1);
-
-	fread(buffer, 1, size, file);
-	buffer[size] = '\0';
-	fclose(file);
-
-	Rune* data = StringToRunes(buffer);
-	free(buffer);
-
-	// Lex, parse, compile, interpret
-	Lexer*	  lexer		 = CreateLexer(filePath, data);
-	Parser*	  parser	 = CreateParser(lexer);
-	Ast*	  programAst = Parse(parser);
-	Compiler* compiler	 = CreateCompiler(interpreter, parser);
-	Value*	  compiled	 = CompileAst(compiler, programAst);
-
-	DoCall(interpreter, compiled, 0, false);
-	Value* result = Popp(interpreter);
-
-	// After interpret, the module's exports should be on the stack
-	// Return null — the compiler handles binding imports from the
-	// stack
-	HashMapSet(interpreter->Imports, filePath, result);
-
-	FreeLexer(lexer);
-	FreeParser(parser);
-	FreeAst(programAst);
-	FreeCompiler(compiler);
-	free(filePath);
-	free(data);
-
-	return result;
+	return DoImportFileOrLib(interpreter, filePathNoExt, false);
 }
 
 Value*

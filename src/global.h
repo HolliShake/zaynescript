@@ -740,6 +740,32 @@ typedef struct stack_trace {
 } StackTrace;
 
 /**
+ * @struct import_node
+ * @brief Represents a single node in the module import linked list.
+ *
+ * Contains information about an imported module including its path, loaded
+ * value, dependencies, and a pointer to the next import node in the chain.
+ */
+typedef struct import_node ImportNode;
+
+#define IMPORT_UNVISITED                                                       \
+	0 /**< Flag indicating the module has not been visited during loading */
+
+#define VISITING 1
+
+#define SAFE 2
+
+typedef struct import_node {
+	String		 Path;		   /**< Path of the imported module */
+	Value*		 Module;	   /**< Loaded module value (Class or Object) */
+	ImportNode** Dependencies; /**< Array of module dependencies (other modules
+							 this module imports) */
+	int			DepCount;	   /**< Count of dependencies */
+	int			State; /**< Flag for cycle detection during module loading */
+	ImportNode* Next; /**< Pointer to the next import node in the linked list */
+} ImportNode;
+
+/**
  * @struct interpreter_struct
  * @brief Main interpreter state structure containing execution context.
  *
@@ -750,26 +776,29 @@ typedef struct stack_trace {
 struct interpreter_struct {
 	bf_context_t BfContext; /**< Context for the libbf library (memory
 							   management, etc.) */
-	String	 ExecPath;		/**< Directory path of the executable */
-	HashMap* Imports;		/**< Imports map */
-	Value*	 Array;			/**< Built-in Array class */
-	Value*	 Date;			/**< Built-in Date class */
-	Value*	 Promise;		/**< Built-in Promise class */
-	Value*	 True;			/**< Singleton 'true' value */
-	Value*	 False;			/**< Singleton 'false' value */
-	Value*	 Null;			/**< Singleton 'null' value */
-	Value*	 GcRoot;		/**< Root of the Garbage Collector object graph */
-	Value*	 RootEnv;		/**< Root environment of the current program */
-	Value*	 CallEnv;		/**< Current execution environment */
-	int		 Allocated;		/**< Total allocated bytes since last GC */
-	Value**	 Constants;		/**< Array of constant values */
-	int		 ConstantC;		/**< Count of constants */
-	Value**	 Functions;		/**< Array of function definitions */
-	int		 FunctionC;		/**< Count of functions */
-	Value*	 Stacks[STACK_SIZE]; /**< Execution stack */
-	int		 StckC;				 /**< Stack pointer/count */
-	Value*	 Envs[STACK_SIZE];	 /**< Environment stack for variable scopes */
-	int		 EnvrC;				 /**< Environment stack pointer */
+	String ExecPath;		/**< Directory path of the executable */
+	String ModulePath; /**< Directory path of the main module (for resolving
+						  imports) */
+	ImportNode* ImportHead; /**< Head of the linked list of imported modules */
+	HashMap*	Imports;	/**< Imports map */
+	Value*		Array;		/**< Built-in Array class */
+	Value*		Date;		/**< Built-in Date class */
+	Value*		Promise;	/**< Built-in Promise class */
+	Value*		True;		/**< Singleton 'true' value */
+	Value*		False;		/**< Singleton 'false' value */
+	Value*		Null;		/**< Singleton 'null' value */
+	Value*		GcRoot;		/**< Root of the Garbage Collector object graph */
+	Value*		RootEnv;	/**< Root environment of the current program */
+	Value*		CallEnv;	/**< Current execution environment */
+	int			Allocated;	/**< Total allocated bytes since last GC */
+	Value**		Constants;	/**< Array of constant values */
+	int			ConstantC;	/**< Count of constants */
+	Value**		Functions;	/**< Array of function definitions */
+	int			FunctionC;	/**< Count of functions */
+	Value*		Stacks[STACK_SIZE]; /**< Execution stack */
+	int			StckC;				/**< Stack pointer/count */
+	Value*		Envs[STACK_SIZE]; /**< Environment stack for variable scopes */
+	int			EnvrC;			  /**< Environment stack pointer */
 	int ExceptionHandlerStacks[STACK_SIZE]; /**< Stack for exception handlers */
 	int ExceptionHandlerStackC; /**< Exception handler stack pointer */
 	int GcThreshold; /**< Threshold for triggering garbage collection */

@@ -13,6 +13,7 @@
 #include "./error.h"
 #include "./gc.h"
 #include "./global.h"
+#include "./import.h"
 #include "./value.h"
 
 
