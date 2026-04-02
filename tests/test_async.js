@@ -49,6 +49,13 @@ async function callMeMaybe() {
   return 1;
 }
 
-callMeMaybe().then(function (v) {
-  println("From callMeMaybe then", v);
-});
+var cop = null;
+const rej = callMeMaybe()
+  .then(function (v) {
+    let res = v + "2323";
+    throw new Error("Error in then");
+    return res;
+  })
+  .catch(function (e) {
+    println(e);
+  });

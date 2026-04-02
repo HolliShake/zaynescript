@@ -11,7 +11,7 @@
 #include "../value.h"
 
 #ifndef CORE_IO_H
-#    define CORE_IO_H
+#	define CORE_IO_H
 
 /**
  * @brief Loads the core IO module

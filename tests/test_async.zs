@@ -6,7 +6,10 @@ fn  topLevel() async {
 }
 
 fn asyncFn() async {
-    await topLevel();
+    {
+        await topLevel();
+        await topLevel();
+    }
     println("Called!!");
     return "Resolve me!";
 }
@@ -39,8 +42,6 @@ const v = awaitable()
 
 println(">>", v);
 
-
-
 fn toCall() async {
     return 3;
 }
@@ -59,3 +60,8 @@ const rej = callMeMaybe()
     .error(fn(e) {
         println(e);
     });
+
+
+const (
+    x: a, y: b, z
+) = [1, 2, 3];

@@ -1,14 +1,16 @@
 #include "./global.h"
 
 #ifndef STATEMACHINE_H
-#    define STATEMACHINE_H
+#	define STATEMACHINE_H
 
 /**
  * @file statemachine.h
- * @brief State machine implementation for handling asynchronous operations (e.g., promises).
+ * @brief State machine implementation for handling asynchronous operations
+ * (e.g., promises).
  *
- * This header defines the StateMachine structure and related functions for managing
- * the state of asynchronous operations, including pending, fulfilled, and rejected states.
+ * This header defines the StateMachine structure and related functions for
+ * managing the state of asynchronous operations, including pending, fulfilled,
+ * and rejected states.
  */
 
 /**
@@ -19,19 +21,23 @@
  * asynchronous operations such as promises.
  *
  * @param initial    The initial state of the state machine (e.g., PENDING).
- * @param isCallback Whether this state machine is a callback (e.g., then/catch handler).
- * @param ip         The instruction pointer for execution within the state machine.
+ * @param isCallback Whether this state machine is a callback (e.g., then/catch
+ * handler).
+ * @param ip         The instruction pointer for execution within the state
+ * machine.
  * @param env        The environment value associated with this state machine.
- * @param waitFor    The value this state machine is waiting on (e.g., a promise), or NULL.
+ * @param waitFor    The value this state machine is waiting on (e.g., a
+ * promise), or NULL.
  * @param function   The function being executed by this state machine.
- * @return Pointer to a newly allocated StateMachine, or NULL on allocation failure.
+ * @return Pointer to a newly allocated StateMachine, or NULL on allocation
+ * failure.
  */
 StateMachine* CreateStateMachine(StateMachineState initial,
-                                 bool              isCallback,
-                                 size_t            ip,
-                                 Value*            env,
-                                 Value*            waitFor,
-                                 Value*            function);
+								 bool			   isCallback,
+								 size_t			   ip,
+								 Value*			   env,
+								 Value*			   waitFor,
+								 Value*			   function);
 
 /**
  * @brief Sets the state and related information of a StateMachine.
@@ -45,46 +51,55 @@ StateMachine* CreateStateMachine(StateMachineState initial,
  * @param newState The new state to set for the StateMachine.
  * @param ip The instruction pointer to set for the StateMachine.
  * @param env The environment value to associate with the StateMachine.
- * @param waitFor The value that the StateMachine is waiting for (e.g., a promise).
- * @param value The value to set on the StateMachine (e.g., resolved value or rejection reason).
+ * @param waitFor The value that the StateMachine is waiting for (e.g., a
+ * promise).
+ * @param value The value to set on the StateMachine (e.g., resolved value or
+ * rejection reason).
  */
-void StateMachineSet(StateMachine*     stateMachine,
-                     StateMachineState newState,
-                     size_t            ip,
-                     Value*            env,
-                     Value*            waitFor,
-                     Value*            value);
+void StateMachineSet(StateMachine*	   stateMachine,
+					 StateMachineState newState,
+					 size_t			   ip,
+					 Value*			   env,
+					 Value*			   waitFor,
+					 Value*			   value);
 
 /**
  * @brief Updates the state and value of a StateMachine.
  *
  * This function is a simplified version of StateMachineSet that only updates
  * the state and value of the StateMachine, without modifying the instruction
- * pointer, environment, or waitFor fields. It is useful for quickly transitioning
- * the state machine to a new state with an associated value.
+ * pointer, environment, or waitFor fields. It is useful for quickly
+ * transitioning the state machine to a new state with an associated value.
  *
  * @param stateMachine Pointer to the StateMachine instance to update.
  * @param newState The new state to set for the StateMachine.
- * @param value The value to set on the StateMachine (e.g., resolved value or rejection reason).
+ * @param value The value to set on the StateMachine (e.g., resolved value or
+ * rejection reason).
  */
-void StateMachineUpdate(StateMachine* stateMachine, StateMachineState newState, Value* value);
+void StateMachineUpdate(StateMachine*	  stateMachine,
+						StateMachineState newState,
+						Value*			  value);
 
 /**
- * @brief Sets the StateMachine to an awaiting state with a specified waitFor value.
+ * @brief Sets the StateMachine to an awaiting state with a specified waitFor
+ * value.
  *
  * This function transitions the StateMachine to a new state (e.g., pending) and
  * sets the waitFor field to indicate that the state machine is now waiting on a
- * specific value (e.g., a promise). This is typically called when an asynchronous
- * operation is initiated and the state machine needs to wait for its completion.
+ * specific value (e.g., a promise). This is typically called when an
+ * asynchronous operation is initiated and the state machine needs to wait for
+ * its completion.
  *
  * @param stateMachine Pointer to the StateMachine instance to update.
  * @param ip The instruction pointer to set for the StateMachine when awaiting.
- * @param value The value that the StateMachine is waiting for (e.g., a promise).
+ * @param value The value that the StateMachine is waiting for (e.g., a
+ * promise).
  */
 void StateMachineAwait(StateMachine* stateMachine, size_t ip, Value* value);
 
 /**
- * @brief Transitions the StateMachine to a fulfilled state with a specified value.
+ * @brief Transitions the StateMachine to a fulfilled state with a specified
+ * value.
  *
  * This function updates the StateMachine's state to fulfilled and sets the
  * associated value (e.g., the resolved value of a promise). It is typically
@@ -97,7 +112,14 @@ void StateMachineAwait(StateMachine* stateMachine, size_t ip, Value* value);
 void StateMachineFulfill(StateMachine* stateMachine, Value* value);
 
 /**
+ * @brief Transitions the StateMachine to a rejected state with a reason value.
  *
+ * Updates the StateMachine's state to rejected and records the given value
+ * as the rejection reason (e.g., an error or exception). Callbacks
+ * registered via catch handlers will be scheduled to receive this value.
+ *
+ * @param stateMachine Pointer to the StateMachine instance to update.
+ * @param value The rejection reason value (e.g., an error Value).
  */
 void StateMachineReject(StateMachine* stateMachine, Value* value);
 

@@ -21,7 +21,7 @@
 #include "./value.h"
 
 #ifndef INTERPRETER_H
-#    define INTERPRETER_H
+#	define INTERPRETER_H
 
 /**
  * Creates and initializes a new interpreter instance.
@@ -30,8 +30,8 @@
  * The interpreter manages execution state, call stack, and runtime
  * environment for program execution.
  *
- * @param execPath Optional directory path of the executable, used for resolving imports. Can be
- * NULL.
+ * @param execPath Optional directory path of the executable, used for resolving
+ * imports. Can be NULL.
  * @return Pointer to newly allocated Interpreter structure, or NULL on failure.
  *
  * @note The caller is responsible for freeing the interpreter using
@@ -48,10 +48,13 @@ Interpreter* CreateInterpreter(String execPath);
  * Value structure. This is the main entry point for program execution.
  *
  * @param interpreter Pointer to the interpreter instance.
- * @param fnValue     Pointer to the Value containing the UserFunction to execute.
+ * @param fnValue     Pointer to the Value containing the UserFunction to
+ * execute.
  *
- * @pre interpreter must be a valid, non-NULL pointer to an initialized Interpreter.
- * @pre fnValue must be a valid, non-NULL pointer to a Value containing a UserFunction.
+ * @pre interpreter must be a valid, non-NULL pointer to an initialized
+ * Interpreter.
+ * @pre fnValue must be a valid, non-NULL pointer to a Value containing a
+ * UserFunction.
  *
  * @note This function may modify the interpreter's internal state.
  *

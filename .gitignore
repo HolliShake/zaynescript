@@ -3,3 +3,4 @@
 /tests/*.js
 /tests/*.py
 /dist
+.github/*

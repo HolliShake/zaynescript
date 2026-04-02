@@ -1,62 +1,58 @@
+/**
+ * @file lexer.h
+ * @brief Lexical analysis and tokenization interface.
+ *
+ * This module scans source text and converts it into a stream of tokens
+ * consumable by the parser. It handles character-by-character processing,
+ * recognizing keywords, identifiers, literals, operators, comments, and
+ * whitespace. Unicode input is represented as an array of Runes (UTF-32
+ * code points).
+ */
+
 #include "./global.h"
 #include "./keyword.h"
 #include "./position.h"
 
 #ifndef TOKENIZER_H
-#    define TOKENIZER_H
-
-/*
- * lexer.h - Lexical analysis and tokenization
- *
- * This module provides functionality for lexical analysis (tokenization) of source
- * code. The lexer scans through source text and converts it into a stream of tokens
- * that can be consumed by the parser. It handles character-by-character processing,
- * recognizing keywords, identifiers, literals, operators, and other language elements.
- */
+#	define TOKENIZER_H
 
 /**
- * CreateLexer - Creates a new lexer instance for tokenizing source code
+ * @brief Creates a new lexer instance for tokenizing source code.
  *
- * Allocates and initializes a Lexer structure that will process the provided source
- * code data. The lexer maintains state during tokenization, including the current
- * position in the source, line and column tracking for error reporting, and lookahead
- * capabilities.
+ * Allocates and initializes a Lexer that will process the provided source
+ * data. The lexer tracks line and column positions for accurate error
+ * reporting.
  *
- * @param path The file path of the source being tokenized (used for error reporting)
- * @param data Pointer to the source code data as an array of runes (Unicode code points)
- *
- * @return Pointer to the newly created Lexer structure, or NULL on allocation failure
+ * @param path File path of the source being tokenized (used for error
+ * reporting).
+ * @param data Pointer to the source code as a null-terminated array of Runes
+ * (Unicode code points).
+ * @return Pointer to the newly created Lexer structure, or NULL on allocation
+ * failure.
  */
 Lexer* CreateLexer(String path, Rune* data);
 
 /**
- * NextToken - Retrieves the next token from the source code stream
+ * @brief Advances the lexer and returns the next token from the source stream.
  *
- * Advances the lexer's position in the source code and returns the next token.
- * The lexer performs character-level analysis to identify token boundaries and
- * classify tokens according to the language grammar. This function handles:
- * - Whitespace and comment skipping
- * - Keyword and identifier recognition
- * - Literal value parsing (numbers, strings, etc.)
- * - Operator and punctuation recognition
- * - Error token generation for invalid sequences
+ * Skips whitespace and comments, then classifies the next sequence of
+ * characters as a keyword, identifier, numeric literal, string literal,
+ * operator, or end-of-file token.
  *
- * @param lexer Pointer to the lexer instance to read from
- *
- * @return The next Token structure containing the token type, lexeme, and position information
+ * @param lexer Pointer to the Lexer instance to advance.
+ * @return A Token structure containing the token type, lexeme string, and
+ * source position.
  */
 Token NextToken(Lexer* lexer);
 
 /**
- * FreeLexer - Frees all memory associated with a lexer instance
+ * @brief Frees all memory associated with a lexer instance.
  *
- * Deallocates the Lexer structure and any internal resources it holds.
- * This does not free the source data passed to CreateLexer(); that must
- * be managed separately by the caller.
+ * Deallocates the Lexer structure and any internally owned resources.
+ * Does not free the source data array passed to CreateLexer(); the caller
+ * is responsible for managing that buffer.
  *
- * @param lexer Pointer to the lexer instance to be freed
- *
- * @return None
+ * @param lexer Pointer to the Lexer instance to free.
  */
 void FreeLexer(Lexer* lexer);
 

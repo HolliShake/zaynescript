@@ -1,3 +1,11 @@
+/**
+ * @file loader.h
+ * @brief Core module loader interface.
+ *
+ * Defines the CoreMapper structure and the LoadCoreModule function for
+ * resolving and loading built-in modules by name at runtime.
+ */
+
 #include "../global.h"
 #include "./array.h"
 #include "./date.h"
@@ -8,7 +16,7 @@
 
 
 #ifndef CORE_LOADER_H
-#    define CORE_LOADER_H
+#	define CORE_LOADER_H
 
 /**
  * @typedef LoadCoreCallback
@@ -21,8 +29,8 @@ typedef Value* (*LoadCoreCallback)(Interpreter* interpreter);
  * @brief Mapping of core module names to their loader functions
  */
 typedef struct core_module_mapping_struct {
-    String           Name;
-    LoadCoreCallback Loader;
+	String			 Name;
+	LoadCoreCallback Loader;
 } CoreMapper;
 
 /**
