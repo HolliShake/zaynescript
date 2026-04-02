@@ -53,7 +53,7 @@ static Value* _IoGenericPrint(Interpreter* interpreter,
 	fwrite(buffer, 1, total - 1, stdout);  // total-1 excludes '\0'
 	if (newline)
 		putchar('\n');
-		
+
 	fflush(stdout);
 
 	free(buffer);
