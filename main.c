@@ -4,6 +4,10 @@
 #include "src/lexer.h"
 #include "src/parser.h"
 
+#ifndef BUILD_DATE
+#	define BUILD_DATE __DATE__ " " __TIME__
+#endif
+
 #ifdef _WIN32
 #	include <direct.h>
 #	include <windows.h>
@@ -326,6 +330,7 @@ void PrintHelp() {
 	printf(
 		"║  Author:   Philipp Andrew Redondo                                  "
 		"                      ║\n");
+	printf("║  Build:    %-78s║\n", BUILD_DATE);
 	printf(
 		"║                                                                    "
 		"                      ║\n");

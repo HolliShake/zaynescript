@@ -13,11 +13,13 @@ if [[ -f zscript.exe ]]; then
     fi
 fi
 
+BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S')
+
 if [[ "$1" == "--release" ]]; then
     echo "Building in release mode..."
-    gcc -O3 -DNDEBUG -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c ./libbf/*.c -o zscript.exe -lm -ldl -lpthread
+    gcc -O3 -DNDEBUG -DBUILD_DATE="\"$BUILD_DATE\"" -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c ./libbf/*.c -o zscript.exe -lm -ldl -lpthread
 else
-    gcc -g -O3 -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c ./libbf/*.c -o zscript.exe -lm -ldl -lpthread
+    gcc -g -O3 -DBUILD_DATE="\"$BUILD_DATE\"" -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c ./libbf/*.c -o zscript.exe -lm -ldl -lpthread
 fi
 
 export LC_ALL=en_US.UTF-8
@@ -36,7 +38,7 @@ elif [[ "$1" == "--format" ]]; then
 elif [[ "$1" == "--dbg" ]]; then
     # compile first
     echo "Building in debug mode..."
-    gcc -g -O3 -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c ./libbf/*.c -o zscript.exe -lm -ldl -lpthread
+    gcc -g -O3 -DBUILD_DATE="\"$BUILD_DATE\"" -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c ./libbf/*.c -o zscript.exe -lm -ldl -lpthread
     if [[ -f zscript.exe ]]; then
         gdb -ex run -ex bt --args ./zscript.exe --run "$2"
     else
