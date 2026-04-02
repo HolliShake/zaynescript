@@ -2719,29 +2719,38 @@ static void _CompileTryCatch(Compiler*	   compiler,
 							 UserFunction* uf,
 							 Scope*		   scope,
 							 Ast*		   node) {
-	Ast* tryBlock	  = node->A;
-	Ast* catchParam	  = node->B;
-	Ast* catchBlock	  = node->C;
-	int	 targetOffset = -1, skipCatchOffset = -1;
-	// Try begin
+	Ast* tryBlock	= node->A;
+	Ast* catchParam = node->B;
+	Ast* catchBlock = node->C;
+	int	 gotoCatch = -1, gotoEndCatch = -1;
+
+	// BEGINTRY:;
 	_EmitLine(compiler, uf, node->Position);
-	targetOffset	= _EmitJumpTo(compiler, uf, OP_SETUP_TRY);
+	gotoCatch		= _EmitJumpTo(compiler, uf, OP_SETUP_TRY);
 	Scope* tryScope = CreateScope(SCOPE_TRY_BLOCK, scope);
 	while (tryBlock != NULL) {
 		_CompileStatement(compiler, uf, tryScope, tryBlock);
 		tryBlock = tryBlock->Next;
 	}
+
 	_EmitLine(compiler, uf, node->Position);
 	_Emit(compiler, uf, OP_POP_TRY);
 	FreeScope(tryScope);
-	// Try end
+
+	// ENDTRY:;
 	_EmitLine(compiler, uf, node->Position);
-	skipCatchOffset = _EmitJumpTo(compiler, uf, OP_JUMP);
+	gotoEndCatch = _EmitJumpTo(compiler, uf, OP_JUMP);
+
 	// Catch begin, Jump here if encounters an error
-	_JumpToLabel(compiler, uf, targetOffset);
+	_JumpToLabel(compiler, uf, gotoCatch);
+
+	// POPTRY:;
+	_EmitLine(compiler, uf, node->Position);
+	_Emit(compiler, uf, OP_POP_TRY);
+
+	// CATCH:;
 	Scope* catchScope = CreateScope(SCOPE_BLOCK, scope);
-	// Store error object
-	int offset = UserFunctionEmitLocal(uf);
+	int	   offset	  = UserFunctionEmitLocal(uf);
 	ScopeSetSymbol(catchScope, catchParam->Value, false, true, false, offset);
 	_EmitLine(compiler, uf, catchParam->Position);
 	_EmitArg(compiler, uf, OP_STORE_LOCAL, offset);
@@ -2749,9 +2758,11 @@ static void _CompileTryCatch(Compiler*	   compiler,
 		_CompileStatement(compiler, uf, catchScope, catchBlock);
 		catchBlock = catchBlock->Next;
 	}
+
 	FreeScope(catchScope);
-	// Catch end
-	_JumpToLabel(compiler, uf, skipCatchOffset);
+
+	// ENDCATCH:;
+	_JumpToLabel(compiler, uf, gotoEndCatch);
 }
 
 static void _CompileBlockStatement(Compiler*	 compiler,

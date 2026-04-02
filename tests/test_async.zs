@@ -1,4 +1,4 @@
-import { println } from "core:io";
+import { println, decompile } from "core:io";
 
 fn  topLevel() async {
     println("From top level");
@@ -60,3 +60,25 @@ const rej = callMeMaybe()
     .error(fn(e) {
         println(e);
     });
+
+
+const fun =  fn() {
+    try  {
+        (fn() {
+            try {
+                const x = 2;
+                println(x + "asdasdasd");
+            }  catch (e) {
+                println("internal", e);
+            }
+        })();
+    } catch (e) {
+        println("external", e);
+    }
+
+    2 + println;
+};
+
+println(decompile(fun));
+
+fun();

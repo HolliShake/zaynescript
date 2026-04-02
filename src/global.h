@@ -766,6 +766,18 @@ typedef struct import_node {
 } ImportNode;
 
 /**
+ * @struct exception_handler_struct
+ * @brief Stores state required to resume execution after an exception jump.
+ *
+ * Used by the interpreter's exception handling stack to track where execution
+ * should continue and which instruction pointer was paused.
+ */
+typedef struct exception_handler_struct {
+	int		JumpAddress;   /**< Instruction index to jump to on exception */
+	size_t* PausedAddress; /**< Saved paused instruction/address pointer */
+} ExceptionHandler;
+
+/**
  * @struct interpreter_struct
  * @brief Main interpreter state structure containing execution context.
  *
@@ -799,7 +811,8 @@ struct interpreter_struct {
 	int			StckC;				/**< Stack pointer/count */
 	Value*		Envs[STACK_SIZE]; /**< Environment stack for variable scopes */
 	int			EnvrC;			  /**< Environment stack pointer */
-	int ExceptionHandlerStacks[STACK_SIZE]; /**< Stack for exception handlers */
+	ExceptionHandler
+		ExceptionHandlerStacks[STACK_SIZE]; /**< Stack for exception handlers */
 	int ExceptionHandlerStackC; /**< Exception handler stack pointer */
 	int GcThreshold; /**< Threshold for triggering garbage collection */
 	Value* TaskQueue[STACK_SIZE]; /**< Queue for pending tasks (e.g. resolved

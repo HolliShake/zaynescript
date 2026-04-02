@@ -244,6 +244,29 @@ _IoSetColor(Interpreter* interpreter, int argc, Value** arguments) {
 	return interpreter->Null;
 }
 
+// ----------------------------------------------------------------
+// Decompiler
+// ----------------------------------------------------------------
+extern String DecompileFunction(Interpreter* interpreter, UserFunction* uf);
+
+static Value*
+_IoDecompile(Interpreter* interpreter, int argc, Value** arguments) {
+	if (argc != 1) {
+		return NewErrorValue(interpreter,
+							 "decompile() expects exactly 1 argument");
+	}
+	if (!ValueIsUserFunction(arguments[0])) {
+		return NewErrorValue(interpreter,
+							 "decompile() expects a function as its argument");
+	}
+
+	UserFunction* uf	 = CoerceToUserFunction(arguments[0]);
+	String		  code	 = DecompileFunction(interpreter, uf);
+	Value*		  result = NewStrValue(interpreter, code);
+	free(code);
+	return result;
+}
+
 static ModuleFunction _IoModuleFunctions[] = {
 	// print
 	{ .Name		 = "print",
@@ -280,6 +303,12 @@ static ModuleFunction _IoModuleFunctions[] = {
 	  .Argc		 = VARARG,
 	  .CFunction = (NativeFunctionCallback) (_IoSetColor),
 	  .Value	 = NULL },
+	// decompile
+	{
+		.Name	   = "decompile",
+		.Argc	   = 1,
+		.CFunction = (NativeFunctionCallback) (_IoDecompile),
+	},
 	// end of module functions
 	{ .Name = NULL }
 };
