@@ -50,7 +50,8 @@
     -   `core:os`: OS utilities (`getCwd`, `getPid`, `getUser`, `getType`, `system`).
     -   `core:Array`: Array class with static helpers.
     -   `core:Date`: Date and time class.
--   **Modules**: Named and wildcard imports for code organization.
+    -   `core:Promise`: Promise class for manual async composition.
+-   **Modules**: Named and wildcard imports, `lib:` user libraries, and relative file imports.
 
 ## Building
 
@@ -212,9 +213,9 @@ fn callMe() async {
 println(callMe()); // <Promise>
 ```
 
-#### Promise Chaining (`.then`)
+#### Promise Chaining (`.then` / `.error`)
 
-Promises expose a `.then(callback)` method for chaining reactions without `await`. Each `.then` receives the resolved value of the previous step and its return value becomes the next promise in the chain:
+Promises expose a `.then(callback)` method for chaining reactions without `await`, and a `.error(callback)` method for catching rejections. Each `.then` receives the resolved value of the previous step and its return value becomes the next promise in the chain:
 
 ```javascript
 fn awaitable() async {
@@ -233,6 +234,22 @@ const v = awaitable()
     .then(println); // done
 
 println(v); // <Promise>
+```
+
+Use `.error(callback)` to handle promise rejections. The callback receives the error value:
+
+```javascript
+fn risky() async {
+    return someOperation();
+}
+
+const p = risky()
+    .then(fn(v) {
+        println("success:", v);
+    })
+    .error(fn(e) {
+        println("caught error:", e);
+    });
 ```
 
 ### Operators
@@ -465,6 +482,10 @@ local extended = { ...person, city: "NYC" };
 
 ### Modules & Imports
 
+There are three import forms: named imports, wildcard imports, and relative file imports.
+
+#### Core modules (`core:`)
+
 ```javascript
 // Named imports
 import { println, scan, parseNum } from "core:io";
@@ -475,8 +496,29 @@ import "core:math"; // available as `math`
 // Named imports from other modules
 import { getUser, getCwd } from "core:os";
 import { Array } from "core:Array";
-import { Date } from "core:Date"; // available as `Date`
+import { Date } from "core:Date";
 ```
+
+#### User library modules (`lib:`)
+
+User-authored `.zs` files placed in the `lib/` directory (relative to the executable, or `/usr/local/lib/zscript/lib/` when installed) are importable via the `lib:` prefix. Subdirectories are supported using `/`:
+
+```javascript
+import { greet } from "lib:request";       // lib/request.zs
+import "lib:nested/mod";                    // lib/nested/mod.zs — bound as `mod`
+```
+
+#### Relative file imports (`./` or `../`)
+
+Import a `.zs` file relative to the current file. The `.zs` extension is added automatically:
+
+```javascript
+import "./utils";                           // ./utils.zs — no named exports, runs the file
+import { helper } from "./helpers/math";   // ./helpers/math.zs
+import { shared } from "../common";        // ../common.zs
+```
+
+Circular imports are detected and produce a runtime error. Each module is executed once and cached for subsequent imports.
 
 ### Standard Library
 
@@ -532,10 +574,10 @@ import { Array } from "core:Array";
 
 local nums = [1, 2, 3, 4, 5];
 
-// each(callback(index, element)) — map
+// each(callback(index, element)) — maps over elements, returns a new array
 local doubled = nums.each(fn(i, e) { return e * 2; });
 
-// keep(callback(index, element)) — filter
+// keep(callback(index, element)) — filters elements, returns a new array
 local odds = nums.keep(fn(i, e) { return e % 2 != 0; });
 
 println(nums.length()); // 5
@@ -550,6 +592,20 @@ Array.sum = fn(arr) {
 };
 println(Array.sum(nums)); // 15
 ```
+
+The `each` and `keep` callbacks both receive `(index, element)` as arguments. Functions with a variable-argument signature (like `println`) are accepted too:
+
+```javascript
+[1, 2, 3].each(println); // prints: 0 1 / 1 2 / 2 3  (index, value)
+```
+
+#### `core:Promise`
+
+```javascript
+import { Promise } from "core:Promise";
+```
+
+The `Promise` class is used internally by the async runtime. Promises are created implicitly when calling an `async` function. The `.then()` and `.error()` methods are the primary API; see [Promise Chaining](#promise-chaining-then--error) above.
 
 #### `core:Date`
 
