@@ -5,7 +5,7 @@
  * @param codes The bytecode array.
  * @param alignStart The byte offset to start reading from.
  * @return The decoded string.
- * @origin src/interpreter.c:121
+ * @origin src/interpreter.c:134
  */
 extern String ReadString(uint8_t* codes, int alignStart);
 

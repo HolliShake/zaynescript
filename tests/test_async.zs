@@ -76,7 +76,7 @@ const fun =  fn() {
         println("external", e);
     }
 
-    2 + println;
+   
 };
 
 println(decompile(fun));

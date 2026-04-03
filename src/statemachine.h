@@ -1,8 +1,3 @@
-#include "./global.h"
-
-#ifndef STATEMACHINE_H
-#	define STATEMACHINE_H
-
 /**
  * @file statemachine.h
  * @brief State machine implementation for handling asynchronous operations
@@ -12,6 +7,11 @@
  * managing the state of asynchronous operations, including pending, fulfilled,
  * and rejected states.
  */
+
+#include "./global.h"
+
+#ifndef STATEMACHINE_H
+#	define STATEMACHINE_H
 
 /**
  * @brief Creates a new StateMachine instance.

@@ -21,7 +21,7 @@
 #	define OPERATION_H
 
 /**
- * Saves an environment as the root environment on the interpreter's environment
+ * @brief Saves an environment as the root environment on the interpreter's environment
  * stack.
  *
  * @param interp The interpreter instance
@@ -30,7 +30,7 @@
 void SaveRootEnv(Interpreter* interp, Value* env);
 
 /**
- * Pushes the current environment onto the interpreter's environment stack.
+ * @brief Pushes the current environment onto the interpreter's environment stack.
  *
  * @param interp   The interpreter instance
  * @param envObj   The environment value to save
@@ -38,14 +38,14 @@ void SaveRootEnv(Interpreter* interp, Value* env);
 void SaveEnv(Interpreter* interp, Value* envObj);
 
 /**
- * Pops the current environment from the environment stack.
+ * @brief Pops the current environment from the environment stack.
  *
  * @param interp The interpreter instance
  */
 void RestoreEnv(Interpreter* interp);
 
 /**
- * Restores the nth environment from the environment stack and synchronizes it
+ * @brief Restores the nth environment from the environment stack and synchronizes it
  * with the current CallEnv.
  *
  * @param interp The interpreter instance
@@ -54,7 +54,7 @@ void RestoreEnv(Interpreter* interp);
 void RestoreNthEnvAndSync(Interpreter* interp, int n);
 
 /**
- * Checks if a method exists on an object.
+ * @brief Checks if a method exists on an object.
  * Searches through arrays, objects, classes, and class instances
  * by checking their prototype chains.
  *
@@ -67,7 +67,7 @@ void RestoreNthEnvAndSync(Interpreter* interp, int n);
 bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method);
 
 /**
- * Generic attribute retrieval function.
+ * @brief Generic attribute retrieval function.
  * Handles arrays (by index or prototype), objects (by key or prototype),
  * classes (static members), and class instances (instance members or
  * prototype).
@@ -86,7 +86,7 @@ Value* GenericGetAttribute(Interpreter* interp,
 						   bool			forMethodCall);
 
 /**
- * Performs import core operation.
+ * @brief Performs import core operation.
  * Loads a core module by name using LoadCoreModule.
  *
  * @param interp      The interpreter instance
@@ -97,7 +97,7 @@ Value* GenericGetAttribute(Interpreter* interp,
 Value* DoImportCore(Interpreter* interp, String moduleName);
 
 /**
- * Performs import lib operation.
+ * @brief Performs import lib operation.
  * Loads a user library module by reading and compiling a .zs file.
  *
  * @param interp      The interpreter instance
@@ -109,7 +109,7 @@ Value* DoImportCore(Interpreter* interp, String moduleName);
 Value* DoImportLib(Interpreter* interp, String moduleName);
 
 /**
- * Performs import file operation.
+ * @brief Performs import file operation.
  * Loads a module from a specified file path.
  *
  * @param interp    The interpreter instance
@@ -120,7 +120,7 @@ Value* DoImportLib(Interpreter* interp, String moduleName);
 Value* DoImportFile(Interpreter* interp, String filePath);
 
 /**
- * Sets an index on an object.
+ * @brief Sets an index on an object.
  * Supports arrays (by numeric index), objects (by key),
  * class instances (member), and classes (static member).
  *
@@ -134,7 +134,7 @@ Value* DoImportFile(Interpreter* interp, String filePath);
 Value* DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val);
 
 /**
- * Retrieves an attribute from an object.
+ * @brief Retrieves an attribute from an object.
  * Delegates to GenericGetAttribute with forMethodCall=false.
  *
  * @param interp        The interpreter instance
@@ -146,7 +146,7 @@ Value* DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val);
 Value* DoGetIndex(Interpreter* interp, Value* obj, Value* index);
 
 /**
- * Performs constructor call operation.
+ * @brief Performs constructor call operation.
  * Creates a new class instance and calls the constructor if present.
  * If no constructor exists, expects 0 arguments.
  *
@@ -159,7 +159,7 @@ Value* DoGetIndex(Interpreter* interp, Value* obj, Value* index);
 Value* DoCallCtor(Interpreter* interp, Value* clsValue, int argc);
 
 /**
- * Performs method call operation.
+ * @brief Performs method call operation.
  * Retrieves the method from the object and calls it.
  * Automatically handles 'this' argument for method calls.
  *
@@ -174,7 +174,7 @@ Value*
 DoCallMethod(Interpreter* interp, Value* obj, Value* methodName, int argc);
 
 /**
- * Performs function call operation.
+ * @brief Performs function call operation.
  * Handles both native functions and user-defined functions.
  * Validates argument count and creates appropriate environment for execution.
  *
@@ -188,7 +188,7 @@ DoCallMethod(Interpreter* interp, Value* obj, Value* methodName, int argc);
 Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
 
 /**
- * Performs logical NOT operation on a value.
+ * @brief Performs logical NOT operation on a value.
  * Coerces the value to boolean and negates it.
  *
  * @param interp The interpreter instance
@@ -199,7 +199,7 @@ Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
 Value* DoNot(Interpreter* interp, Value* val);
 
 /**
- * Performs unary plus operation on a value.
+ * @brief Performs unary plus operation on a value.
  * Returns the value unchanged.
  *
  * @param interp The interpreter instance
@@ -210,7 +210,7 @@ Value* DoNot(Interpreter* interp, Value* val);
 Value* DoPos(Interpreter* interp, Value* val);
 
 /**
- * Performs unary minus operation on a value.
+ * @brief Performs unary minus operation on a value.
  * Negates numeric values.
  *
  * @param interp The interpreter instance
@@ -221,7 +221,7 @@ Value* DoPos(Interpreter* interp, Value* val);
 Value* DoNeg(Interpreter* interp, Value* val);
 
 /**
- * Performs multiplication operation on two values.
+ * @brief Performs multiplication operation on two values.
  * Supports integer and numeric operands.
  * Returns int if result fits in int range, otherwise returns num.
  *
@@ -235,7 +235,7 @@ Value* DoNeg(Interpreter* interp, Value* val);
 Value* DoMul(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * Performs division operation on two values.
+ * @brief Performs division operation on two values.
  * Supports integer and numeric operands.
  * Returns error for division by zero.
  *
@@ -248,7 +248,7 @@ Value* DoMul(Interpreter* interp, Value* lhs, Value* rhs);
 Value* DoDiv(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * Performs modulo operation on two values.
+ * @brief Performs modulo operation on two values.
  * Supports integer and numeric operands.
  * Returns error for modulo by zero.
  *
@@ -261,7 +261,7 @@ Value* DoDiv(Interpreter* interp, Value* lhs, Value* rhs);
 Value* DoMod(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * Performs increment operation on a value.
+ * @brief Performs increment operation on a value.
  * Supports integer and numeric operands.
  *
  * @param interp The interpreter instance
@@ -273,7 +273,7 @@ Value* DoMod(Interpreter* interp, Value* lhs, Value* rhs);
 Value* DoInc(Interpreter* interp, Value* val);
 
 /**
- * Performs addition operation on two values.
+ * @brief Performs addition operation on two values.
  * Supports integer, numeric, and string operands.
  * String operands are concatenated.
  *
@@ -286,7 +286,7 @@ Value* DoInc(Interpreter* interp, Value* val);
 Value* DoAdd(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * Performs decrement operation on a value.
+ * @brief Performs decrement operation on a value.
  * Supports integer and numeric operands.
  *
  * @param interp The interpreter instance
@@ -298,7 +298,7 @@ Value* DoAdd(Interpreter* interp, Value* lhs, Value* rhs);
 Value* DoDec(Interpreter* interp, Value* val);
 
 /**
- * Performs subtraction operation on two values.
+ * @brief Performs subtraction operation on two values.
  * Supports integer and numeric operands.
  *
  * @param interp The interpreter instance
@@ -311,7 +311,7 @@ Value* DoDec(Interpreter* interp, Value* val);
 Value* DoSub(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * Performs left shift operation on two values.
+ * @brief Performs left shift operation on two values.
  * Supports numeric operands (coerced to integers).
  *
  * @param interp The interpreter instance
@@ -324,7 +324,7 @@ Value* DoSub(Interpreter* interp, Value* lhs, Value* rhs);
 Value* DoLShift(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * Performs right shift operation on two values.
+ * @brief Performs right shift operation on two values.
  * Supports numeric operands (coerced to integers).
  *
  * @param interp The interpreter instance
@@ -337,7 +337,7 @@ Value* DoLShift(Interpreter* interp, Value* lhs, Value* rhs);
 Value* DoRShift(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * Performs less than comparison on two values.
+ * @brief Performs less than comparison on two values.
  * Supports numeric operands.
  *
  * @param interp The interpreter instance
@@ -349,7 +349,7 @@ Value* DoRShift(Interpreter* interp, Value* lhs, Value* rhs);
 Value* DoLT(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * Performs less than or equal to comparison on two values.
+ * @brief Performs less than or equal to comparison on two values.
  * Supports numeric operands.
  *
  * @param interp The interpreter instance
@@ -361,7 +361,7 @@ Value* DoLT(Interpreter* interp, Value* lhs, Value* rhs);
 Value* DoLTE(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * Performs greater than comparison on two values.
+ * @brief Performs greater than comparison on two values.
  * Supports numeric operands.
  *
  * @param interp The interpreter instance
@@ -373,7 +373,7 @@ Value* DoLTE(Interpreter* interp, Value* lhs, Value* rhs);
 Value* DoGT(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * Performs greater than or equal to comparison on two values.
+ * @brief Performs greater than or equal to comparison on two values.
  * Supports numeric operands.
  *
  * @param interp The interpreter instance
@@ -385,7 +385,7 @@ Value* DoGT(Interpreter* interp, Value* lhs, Value* rhs);
 Value* DoGTE(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * Performs equality comparison on two values.
+ * @brief Performs equality comparison on two values.
  * Uses ValueIsEqual for comparison.
  *
  * @param interp The interpreter instance
@@ -397,7 +397,7 @@ Value* DoGTE(Interpreter* interp, Value* lhs, Value* rhs);
 Value* DoEQ(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * Performs inequality comparison on two values.
+ * @brief Performs inequality comparison on two values.
  * Uses ValueIsEqual for comparison and negates the result.
  *
  * @param interp The interpreter instance
@@ -409,7 +409,7 @@ Value* DoEQ(Interpreter* interp, Value* lhs, Value* rhs);
 Value* DoNE(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * Performs bitwise AND operation on two values.
+ * @brief Performs bitwise AND operation on two values.
  * Supports integer and numeric operands (coerced to integers).
  *
  * @param interp The interpreter instance
@@ -422,7 +422,7 @@ Value* DoNE(Interpreter* interp, Value* lhs, Value* rhs);
 Value* DoAnd(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * Performs bitwise OR operation on two values.
+ * @brief Performs bitwise OR operation on two values.
  * Supports integer and numeric operands (coerced to integers).
  *
  * @param interp The interpreter instance
@@ -435,7 +435,7 @@ Value* DoAnd(Interpreter* interp, Value* lhs, Value* rhs);
 Value* DoOr(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * Performs bitwise XOR operation on two values.
+ * @brief Performs bitwise XOR operation on two values.
  * Supports integer and numeric operands (coerced to integers).
  *
  * @param interp The interpreter instance
@@ -448,7 +448,7 @@ Value* DoOr(Interpreter* interp, Value* lhs, Value* rhs);
 Value* DoXor(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * Loads a function from the interpreter's functions array.
+ * @brief Loads a function from the interpreter's functions array.
  * If closure is true, clones the function.
  * Sets up captures from root and local environments.
  *

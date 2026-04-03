@@ -247,6 +247,13 @@ _IoSetColor(Interpreter* interpreter, int argc, Value** arguments) {
 // ----------------------------------------------------------------
 // Decompiler
 // ----------------------------------------------------------------
+/**
+ * @brief Decompiles a compiled user function back into readable source text.
+ * @param interpreter Pointer to the interpreter instance.
+ * @param uf Pointer to the UserFunction whose bytecode will be decompiled.
+ * @return Newly allocated string containing the decompiled text. Caller must free.
+ * @origin src/decompiler.c:56
+ */
 extern String DecompileFunction(Interpreter* interpreter, UserFunction* uf);
 
 static Value*

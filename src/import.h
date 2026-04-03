@@ -43,7 +43,7 @@ void ImportNodeAddDependency(ImportNode* dst, ImportNode* src);
  * prevent infinite loops and stack overflows caused by circular imports.
  *
  * @param node Pointer to the ImportNode to check for circular dependencies.
- * @param modulePath The module path associated with the import node (for error
+ * @param modulePath The module path associated with the import node (for error reporting).
  * @return true if a circular dependency is detected, false otherwise.
  */
 bool ImportNodeHasCircularDependency(ImportNode* node, String modulePath);
