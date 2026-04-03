@@ -2,6 +2,8 @@
 
 #include "global.h"
 
+#include <stdio.h>
+
 static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
 	// libbf uses size == 0 to signal a free() operation
 	if (size == 0) {
@@ -131,6 +133,44 @@ void PopTrace(Interpreter* interpreter) {
 	--interpreter->CallStackC;
 }
 
+/******* Task Queue Management */
+void EnqueueTask(Interpreter* interpreter, Value* task) {
+	if (interpreter->TaskQueueC >= STACK_SIZE) {
+		InterpreterPanic("Task queue overflow");
+	}
+	int tail =
+		(interpreter->TaskQueueHead + interpreter->TaskQueueC) % STACK_SIZE;
+	interpreter->TaskQueue[tail] = task;
+	interpreter->TaskQueueC++;
+}
+
+Value* DequeueTask(Interpreter* interpreter) {
+	if (interpreter->TaskQueueC == 0) {
+		return NULL;
+	}
+	Value* task = interpreter->TaskQueue[interpreter->TaskQueueHead];
+	interpreter->TaskQueueHead = (interpreter->TaskQueueHead + 1) % STACK_SIZE;
+	interpreter->TaskQueueC--;
+	return task;
+}
+
+Value* DequeueTaskAt(Interpreter* interpreter, int index) {
+	if (interpreter->TaskQueueC == 0 || index < 0
+		|| index >= interpreter->TaskQueueC) {
+		return NULL;
+	}
+	int	   phys = (interpreter->TaskQueueHead + index) % STACK_SIZE;
+	Value* task = interpreter->TaskQueue[phys];
+	// Shift all logical elements after 'index' one slot toward the head
+	for (int i = index; i < interpreter->TaskQueueC - 1; i++) {
+		int cur	 = (interpreter->TaskQueueHead + i) % STACK_SIZE;
+		int next = (interpreter->TaskQueueHead + i + 1) % STACK_SIZE;
+		interpreter->TaskQueue[cur] = interpreter->TaskQueue[next];
+	}
+	interpreter->TaskQueueC--;
+	return task;
+}
+
 String ReadString(uint8_t* codes, int alignStart) {
 	String str	  = (String) (codes + alignStart);
 	int	   length = strlen(str);
@@ -250,6 +290,9 @@ static void _Error(Interpreter*	 interpreter,
 				   String		 message) {
 	LineInfo line = _GetLineFromPc(uf, *ip);
 	if (interpreter->ActiveTask != NULL) {
+		StateMachine* sm = CoerceToStateMachine(interpreter->ActiveTask);
+		if (!sm->IsCatched)
+			goto END;
 		String fmt = FormatString("[%s:%d]::%s: %s",
 								  line.Path,
 								  line.Line,
@@ -261,7 +304,9 @@ static void _Error(Interpreter*	 interpreter,
 		JumpToError(ip, uf->CodeC);
 		Push(interpreter, err);
 		return;
+	END:;
 	}
+
 	if (isCatched()) {
 		ExceptionHandler handler = _PeekTry(interpreter);
 		/* Caught: create the error value and hand it to the catch handler */
@@ -281,6 +326,7 @@ static void _Error(Interpreter*	 interpreter,
 		Push(interpreter, err);
 		return;
 	}
+
 	/* Uncaught: no need to allocate a tracked Value, just report and abort */
 	fprintf(stderr, "[%s:%d]::%s: %s\n", line.Path, line.Line, type, message);
 	free(message);
@@ -300,11 +346,14 @@ static void _RaiseError(Interpreter*  interpreter,
 						size_t*		  ip,
 						Value*		  error) {
 	if (interpreter->ActiveTask != NULL) {
-		printf("NAH!!");
-		Push(interpreter, error);
+		StateMachine* activeTask =
+			CoerceToStateMachine(interpreter->ActiveTask);
+		StateMachineReject(activeTask, error);
+		Push(interpreter, interpreter->ActiveTask);
 		JumpToError(ip, uf->CodeC);
 		return;
 	}
+
 	if (isCatched()) {
 		ExceptionHandler handler = _PeekTry(interpreter);
 		/* Caught: preserve the original error value as-is for the catch handler
@@ -346,44 +395,6 @@ static void _TypeError(Interpreter*	 interpreter,
 					   size_t*		 ip,
 					   String		 message) {
 	_Error(interpreter, uf, ip, TYPE_ERROR, message);
-}
-
-/******* Task Queue Management */
-static void _EnqueueTask(Interpreter* interpreter, Value* task) {
-	if (interpreter->TaskQueueC >= STACK_SIZE) {
-		InterpreterPanic("Task queue overflow");
-	}
-	int tail =
-		(interpreter->TaskQueueHead + interpreter->TaskQueueC) % STACK_SIZE;
-	interpreter->TaskQueue[tail] = task;
-	interpreter->TaskQueueC++;
-}
-
-static Value* _DequeueTask(Interpreter* interpreter) {
-	if (interpreter->TaskQueueC == 0) {
-		return NULL;
-	}
-	Value* task = interpreter->TaskQueue[interpreter->TaskQueueHead];
-	interpreter->TaskQueueHead = (interpreter->TaskQueueHead + 1) % STACK_SIZE;
-	interpreter->TaskQueueC--;
-	return task;
-}
-
-static Value* _DequeueTaskAt(Interpreter* interpreter, int index) {
-	if (interpreter->TaskQueueC == 0 || index < 0
-		|| index >= interpreter->TaskQueueC) {
-		return NULL;
-	}
-	int	   phys = (interpreter->TaskQueueHead + index) % STACK_SIZE;
-	Value* task = interpreter->TaskQueue[phys];
-	// Shift all logical elements after 'index' one slot toward the head
-	for (int i = index; i < interpreter->TaskQueueC - 1; i++) {
-		int cur	 = (interpreter->TaskQueueHead + i) % STACK_SIZE;
-		int next = (interpreter->TaskQueueHead + i + 1) % STACK_SIZE;
-		interpreter->TaskQueue[cur] = interpreter->TaskQueue[next];
-	}
-	interpreter->TaskQueueC--;
-	return task;
 }
 
 /******* Main interpreter loop */
@@ -757,7 +768,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					PushTrace(interpreter, _GetLineFromPc(uf, ip), fnValue);
 					argc = _ReadInt32(uf->Codes, ip);
 					Forward(4);
-					key = Popp(interpreter);  // method
+					key = Popp(interpreter);  // method name
 					obj = Popp(interpreter);  // 'this' object
 					res = DoCallMethod(interpreter, obj, key, argc);
 					PopTrace(interpreter);
@@ -892,7 +903,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					StateMachine* awaitedSM = CoerceToStateMachine(val);
 
 					if (awaitedSM->State == FULFILLED) {
-						_EnqueueTask(interpreter, fnValue);
+						EnqueueTask(interpreter, fnValue);
 					} else {
 						StateMachineAddWaitList(awaitedSM, fnValue);
 					}
@@ -1340,7 +1351,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 						for (int i = 0; i < sm->WaitListC; i++) {
 							// Queue all listeners waiting on this state
 							// machine to be resumed
-							_EnqueueTask(interpreter, sm->WaitList[i]);
+							EnqueueTask(interpreter, sm->WaitList[i]);
 						}
 					}
 					return;
@@ -1373,11 +1384,10 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 	// Consume all remaining tasks in the task queue (e.g. pending promises)
 	// before exiting the program
 	Value* task = NULL;
-	while ((task = _DequeueTask(interpreter)) != NULL) {
+	while ((task = DequeueTask(interpreter)) != NULL) {
 		// Awaited
 		StateMachine* sm = CoerceToStateMachine(task);
 
-		interpreter->ActiveTask = task;
 		PushTrace(interpreter, sm->Line, task);
 
 		if (!sm->IsCallback) {
@@ -1411,7 +1421,7 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 		ENQUEUE_TASKS:;
 			// 4. Enqueue all tasks waiting on this state machine
 			for (size_t i = 0; i < sm->WaitListC; i++) {
-				_EnqueueTask(interpreter, sm->WaitList[i]);
+				EnqueueTask(interpreter, sm->WaitList[i]);
 			}
 		}
 

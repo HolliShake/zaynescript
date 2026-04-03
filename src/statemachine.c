@@ -15,6 +15,7 @@ StateMachine* CreateStateMachine(StateMachineState initial,
 	sm->WaitFor		 = promise;
 	sm->Value		 = NULL;
 	sm->Function	 = function;
+	sm->IsCatched	 = false;
 	sm->Ip			 = ip;
 	sm->Stacks		 = NULL;
 	sm->StckTop		 = 0;

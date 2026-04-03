@@ -915,22 +915,24 @@ typedef enum state_machine_state_enum {
  */
 typedef struct state_machine_struct {
 	StateMachineState
-			 State;		 /**< Current state (PENDING, FULFILLED, or REJECTED) */
-	bool	 IsCallback; /**< True if this is a callback state machine */
-	Value*	 CallEnv;	 /**< Execution environment when created */
-	Value*	 WaitFor;	 /**< Value being awaited (e.g. a promise) */
-	Value*	 Value;		 /**< Resulting value of the operation */
-	Value*	 Function;	 /**< Function being executed */
-	size_t	 Ip;		 /**< Instruction pointer */
-	LineInfo Line;		 /**< Line information for debugging */
-	Value**	 WaitList;	 /**< Array of awaited values */
-	size_t	 WaitListC;	 /**< Count of items in WaitList */
-	Value**	 Stacks;	 /**< Saved execution stack */
-	size_t	 StckTop;	 /**< Top index of the execution stack */
-	size_t	 StckBot;	 /**< Base index of the execution stack */
-	Value**	 EnvStack;	 /**< Saved environment stack */
-	size_t	 EnvrTop;	 /**< Top index of saved environment stack */
-	size_t	 EnvrBot;	 /**< Base index of saved environment stack */
+		   State;	   /**< Current state (PENDING, FULFILLED, or REJECTED) */
+	bool   IsCallback; /**< True if this is a callback state machine */
+	Value* CallEnv;	   /**< Execution environment when created */
+	Value* WaitFor;	   /**< Value being awaited (e.g. a promise) */
+	Value* Value;	   /**< Resulting value of the operation */
+	Value* Function;   /**< Function being executed */
+	bool   IsCatched; /**< True if this state machine has been caught by a catch
+						 handler */
+	size_t	 Ip;	  /**< Instruction pointer */
+	LineInfo Line;	  /**< Line information for debugging */
+	Value**	 WaitList;	/**< Array of awaited values */
+	size_t	 WaitListC; /**< Count of items in WaitList */
+	Value**	 Stacks;	/**< Saved execution stack */
+	size_t	 StckTop;	/**< Top index of the execution stack */
+	size_t	 StckBot;	/**< Base index of the execution stack */
+	Value**	 EnvStack;	/**< Saved environment stack */
+	size_t	 EnvrTop;	/**< Top index of saved environment stack */
+	size_t	 EnvrBot;	/**< Base index of saved environment stack */
 } StateMachine;
 
 // -----------------------------------------------------------------------------

@@ -312,7 +312,6 @@ Ast* AstRaise(Ast* expression, Position position);
  */
 Ast* AstAssert(Ast* condition, Ast* fallback, Position position);
 
-
 /**
  * @brief Creates an AST node representing a continue statement.
  *

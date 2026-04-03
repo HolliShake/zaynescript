@@ -308,6 +308,7 @@ static size_t _Sweep(Interpreter* interpreter) {
 }
 
 void GarbageCollect(Interpreter* interpreter) {
+	printf("Collects!!!");
 	// printf("GC: Starting garbage collection... Allocated = %d bytes,
 	// Threshold = %d bytes\n", interpreter->Allocated,
 	// interpreter->GcThreshold);

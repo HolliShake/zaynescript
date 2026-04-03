@@ -693,9 +693,8 @@ Value* DoCallMethod(Interpreter* interpreter,
 					Value*		 methodName,
 					int			 argc) {
 	bool withThis = IsMethodOfObject(interpreter, obj, methodName);
-	if (withThis) {
-		++argc;				// add 1 for 'this'
-	} else {
+	if (!withThis) {
+		argc--;
 		Popp(interpreter);	// pop 'this'
 	}
 
@@ -751,9 +750,10 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 	}
 
 	if (ValueIsPromise(fn)) {
-		sm			= CoerceToStateMachine(fn);
-		sm->StckBot = interpreter->StckC;
-		sm->EnvrBot = interpreter->EnvrC;
+		interpreter->ActiveTask = fn;
+		sm						= CoerceToStateMachine(fn);
+		sm->StckBot				= interpreter->StckC;
+		sm->EnvrBot				= interpreter->EnvrC;
 
 		if (1) {
 			// 2. ANCHOR: Set the new bottom to the CURRENT top of the
@@ -826,14 +826,9 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 		Value** args = Allocate(sizeof(Value*) * argc);
 		args[0]		 = NULL;
 
-		int end = 0;
-		if (withThis) {
-			end		= 1;
-			args[0] = Popp(interpreter);
-		}
-
-		for (int i = argc - 1; i >= end; i--) {
+		for (int i = 0; i < argc; i++) {
 			args[i] = Popp(interpreter);
+			// printf("ARG[%d]: %s\n", i, ValueToString(args[i]));
 		}
 
 		Value* res = nativeFunc(interpreter, argc, args);
@@ -1471,6 +1466,10 @@ Value* DoGTE(Interpreter* interpreter, Value* lhs, Value* rhs) {
 }
 
 Value* DoEQ(Interpreter* interpreter, Value* lhs, Value* rhs) {
+	if (ValueIsEqual(lhs, rhs)) {
+		return interpreter->True;
+	}
+
 	if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
 		bf_t* lhsNum	 = CoerceToBitField(interpreter, lhs);
 		bf_t* rhsNum	 = CoerceToBitField(interpreter, rhs);
@@ -1479,7 +1478,8 @@ Value* DoEQ(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		FreeTempBf(interpreter, rhsNum, rhs);
 		return comparison ? interpreter->True : interpreter->False;
 	}
-	return ValueIsEqual(lhs, rhs) ? interpreter->True : interpreter->False;
+
+	return interpreter->False;
 }
 
 Value* DoNE(Interpreter* interpreter, Value* lhs, Value* rhs) {

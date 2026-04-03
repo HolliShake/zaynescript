@@ -82,13 +82,14 @@ static Token TokenizeIdentifier(Lexer* lexer) {
 	String value  = RunesToString(lexer->Data, start, lexer->Indx);
 
 	// Check for keywords
-	const String keywords[] = {
-		KEY_IF,		  KEY_ELSE,	 KEY_SWITCH, KEY_CASE,	KEY_DEFAULT, KEY_WHILE,
-		KEY_FOR,	  KEY_DO,	 KEY_TRY,	 KEY_CATCH, KEY_RETURN,	 KEY_BREAK,
-		KEY_CONTINUE, KEY_NULL,	 KEY_TRUE,	 KEY_FALSE, KEY_CLASS,	 KEY_ENUM,
-		KEY_IMPORT,	  KEY_FROM,	 KEY_STATIC, KEY_CONST, KEY_VAR,	 KEY_LOCAL,
-		KEY_FN,		  KEY_ASYNC, KEY_AWAIT,	 KEY_NEW,	KEY_THIS
-	};
+	const String keywords[] = { KEY_IF,		  KEY_ELSE,	 KEY_SWITCH, KEY_CASE,
+								KEY_DEFAULT,  KEY_WHILE, KEY_FOR,	 KEY_DO,
+								KEY_TRY,	  KEY_CATCH, KEY_RETURN, KEY_BREAK,
+								KEY_CONTINUE, KEY_RAISE, KEY_ASSERT, KEY_NULL,
+								KEY_TRUE,	  KEY_FALSE, KEY_CLASS,	 KEY_ENUM,
+								KEY_IMPORT,	  KEY_FROM,	 KEY_STATIC, KEY_CONST,
+								KEY_VAR,	  KEY_LOCAL, KEY_FN,	 KEY_ASYNC,
+								KEY_AWAIT,	  KEY_NEW,	 KEY_THIS };
 
 	for (size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++) {
 		if (strcmp(value, keywords[i]) == 0) {
