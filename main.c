@@ -514,6 +514,6 @@ int main(int argc, char** argv) {
 	free(execPath);
 	free(path);
 	free(data);
-	printf("Program Finished!\n");
+	printf("Program Finished!");
 	return EXIT_SUCCESS;
 }

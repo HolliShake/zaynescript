@@ -1415,8 +1415,6 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 		interpreter->ActiveTask = NULL;
 	}
 
-	printf("Program finished with exit code!\n");
-
 	interpreter->StckC	 = old;
 	interpreter->RootEnv = saveGbl;
 
