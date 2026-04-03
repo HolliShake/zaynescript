@@ -116,13 +116,17 @@ void RestoreNthEnvAndSync(Interpreter* interpreter, int n) {
 		// Invalid index, do nothing or handle error as needed
 		return;
 	}
-	Value* top = interpreter->Envs[n];
+	int			 start = interpreter->EnvrC - n;
+	Value*		 top   = interpreter->Envs[start];
+	Environment* dst   = CoerceToEnvironment(top);
 	// Remove all environments above n
-	for (int i = interpreter->EnvrC - 1; i > n; i--) {
+	for (int i = start + 1; i < n; i++) {
+		Environment* current = CoerceToEnvironment(interpreter->Envs[i]);
+		EnvironmentSync(current, dst);
 		interpreter->Envs[i] = NULL;
 	}
-	interpreter->EnvrC	 = n + 1;
-	interpreter->CallEnv = top;
+	interpreter->EnvrC	 -= n;
+	interpreter->CallEnv  = top;
 }
 
 bool IsMethodOfObject(Interpreter* interpreter, Value* obj, Value* method) {

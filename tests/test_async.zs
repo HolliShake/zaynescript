@@ -73,6 +73,13 @@ const fun = fn() {
                     println("internal", e);
                 }
             })();
+
+            if (x:=1;x) {
+                if (y:=x+1;y) {
+                    println(">>>>>>>>>>>>|||", x  + y);
+                    break;
+                }
+            }
             
         } catch (e) {
             println("external", e);
@@ -80,5 +87,7 @@ const fun = fn() {
     }
    
 };
+
+fun();
 
 println(decompile(fun));

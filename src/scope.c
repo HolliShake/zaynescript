@@ -238,6 +238,9 @@ Scope* ScopeGetFirst(Scope* scope, ScopeType type) {
 int ScopeCountNested(Scope* scope, ScopeType type) {
 	int count = 0;
 	while (scope != NULL) {
+		if (type == SCOPE_LOOP && (scope->Type == SCOPE_FUNCTION)) {
+			return count;
+		}
 		if (scope->Type == type) {
 			count++;
 		}
