@@ -616,6 +616,7 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 					_EmitArg(compiler, fn, OP_STORE_LOCAL, offset);
 
 					param = param->Next;
+					++paramc;
 				}
 
 				fn->Argc = paramc;
@@ -624,8 +625,6 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 					_CompileStatement(compiler, fn, fnScope, body);
 					body = body->Next;
 				}
-
-				Position last = _ToLastPosition(node->Position);
 
 				_EmitLine(compiler, fn, lastLine);
 				_Emit(compiler, fn, OP_LOAD_NULL);
@@ -2116,11 +2115,9 @@ static void _CompileClassDeclaration(Compiler*	   compiler,
 						body = body->Next;
 					}
 
-					Position last = _ToLastPosition(actualBody->Position);
-
-					_EmitLine(compiler, fn, last);
+					_EmitLine(compiler, fn, lastLine);
 					_Emit(compiler, fn, OP_LOAD_NULL);
-					_EmitLine(compiler, fn, last);
+					_EmitLine(compiler, fn, lastLine);
 					_Emit(compiler, fn, OP_RETURN);
 
 					// Create the function
@@ -3278,6 +3275,7 @@ static void _CompileStatement(Compiler*		compiler,
 
 static Value* _Program(Compiler* compiler, Ast* node, bool isModule) {
 	_InitModule(compiler);
+
 	Scope*		  scope = CreateScope(SCOPE_GLOBAL, NULL);
 	UserFunction* uf	= CreateMainUserFunction(_GetModule(compiler), 0);
 
@@ -3291,8 +3289,8 @@ static Value* _Program(Compiler* compiler, Ast* node, bool isModule) {
 		current = current->Next;
 	}
 
-	Position last	 = _ToLastPosition(node->Position);
-	int		 exports = 0;
+	Position lastLine = _ToLastPosition(node->Position);
+	int		 exports  = 0;
 
 	if (isModule) {
 		HashMap* names = scope->Symbols;
@@ -3301,9 +3299,9 @@ static Value* _Program(Compiler* compiler, Ast* node, bool isModule) {
 			while (node != NULL && node->Key != NULL) {
 				String	name   = (String) node->Key;
 				Symbol* symbol = (Symbol*) node->Val;
-				_EmitLine(compiler, uf, last);
+				_EmitLine(compiler, uf, lastLine);
 				_EmitArg(compiler, uf, OP_LOAD_NAME, symbol->Offset);
-				_EmitLine(compiler, uf, last);
+				_EmitLine(compiler, uf, lastLine);
 				_EmitString(compiler, uf, OP_LOAD_STRING, name);
 				++exports;
 				node = node->Next;
@@ -3312,14 +3310,14 @@ static Value* _Program(Compiler* compiler, Ast* node, bool isModule) {
 	}
 
 	if (isModule) {
-		_EmitLine(compiler, uf, last);
+		_EmitLine(compiler, uf, lastLine);
 		_EmitArg(compiler, uf, OP_OBJECT_MAKE, exports);
 	} else {
-		_EmitLine(compiler, uf, last);
+		_EmitLine(compiler, uf, lastLine);
 		_Emit(compiler, uf, OP_LOAD_NULL);
 	}
 
-	_EmitLine(compiler, uf, last);
+	_EmitLine(compiler, uf, lastLine);
 	_Emit(compiler, uf, OP_RETURN);
 
 	FreeScope(scope);
