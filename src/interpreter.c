@@ -1324,6 +1324,11 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					JmpFrwd(offset);
 					break;
 				}
+			case OP_RAISE:
+				{
+					_RaiseError(interpreter, uf, &ip, Popp(interpreter));
+					break;
+				}
 			case OP_RETURN:
 				{
 					if (uf->Async) {

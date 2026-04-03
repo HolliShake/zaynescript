@@ -91,3 +91,6 @@ const fun = fn() {
 fun();
 
 println(decompile(fun));
+
+
+assert false, "Foooc false!!";

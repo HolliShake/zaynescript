@@ -255,6 +255,8 @@ typedef struct parser_struct {
 typedef enum ast_type_enum {
 	AST_PROGRAM,			  /**< Root program node */
 	AST_EXPR,				  /**< Expression statement */
+	AST_RAISE, /**/			  /**< Raise statement */
+	AST_ASSERT,				  /**< Assert statement */
 	AST_CONTINUE,			  /**< Continue statement */
 	AST_BREAK,				  /**< Break statement */
 	AST_RETURN,				  /**< Return statement */
@@ -502,6 +504,7 @@ typedef enum opcode_enum {
 	OP_POP_JUMP_IF_TRUE,			 /**< Pop and jump if true */
 	OP_JUMP,						 /**< Unconditional jump */
 	OP_ABSOLUTE_JUMP,				 /**< Absolute jump */
+	OP_RAISE,						 /**< Raise an exception */
 	OP_RETURN						 /**< Return from function */
 } OpcodeEnum;
 

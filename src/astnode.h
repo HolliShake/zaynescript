@@ -284,6 +284,36 @@ Ast* AstTernary(Ast*	 condition,
 				Position position);
 
 /**
+ * @brief Creates an AST node representing a raise statement.
+ *
+ * Allocates and initializes an AST_RAISE node that represents
+ * a raise statement used to throw an exception or error value.
+ *
+ * @param expression Pointer to the expression AST node whose value is raised.
+ * @param position Source code location information.
+ * @return Pointer to newly allocated AST_RAISE node, or NULL on allocation
+ * failure.
+ */
+Ast* AstRaise(Ast* expression, Position position);
+
+/**
+ * @brief Creates an AST node representing an assert statement.
+ *
+ * Allocates and initializes an AST_ASSERT node that represents
+ * a runtime assertion. If the condition evaluates to a falsy value,
+ * the fallback expression is raised as an error.
+ *
+ * @param condition Pointer to the condition AST node to evaluate.
+ * @param fallback Pointer to the expression AST node raised when the condition
+ * is falsy, or NULL for a default assertion error.
+ * @param position Source code location information.
+ * @return Pointer to newly allocated AST_ASSERT node, or NULL on allocation
+ * failure.
+ */
+Ast* AstAssert(Ast* condition, Ast* fallback, Position position);
+
+
+/**
  * @brief Creates an AST node representing a continue statement.
  *
  * Allocates and initializes an AST_CONTINUE node that represents

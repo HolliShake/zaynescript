@@ -35,6 +35,8 @@
 #define KEY_RETURN "return"		/**< Function return keyword */
 #define KEY_BREAK  "break"		/**< Loop/switch exit keyword */
 #define KEY_CONTINUE "continue" /**< Loop iteration restart keyword */
+#define KEY_RAISE	 "raise"	/**< Exception throwing keyword */
+#define KEY_ASSERT	 "assert"	/**< Assertion keyword for runtime checks */
 #define KEY_NULL	 "null"		/**< Null literal keyword */
 #define KEY_TRUE	 "true"		/**< Boolean true literal keyword */
 #define KEY_FALSE	 "false"	/**< Boolean false literal keyword */

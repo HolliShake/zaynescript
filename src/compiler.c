@@ -2778,6 +2778,34 @@ static void _CompileBlockStatement(Compiler*	 compiler,
 	FreeScope(block);
 }
 
+static void _CompileRaiseStatement(Compiler*	 compiler,
+								   UserFunction* uf,
+								   Scope*		 scope,
+								   Ast*			 node) {
+	_CompileExpression(compiler, uf, scope, node->A);
+	_EmitLine(compiler, uf, node->Position);
+	_Emit(compiler, uf, OP_RAISE);
+}
+
+static void _CompileAssertStatement(Compiler*	  compiler,
+									UserFunction* uf,
+									Scope*		  scope,
+									Ast*		  node) {
+	Ast* condition = node->A;
+	Ast* fallback  = node->B;
+	_CompileExpression(compiler, uf, scope, node->A);
+	_EmitLine(compiler, uf, condition->Position);
+	int gotoEndAssert = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_TRUE);
+
+	_CompileExpression(compiler, uf, scope, fallback);
+
+	_EmitLine(compiler, uf, condition->Position);
+	_Emit(compiler, uf, OP_RAISE);
+
+	// ENDASSERT:;
+	_JumpToLabel(compiler, uf, gotoEndAssert);
+}
+
 static void _CompileContinueStatement(Compiler*		compiler,
 									  UserFunction* uf,
 									  Scope*		scope,
@@ -2987,6 +3015,12 @@ static void _CompileStatement(Compiler*		compiler,
 			break;
 		case AST_BLOCK:
 			_CompileBlockStatement(compiler, userFunction, scope, node);
+			break;
+		case AST_RAISE:
+			_CompileRaiseStatement(compiler, userFunction, scope, node);
+			break;
+		case AST_ASSERT:
+			_CompileAssertStatement(compiler, userFunction, scope, node);
 			break;
 		case AST_CONTINUE:
 			_CompileContinueStatement(compiler, userFunction, scope, node);
