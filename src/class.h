@@ -54,8 +54,8 @@ void ClassExtend(Class* cls, Value* base);
 void ClassDefineMember(Class* cls, Value* key, Value* value, bool isStatic);
 
 /**
- * @brief Defines a member (static or instance) on a user-defined class using a string
- * key.
+ * @brief Defines a member (static or instance) on a user-defined class using a
+ * string key.
  *
  * Adds or updates a member on the class. Members can be either static
  * (belonging to the class itself) or instance (belonging to instances

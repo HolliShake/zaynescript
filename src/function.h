@@ -95,7 +95,8 @@ NativeFunction* CreateNativeFunctionMeta(const String			name,
 										 NativeFunctionCallback funcPtr);
 
 /**
- * @brief Converts a native function metadata structure to its string representation.
+ * @brief Converts a native function metadata structure to its string
+ * representation.
  *
  * @param meta Pointer to the NativeFunction structure.
  * @return String representation of the native function metadata.

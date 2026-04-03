@@ -21,8 +21,8 @@
 #	define OPERATION_H
 
 /**
- * @brief Saves an environment as the root environment on the interpreter's environment
- * stack.
+ * @brief Saves an environment as the root environment on the interpreter's
+ * environment stack.
  *
  * @param interp The interpreter instance
  * @param env    The environment value to save as root
@@ -30,7 +30,8 @@
 void SaveRootEnv(Interpreter* interp, Value* env);
 
 /**
- * @brief Pushes the current environment onto the interpreter's environment stack.
+ * @brief Pushes the current environment onto the interpreter's environment
+ * stack.
  *
  * @param interp   The interpreter instance
  * @param envObj   The environment value to save
@@ -45,8 +46,8 @@ void SaveEnv(Interpreter* interp, Value* envObj);
 void RestoreEnv(Interpreter* interp);
 
 /**
- * @brief Restores the nth environment from the environment stack and synchronizes it
- * with the current CallEnv.
+ * @brief Restores the nth environment from the environment stack and
+ * synchronizes it with the current CallEnv.
  *
  * @param interp The interpreter instance
  * @param n The index of the environment to restore (0-based)

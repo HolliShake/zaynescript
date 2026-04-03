@@ -735,7 +735,7 @@ typedef struct module_function_struct {
  * Stores the line information and function value for a particular call frame.
  */
 typedef struct stack_trace {
-	LineInfo line;      /**< Source location at this call frame */
+	LineInfo line;	   /**< Source location at this call frame */
 	Value*	 Function; /**< Function value active at this call frame */
 } StackTrace;
 
@@ -756,13 +756,15 @@ typedef struct import_node ImportNode;
 
 /**
  * @def VISITING
- * @brief Import cycle-detection state: module is currently being loaded (cycle risk).
+ * @brief Import cycle-detection state: module is currently being loaded (cycle
+ * risk).
  */
 #define VISITING 1
 
 /**
  * @def SAFE
- * @brief Import cycle-detection state: module has been fully loaded with no cycle.
+ * @brief Import cycle-detection state: module has been fully loaded with no
+ * cycle.
  */
 #define SAFE 2
 
