@@ -3032,15 +3032,17 @@ static void _CompileContinueStatement(Compiler*		compiler,
 		}
 	}
 	if (ScopeInside(scope, SCOPE_NEW)) {
-		int n = ScopeCountNested(scope, SCOPE_NEW);
-		// Pop new blocks until we exit the new block
-		if (n == 1) {
-			_EmitLine(compiler, uf, node->Position);
-			_Emit(compiler, uf, OP_EXIT_SCOPE);
-		} else {
-			_EmitLine(compiler, uf, node->Position);
-			_EmitArg(compiler, uf, OP_EXITN_SCOPE, n);
-		}
+		// int n = ScopeCountNested(scope, SCOPE_NEW);
+		// // Pop new blocks until we exit the new block
+		// if (n == 1) {
+		// 	_EmitLine(compiler, uf, node->Position);
+		// 	_Emit(compiler, uf, OP_EXIT_SCOPE);
+		// } else {
+		// 	_EmitLine(compiler, uf, node->Position);
+		// 	_EmitArg(compiler, uf, OP_EXITN_SCOPE, n);
+		// }
+		_EmitLine(compiler, uf, node->Position);
+		_Emit(compiler, uf, OP_EXIT_SCOPE);
 	}
 	_EmitLine(compiler, uf, node->Position);
 	int offset = _EmitJumpTo(compiler, uf, OP_JUMP);
@@ -3069,15 +3071,17 @@ static void _CompileBreakStatement(Compiler*	 compiler,
 		}
 	}
 	if (ScopeInside(scope, SCOPE_NEW)) {
-		int n = ScopeCountNested(scope, SCOPE_NEW);
-		// Pop new blocks until we exit the new block
-		if (n == 1) {
-			_EmitLine(compiler, uf, node->Position);
-			_Emit(compiler, uf, OP_EXIT_SCOPE);
-		} else {
-			_EmitLine(compiler, uf, node->Position);
-			_EmitArg(compiler, uf, OP_EXITN_SCOPE, n);
-		}
+		// int n = ScopeCountNested(scope, SCOPE_NEW);
+		// // Pop new blocks until we exit the new block
+		// if (n == 1) {
+		// 	_EmitLine(compiler, uf, node->Position);
+		// 	_Emit(compiler, uf, OP_EXIT_SCOPE);
+		// } else {
+		// 	_EmitLine(compiler, uf, node->Position);
+		// 	_EmitArg(compiler, uf, OP_EXITN_SCOPE, n);
+		// }
+		_EmitLine(compiler, uf, node->Position);
+		_Emit(compiler, uf, OP_EXIT_SCOPE);
 	}
 	_EmitLine(compiler, uf, node->Position);
 	int offset = _EmitJumpTo(compiler, uf, OP_JUMP);
@@ -3113,15 +3117,17 @@ static void _CompileReturnStatement(Compiler*	  compiler,
 	}
 
 	if (ScopeInside(scope, SCOPE_NEW)) {
-		int n = ScopeCountNested(scope, SCOPE_NEW);
-		// Pop new blocks until we exit the new block
-		if (n == 1) {
-			_EmitLine(compiler, uf, node->Position);
-			_Emit(compiler, uf, OP_EXIT_SCOPE);
-		} else {
-			_EmitLine(compiler, uf, node->Position);
-			_EmitArg(compiler, uf, OP_EXITN_SCOPE, n);
-		}
+		// int n = ScopeCountNested(scope, SCOPE_NEW);
+		// // Pop new blocks until we exit the new block
+		// if (n == 1) {
+		// 	_EmitLine(compiler, uf, node->Position);
+		// 	_Emit(compiler, uf, OP_EXIT_SCOPE);
+		// } else {
+		// 	_EmitLine(compiler, uf, node->Position);
+		// 	_EmitArg(compiler, uf, OP_EXITN_SCOPE, n);
+		// }
+		// _EmitLine(compiler, uf, node->Position);
+		// _Emit(compiler, uf, OP_EXIT_SCOPE);
 	}
 
 	if (node->A != NULL)
