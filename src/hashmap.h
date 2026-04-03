@@ -14,7 +14,7 @@
 #	define HASHMAP_H
 
 /**
- * CreateHashMap - Creates and initializes a new hash map
+ * @brief Creates and initializes a new hash map.
  *
  * Creates a hash map with the specified number of buckets. The hash map
  * uses separate chaining for collision resolution.
@@ -25,7 +25,7 @@
 HashMap* CreateHashMap(size_t size);
 
 /**
- * HashMapSet - Sets a key-value pair in the hash map
+ * @brief Sets a key-value pair in the hash map.
  *
  * If the key already exists, its value will be updated. Otherwise, a new
  * entry will be created. The hash map takes ownership of the key string
@@ -38,7 +38,7 @@ HashMap* CreateHashMap(size_t size);
 void HashMapSet(HashMap* hashmap, String key, void* value);
 
 /**
- * HashMapGet - Retrieves a value from the hash map by key
+ * @brief Retrieves a value from the hash map by key.
  *
  * Searches for the specified key in the hash map and returns the
  * associated value if found.
@@ -50,7 +50,7 @@ void HashMapSet(HashMap* hashmap, String key, void* value);
 void* HashMapGet(HashMap* hashmap, String key);
 
 /**
- * HashMapExtend - Extends one hash map with entries from another
+ * @brief Extends one hash map with entries from another.
  *
  * Entries from the source hash map will be added to the destination hash map.
  * If a key already exists in the destination, its value will be overwritten.
@@ -62,7 +62,7 @@ void* HashMapGet(HashMap* hashmap, String key);
 void HashMapExtend(HashMap* dest, HashMap* src);
 
 /**
- * HashMapContains - Checks if a key exists in the hash map
+ * @brief Checks if a key exists in the hash map.
  *
  * Searches the hash map to determine if the specified key is present.
  *
@@ -73,7 +73,7 @@ void HashMapExtend(HashMap* dest, HashMap* src);
 int HashMapContains(HashMap* hashmap, String key);
 
 /**
- * HashMapToString - Converts the hash map to a string representation
+ * @brief Converts the hash map to a string representation.
  *
  * Creates a string representation of the hash map suitable for debugging
  * or display purposes.
@@ -84,7 +84,7 @@ int HashMapContains(HashMap* hashmap, String key);
 String HashMapToString(HashMap* hashmap);
 
 /**
- * FreeHashMap - Frees the memory used by the hash map
+ * @brief Frees the memory used by the hash map.
  *
  * Deallocates all memory associated with the hash map, including keys and
  * values. The caller is responsible for ensuring that any pointers stored

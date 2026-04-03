@@ -1,10 +1,3 @@
-#include "./global.h"
-#include "./hashmap.h"
-
-
-#ifndef SCOPE_H
-#	define SCOPE_H
-
 /**
  * @file scope.h
  * @brief Scope management for variable tracking and symbol resolution
@@ -14,6 +7,13 @@
  * scope hierarchy traversal. Scopes track local variables, captured variables,
  * and control flow jump points for loops.
  */
+
+#include "./global.h"
+#include "./hashmap.h"
+
+
+#ifndef SCOPE_H
+#	define SCOPE_H
 
 /**
  * @brief Creates a new symbol
@@ -80,7 +80,7 @@ void ScopeAddBreakJump(Scope* scope, int offset);
  * Does not check parent scopes.
  *
  * @param scope Pointer to the scope to check
- * @param type The type of scope to check for (e.g., ST_FUNCTION, ST_LOOP)
+ * @param type The type of scope to check for (e.g., SCOPE_FUNCTION, SCOPE_LOOP)
  * @return true if the scope is of the given type, false otherwise
  */
 bool ScopeIs(Scope* scope, ScopeType type);

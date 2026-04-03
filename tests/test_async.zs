@@ -1,6 +1,6 @@
-import { println } from "core:io";
+import { println, decompile } from "core:io";
 
-fn  topLevel() async {
+fn topLevel() async {
     println("From top level");
     return "Hello";
 }
@@ -60,3 +60,34 @@ const rej = callMeMaybe()
     .error(fn(e) {
         println(e);
     });
+
+
+const fun = fn() {
+    while (1) {
+        try  {
+            (fn() {
+                try {
+                    const x = 2;
+                    println(x + "asdasdasd");
+                }  catch (e) {
+                    println("internal", e);
+                }
+            })();
+
+            if (x:=1;x) {
+                if (y:=x+1;y) {
+                    println(">>>>>>>>>>>>|||", x  + y);
+                    break;
+                }
+            }
+            
+        } catch (e) {
+            println("external", e);
+        }
+    }
+   
+};
+
+fun();
+
+println(decompile(fun));

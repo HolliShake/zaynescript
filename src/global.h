@@ -735,8 +735,8 @@ typedef struct module_function_struct {
  * Stores the line information and function value for a particular call frame.
  */
 typedef struct stack_trace {
-	LineInfo line;
-	Value*	 Function;
+	LineInfo line;	   /**< Source location at this call frame */
+	Value*	 Function; /**< Function value active at this call frame */
 } StackTrace;
 
 /**
@@ -748,11 +748,24 @@ typedef struct stack_trace {
  */
 typedef struct import_node ImportNode;
 
-#define IMPORT_UNVISITED                                                       \
-	0 /**< Flag indicating the module has not been visited during loading */
+/**
+ * @def IMPORT_UNVISITED
+ * @brief Import cycle-detection state: module not yet visited during loading.
+ */
+#define IMPORT_UNVISITED 0
 
+/**
+ * @def VISITING
+ * @brief Import cycle-detection state: module is currently being loaded (cycle
+ * risk).
+ */
 #define VISITING 1
 
+/**
+ * @def SAFE
+ * @brief Import cycle-detection state: module has been fully loaded with no
+ * cycle.
+ */
 #define SAFE 2
 
 typedef struct import_node {
@@ -764,6 +777,18 @@ typedef struct import_node {
 	int			State; /**< Flag for cycle detection during module loading */
 	ImportNode* Next; /**< Pointer to the next import node in the linked list */
 } ImportNode;
+
+/**
+ * @struct exception_handler_struct
+ * @brief Stores state required to resume execution after an exception jump.
+ *
+ * Used by the interpreter's exception handling stack to track where execution
+ * should continue and which instruction pointer was paused.
+ */
+typedef struct exception_handler_struct {
+	int		JumpAddress;   /**< Instruction index to jump to on exception */
+	size_t* PausedAddress; /**< Saved paused instruction/address pointer */
+} ExceptionHandler;
 
 /**
  * @struct interpreter_struct
@@ -799,7 +824,8 @@ struct interpreter_struct {
 	int			StckC;				/**< Stack pointer/count */
 	Value*		Envs[STACK_SIZE]; /**< Environment stack for variable scopes */
 	int			EnvrC;			  /**< Environment stack pointer */
-	int ExceptionHandlerStacks[STACK_SIZE]; /**< Stack for exception handlers */
+	ExceptionHandler
+		ExceptionHandlerStacks[STACK_SIZE]; /**< Stack for exception handlers */
 	int ExceptionHandlerStackC; /**< Exception handler stack pointer */
 	int GcThreshold; /**< Threshold for triggering garbage collection */
 	Value* TaskQueue[STACK_SIZE]; /**< Queue for pending tasks (e.g. resolved

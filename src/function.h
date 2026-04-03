@@ -15,7 +15,7 @@
 #	define FUNCTION_H
 
 /**
- * Creates a new user function.
+ * @brief Creates a new user function.
  *
  * @param name The name of the function.
  * @param argc The number of arguments the function takes.
@@ -26,7 +26,7 @@
 UserFunction* CreateUserFunction(String name, int argc, bool async);
 
 /**
- * Creates a new main user function.
+ * @brief Creates a new main user function.
  *
  * @param name The name of the function.
  * @param argc The number of arguments the function takes.
@@ -36,7 +36,7 @@ UserFunction* CreateUserFunction(String name, int argc, bool async);
 UserFunction* CreateMainUserFunction(String name, int argc);
 
 /**
- * Clones an existing user function.
+ * @brief Clones an existing user function.
  *
  * @param userFunction Pointer to the user function to clone.
  * @return Pointer to the cloned UserFunction structure, or NULL on failure.
@@ -44,7 +44,7 @@ UserFunction* CreateMainUserFunction(String name, int argc);
 UserFunction* UserFunctionClone(UserFunction* userFunction);
 
 /**
- * Emits a local variable to the user function.
+ * @brief Emits a local variable to the user function.
  *
  * @param userFunction Pointer to the user function to emit the local variable
  * to.
@@ -53,7 +53,7 @@ UserFunction* UserFunctionClone(UserFunction* userFunction);
 int UserFunctionEmitLocal(UserFunction* userFunction);
 
 /**
- * Adds a captured variable to the user function.
+ * @brief Adds a captured variable to the user function.
  *
  * @param userFunction Pointer to the user function to add the captured variable
  * to.
@@ -67,7 +67,7 @@ int UserFunctionAddCapture(UserFunction* userFunction,
 						   int			 sourceOffset);
 
 /**
- * Converts a user function structure to its string representation.
+ * @brief Converts a user function structure to its string representation.
  *
  * @param userFunction Pointer to the UserFunction structure.
  * @return String representation of the user function.
@@ -75,14 +75,14 @@ int UserFunctionAddCapture(UserFunction* userFunction,
 String UserFunctionToString(UserFunction* userFunction);
 
 /**
- * Frees a User Defined function
+ * @brief Frees a user-defined function.
  *
  * @param userFunction Pointer to the UserFunction structure
  */
 void FreeUserFunction(UserFunction* userFunction);
 
 /**
- * Creates a new native function metadata structure.
+ * @brief Creates a new native function metadata structure.
  *
  * @param name The name of the native function.
  * @param argc The number of arguments the native function takes.
@@ -95,7 +95,8 @@ NativeFunction* CreateNativeFunctionMeta(const String			name,
 										 NativeFunctionCallback funcPtr);
 
 /**
- * Converts a native function metadata structure to its string representation.
+ * @brief Converts a native function metadata structure to its string
+ * representation.
  *
  * @param meta Pointer to the NativeFunction structure.
  * @return String representation of the native function metadata.
@@ -103,7 +104,7 @@ NativeFunction* CreateNativeFunctionMeta(const String			name,
 String NativeFunctionMetaToString(NativeFunction* meta);
 
 /**
- * Frees a native function
+ * @brief Frees a native function.
  *
  * @param nativeFunction Pointer to the NativeFunction structure
  */

@@ -1,5 +1,7 @@
 #include "./interpreter.h"
 
+#include "global.h"
+
 static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
 	// libbf uses size == 0 to signal a free() operation
 	if (size == 0) {
@@ -118,6 +120,17 @@ Value* PeekAt(Interpreter* interpreter, int n) {
 	return interpreter->Stacks[(interpreter->StckC) - (n)];
 }
 
+void PushTrace(Interpreter* interpreter, LineInfo line, Value* fn) {
+	interpreter->CallStack[interpreter->CallStackC++] = (StackTrace){
+		.line	  = line,
+		.Function = fn,
+	};
+}
+
+void PopTrace(Interpreter* interpreter) {
+	--interpreter->CallStackC;
+}
+
 String ReadString(uint8_t* codes, int alignStart) {
 	String str	  = (String) (codes + alignStart);
 	int	   length = strlen(str);
@@ -163,9 +176,12 @@ static int _GetArg2(Interpreter* interp, Value* obj, Value* methodName) {
 }
 
 /******* TryCatch manipulation */
-static void _PushTry(Interpreter* interpreter, int jmp) {
+static void _PushTry(Interpreter* interpreter, int jmp, size_t* pausedAddress) {
 	interpreter->ExceptionHandlerStacks[interpreter->ExceptionHandlerStackC++] =
-		jmp;
+		(ExceptionHandler){
+			.JumpAddress   = jmp,
+			.PausedAddress = pausedAddress,
+		};
 }
 
 static void _PopNTry(Interpreter* interpreter, int n) {
@@ -177,7 +193,7 @@ static void _PoppTry(Interpreter* interpreter) {
 	_PopNTry(interpreter, 1);
 }
 
-static int _PeekTry(Interpreter* interpreter) {
+static ExceptionHandler _PeekTry(Interpreter* interpreter) {
 	return interpreter
 		->ExceptionHandlerStacks[interpreter->ExceptionHandlerStackC - 1];
 }
@@ -247,6 +263,7 @@ static void _Error(Interpreter*	 interpreter,
 		return;
 	}
 	if (isCatched()) {
+		ExceptionHandler handler = _PeekTry(interpreter);
 		/* Caught: create the error value and hand it to the catch handler */
 		String fmt = FormatString("[%s:%d]::%s: %s",
 								  line.Path,
@@ -256,21 +273,22 @@ static void _Error(Interpreter*	 interpreter,
 		free(message);
 		Value* err = NewErrorValue(interpreter, fmt);
 		free(fmt);
-		JumpToError(ip, _PeekTry(interpreter));
+		// Jump the current function to end
+		JumpToError(ip, uf->CodeC);
+		// Jump the main function to the handle
+		JumpToError(handler.PausedAddress, handler.JumpAddress);
 		_PoppTry(interpreter);
 		Push(interpreter, err);
 		return;
 	}
 	/* Uncaught: no need to allocate a tracked Value, just report and abort */
-	fprintf(stderr,
-			"[%s:%d]::Panic: [%s:%d]::%s: %s\n",
-			__FILE__,
-			__LINE__,
-			line.Path,
-			line.Line,
-			type,
-			message);
+	fprintf(stderr, "[%s:%d]::%s: %s\n", line.Path, line.Line, type, message);
 	free(message);
+	// Stack trace for debugging
+	for (int i = interpreter->CallStackC - 1; i >= 0; i--) {
+		StackTrace trace = interpreter->CallStack[i];
+		fprintf(stderr, "  |> [%s:%d]\n", trace.line.Path, trace.line.Line);
+	}
 	ForceGarbageCollect(interpreter);
 	FreeInterpreter(interpreter);
 	fprintf(stderr, "Program exited with panic.\n");
@@ -282,15 +300,19 @@ static void _RaiseError(Interpreter*  interpreter,
 						size_t*		  ip,
 						Value*		  error) {
 	if (interpreter->ActiveTask != NULL) {
+		printf("NAH!!");
 		Push(interpreter, error);
 		JumpToError(ip, uf->CodeC);
 		return;
 	}
 	if (isCatched()) {
+		ExceptionHandler handler = _PeekTry(interpreter);
 		/* Caught: preserve the original error value as-is for the catch handler
 		 */
-		JumpToError(ip, _PeekTry(interpreter));
-		_PoppTry(interpreter);
+		// Jump the current function to end
+		JumpToError(ip, uf->CodeC);
+		// Jump the main function to the handle
+		JumpToError(handler.PausedAddress, handler.JumpAddress);
 		Push(interpreter, error);
 		return;
 	}
@@ -299,8 +321,13 @@ static void _RaiseError(Interpreter*  interpreter,
 	String	 errStr = ValueToString(error);
 	String	 msg	= FormatString("[%s:%d]::%s", line.Path, line.Line, errStr);
 	free(errStr);
-	fprintf(stderr, "[%s:%d]::Panic: %s\n", __FILE__, __LINE__, msg);
+	fprintf(stderr, "%s\n", msg);
 	free(msg);
+	// Stack trace for debugging
+	for (int i = interpreter->CallStackC - 1; i >= 0; i--) {
+		StackTrace trace = interpreter->CallStack[i];
+		fprintf(stderr, "  |> [%s:%d]\n", trace.line.Path, trace.line.Line);
+	}
 	ForceGarbageCollect(interpreter);
 	FreeInterpreter(interpreter);
 	fprintf(stderr, "Program exited with panic.\n");
@@ -367,27 +394,28 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 			? CoerceToUserFunction(fnValue)
 			: CoerceToUserFunction(
 				  (sm = CoerceToStateMachine(fnValue))->Function);
-	uint8_t		 opcode	 = 0;
-	Value*		 lhs	 = NULL;
-	Value*		 rhs	 = NULL;
-	Value*		 res	 = NULL;
-	Value*		 ext	 = NULL;
-	Value*		 arr	 = NULL;
-	Value*		 obj	 = NULL;
-	Value*		 cls	 = NULL;
-	Value*		 key	 = NULL;
-	Value*		 val	 = NULL;
-	Value*		 err	 = NULL;
-	Environment* env	 = NULL;
-	HashMap*	 map	 = NULL;
-	Array*		 array	 = NULL;
-	size_t		 ip		 = 0;
-	int			 offset	 = 0;
-	int			 argc	 = 0;
-	int			 flg	 = 0;
-	int			 size	 = 0;
-	bool		 catched = false;
-	String		 str	 = NULL;
+	uint8_t		 opcode		  = 0;
+	Value*		 lhs		  = NULL;
+	Value*		 rhs		  = NULL;
+	Value*		 res		  = NULL;
+	Value*		 ext		  = NULL;
+	Value*		 arr		  = NULL;
+	Value*		 obj		  = NULL;
+	Value*		 cls		  = NULL;
+	Value*		 key		  = NULL;
+	Value*		 val		  = NULL;
+	Value*		 err		  = NULL;
+	Environment* env		  = NULL;
+	HashMap*	 map		  = NULL;
+	Array*		 array		  = NULL;
+	size_t		 ip			  = 0;
+	int			 offset		  = 0;
+	int			 argc		  = 0;
+	int			 flg		  = 0;
+	int			 size		  = 0;
+	bool		 catched	  = false;
+	bool		 localhandler = false;
+	String		 str		  = NULL;
 
 	if (ValueIsPromise(fnValue))
 		ip = sm->Ip;
@@ -396,8 +424,9 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 		InterpreterPanic("Attempted to run a non-function value of type %s",
 						 ValueTypeOf(fnValue));
 
-#define Forward(size) (ip += size)
-#define JmpFrwd(addr) (ip = addr)
+#define Forward(size)		   (ip += size)
+#define JmpFrwd(addr)		   (ip = addr)
+#define SetLocalHandler(value) (localhandler = value)
 
 	while (ip != uf->CodeC) {
 		if (interpreter->Allocated >= interpreter->GcThreshold) {
@@ -697,16 +726,12 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_CALL_CTOR:
 				{
-					interpreter->CallStack[interpreter->CallStackC++] =
-						(StackTrace){
-							.line	  = _GetLineFromPc(uf, ip),
-							.Function = fnValue,
-						};
+					PushTrace(interpreter, _GetLineFromPc(uf, ip), fnValue);
 					argc = _ReadInt32(uf->Codes, ip);
 					Forward(4);
 					cls = Popp(interpreter);
 					res = DoCallCtor(interpreter, cls, argc);
-					--interpreter->CallStackC;
+					PopTrace(interpreter);
 					if (ValueIsError(res)) {
 						_RaiseError(interpreter, uf, &ip, res);
 						break;
@@ -715,16 +740,12 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_CALL:
 				{
-					interpreter->CallStack[interpreter->CallStackC++] =
-						(StackTrace){
-							.line	  = _GetLineFromPc(uf, ip),
-							.Function = fnValue,
-						};
+					PushTrace(interpreter, _GetLineFromPc(uf, ip), fnValue);
 					argc = _ReadInt32(uf->Codes, ip);
 					Forward(4);
 					obj = Popp(interpreter);
 					res = DoCall(interpreter, obj, argc, false);
-					--interpreter->CallStackC;
+					PopTrace(interpreter);
 					if (ValueIsError(res)) {
 						_RaiseError(interpreter, uf, &ip, res);
 						break;
@@ -733,17 +754,13 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_CALL_METHOD:
 				{
-					interpreter->CallStack[interpreter->CallStackC++] =
-						(StackTrace){
-							.line	  = _GetLineFromPc(uf, ip),
-							.Function = fnValue,
-						};
+					PushTrace(interpreter, _GetLineFromPc(uf, ip), fnValue);
 					argc = _ReadInt32(uf->Codes, ip);
 					Forward(4);
 					key = Popp(interpreter);  // method
 					obj = Popp(interpreter);  // 'this' object
 					res = DoCallMethod(interpreter, obj, key, argc);
-					--interpreter->CallStackC;
+					PopTrace(interpreter);
 					if (ValueIsError(res)) {
 						_RaiseError(interpreter, uf, &ip, res);
 						break;
@@ -1205,13 +1222,15 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_SETUP_TRY:
 				{
+					SetLocalHandler(true);
 					offset = _ReadInt32(uf->Codes, ip);
-					_PushTry(interpreter, offset);
+					_PushTry(interpreter, offset, &ip);
 					Forward(4);
 					break;
 				}
 			case OP_POP_TRY:
 				{
+					SetLocalHandler(false);
 					_PoppTry(interpreter);
 					break;
 				}
@@ -1353,11 +1372,8 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 		// Awaited
 		StateMachine* sm = CoerceToStateMachine(task);
 
-		interpreter->ActiveTask							  = task;
-		interpreter->CallStack[interpreter->CallStackC++] = (StackTrace){
-			.line	  = sm->Line,
-			.Function = task,
-		};
+		interpreter->ActiveTask = task;
+		PushTrace(interpreter, sm->Line, task);
 
 		if (!sm->IsCallback) {
 			DoCall(interpreter, task, 0, false);
@@ -1394,7 +1410,7 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 			}
 		}
 
-		--interpreter->CallStackC;
+		PopTrace(interpreter);
 
 		interpreter->ActiveTask = NULL;
 	}

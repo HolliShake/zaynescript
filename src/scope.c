@@ -1,5 +1,7 @@
 #include "./scope.h"
 
+#include "global.h"
+
 Symbol*
 CreateSymbol(bool isGlobal, bool isLocalToFn, bool isConstant, int offset) {
 	Symbol* symbol		= Allocate(sizeof(Symbol));
@@ -56,6 +58,11 @@ bool ScopeIs(Scope* scope, ScopeType type) {
 
 bool ScopeInside(Scope* scope, ScopeType type) {
 	while (scope != NULL) {
+		// Reset
+		if (type == SCOPE_LOOP && (scope->Type == SCOPE_FUNCTION)) {
+			return false;
+		}
+
 		if (scope->Type == type) {
 			return true;
 		}
@@ -231,6 +238,9 @@ Scope* ScopeGetFirst(Scope* scope, ScopeType type) {
 int ScopeCountNested(Scope* scope, ScopeType type) {
 	int count = 0;
 	while (scope != NULL) {
+		if (type == SCOPE_LOOP && (scope->Type == SCOPE_FUNCTION)) {
+			return count;
+		}
 		if (scope->Type == type) {
 			count++;
 		}

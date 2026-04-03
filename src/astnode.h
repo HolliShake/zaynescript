@@ -13,7 +13,7 @@
 #	define ASTNODE_H
 
 /**
- * Creates an AST node representing an identifier/name.
+ * @brief Creates an AST node representing an identifier/name.
  *
  * Allocates and initializes an AST_NAME node that represents a variable,
  * function, or other identifier in the source code.
@@ -26,7 +26,7 @@
 Ast* AstName(String name, Position position);
 
 /**
- * Creates an AST node representing an integer literal.
+ * @brief Creates an AST node representing an integer literal.
  *
  * Allocates and initializes an AST_INT node that represents an integer
  * constant in the source code.
@@ -39,7 +39,7 @@ Ast* AstName(String name, Position position);
 Ast* AstInteger(String value, Position position);
 
 /**
- * Creates an AST node representing a big integer literal.
+ * @brief Creates an AST node representing a big integer literal.
  *
  * Allocates and initializes an AST_BIGINT node that represents a big integer
  * constant in the source code.
@@ -52,7 +52,7 @@ Ast* AstInteger(String value, Position position);
 Ast* AstBigInteger(String value, Position position);
 
 /**
- * Creates an AST node representing a floating-point number literal.
+ * @brief Creates an AST node representing a floating-point number literal.
  *
  * Allocates and initializes an AST_NUM node that represents a floating-point
  * constant in the source code.
@@ -65,7 +65,7 @@ Ast* AstBigInteger(String value, Position position);
 Ast* AstNumber(String value, Position position);
 
 /**
- * Creates an AST node representing a big number literal.
+ * @brief Creates an AST node representing a big number literal.
  *
  * Allocates and initializes an AST_BIGNUMBER node that represents a big number
  * constant in the source code.
@@ -78,7 +78,7 @@ Ast* AstNumber(String value, Position position);
 Ast* AstBigNumber(String value, Position position);
 
 /**
- * Creates an AST node representing a string literal.
+ * @brief Creates an AST node representing a string literal.
  *
  * Allocates and initializes an AST_STR node that represents a string
  * constant in the source code.
@@ -91,7 +91,7 @@ Ast* AstBigNumber(String value, Position position);
 Ast* AstString(String value, Position position);
 
 /**
- * Creates an AST node representing a boolean literal.
+ * @brief Creates an AST node representing a boolean literal.
  *
  * Allocates and initializes an AST_BOOL node that represents a boolean
  * constant (true or false) in the source code.
@@ -104,7 +104,7 @@ Ast* AstString(String value, Position position);
 Ast* AstBool(bool value, Position position);
 
 /**
- * Creates an AST node representing a null literal.
+ * @brief Creates an AST node representing a null literal.
  *
  * Allocates and initializes an AST_NULL node that represents a null
  * constant in the source code.
@@ -116,7 +116,7 @@ Ast* AstBool(bool value, Position position);
 Ast* AstNull(Position position);
 
 /**
- * Creates an AST node representing the 'this' keyword.
+ * @brief Creates an AST node representing the 'this' keyword.
  *
  * Allocates and initializes an AST_THIS node that represents the 'this'
  * keyword in the source code, typically used within class methods to refer
@@ -129,7 +129,7 @@ Ast* AstNull(Position position);
 Ast* AstThis(Position position);
 
 /**
- * Creates an AST node representing a spread operator.
+ * @brief Creates an AST node representing a spread operator.
  *
  * Allocates and initializes an AST_SPREAD_OPERATOR node that represents
  * the spread operator (...) applied to an expression.
@@ -142,7 +142,7 @@ Ast* AstThis(Position position);
 Ast* AstSpread(Ast* expression, Position position);
 
 /**
- * Creates an AST node representing a list literal.
+ * @brief Creates an AST node representing a list literal.
  *
  * Allocates and initializes an AST_LIST_LITERAL node that represents
  * an array or list literal expression.
@@ -155,7 +155,7 @@ Ast* AstSpread(Ast* expression, Position position);
 Ast* AstListLiteral(Ast* elements, Position position);
 
 /**
- * Creates an AST node representing a key-value pair in an object.
+ * @brief Creates an AST node representing a key-value pair in an object.
  *
  * Allocates and initializes an AST_OBJECT_KEY_VAL node that represents
  * a single property definition in an object literal.
@@ -168,7 +168,7 @@ Ast* AstListLiteral(Ast* elements, Position position);
 Ast* AstObjectKeyVal(Ast* key, Position position);
 
 /**
- * Creates an AST node representing an object literal.
+ * @brief Creates an AST node representing an object literal.
  *
  * Allocates and initializes an AST_OBJECT_LITERAL node that represents
  * an object literal expression with properties.
@@ -181,7 +181,7 @@ Ast* AstObjectKeyVal(Ast* key, Position position);
 Ast* AstObjectLiteral(Ast* properties, Position position);
 
 /**
- * Creates an AST node representing an allocation expression.
+ * @brief Creates an AST node representing an allocation expression.
  *
  * Allocates and initializes an AST_ALLOCATION node that represents
  * a class instantiation (new) expression.
@@ -195,7 +195,7 @@ Ast* AstObjectLiteral(Ast* properties, Position position);
 Ast* AstAllocation(Ast* cls, Ast* arguments, Position position);
 
 /**
- * Creates an AST node representing a member access.
+ * @brief Creates an AST node representing a member access.
  *
  * Allocates and initializes an AST_MEMBER node that represents
  * a property or method access using dot notation (object.member).
@@ -209,7 +209,7 @@ Ast* AstAllocation(Ast* cls, Ast* arguments, Position position);
 Ast* AstMember(Ast* object, Ast* member, Position position);
 
 /**
- * Creates an AST node representing an index access.
+ * @brief Creates an AST node representing an index access.
  *
  * Allocates and initializes an AST_INDEX node that represents
  * an array or object index access using bracket notation (object[index]).
@@ -223,7 +223,7 @@ Ast* AstMember(Ast* object, Ast* member, Position position);
 Ast* AstIndex(Ast* object, Ast* index, Position position);
 
 /**
- * Creates an AST node representing a function call.
+ * @brief Creates an AST node representing a function call.
  *
  * Allocates and initializes an AST_CALL node that represents
  * a function or method invocation.
@@ -237,7 +237,7 @@ Ast* AstIndex(Ast* object, Ast* index, Position position);
 Ast* AstCall(Ast* object, Ast* arguments, Position position);
 
 /**
- * Creates an AST node representing a unary or postfix operation.
+ * @brief Creates an AST node representing a unary or postfix operation.
  *
  * Allocates and initializes an AST_UNARY node that represents
  * a unary operation (e.g., negation, logical NOT, increment, decrement).
@@ -251,7 +251,7 @@ Ast* AstCall(Ast* object, Ast* arguments, Position position);
 Ast* AstSingle(AstType type, Ast* operand, Position position);
 
 /**
- * Creates an AST node representing a binary operation.
+ * @brief Creates an AST node representing a binary operation.
  *
  * Allocates and initializes an AST_BINARY node that represents
  * a binary operation (e.g., addition, multiplication, comparison).
@@ -266,7 +266,7 @@ Ast* AstSingle(AstType type, Ast* operand, Position position);
 Ast* AstBinary(AstType type, Ast* lhs, Ast* rhs, Position position);
 
 /**
- * Creates an AST node representing a ternary conditional operation.
+ * @brief Creates an AST node representing a ternary conditional operation.
  *
  * Allocates and initializes an AST_TERNARY node that represents
  * a ternary conditional expression (condition ? thenBranch : elseBranch).
@@ -284,7 +284,7 @@ Ast* AstTernary(Ast*	 condition,
 				Position position);
 
 /**
- * Creates an AST node representing a continue statement.
+ * @brief Creates an AST node representing a continue statement.
  *
  * Allocates and initializes an AST_CONTINUE node that represents
  * a continue statement in a loop.
@@ -296,7 +296,7 @@ Ast* AstTernary(Ast*	 condition,
 Ast* AstContinue(Position position);
 
 /**
- * Creates an AST node representing a break statement.
+ * @brief Creates an AST node representing a break statement.
  *
  * Allocates and initializes an AST_BREAK node that represents
  * a break statement in a loop or switch.
@@ -308,7 +308,7 @@ Ast* AstContinue(Position position);
 Ast* AstBreak(Position position);
 
 /**
- * Creates an AST node representing a return statement.
+ * @brief Creates an AST node representing a return statement.
  *
  * Allocates and initializes an AST_RETURN node that represents
  * a return statement with an optional expression.
@@ -322,7 +322,7 @@ Ast* AstBreak(Position position);
 Ast* AstReturn(Ast* expression, Position position);
 
 /**
- * Creates an AST node representing an expression statement.
+ * @brief Creates an AST node representing an expression statement.
  *
  * Allocates and initializes an AST_EXPRESSION_STATEMENT node that represents
  * an expression used as a statement.
@@ -335,7 +335,7 @@ Ast* AstReturn(Ast* expression, Position position);
 Ast* AstExpressionStatement(Ast* expression, Position position);
 
 /**
- * Creates an AST node representing a class member.
+ * @brief Creates an AST node representing a class member.
  *
  * Allocates and initializes an AST_CLASS_MEMBER node that represents
  * a member (property or method) definition within a class, which may be static.
@@ -349,7 +349,7 @@ Ast* AstExpressionStatement(Ast* expression, Position position);
 Ast* AstClassMember(bool _static_, Ast* node, Position position);
 
 /**
- * Creates an AST node representing a class definition.
+ * @brief Creates an AST node representing a class definition.
  *
  * Allocates and initializes an AST_CLASS node that represents
  * a class declaration with optional inheritance.
@@ -365,7 +365,7 @@ Ast* AstClassMember(bool _static_, Ast* node, Position position);
 Ast* AstClass(Ast* name, Ast* super, Ast* body, Position position);
 
 /**
- * Creates an AST node representing a function definition.
+ * @brief Creates an AST node representing a function definition.
  *
  * Allocates and initializes an AST_FUNCTION node that represents
  * a function declaration with parameters and body.
@@ -385,7 +385,7 @@ Ast* AstFunction(Ast*	  fnName,
 				 Position position);
 
 /**
- * Creates an AST node representing an import statement.
+ * @brief Creates an AST node representing an import statement.
  *
  * Allocates and initializes an AST_IMPORT node that represents
  * a module import declaration.
@@ -399,7 +399,7 @@ Ast* AstFunction(Ast*	  fnName,
 Ast* AstImport(Ast* imports, Ast* moduleName, Position position);
 
 /**
- * Creates an AST node representing a variable declaration.
+ * @brief Creates an AST node representing a variable declaration.
  *
  * Allocates and initializes an AST_VAR_DECLARATION node that represents
  * one or more variable declarations (var, local, const).
@@ -413,7 +413,7 @@ Ast* AstImport(Ast* imports, Ast* moduleName, Position position);
 Ast* AstVarDeclaration(AstType type, Ast* declarations, Position position);
 
 /**
- * Creates an AST node representin empty statement and noop .
+ * @brief Creates an AST node representing an empty statement (noop).
  *
  * Allocates and initializes an AST_EMPTY_STMNT node that represents noop
  *
@@ -424,7 +424,7 @@ Ast* AstVarDeclaration(AstType type, Ast* declarations, Position position);
 Ast* AstEmptyStatement(Position position);
 
 /**
- * Creates an AST node representing an if statement.
+ * @brief Creates an AST node representing an if statement.
  *
  * Allocates and initializes an AST_IF node that represents
  * a conditional statement with optional else branch.
@@ -439,7 +439,7 @@ Ast* AstEmptyStatement(Position position);
 Ast* AstIf(Ast* condition, Ast* thenBranch, Ast* elseBranch, Position position);
 
 /**
- * Creates an AST node representing a switch statement.
+ * @brief Creates an AST node representing a switch statement.
  *
  * Allocates and initializes an AST_SWITCH node that represents
  * a switch statement with cases and optional default case.
@@ -458,7 +458,7 @@ Ast* AstSwitch(Ast*		expression,
 			   Position position);
 
 /**
- * Creates an AST node representing a switch case.
+ * @brief Creates an AST node representing a switch case.
  *
  * Allocates and initializes an AST_SWITCH_CASE node that represents
  * a single case within a switch statement, including the case value and body.
@@ -472,7 +472,7 @@ Ast* AstSwitch(Ast*		expression,
 Ast* AstSwitchCase(Ast* value, Ast* body, Position position);
 
 /**
- * Creates an AST node representing a for statement.
+ * @brief Creates an AST node representing a for statement.
  *
  * Allocates and initializes an AST_FOR node that represents
  * a for loop with initializer, condition, and mutator.
@@ -487,7 +487,7 @@ Ast* AstSwitchCase(Ast* value, Ast* body, Position position);
 Ast* AstFor(Ast* initializerConditionMutator, Ast* body, Position position);
 
 /**
- * Creates an AST node representing a while statement.
+ * @brief Creates an AST node representing a while statement.
  *
  * Allocates and initializes an AST_WHILE node that represents
  * a while loop with condition and body.
@@ -501,7 +501,7 @@ Ast* AstFor(Ast* initializerConditionMutator, Ast* body, Position position);
 Ast* AstWhile(Ast* condition, Ast* body, Position position);
 
 /**
- * Creates an AST node representing a do-while statement.
+ * @brief Creates an AST node representing a do-while statement.
  *
  * Allocates and initializes an AST_DO_WHILE node that represents
  * a do-while loop with body and condition.
@@ -515,7 +515,7 @@ Ast* AstWhile(Ast* condition, Ast* body, Position position);
 Ast* AstDoWhile(Ast* condition, Ast* body, Position position);
 
 /**
- * Creates an AST node representing a try-catch statement.
+ * @brief Creates an AST node representing a try-catch statement.
  *
  * Allocates and initializes an AST_TRY_CATCH node that represents
  * exception handling with try and catch blocks.
@@ -533,7 +533,7 @@ Ast* AstTryCatch(Ast*	  tryBlock,
 				 Position position);
 
 /**
- * Creates an AST node representing a block statement.
+ * @brief Creates an AST node representing a block statement.
  *
  * Allocates and initializes an AST_BLOCK node that represents
  * a block of statements enclosed in braces.
@@ -546,7 +546,7 @@ Ast* AstTryCatch(Ast*	  tryBlock,
 Ast* AstBlock(Ast* statements, Position position);
 
 /**
- * Creates an AST node representing the root program node.
+ * @brief Creates an AST node representing the root program node.
  *
  * Allocates and initializes an AST_PROGRAM node that represents
  * the top-level program containing all statements and declarations.
@@ -559,7 +559,7 @@ Ast* AstBlock(Ast* statements, Position position);
 Ast* AstProgram(Ast* children, Position position);
 
 /**
- * Frees an AST node and all its children.
+ * @brief Frees an AST node and all its children.
  *
  * Recursively deallocates memory for an AST node and all of its
  * child nodes, preventing memory leaks.

@@ -14,7 +14,7 @@
 #	define CLASS_H
 
 /**
- * Creates a new user-defined class.
+ * @brief Creates a new user-defined class.
  *
  * Allocates and initializes a new Class structure with the specified
  * name and optional base class for inheritance.
@@ -27,7 +27,7 @@
 Class* CreateUserClass(String name, Value* base);
 
 /**
- * Extends a user-defined class with a base class.
+ * @brief Extends a user-defined class with a base class.
  *
  * Establishes an inheritance relationship by setting the base class for
  * the specified class. This allows the class to inherit members from the
@@ -39,7 +39,7 @@ Class* CreateUserClass(String name, Value* base);
 void ClassExtend(Class* cls, Value* base);
 
 /**
- * Defines a member (static or instance) on a user-defined class.
+ * @brief Defines a member (static or instance) on a user-defined class.
  *
  * Adds or updates a member on the class. Members can be either static
  * (belonging to the class itself) or instance (belonging to instances
@@ -54,8 +54,8 @@ void ClassExtend(Class* cls, Value* base);
 void ClassDefineMember(Class* cls, Value* key, Value* value, bool isStatic);
 
 /**
- * Defines a member (static or instance) on a user-defined class using a string
- * key.
+ * @brief Defines a member (static or instance) on a user-defined class using a
+ * string key.
  *
  * Adds or updates a member on the class. Members can be either static
  * (belonging to the class itself) or instance (belonging to instances
@@ -73,7 +73,7 @@ void ClassDefineMemberByString(Class* cls,
 							   bool	  isStatic);
 
 /**
- * Checks if a user-defined class has a specific member.
+ * @brief Checks if a user-defined class has a specific member.
  *
  * Searches for a member with the specified name in the class, checking
  * either static or instance members. Optionally filters for callable
@@ -90,7 +90,7 @@ void ClassDefineMemberByString(Class* cls,
 bool ClassHasMember(Class* cls, String key, bool isStatic, bool callable);
 
 /**
- * Retrieves a member (static or instance) from a user-defined class.
+ * @brief Retrieves a member (static or instance) from a user-defined class.
  *
  * Looks up a member by name in the specified class, searching either
  * static or instance members.
@@ -104,7 +104,7 @@ bool ClassHasMember(Class* cls, String key, bool isStatic, bool callable);
 Value* ClassGetMember(Class* cls, String key, bool isStatic);
 
 /**
- * Converts a user-defined class instance to its string representation.
+ * @brief Converts a user-defined class instance to its string representation.
  *
  * Generates a human-readable string representation of the class instance,
  * typically including the class name and instance information.
@@ -116,7 +116,7 @@ Value* ClassGetMember(Class* cls, String key, bool isStatic);
 String ClassInstanceToString(ClassInstance* instance);
 
 /**
- * Creates a new instance of a user-defined class.
+ * @brief Creates a new instance of a user-defined class.
  *
  * Allocates and initializes a new ClassInstance structure with the specified
  * prototype. The prototype defines the class from which this instance is
@@ -129,7 +129,7 @@ String ClassInstanceToString(ClassInstance* instance);
 ClassInstance* CreateClassInstance(Value* proto);
 
 /**
- * Converts a user-defined class to its string representation.
+ * @brief Converts a user-defined class to its string representation.
  *
  * Generates a human-readable string representation of the class,
  * typically including the class name and type information.

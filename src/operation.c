@@ -25,7 +25,7 @@
  * @brief Pushes a value onto the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @param value The value to push.
- * @origin src/interpreter.c:101
+ * @origin src/interpreter.c:103
  */
 extern void Push(Interpreter* interpreter, Value* value);
 
@@ -33,7 +33,7 @@ extern void Push(Interpreter* interpreter, Value* value);
  * @brief Pops and returns the top value from the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @return The popped value.
- * @origin src/interpreter.c:105
+ * @origin src/interpreter.c:107
  */
 extern Value* Popp(Interpreter* interpreter);
 
@@ -41,7 +41,7 @@ extern Value* Popp(Interpreter* interpreter);
  * @brief Pops N values from the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @param n The number of values to pop.
- * @origin src/interpreter.c:109
+ * @origin src/interpreter.c:111
  */
 extern void PopN(Interpreter* interpreter, int n);
 
@@ -49,7 +49,7 @@ extern void PopN(Interpreter* interpreter, int n);
  * @brief Peeks at the top value on the interpreter's stack without removing it.
  * @param interpreter The interpreter instance.
  * @return The top value on the stack.
- * @origin src/interpreter.c:113
+ * @origin src/interpreter.c:115
  */
 extern Value* Peek(Interpreter* interpreter);
 
@@ -84,7 +84,7 @@ static void _DupTop(Interpreter* interpreter) {
  * @brief Runs the interpreter's main execution loop on a function value.
  * @param interpreter The interpreter instance.
  * @param fnValue The compiled function value to execute.
- * @origin src/interpreter.c:363
+ * @origin src/interpreter.c:390
  */
 extern void Run(Interpreter* interpreter, Value* fnValue);
 
@@ -116,13 +116,17 @@ void RestoreNthEnvAndSync(Interpreter* interpreter, int n) {
 		// Invalid index, do nothing or handle error as needed
 		return;
 	}
-	Value* top = interpreter->Envs[n];
+	int			 start = interpreter->EnvrC - n;
+	Value*		 top   = interpreter->Envs[start];
+	Environment* dst   = CoerceToEnvironment(top);
 	// Remove all environments above n
-	for (int i = interpreter->EnvrC - 1; i > n; i--) {
+	for (int i = start + 1; i < n; i++) {
+		Environment* current = CoerceToEnvironment(interpreter->Envs[i]);
+		EnvironmentSync(current, dst);
 		interpreter->Envs[i] = NULL;
 	}
-	interpreter->EnvrC	 = n + 1;
-	interpreter->CallEnv = top;
+	interpreter->EnvrC	 -= n;
+	interpreter->CallEnv  = top;
 }
 
 bool IsMethodOfObject(Interpreter* interpreter, Value* obj, Value* method) {
@@ -385,17 +389,17 @@ Value* DoImportCore(Interpreter* interpreter, String moduleName) {
 
 /**
  * @brief Creates a new lexer for tokenizing source code.
- * @param filePath The path of the source file.
+ * @param path The path of the source file.
  * @param data The source code as a Rune array.
  * @return A new Lexer instance.
- * @origin src/lexer.c:270
+ * @origin src/lexer.c:305
  */
 extern Lexer* CreateLexer(String filePath, Rune* data);
 
 /**
  * @brief Frees a lexer and its associated resources.
  * @param lexer The lexer to free.
- * @origin src/lexer.c:341
+ * @origin src/lexer.c:376
  */
 extern void FreeLexer(Lexer* lexer);
 
@@ -443,14 +447,14 @@ extern Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
  * @param compiler The compiler instance.
  * @param programAst The AST to compile.
  * @return The compiled function value.
- * @origin src/compiler.c:3049
+ * @origin src/compiler.c:3060
  */
 extern Value* CompileAst(Compiler* compiler, Ast* programAst);
 
 /**
  * @brief Frees a compiler and its associated resources.
  * @param compiler The compiler to free.
- * @origin src/compiler.c:3053
+ * @origin src/compiler.c:3064
  */
 extern void FreeCompiler(Compiler* compiler);
 
@@ -458,7 +462,7 @@ extern void FreeCompiler(Compiler* compiler);
  * @brief Interprets a compiled function value.
  * @param interpreter The interpreter instance.
  * @param compiled The compiled function value to interpret.
- * @origin src/interpreter.c:1418
+ * @origin src/interpreter.c:1434
  */
 extern void Interpret(Interpreter* interpreter, Value* compiled);
 

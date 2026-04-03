@@ -19,7 +19,7 @@
 #	define COMPILER_H
 
 /**
- * Creates a new compiler instance.
+ * @brief Creates a new compiler instance.
  *
  * Allocates and initializes a new Compiler structure that will be used
  * to compile parsed source code into bytecode.
@@ -32,7 +32,7 @@
 Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
 
 /**
- * Compiles the parsed AST into bytecode.
+ * @brief Compiles the parsed AST into bytecode.
  *
  * Takes the abstract syntax tree from the parser and compiles it into
  * bytecode instructions that can be executed by the interpreter. This
@@ -46,7 +46,7 @@ Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
 Value* Compile(Compiler* compiler);
 
 /**
- * Compiles a given AST into bytecode without freeing the AST.
+ * @brief Compiles a given AST into bytecode without freeing the AST.
  *
  * This function is similar to Compile(), but it does not free the AST after
  * compilation. It can be used when the caller needs to retain access to the AST
@@ -62,7 +62,8 @@ Value* CompileAst(Compiler* compiler, Ast* programAst);
 
 
 /**
- * Frees the compiler instance and any associated resources.
+ * @brief Frees the compiler instance and any associated resources.
+ *
  * Cleans up memory allocated for the compiler and its internal structures.
  * @param compiler Pointer to the compiler instance to free.
  */

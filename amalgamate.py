@@ -44,6 +44,7 @@ HEADER_ORDER = [
     "src/keyword.h",
     "src/global.h",
     # Layer 2: depend on global.h only
+    "src/import.h",
     "src/position.h",
     "src/error.h",
     "src/array.h",
