@@ -1,5 +1,7 @@
 #include "./gc.h"
 
+#include "global.h"
+
 /**
  * @brief Converts a Value to its string representation.
  * @param value The value to convert.
@@ -113,6 +115,12 @@ static void _Free(Interpreter* interp, Value* value) {
 			{
 				StateMachine* sm = CoerceToStateMachine(value);
 				FreeStateMachine(sm);
+				value->Value.Opaque = NULL;
+				break;
+			}
+		case VLT_OPAQUE:
+			{
+				//  Do not free sqlite  here!
 				value->Value.Opaque = NULL;
 				break;
 			}
@@ -246,6 +254,11 @@ void Mark(Value* value) {
 						Mark(sm->WaitList[i]);
 					}
 				}
+				break;
+			}
+		case VLT_OPAQUE:
+			{
+				// logic here!
 				break;
 			}
 		default:

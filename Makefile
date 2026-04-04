@@ -28,7 +28,8 @@ SRCS     := main.c \
             $(wildcard src/core/*.c) \
             $(wildcard utf/*.c) \
             $(wildcard utf/utf8proc/*.c) \
-            $(wildcard libbf/*.c)
+            $(wildcard libbf/*.c) \
+            $(wildcard sqlite/*.c)
 
 LDFLAGS  := -lm -ldl -lpthread
 

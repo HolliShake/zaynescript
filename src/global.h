@@ -410,6 +410,7 @@ typedef enum value_type_enum {
 	VLT_USER_FUNCTION,	/**< User-defined function value */
 	VLT_NATV_FUNCTION,	/**< Native function value */
 	VLT_ENVIRONMENT,	/**< Environment value */
+	VLT_OPAQUE			/**< Opaque pointer value */
 } ValueType;
 
 /**

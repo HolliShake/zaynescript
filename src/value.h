@@ -194,6 +194,16 @@ Value* NewClassValue(Interpreter* interpreter, Class* cls);
 Value* NewClassInstanceValue(Interpreter* interpreter, ClassInstance* instance);
 
 /**
+ * @brief Creates a new opaque pointer value
+ *
+ * @param interpreter Pointer to the interpreter instance
+ * @param ptr The opaque pointer to store
+ * @return Pointer to newly allocated Value structure containing
+ * the opaque pointer
+ */
+Value* NewOpquePtrValue(Interpreter* interpreter, void* ptr);
+
+/**
  * @brief Converts a value to a string representation
  *
  * @param value Pointer to the Value to convert
@@ -338,6 +348,14 @@ bool ValueIsClass(Value* value);
  * @return true if the value is a class instance, false otherwise
  */
 bool ValueIsClassInstance(Value* value);
+
+/**
+ * @brief Checks if a value is an opaque pointer
+ *
+ * @param value Pointer to the Value to check
+ * @return true if the value is an opaque pointer, false otherwise
+ */
+bool ValueIsOpaquePtr(Value* value);
 
 /**
  * @brief Checks if a value is a promise

@@ -14,6 +14,7 @@
 #include "./math.h"
 #include "./os.h"
 #include "./promise.h"
+#include "./sqlite.h"
 
 
 #ifndef CORE_LOADER_H

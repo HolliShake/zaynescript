@@ -8,6 +8,7 @@ CoreMapper _CoreModuleMappers[] = {
 	{ .Name = "Date", .Loader = LoadCoreDate },
 	{ .Name = "Array", .Loader = LoadCoreArray },
 	{ .Name = "Promise", .Loader = LoadCorePromise },
+	{ .Name = "sqlite", .Loader = LoadCoreSqlite },
 	// End marker
 	{ .Name = NULL, .Loader = NULL }
 };
