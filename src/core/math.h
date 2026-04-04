@@ -2,8 +2,9 @@
  * @file math.h
  * @brief Core Math module interface
  *
- * This file contains the interface for loading and initializing the core
- * Math module, which provides mathematical functions and constants.
+ * This file contains the interface for loading and initializing
+ * the core Math module, which provides mathematical functions
+ * and constants.
  */
 
 #include "../global.h"
@@ -15,11 +16,14 @@
 /**
  * @brief Loads the core Math module
  *
- * Initializes and loads the core Math module into the interpreter,
- * registering all mathematical functions and constants.
+ * Initializes and loads the core Math module into the
+ * interpreter, registering all mathematical functions and
+ * constants.
  *
- * @param  interpreter The interpreter instance to load the module into
- * @return Value* Pointer to the loaded core Math module, or NULL on failure
+ * @param  interpreter The interpreter instance to load the
+ * module into
+ * @return Value* Pointer to the loaded core Math module, or NULL
+ * on failure
  */
 Value* LoadCoreMath(Interpreter* interpreter);
 

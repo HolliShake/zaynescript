@@ -2,8 +2,8 @@
  * @file error.h
  * @brief Error type string constants for the interpreter
  *
- * Defines string constants used to identify different categories of runtime
- * errors throughout the interpreter.
+ * Defines string constants used to identify different categories
+ * of runtime errors throughout the interpreter.
  */
 
 #include "global.h"

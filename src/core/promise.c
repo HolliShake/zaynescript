@@ -2,9 +2,12 @@
 
 extern void EnqueueTask(Interpreter* interpreter, Value* task);
 
-Value* _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
+Value* _PromiseThen(Interpreter* interpreter,
+					int			 argc,
+					Value**		 arguments) {
 	if (argc != 2) {
-		return NewErrorValue(interpreter, "Promise.then expects 2 arguments");
+		return NewErrorValue(interpreter,
+							 "Promise.then expects 2 arguments");
 	}
 
 	Value* thisArg		= arguments[0];
@@ -17,30 +20,35 @@ Value* _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
 	}
 
 	if (!ValueIsCallable(thenCallback)) {
-		return NewErrorValue(
-			interpreter,
-			"Second argument to Promise.then must be a function");
+		return NewErrorValue(interpreter,
+							 "Second argument to Promise.then "
+							 "must be a function");
 	}
 
-	int argNeeded = ValueIsNativeFunction(thenCallback)
-						? CoerceToNativeFunction(thenCallback)->Argc
-						: CoerceToUserFunction(thenCallback)->Argc;
+	int argNeeded =
+		ValueIsNativeFunction(thenCallback)
+			? CoerceToNativeFunction(thenCallback)->Argc
+			: CoerceToUserFunction(thenCallback)->Argc;
 
 	if (argNeeded != 1 && argNeeded != VARARG) {
-		return NewErrorValue(interpreter,
-							 "Callback function for Promise.then must take "
-							 "exactly 1 argument (value)");
+		return NewErrorValue(
+			interpreter,
+			"Callback function for Promise.then must take "
+			"exactly 1 argument (value)");
 	}
 
 	StateMachine* originalSM = CoerceToStateMachine(thisArg);
 
-	StateMachine* sm		 = CreateStateMachine(PENDING,
-												  true,
-												  0,
-												  interpreter->CallEnv,
-												  thisArg,
-												  thenCallback);
-	Value*		  newPromise = NewPromiseValue(interpreter, sm);
+	StateMachine* sm = CreateStateMachine(PENDING,
+										  true,
+										  0,
+										  interpreter->CallEnv,
+										  thisArg,
+										  thenCallback);
+
+	sm->Line = originalSM->Line;
+
+	Value* newPromise = NewPromiseValue(interpreter, sm);
 
 	if (originalSM->State == PENDING) {
 		StateMachineAddWaitList(originalSM, newPromise);
@@ -51,9 +59,13 @@ Value* _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
 	return newPromise;
 }
 
-Value* _PromiseError(Interpreter* interpreter, int argc, Value** arguments) {
+Value* _PromiseError(Interpreter* interpreter,
+					 int		  argc,
+					 Value**	  arguments) {
 	if (argc != 2) {
-		return NewErrorValue(interpreter, "Promise.error expects 2 arguments");
+		return NewErrorValue(
+			interpreter,
+			"Promise.error expects 2 arguments");
 	}
 
 	Value* thisArg		 = arguments[0];
@@ -66,19 +78,21 @@ Value* _PromiseError(Interpreter* interpreter, int argc, Value** arguments) {
 	}
 
 	if (!ValueIsCallable(catchCallback)) {
-		return NewErrorValue(
-			interpreter,
-			"Second argument to Promise.error must be a function");
+		return NewErrorValue(interpreter,
+							 "Second argument to Promise.error "
+							 "must be a function");
 	}
 
-	int argNeeded = ValueIsNativeFunction(catchCallback)
-						? CoerceToNativeFunction(catchCallback)->Argc
-						: CoerceToUserFunction(catchCallback)->Argc;
+	int argNeeded =
+		ValueIsNativeFunction(catchCallback)
+			? CoerceToNativeFunction(catchCallback)->Argc
+			: CoerceToUserFunction(catchCallback)->Argc;
 
 	if (argNeeded != 1 && argNeeded != VARARG) {
-		return NewErrorValue(interpreter,
-							 "Callback function for Promise.error must take "
-							 "exactly 1 argument (error)");
+		return NewErrorValue(
+			interpreter,
+			"Callback function for Promise.error must take "
+			"exactly 1 argument (error)");
 	}
 
 	StateMachine* originalSM = CoerceToStateMachine(thisArg);
@@ -90,6 +104,8 @@ Value* _PromiseError(Interpreter* interpreter, int argc, Value** arguments) {
 										  interpreter->CallEnv,
 										  thisArg,
 										  catchCallback);
+
+	sm->Line = originalSM->Line;
 
 	Value* newPromise = NewPromiseValue(interpreter, sm);
 
@@ -119,7 +135,8 @@ static ModuleFunction _PromiseClassMethods[] = {
 
 Value* CreatePromiseClass(Interpreter* interpreter) {
 	Value* promiseClass =
-		NewClassValue(interpreter, CreateUserClass("Promise", NULL));
+		NewClassValue(interpreter,
+					  CreateUserClass("Promise", NULL));
 	Class* cls = CoerceToUserClass(promiseClass);
 
 	for (int i = 0; _PromiseClassMethods[i].Name != NULL; i++) {
@@ -131,9 +148,10 @@ Value* CreatePromiseClass(Interpreter* interpreter) {
 				func.Name,
 				NewNativeFunctionValue(
 					interpreter,
-					CreateNativeFunctionMeta((const String) func.Name,
-											 func.Argc,
-											 func.CFunction)),
+					CreateNativeFunctionMeta(
+						(const String) func.Name,
+						func.Argc,
+						func.CFunction)),
 				false);
 		}
 	}

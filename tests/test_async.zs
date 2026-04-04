@@ -55,10 +55,10 @@ fn callMeMaybe() async {
 var cop = null;
 const rej = callMeMaybe()
     .then(fn (v) {
-        v + "2323";
+        v + "xx";
     })
     .error(fn(e) {
-        println(e);
+        println("Catch", e);
     });
 
 
@@ -88,9 +88,6 @@ const fun = fn() {
    
 };
 
-fun();
 
 println(decompile(fun));
 
-
-assert false, "Foooc false!!";

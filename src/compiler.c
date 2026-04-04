@@ -1,5 +1,7 @@
 #include "./compiler.h"
 
+#include "global.h"
+
 
 #define PushArray(type, array, count, val, defaultValue)                       \
 	do {                                                                       \
@@ -327,12 +329,12 @@ static void _CompileIdentifier(Compiler*	 compiler,
 		}
 
 		// Capture the variable
-		_EmitLine(compiler, uf, pos);
+		_EmitLine(compiler, uf, _ToFirstPosition(pos));
 		_EmitArg(compiler, uf, OP_LOAD_CAPTURE, captureOffset);
 		return;
 	}
 
-	_EmitLine(compiler, uf, pos);
+	_EmitLine(compiler, uf, _ToFirstPosition(pos));
 	_EmitArg(compiler, uf, OP_LOAD_LOCAL, symbol->Offset);
 }
 
@@ -438,7 +440,8 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 					ThrowError(compiler->Parser->Lexer->Path,
 							   compiler->Parser->Lexer->Data,
 							   node->Position,
-							   "'this' can only be used inside class methods");
+							   "'this' can only be used inside "
+							   "class methods");
 				}
 				_CompileIdentifier(compiler,
 								   uf,
@@ -457,7 +460,8 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 						case AST_SPREAD:
 							{
 								if (!hasSpread) {
-									// Emit array with number if elements
+									// Emit array with
+									// number if elements
 									_EmitLine(compiler, uf, node->Position);
 									_EmitArg(compiler,
 											 uf,
@@ -507,7 +511,8 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 						case AST_SPREAD:
 							{
 								if (!hasSpread) {
-									// Emit object with number if pairs
+									// Emit object with
+									// number if pairs
 									_EmitLine(compiler, uf, node->Position);
 									_EmitArg(compiler,
 											 uf,
@@ -567,7 +572,8 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 								ThrowError(compiler->Parser->Lexer->Path,
 										   compiler->Parser->Lexer->Data,
 										   properties->Position,
-										   "invalid object property");
+										   "invalid object "
+										   "property");
 							}
 					}
 					properties = properties->Next;
@@ -591,7 +597,8 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 
 				int paramc = 0;
 
-				// Create array to store parameters in reverse
+				// Create array to store parameters in
+				// reverse
 				Ast* param = params;
 
 				while (param != NULL) {
@@ -735,7 +742,8 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 							_EmitLine(compiler, uf, node->Position);
 							_Emit(compiler,
 								  uf,
-								  OP_DUPTOP);  // duplicate for 'this'
+								  OP_DUPTOP);  // duplicate
+											   // for 'this'
 
 							if (objc->Type == AST_MEMBER) {
 								_EmitLine(compiler, uf, node->Position);
@@ -862,9 +870,11 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 												 true);
 					val = DoMul(compiler->Interpreter, lhs, rhs);
 					if (ValueIsError(val)) {
-						// Note: memory leak (ValueToString(val) allocates a
-						// string passed to ThrowError which calls exit() — the
-						// string is never freed)
+						// Note: memory leak
+						// (ValueToString(val) allocates a
+						// string passed to ThrowError which
+						// calls exit() — the string is
+						// never freed)
 						ThrowError(compiler->Parser->Lexer->Path,
 								   compiler->Parser->Lexer->Data,
 								   node->Position,
@@ -898,9 +908,11 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 												 true);
 					val = DoDiv(compiler->Interpreter, lhs, rhs);
 					if (ValueIsError(val)) {
-						// Note: memory leak (ValueToString(val) allocates a
-						// string passed to ThrowError which calls exit() — the
-						// string is never freed)
+						// Note: memory leak
+						// (ValueToString(val) allocates a
+						// string passed to ThrowError which
+						// calls exit() — the string is
+						// never freed)
 						ThrowError(compiler->Parser->Lexer->Path,
 								   compiler->Parser->Lexer->Data,
 								   node->Position,
@@ -935,9 +947,11 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 												 true);
 					val = DoMod(compiler->Interpreter, lhs, rhs);
 					if (ValueIsError(val)) {
-						// Note: memory leak (ValueToString(val) allocates a
-						// string passed to ThrowError which calls exit() — the
-						// string is never freed)
+						// Note: memory leak
+						// (ValueToString(val) allocates a
+						// string passed to ThrowError which
+						// calls exit() — the string is
+						// never freed)
 						ThrowError(compiler->Parser->Lexer->Path,
 								   compiler->Parser->Lexer->Data,
 								   node->Position,
@@ -972,9 +986,11 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 												 true);
 					val = DoAdd(compiler->Interpreter, lhs, rhs);
 					if (ValueIsError(val)) {
-						// Note: memory leak (ValueToString(val) allocates a
-						// string passed to ThrowError which calls exit() — the
-						// string is never freed)
+						// Note: memory leak
+						// (ValueToString(val) allocates a
+						// string passed to ThrowError which
+						// calls exit() — the string is
+						// never freed)
 						ThrowError(compiler->Parser->Lexer->Path,
 								   compiler->Parser->Lexer->Data,
 								   node->Position,
@@ -1008,9 +1024,11 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 												 true);
 					val = DoSub(compiler->Interpreter, lhs, rhs);
 					if (ValueIsError(val)) {
-						// Note: memory leak (ValueToString(val) allocates a
-						// string passed to ThrowError which calls exit() — the
-						// string is never freed)
+						// Note: memory leak
+						// (ValueToString(val) allocates a
+						// string passed to ThrowError which
+						// calls exit() — the string is
+						// never freed)
 						ThrowError(compiler->Parser->Lexer->Path,
 								   compiler->Parser->Lexer->Data,
 								   node->Position,
@@ -1045,9 +1063,11 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 												 true);
 					val = DoLShift(compiler->Interpreter, lhs, rhs);
 					if (ValueIsError(val)) {
-						// Note: memory leak (ValueToString(val) allocates a
-						// string passed to ThrowError which calls exit() — the
-						// string is never freed)
+						// Note: memory leak
+						// (ValueToString(val) allocates a
+						// string passed to ThrowError which
+						// calls exit() — the string is
+						// never freed)
 						ThrowError(compiler->Parser->Lexer->Path,
 								   compiler->Parser->Lexer->Data,
 								   node->Position,
@@ -1082,9 +1102,11 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 												 true);
 					val = DoRShift(compiler->Interpreter, lhs, rhs);
 					if (ValueIsError(val)) {
-						// Note: memory leak (ValueToString(val) allocates a
-						// string passed to ThrowError which calls exit() — the
-						// string is never freed)
+						// Note: memory leak
+						// (ValueToString(val) allocates a
+						// string passed to ThrowError which
+						// calls exit() — the string is
+						// never freed)
 						ThrowError(compiler->Parser->Lexer->Path,
 								   compiler->Parser->Lexer->Data,
 								   node->Position,
@@ -1118,9 +1140,11 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 												 true);
 					val = DoLT(compiler->Interpreter, lhs, rhs);
 					if (ValueIsError(val)) {
-						// Note: memory leak (ValueToString(val) allocates a
-						// string passed to ThrowError which calls exit() — the
-						// string is never freed)
+						// Note: memory leak
+						// (ValueToString(val) allocates a
+						// string passed to ThrowError which
+						// calls exit() — the string is
+						// never freed)
 						ThrowError(compiler->Parser->Lexer->Path,
 								   compiler->Parser->Lexer->Data,
 								   node->Position,
@@ -1154,9 +1178,11 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 												 true);
 					val = DoLTE(compiler->Interpreter, lhs, rhs);
 					if (ValueIsError(val)) {
-						// Note: memory leak (ValueToString(val) allocates a
-						// string passed to ThrowError which calls exit() — the
-						// string is never freed)
+						// Note: memory leak
+						// (ValueToString(val) allocates a
+						// string passed to ThrowError which
+						// calls exit() — the string is
+						// never freed)
 						ThrowError(compiler->Parser->Lexer->Path,
 								   compiler->Parser->Lexer->Data,
 								   node->Position,
@@ -1190,9 +1216,11 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 												 true);
 					val = DoGT(compiler->Interpreter, lhs, rhs);
 					if (ValueIsError(val)) {
-						// Note: memory leak (ValueToString(val) allocates a
-						// string passed to ThrowError which calls exit() — the
-						// string is never freed)
+						// Note: memory leak
+						// (ValueToString(val) allocates a
+						// string passed to ThrowError which
+						// calls exit() — the string is
+						// never freed)
 						ThrowError(compiler->Parser->Lexer->Path,
 								   compiler->Parser->Lexer->Data,
 								   node->Position,
@@ -1226,9 +1254,11 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 												 true);
 					val = DoGTE(compiler->Interpreter, lhs, rhs);
 					if (ValueIsError(val)) {
-						// Note: memory leak (ValueToString(val) allocates a
-						// string passed to ThrowError which calls exit() — the
-						// string is never freed)
+						// Note: memory leak
+						// (ValueToString(val) allocates a
+						// string passed to ThrowError which
+						// calls exit() — the string is
+						// never freed)
 						ThrowError(compiler->Parser->Lexer->Path,
 								   compiler->Parser->Lexer->Data,
 								   node->Position,
@@ -1262,9 +1292,11 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 												 true);
 					val = DoEQ(compiler->Interpreter, lhs, rhs);
 					if (ValueIsError(val)) {
-						// Note: memory leak (ValueToString(val) allocates a
-						// string passed to ThrowError which calls exit() — the
-						// string is never freed)
+						// Note: memory leak
+						// (ValueToString(val) allocates a
+						// string passed to ThrowError which
+						// calls exit() — the string is
+						// never freed)
 						ThrowError(compiler->Parser->Lexer->Path,
 								   compiler->Parser->Lexer->Data,
 								   node->Position,
@@ -1298,9 +1330,11 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 												 true);
 					val = DoNE(compiler->Interpreter, lhs, rhs);
 					if (ValueIsError(val)) {
-						// Note: memory leak (ValueToString(val) allocates a
-						// string passed to ThrowError which calls exit() — the
-						// string is never freed)
+						// Note: memory leak
+						// (ValueToString(val) allocates a
+						// string passed to ThrowError which
+						// calls exit() — the string is
+						// never freed)
 						ThrowError(compiler->Parser->Lexer->Path,
 								   compiler->Parser->Lexer->Data,
 								   node->Position,
@@ -1334,9 +1368,11 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 												 true);
 					val = DoAnd(compiler->Interpreter, lhs, rhs);
 					if (ValueIsError(val)) {
-						// Note: memory leak (ValueToString(val) allocates a
-						// string passed to ThrowError which calls exit() — the
-						// string is never freed)
+						// Note: memory leak
+						// (ValueToString(val) allocates a
+						// string passed to ThrowError which
+						// calls exit() — the string is
+						// never freed)
 						ThrowError(compiler->Parser->Lexer->Path,
 								   compiler->Parser->Lexer->Data,
 								   node->Position,
@@ -1370,9 +1406,11 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 												 true);
 					val = DoOr(compiler->Interpreter, lhs, rhs);
 					if (ValueIsError(val)) {
-						// Note: memory leak (ValueToString(val) allocates a
-						// string passed to ThrowError which calls exit() — the
-						// string is never freed)
+						// Note: memory leak
+						// (ValueToString(val) allocates a
+						// string passed to ThrowError which
+						// calls exit() — the string is
+						// never freed)
 						ThrowError(compiler->Parser->Lexer->Path,
 								   compiler->Parser->Lexer->Data,
 								   node->Position,
@@ -1407,9 +1445,11 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 												 true);
 					val = DoXor(compiler->Interpreter, lhs, rhs);
 					if (ValueIsError(val)) {
-						// Note: memory leak (ValueToString(val) allocates a
-						// string passed to ThrowError which calls exit() — the
-						// string is never freed)
+						// Note: memory leak
+						// (ValueToString(val) allocates a
+						// string passed to ThrowError which
+						// calls exit() — the string is
+						// never freed)
 						ThrowError(compiler->Parser->Lexer->Path,
 								   compiler->Parser->Lexer->Data,
 								   node->Position,
@@ -1527,7 +1567,8 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 					cases = cases->Next;
 				}
 
-				// CLEANUP: Pop expression (No cases matched, entering default)
+				// CLEANUP: Pop expression (No cases
+				// matched, entering default)
 				_EmitLine(compiler, uf, node->Position);
 				_Emit(compiler, uf, OP_POPTOP);
 
@@ -1648,7 +1689,8 @@ _CompileAssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* exp) {
 					ThrowError(compiler->Parser->Lexer->Path,
 							   compiler->Parser->Lexer->Data,
 							   lhs->Position,
-							   "cannot reassign constant variable");
+							   "cannot reassign constant "
+							   "variable");
 				}
 				if (ScopeInside(scope, SCOPE_FUNCTION)
 					&& !ScopeIsLocalToFn(scope, lhs->Value)) {
@@ -1694,7 +1736,8 @@ _CompileAssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* exp) {
 				_EmitLine(compiler, uf, lhs->Position);
 				_Emit(compiler, uf, OP_SET_INDEX);
 				_EmitLine(compiler, uf, lhs->Position);
-				_Emit(compiler, uf, OP_POPTOP);	 // Pops object
+				_Emit(compiler, uf,
+					  OP_POPTOP);  // Pops object
 				break;
 			}
 		case AST_INDEX:
@@ -1712,7 +1755,8 @@ _CompileAssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* exp) {
 				_EmitLine(compiler, uf, lhs->Position);
 				_Emit(compiler, uf, OP_SET_INDEX);
 				_EmitLine(compiler, uf, lhs->Position);
-				_Emit(compiler, uf, OP_POPTOP);	 // Pops object
+				_Emit(compiler, uf,
+					  OP_POPTOP);  // Pops object
 				break;
 			}
 		default:
@@ -1756,7 +1800,8 @@ static void _CompileAugmentedAssignOp(Compiler*		compiler,
 					ThrowError(compiler->Parser->Lexer->Path,
 							   compiler->Parser->Lexer->Data,
 							   lhs->Position,
-							   "cannot reassign constant variable");
+							   "cannot reassign constant "
+							   "variable");
 				}
 				if (ScopeInside(scope, SCOPE_FUNCTION)
 					&& !ScopeIsLocalToFn(scope, lhs->Value)) {
@@ -1804,7 +1849,8 @@ static void _CompileAugmentedAssignOp(Compiler*		compiler,
 				// bot [obj, key, val, rhs] top
 				_CompileExpression(compiler, uf, scope, rhs);
 				_EmitLine(compiler, uf, lhs->Position);
-				_Emit(compiler, uf, opcode);  // *=,/=,%=,+=,-=,<<=,>>=,&=,|=,^=
+				_Emit(compiler, uf,
+					  opcode);	// *=,/=,%=,+=,-=,<<=,>>=,&=,|=,^=
 				// bot [obj, key, val, val] top
 				_EmitLine(compiler, uf, lhs->Position);
 				_Emit(compiler, uf, OP_DUPTOP);
@@ -1814,7 +1860,8 @@ static void _CompileAugmentedAssignOp(Compiler*		compiler,
 				_EmitLine(compiler, uf, lhs->Position);
 				_Emit(compiler, uf, OP_SET_INDEX);
 				_EmitLine(compiler, uf, lhs->Position);
-				_Emit(compiler, uf, OP_POPTOP);	 // Pops object
+				_Emit(compiler, uf,
+					  OP_POPTOP);  // Pops object
 				break;
 			}
 		case AST_INDEX:
@@ -1834,7 +1881,8 @@ static void _CompileAugmentedAssignOp(Compiler*		compiler,
 				// bot [obj, key, val, rhs] top
 				_CompileExpression(compiler, uf, scope, rhs);
 				_EmitLine(compiler, uf, lhs->Position);
-				_Emit(compiler, uf, opcode);  // *=,/=,%=,+=,-=,<<=,>>=,&=,|=,^=
+				_Emit(compiler, uf,
+					  opcode);	// *=,/=,%=,+=,-=,<<=,>>=,&=,|=,^=
 				// bot [obj, key, val, val] top
 				_EmitLine(compiler, uf, lhs->Position);
 				_Emit(compiler, uf, OP_DUPTOP);
@@ -1844,7 +1892,8 @@ static void _CompileAugmentedAssignOp(Compiler*		compiler,
 				_EmitLine(compiler, uf, lhs->Position);
 				_Emit(compiler, uf, OP_SET_INDEX);
 				_EmitLine(compiler, uf, lhs->Position);
-				_Emit(compiler, uf, OP_POPTOP);	 // Pops object
+				_Emit(compiler, uf,
+					  OP_POPTOP);  // Pops object
 				break;
 			}
 		default:
@@ -1931,7 +1980,8 @@ static void _CompileAssignOpLhs(Compiler*	  compiler,
 					ThrowError(compiler->Parser->Lexer->Path,
 							   compiler->Parser->Lexer->Data,
 							   lhs->Position,
-							   "cannot reassign constant variable");
+							   "cannot reassign constant "
+							   "variable");
 				}
 
 				if (ScopeInside(scope, SCOPE_FUNCTION)
@@ -1977,7 +2027,8 @@ static void _CompileAssignOpLhs(Compiler*	  compiler,
 				_EmitLine(compiler, uf, lhs->Position);
 				_Emit(compiler, uf, OP_SET_INDEX);
 				_EmitLine(compiler, uf, lhs->Position);
-				_Emit(compiler, uf, OP_POPTOP);	 // Pops object
+				_Emit(compiler, uf,
+					  OP_POPTOP);  // Pops object
 				break;
 			}
 		default:
@@ -1998,7 +2049,8 @@ static void _CompileClassDeclaration(Compiler*	   compiler,
 		ThrowError(compiler->Parser->Lexer->Path,
 				   compiler->Parser->Lexer->Data,
 				   node->Position,
-				   "classes can only be declared at the global scope");
+				   "classes can only be declared at the "
+				   "global scope");
 	}
 
 	Scope* classScope = CreateScope(SCOPE_CLASS, scope);
@@ -2071,7 +2123,8 @@ static void _CompileClassDeclaration(Compiler*	   compiler,
 					int	 paramc = 0;
 
 					if (!isStatic) {
-						// Emit 'this' as the first parameter
+						// Emit 'this' as the first
+						// parameter
 						int offset = UserFunctionEmitLocal(fn);
 						ScopeSetSymbol(fnScope,
 									   KEY_THIS,
@@ -2177,7 +2230,8 @@ static void _CompileFunctionDeclaration(Compiler*	  compiler,
 		ThrowError(compiler->Parser->Lexer->Path,
 				   compiler->Parser->Lexer->Data,
 				   node->Position,
-				   "functions can only be declared at the global scope");
+				   "functions can only be declared at the "
+				   "global scope");
 	}
 
 	Scope*	 fnScope  = CreateScope(SCOPE_FUNCTION, scope);
@@ -2252,7 +2306,8 @@ static void _CompileImportStatement(Compiler*	  compiler,
 		ThrowError(compiler->Parser->Lexer->Path,
 				   compiler->Parser->Lexer->Data,
 				   node->Position,
-				   "imports can only be declared at the global scope");
+				   "imports can only be declared at the "
+				   "global scope");
 	}
 
 	Ast* imports	= node->A;
@@ -2263,13 +2318,15 @@ static void _CompileImportStatement(Compiler*	  compiler,
 							&& (StringStartsWith(moduleName->Value, "./")
 								|| StringStartsWith(moduleName->Value, "../"));
 
-	// Validate, should not contain spaces, dots, or special characters
+	// Validate, should not contain spaces, dots, or special
+	// characters
 	if (strpbrk(moduleName->Value, " .><=!@#$%^&*()_+-=[]{}|\\;'\"`~") != NULL
 		&& !isTryingRelative) {
 		ThrowError(compiler->Parser->Lexer->Path,
 				   compiler->Parser->Lexer->Data,
 				   moduleName->Position,
-				   "invalid module name, should not contain spaces, dots, or "
+				   "invalid module name, should not "
+				   "contain spaces, dots, or "
 				   "special characters");
 	}
 
@@ -2294,7 +2351,8 @@ static void _CompileImportStatement(Compiler*	  compiler,
 		ThrowError(compiler->Parser->Lexer->Path,
 				   compiler->Parser->Lexer->Data,
 				   moduleName->Position,
-				   "invalid module name, expected 'core:' or 'lib:' prefix");
+				   "invalid module name, expected 'core:' "
+				   "or 'lib:' prefix");
 	}
 
 	_EmitLine(compiler, uf, moduleName->Position);
@@ -2360,7 +2418,8 @@ static void _CompileVarDeclarationStatement(Compiler*	  compiler,
 		ThrowError(compiler->Parser->Lexer->Path,
 				   compiler->Parser->Lexer->Data,
 				   node->Position,
-				   "variables can only be declared at the global scope");
+				   "variables can only be declared at the "
+				   "global scope");
 	}
 	Ast* declarations = node->A;
 	while (declarations != NULL) {
@@ -2394,12 +2453,12 @@ static void _CompileLocalDeclarationStatement(Compiler*		compiler,
 											  Scope*		scope,
 											  Ast*			node) {
 	if (!(ScopeIs(scope, SCOPE_FUNCTION) || ScopeIs(scope, SCOPE_BLOCK)
-		  || ScopeIs(scope, SCOPE_NEW) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
-		ThrowError(
-			compiler->Parser->Lexer->Path,
-			compiler->Parser->Lexer->Data,
-			node->Position,
-			"local declarations can only be used inside a function or a block");
+		  || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
+		ThrowError(compiler->Parser->Lexer->Path,
+				   compiler->Parser->Lexer->Data,
+				   node->Position,
+				   "local declarations can only be used "
+				   "inside a function or a block");
 	}
 	Ast* declarations = node->A;
 	while (declarations != NULL) {
@@ -2431,13 +2490,12 @@ static void _CompileConstDeclarationStatement(Compiler*		compiler,
 											  Scope*		scope,
 											  Ast*			node) {
 	if (!(ScopeIs(scope, SCOPE_GLOBAL) || ScopeIs(scope, SCOPE_FUNCTION)
-		  || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope, SCOPE_NEW)
-		  || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
-		ThrowError(
-			compiler->Parser->Lexer->Path,
-			compiler->Parser->Lexer->Data,
-			node->Position,
-			"const declarations can only be used inside a function or a block");
+		  || ScopeIs(scope, SCOPE_BLOCK) || ScopeIs(scope, SCOPE_TRY_BLOCK))) {
+		ThrowError(compiler->Parser->Lexer->Path,
+				   compiler->Parser->Lexer->Data,
+				   node->Position,
+				   "const declarations can only be used "
+				   "inside a function or a block");
 	}
 	Ast* declarations = node->A;
 	while (declarations != NULL) {
@@ -2475,7 +2533,8 @@ static void _CompileConstDeclarationStatement(Compiler*		compiler,
 static void _CompileInitializerConditionMutator(Compiler*	  compiler,
 												UserFunction* uf,
 												Scope*		  scope,
-												Ast*		  node) {
+												Ast*		  node,
+												int*		  outputVar) {
 	Ast *lhs = node->A, *rhs = node->B;
 	if (node->Type == AST_SHORT_ASSIGN) {
 		_CompileExpression(compiler, uf, scope, rhs);
@@ -2489,6 +2548,7 @@ static void _CompileInitializerConditionMutator(Compiler*	  compiler,
 		ScopeSetSymbol(scope, lhs->Value, false, true, false, offset);
 		_EmitLine(compiler, uf, lhs->Position);
 		_EmitArg(compiler, uf, OP_STORE_LOCAL, offset);
+		*outputVar = offset;
 		return;
 	}
 	_CompileExpression(compiler, uf, scope, node);
@@ -2498,38 +2558,33 @@ static void _CompileIfStatement(Compiler*	  compiler,
 								UserFunction* uf,
 								Scope*		  scope,
 								Ast*		  node) {
-	Scope*	 useScope	 = scope;
-	Ast *	 initializer = node->A, *condition = initializer->Next;
-	Ast*	 thenBranch			 = node->B;
-	Ast*	 elseBranch			 = node->C;
-	bool	 hasLocalInitializer = (initializer != NULL && condition != NULL)
-								   && initializer->Type == AST_SHORT_ASSIGN;
-	Position nextLine			 = _ToFirstPosition(node->Position);
-
-	if (hasLocalInitializer) {
-		useScope = CreateScope(SCOPE_NEW, scope);
-		_EmitLine(compiler, uf, initializer->Position);
-		_Emit(compiler, uf, OP_ENTER_SCOPE);
-	}
+	Ast*	 initializer = node->A;
+	Ast*	 condition	 = initializer->Next;
+	Ast*	 thenBranch	 = node->B;
+	Ast*	 elseBranch	 = node->C;
+	int		 ifVar		 = -1;
+	Position nextLine	 = _ToFirstPosition(node->Position);
 
 	// IFSTART:;
 	if (initializer != NULL && condition != NULL) {
 		nextLine = _ToFirstPosition(initializer->Position);
 		_CompileInitializerConditionMutator(compiler,
 											uf,
-											useScope,
-											initializer);
-		_CompileExpression(compiler, uf, useScope, condition);
+											scope,
+											initializer,
+											&ifVar);
+		_CompileExpression(compiler, uf, scope, condition);
 	} else if (initializer != NULL) {
 		nextLine = _ToFirstPosition(initializer->Position);
 		// use initializer as condition
 		_CompileInitializerConditionMutator(compiler,
 											uf,
-											useScope,
-											initializer);
+											scope,
+											initializer,
+											&ifVar);
 	} else {
 		nextLine = _ToFirstPosition(condition->Position);
-		_CompileExpression(compiler, uf, useScope, condition);
+		_CompileExpression(compiler, uf, scope, condition);
 	}
 
 	// goto: ELSE
@@ -2537,15 +2592,9 @@ static void _CompileIfStatement(Compiler*	  compiler,
 	int labelELSE = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
 
 	// THEN:;
-	_CompileStatement(compiler, uf, useScope, thenBranch);
+	_CompileStatement(compiler, uf, scope, thenBranch);
 
 	nextLine = _ToLastPosition(thenBranch->Position);
-
-	// exit initializer scope
-	if (hasLocalInitializer) {
-		_EmitLine(compiler, uf, nextLine);
-		_Emit(compiler, uf, OP_EXIT_SCOPE);
-	}
 
 	// goto: ENDIF
 	_EmitLine(compiler, uf, nextLine);
@@ -2561,8 +2610,10 @@ static void _CompileIfStatement(Compiler*	  compiler,
 	// ENDIF:;
 	_JumpToLabel(compiler, uf, labelENDIF);
 
-	if (useScope != scope) {
-		FreeScope(useScope);
+	// Close the iteration variable scope if it exists
+	if (ifVar != -1) {
+		_EmitLine(compiler, uf, nextLine);
+		_EmitArg(compiler, uf, OP_LOCK_VAR, ifVar);
 	}
 }
 
@@ -2575,12 +2626,14 @@ static void _CompileSwitchStatement(Compiler*	  compiler,
 	Ast*	 defaultCase = node->C;
 	Position nextLine	 = _ToFirstPosition(expr->Position);
 
-	// Use a capacity-doubling strategy for better performance
+	// Use a capacity-doubling strategy for better
+	// performance
 	int	 endSwitchCapacity = 8;
 	int	 endSwitchC		   = 0;
 	int* gotoEndSwitch	   = Allocate(sizeof(int) * endSwitchCapacity);
 
-	// 1. Compile the main switch expression and leave it on the stack
+	// 1. Compile the main switch expression and leave it on
+	// the stack
 	_CompileExpression(compiler, uf, scope, expr);
 
 	while (cases != NULL) {
@@ -2597,7 +2650,10 @@ static void _CompileSwitchStatement(Compiler*	  compiler,
 			nextLine = _ToFirstPosition(currentExpr->Position);
 
 			_EmitLine(compiler, uf, nextLine);
-			_Emit(compiler, uf, OP_DUPTOP);	 // Duplicate the switch expression
+			_Emit(compiler,
+				  uf,
+				  OP_DUPTOP);  // Duplicate the switch
+							   // expression
 
 			// COMPARE
 			_CompileExpression(compiler, uf, scope, currentExpr);
@@ -2607,8 +2663,8 @@ static void _CompileSwitchStatement(Compiler*	  compiler,
 			// GOTO EXECUTE:;
 			_EmitLine(compiler, uf, nextLine);
 
-			// Check capacity before adding to avoid O(N^2) reallocation
-			// overhead
+			// Check capacity before adding to avoid O(N^2)
+			// reallocation overhead
 			if (casesMatchC >= casesMatchCapacity) {
 				casesMatchCapacity *= 2;
 				casesMatch =
@@ -2624,7 +2680,8 @@ static void _CompileSwitchStatement(Compiler*	  compiler,
 		_EmitLine(compiler, uf, nextLine);
 		int jumpToNextCase = _EmitJumpTo(compiler, uf, OP_JUMP);
 
-		// EXECUTE: Bind the match jumps to the start of this case body
+		// EXECUTE: Bind the match jumps to the start of
+		// this case body
 		for (int i = 0; i < casesMatchC; i++) {
 			_JumpToLabel(compiler, uf, casesMatch[i]);
 		}
@@ -2652,7 +2709,8 @@ static void _CompileSwitchStatement(Compiler*	  compiler,
 		}
 		gotoEndSwitch[endSwitchC++] = _EmitJumpTo(compiler, uf, OP_JUMP);
 
-		// NEXTCASE; Bind the jump to the next iteration here
+		// NEXTCASE; Bind the jump to the next iteration
+		// here
 		_JumpToLabel(compiler, uf, jumpToNextCase);
 
 		cases = cases->Next;
@@ -2668,7 +2726,8 @@ static void _CompileSwitchStatement(Compiler*	  compiler,
 		_CompileStatement(compiler, uf, scope, defaultCase);
 	}
 
-	// ENDSWITCH:; Bind all successful case completions to here
+	// ENDSWITCH:; Bind all successful case completions to
+	// here
 	for (int i = 0; i < endSwitchC; i++) {
 		_JumpToLabel(compiler, uf, gotoEndSwitch[i]);
 	}
@@ -2680,25 +2739,24 @@ static void _CompileForStatement(Compiler*	   compiler,
 								 UserFunction* uf,
 								 Scope*		   scope,
 								 Ast*		   node) {
-	Scope* loopScope  = CreateScope(SCOPE_LOOP, scope);
-	Scope *localScope = CreateScope(SCOPE_NEW, loopScope),
-		  *useScope	  = loopScope;
-	Ast *initializer  = node->A,
-		*condition	  = (initializer && initializer->Next) ? initializer->Next
-														   : initializer,
-		*mutator	  = (condition && condition->Next) ? condition->Next : NULL;
-	Ast* thenBranch	  = node->B;
+	Scope* loopScope   = CreateScope(SCOPE_LOOP, scope);
+	Ast *  initializer = node->A,
+		*condition	   = (initializer && initializer->Next) ? initializer->Next
+															: initializer,
+		*mutator	= (condition && condition->Next) ? condition->Next : NULL,
+		*thenBranch = node->B;
+	int	 loopVar	= -1;
 	bool hasLocalInitializer =
 		initializer != NULL && initializer->Type == AST_SHORT_ASSIGN;
 	Position nextLine = _ToFirstPosition(node->Position);
 
 	if (hasLocalInitializer) {
-		useScope = localScope;
 		nextLine = _ToFirstPosition(initializer->Position);
 		_CompileInitializerConditionMutator(compiler,
 											uf,
-											useScope,
-											initializer);
+											loopScope,
+											initializer,
+											&loopVar);
 	}
 
 	// FORSTART:;
@@ -2707,26 +2765,21 @@ static void _CompileForStatement(Compiler*	   compiler,
 
 	if (condition != NULL) {
 		nextLine = _ToFirstPosition(condition->Position);
-		_CompileExpression(compiler, uf, useScope, condition);
+		_CompileExpression(compiler, uf, loopScope, condition);
 		_EmitLine(compiler, uf, nextLine);
 		labelENDFOR = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
 	}
 
-	if (hasLocalInitializer) {
-		_EmitLine(compiler, uf, nextLine);
-		_Emit(compiler, uf, OP_ENTER_SCOPE);
-	}
-
 	// THEN:;
-	_CompileStatement(compiler, uf, useScope, thenBranch);
+	_CompileStatement(compiler, uf, loopScope, thenBranch);
+
+	// Close the iteration variable scope if it exists
+	if (loopVar != -1) {
+		_EmitLine(compiler, uf, nextLine);
+		_EmitArg(compiler, uf, OP_LOCK_VAR, loopVar);
+	}
 
 	nextLine = _ToLastPosition(thenBranch->Position);
-
-	// exit initializer scope
-	if (hasLocalInitializer) {
-		_EmitLine(compiler, uf, nextLine);
-		_Emit(compiler, uf, OP_EXIT_SCOPE);
-	}
 
 	if (mutator != NULL) {
 		// goto: MUTATOR
@@ -2735,7 +2788,7 @@ static void _CompileForStatement(Compiler*	   compiler,
 		}
 
 		// MUTATOR:;
-		_CompileExpression(compiler, uf, useScope, mutator);
+		_CompileExpression(compiler, uf, loopScope, mutator);
 		_EmitLine(compiler, uf, nextLine);
 		_Emit(compiler, uf, OP_POPTOP);
 	} else {
@@ -2764,60 +2817,53 @@ static void _CompileForStatement(Compiler*	   compiler,
 		_JumpToLabel(compiler, uf, labelENDFOR);
 
 	FreeScope(loopScope);
-	FreeScope(localScope);
 }
 
 static void _CompileWhileStatement(Compiler*	 compiler,
 								   UserFunction* uf,
 								   Scope*		 scope,
 								   Ast*			 node) {
-	Scope* loopScope  = CreateScope(SCOPE_LOOP, scope);
-	Scope *localScope = CreateScope(SCOPE_NEW, loopScope),
-		  *useScope	  = loopScope;
-	Ast *initializer  = node->A,
-		*condition	  = (initializer && initializer->Next) ? initializer->Next
-														   : initializer,
-		*mutator	  = (condition && condition->Next) ? condition->Next : NULL;
-	Ast* thenBranch	  = node->B;
+	Scope* loopScope   = CreateScope(SCOPE_LOOP, scope);
+	Ast *  initializer = node->A,
+		*condition	   = (initializer && initializer->Next) ? initializer->Next
+															: initializer,
+		*mutator	= (condition && condition->Next) ? condition->Next : NULL,
+		*thenBranch = node->B;
+	int	 loopVar	= -1;
 	bool hasLocalInitializer =
 		initializer != NULL && initializer->Type == AST_SHORT_ASSIGN;
 	Position nextLine = _ToFirstPosition(node->Position);
 
 	if (hasLocalInitializer) {
 		nextLine = _ToFirstPosition(initializer->Position);
-		useScope = localScope;
 		_CompileInitializerConditionMutator(compiler,
 											uf,
-											useScope,
-											initializer);
+											loopScope,
+											initializer,
+											&loopVar);
 	}
 
-	// WHILESTART:;
-	int labelWHILESTART = uf->CodeC;
-	int labelENDWHILE	= -1;
+	// FORSTART:;
+	int labelFORSTART = uf->CodeC;
+	int labelENDFOR	  = -1;
 
 	if (condition != NULL) {
 		nextLine = _ToFirstPosition(condition->Position);
-		_CompileExpression(compiler, uf, useScope, condition);
+		_CompileExpression(compiler, uf, loopScope, condition);
 		_EmitLine(compiler, uf, nextLine);
-		labelENDWHILE = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
-	}
-
-	if (hasLocalInitializer) {
-		_EmitLine(compiler, uf, nextLine);
-		_Emit(compiler, uf, OP_ENTER_SCOPE);
+		labelENDFOR = _EmitJumpTo(compiler, uf, OP_POP_JUMP_IF_FALSE);
 	}
 
 	// THEN:;
-	_CompileStatement(compiler, uf, useScope, thenBranch);
+	_CompileStatement(compiler, uf, loopScope, thenBranch);
+
+	// Close the iteration variable scope if it exists
+	if (loopVar != -1) {
+		_EmitLine(compiler, uf, nextLine);
+		_EmitArg(compiler, uf, OP_LOCK_VAR, loopVar);
+	}
 
 	nextLine = _ToLastPosition(thenBranch->Position);
-
-	// exit initializer scope
-	if (hasLocalInitializer) {
-		_EmitLine(compiler, uf, nextLine);
-		_Emit(compiler, uf, OP_EXIT_SCOPE);
-	}
 
 	if (mutator != NULL) {
 		// goto: MUTATOR
@@ -2826,36 +2872,35 @@ static void _CompileWhileStatement(Compiler*	 compiler,
 		}
 
 		// MUTATOR:;
-		_CompileExpression(compiler, uf, useScope, mutator);
+		_CompileExpression(compiler, uf, loopScope, mutator);
 		_EmitLine(compiler, uf, nextLine);
 		_Emit(compiler, uf, OP_POPTOP);
 	} else {
-		// goto: WHILESTART
+		// goto: FORSTART
 		for (int i = 0; i < loopScope->ContinueJumpC; i++) {
 			_JumpToAbsoluteLabel(compiler,
 								 uf,
 								 loopScope->ContinueJumps[i],
-								 labelWHILESTART);
+								 labelFORSTART);
 		}
 	}
 
-	// goto: WHILESTART
+	// goto: FORSTART
 	_EmitLine(compiler, uf, nextLine);
 	_JumpToAbsoluteLabel(compiler,
 						 uf,
 						 _EmitJumpTo(compiler, uf, OP_ABSOLUTE_JUMP),
-						 labelWHILESTART);
+						 labelFORSTART);
 
 	// ENDFOR:;
 	for (int i = 0; i < loopScope->BreakJumpC; i++) {
 		_JumpToLabel(compiler, uf, loopScope->BreakJumps[i]);
 	}
 
-	if (labelENDWHILE != -1)
-		_JumpToLabel(compiler, uf, labelENDWHILE);
+	if (labelENDFOR != -1)
+		_JumpToLabel(compiler, uf, labelENDFOR);
 
 	FreeScope(loopScope);
-	FreeScope(localScope);
 }
 
 static void _CompileDoWhileStatement(Compiler*	   compiler,
@@ -2920,11 +2965,10 @@ static void _CompileTryCatch(Compiler*	   compiler,
 	_EmitLine(compiler, uf, nextLine);
 	gotoCatch = _EmitJumpTo(compiler, uf, OP_SETUP_TRY);
 
-	nextLine = _ToLastPosition(tryBlock->Position);
-
 	Scope* tryScope = CreateScope(SCOPE_TRY_BLOCK, scope);
 	while (tryBlock != NULL) {
 		_CompileStatement(compiler, uf, tryScope, tryBlock);
+		nextLine = _ToLastPosition(tryBlock->Position);
 		tryBlock = tryBlock->Next;
 	}
 
@@ -3018,7 +3062,8 @@ static void _CompileContinueStatement(Compiler*		compiler,
 		ThrowError(compiler->Parser->Lexer->Path,
 				   compiler->Parser->Lexer->Data,
 				   node->Position,
-				   "continue statement can only be used inside a loop");
+				   "continue statement can only be used "
+				   "inside a loop");
 	}
 	if (ScopeInside(scope, SCOPE_TRY_BLOCK)) {
 		int n = ScopeCountNested(scope, SCOPE_TRY_BLOCK);
@@ -3031,19 +3076,7 @@ static void _CompileContinueStatement(Compiler*		compiler,
 			_EmitArg(compiler, uf, OP_POPN_TRY, n);
 		}
 	}
-	if (ScopeInside(scope, SCOPE_NEW)) {
-		// int n = ScopeCountNested(scope, SCOPE_NEW);
-		// // Pop new blocks until we exit the new block
-		// if (n == 1) {
-		// 	_EmitLine(compiler, uf, node->Position);
-		// 	_Emit(compiler, uf, OP_EXIT_SCOPE);
-		// } else {
-		// 	_EmitLine(compiler, uf, node->Position);
-		// 	_EmitArg(compiler, uf, OP_EXITN_SCOPE, n);
-		// }
-		_EmitLine(compiler, uf, node->Position);
-		_Emit(compiler, uf, OP_EXIT_SCOPE);
-	}
+
 	_EmitLine(compiler, uf, node->Position);
 	int offset = _EmitJumpTo(compiler, uf, OP_JUMP);
 	ScopeAddContinueJump(scope, offset);
@@ -3057,7 +3090,8 @@ static void _CompileBreakStatement(Compiler*	 compiler,
 		ThrowError(compiler->Parser->Lexer->Path,
 				   compiler->Parser->Lexer->Data,
 				   node->Position,
-				   "break statement can only be used inside a loop");
+				   "break statement can only be used "
+				   "inside a loop");
 	}
 	if (ScopeInside(scope, SCOPE_TRY_BLOCK)) {
 		int n = ScopeCountNested(scope, SCOPE_TRY_BLOCK);
@@ -3070,19 +3104,7 @@ static void _CompileBreakStatement(Compiler*	 compiler,
 			_EmitArg(compiler, uf, OP_POPN_TRY, n);
 		}
 	}
-	if (ScopeInside(scope, SCOPE_NEW)) {
-		// int n = ScopeCountNested(scope, SCOPE_NEW);
-		// // Pop new blocks until we exit the new block
-		// if (n == 1) {
-		// 	_EmitLine(compiler, uf, node->Position);
-		// 	_Emit(compiler, uf, OP_EXIT_SCOPE);
-		// } else {
-		// 	_EmitLine(compiler, uf, node->Position);
-		// 	_EmitArg(compiler, uf, OP_EXITN_SCOPE, n);
-		// }
-		_EmitLine(compiler, uf, node->Position);
-		_Emit(compiler, uf, OP_EXIT_SCOPE);
-	}
+
 	_EmitLine(compiler, uf, node->Position);
 	int offset = _EmitJumpTo(compiler, uf, OP_JUMP);
 	ScopeAddBreakJump(scope, offset);
@@ -3096,7 +3118,8 @@ static void _CompileReturnStatement(Compiler*	  compiler,
 		ThrowError(compiler->Parser->Lexer->Path,
 				   compiler->Parser->Lexer->Data,
 				   node->Position,
-				   "return statement can only be used inside a function");
+				   "return statement can only be used "
+				   "inside a function");
 	}
 
 	Scope* fnScope = ScopeGetFirst(scope, SCOPE_FUNCTION);
@@ -3114,20 +3137,6 @@ static void _CompileReturnStatement(Compiler*	  compiler,
 			_EmitLine(compiler, uf, node->Position);
 			_EmitArg(compiler, uf, OP_POPN_TRY, n);
 		}
-	}
-
-	if (ScopeInside(scope, SCOPE_NEW)) {
-		// int n = ScopeCountNested(scope, SCOPE_NEW);
-		// // Pop new blocks until we exit the new block
-		// if (n == 1) {
-		// 	_EmitLine(compiler, uf, node->Position);
-		// 	_Emit(compiler, uf, OP_EXIT_SCOPE);
-		// } else {
-		// 	_EmitLine(compiler, uf, node->Position);
-		// 	_EmitArg(compiler, uf, OP_EXITN_SCOPE, n);
-		// }
-		// _EmitLine(compiler, uf, node->Position);
-		// _Emit(compiler, uf, OP_EXIT_SCOPE);
 	}
 
 	if (node->A != NULL)

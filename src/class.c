@@ -21,7 +21,10 @@ void ClassExtend(Class* cls, Value* base) {
  */
 extern String ValueToString(Value*);
 
-void ClassDefineMember(Class* cls, Value* key, Value* value, bool isStatic) {
+void ClassDefineMember(Class* cls,
+					   Value* key,
+					   Value* value,
+					   bool	  isStatic) {
 	String keyStr = ValueToString(key);
 	if (isStatic) {
 		HashMapSet(cls->StaticMembers, keyStr, value);
@@ -50,10 +53,14 @@ void ClassDefineMemberByString(Class* cls,
  */
 extern bool ValueIsCallable(Value*);
 
-bool ClassHasMember(Class* cls, String key, bool isStatic, bool callable) {
+bool ClassHasMember(Class* cls,
+					String key,
+					bool   isStatic,
+					bool   callable) {
 	// if callable is -1, ignore callable check
-	HashMap* members = isStatic ? cls->StaticMembers : cls->InstanceMembers;
-	Value*	 member	 = HashMapGet(members, key);
+	HashMap* members =
+		isStatic ? cls->StaticMembers : cls->InstanceMembers;
+	Value* member = HashMapGet(members, key);
 	if (member == NULL) {
 		return false;
 	}
@@ -64,7 +71,8 @@ bool ClassHasMember(Class* cls, String key, bool isStatic, bool callable) {
 }
 
 Value* ClassGetMember(Class* cls, String key, bool isStatic) {
-	HashMap* members = isStatic ? cls->StaticMembers : cls->InstanceMembers;
+	HashMap* members =
+		isStatic ? cls->StaticMembers : cls->InstanceMembers;
 	return HashMapGet(members, key);
 }
 
@@ -82,8 +90,9 @@ ClassInstance* CreateClassInstance(Value* proto) {
 }
 
 String ClassInstanceToString(ClassInstance* instance) {
-	HashMap* members   = instance->Members;
-	String	 className = ClassToString(CoerceToUserClass(instance->Proto));
+	HashMap* members = instance->Members;
+	String	 className =
+		ClassToString(CoerceToUserClass(instance->Proto));
 
 	// Start building the string
 	size_t bufferSize = 1024;
@@ -132,7 +141,9 @@ String ClassInstanceToString(ClassInstance* instance) {
 	}
 
 	// Add closing brace
-	currentPos += snprintf(buffer + currentPos, bufferSize - currentPos, " }");
+	currentPos += snprintf(buffer + currentPos,
+						   bufferSize - currentPos,
+						   " }");
 
 	// Create final string
 	String result = AllocateString(buffer);

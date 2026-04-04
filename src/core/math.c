@@ -13,27 +13,27 @@
 #endif
 
 // Helper macro for single argument math functions
-#define MATH_FUNC_1(name, func)                                                \
-	static Value* _Math##name(Interpreter* interpreter,                        \
-							  int		   argc,                               \
-							  Value**	   arguments) {                        \
-		if (argc != 1 || !ValueIsNum(arguments[0]))                            \
-			return interpreter->Null;                                          \
-		double val = CoerceToNum(arguments[0]);                                \
-		return NewNumValue(interpreter, func(val));                            \
+#define MATH_FUNC_1(name, func)                                 \
+	static Value* _Math##name(Interpreter* interpreter,         \
+							  int		   argc,                \
+							  Value**	   arguments) {         \
+		if (argc != 1 || !ValueIsNum(arguments[0]))             \
+			return interpreter->Null;                           \
+		double val = CoerceToNum(arguments[0]);                 \
+		return NewNumValue(interpreter, func(val));             \
 	}
 
 // Helper macro for two argument math functions
-#define MATH_FUNC_2(name, func)                                                \
-	static Value* _Math##name(Interpreter* interpreter,                        \
-							  int		   argc,                               \
-							  Value**	   arguments) {                        \
-		if (argc != 2 || !ValueIsNum(arguments[0])                             \
-			|| !ValueIsNum(arguments[1]))                                      \
-			return interpreter->Null;                                          \
-		double val1 = CoerceToNum(arguments[0]);                               \
-		double val2 = CoerceToNum(arguments[1]);                               \
-		return NewNumValue(interpreter, func(val1, val2));                     \
+#define MATH_FUNC_2(name, func)                                 \
+	static Value* _Math##name(Interpreter* interpreter,         \
+							  int		   argc,                \
+							  Value**	   arguments) {         \
+		if (argc != 2 || !ValueIsNum(arguments[0])              \
+			|| !ValueIsNum(arguments[1]))                       \
+			return interpreter->Null;                           \
+		double val1 = CoerceToNum(arguments[0]);                \
+		double val2 = CoerceToNum(arguments[1]);                \
+		return NewNumValue(interpreter, func(val1, val2));      \
 	}
 
 MATH_FUNC_1(Abs, fabs)
@@ -163,13 +163,14 @@ Value* LoadCoreMath(Interpreter* interpreter) {
 		if (func.Value != NULL) {
 			HashMapSet(map, hKey, func.Value);
 		} else {
-			HashMapSet(map,
-					   hKey,
-					   NewNativeFunctionValue(
-						   interpreter,
-						   CreateNativeFunctionMeta((const String) hKey,
-													func.Argc,
-													func.CFunction)));
+			HashMapSet(
+				map,
+				hKey,
+				NewNativeFunctionValue(
+					interpreter,
+					CreateNativeFunctionMeta((const String) hKey,
+											 func.Argc,
+											 func.CFunction)));
 		}
 	}
 

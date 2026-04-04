@@ -49,8 +49,12 @@ static Value* _IoGenericPrint(Interpreter* interpreter,
 	}
 	*p = '\0';
 
-	// single write syscall — faster than printf format processing
-	fwrite(buffer, 1, total - 1, stdout);  // total-1 excludes '\0'
+	// single write syscall — faster than printf format
+	// processing
+	fwrite(buffer,
+		   1,
+		   total - 1,
+		   stdout);	 // total-1 excludes '\0'
 	if (newline)
 		putchar('\n');
 
@@ -67,23 +71,28 @@ cleanup:
 	return interpreter->Null;
 }
 
-static Value* _IoPrint(Interpreter* interpreter, int argc, Value** arguments) {
+static Value*
+_IoPrint(Interpreter* interpreter, int argc, Value** arguments) {
 	return _IoGenericPrint(interpreter, argc, arguments, false);
 }
 
-static Value*
-_IoPrintln(Interpreter* interpreter, int argc, Value** arguments) {
+static Value* _IoPrintln(Interpreter* interpreter,
+						 int		  argc,
+						 Value**	  arguments) {
 	return _IoGenericPrint(interpreter, argc, arguments, true);
 }
 
-static Value* _IoScan(Interpreter* interpreter, int argc, Value** arguments) {
+static Value*
+_IoScan(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc > 1) {
-		return NewErrorValue(interpreter, "scan() expects 0 or 1 argument");
+		return NewErrorValue(interpreter,
+							 "scan() expects 0 or 1 argument");
 	}
 
 	if (argc == 1 && !ValueIsStr(arguments[0])) {
-		return NewErrorValue(interpreter,
-							 "scan() expects a string as its argument");
+		return NewErrorValue(
+			interpreter,
+			"scan() expects a string as its argument");
 	}
 
 	// Print the prompt message if provided
@@ -100,7 +109,10 @@ static Value* _IoScan(Interpreter* interpreter, int argc, Value** arguments) {
 
 	// Read input dynamically, expanding buffer as needed
 	while (1) {
-		if (fgets(buffer + totalRead, bufferSize - totalRead, stdin) == NULL) {
+		if (fgets(buffer + totalRead,
+				  bufferSize - totalRead,
+				  stdin)
+			== NULL) {
 			if (totalRead == 0) {
 				free(buffer);
 				return interpreter->Null;
@@ -132,15 +144,18 @@ static Value* _IoScan(Interpreter* interpreter, int argc, Value** arguments) {
 	return result;
 }
 
-static Value*
-_IoParseNum(Interpreter* interpreter, int argc, Value** arguments) {
+static Value* _IoParseNum(Interpreter* interpreter,
+						  int		   argc,
+						  Value**	   arguments) {
 	if (argc != 1) {
-		return NewErrorValue(interpreter,
-							 "parseNum() expects exactly 1 argument");
+		return NewErrorValue(
+			interpreter,
+			"parseNum() expects exactly 1 argument");
 	}
 	if (!ValueIsStr(arguments[0])) {
-		return NewErrorValue(interpreter,
-							 "parseNum() expects a string as its argument");
+		return NewErrorValue(
+			interpreter,
+			"parseNum() expects a string as its argument");
 	}
 	String str = ValueToString(arguments[0]);
 	String endptr;
@@ -154,15 +169,18 @@ _IoParseNum(Interpreter* interpreter, int argc, Value** arguments) {
 	return NewNumValue(interpreter, num);
 }
 
-static Value* _IoFormat(Interpreter* interpreter, int argc, Value** arguments) {
+static Value* _IoFormat(Interpreter* interpreter,
+						int			 argc,
+						Value**		 arguments) {
 	if (argc < 1) {
-		return NewErrorValue(interpreter,
-							 "format() expects at least 1 argument");
-	}
-	if (!ValueIsStr(arguments[0])) {
 		return NewErrorValue(
 			interpreter,
-			"format() expects the first argument to be a string");
+			"format() expects at least 1 argument");
+	}
+	if (!ValueIsStr(arguments[0])) {
+		return NewErrorValue(interpreter,
+							 "format() expects the first "
+							 "argument to be a string");
 	}
 
 	String formatStr = ValueToString(arguments[0]);
@@ -175,7 +193,8 @@ static Value* _IoFormat(Interpreter* interpreter, int argc, Value** arguments) {
 
 	int argIndex = 1;
 	for (size_t i = 0; i < formatLen;) {
-		if (formatStr[i] == '{' && formatStr[i + 1] == '}' && argIndex < argc) {
+		if (formatStr[i] == '{' && formatStr[i + 1] == '}'
+			&& argIndex < argc) {
 			// Insert argument string
 			String argStr = ValueToString(arguments[argIndex]);
 			size_t argLen = strlen(argStr);
@@ -208,18 +227,22 @@ static Value* _IoFormat(Interpreter* interpreter, int argc, Value** arguments) {
 	return result;
 }
 
-static Value*
-_IoClearScreen(Interpreter* interpreter, int argc, Value** arguments) {
+static Value* _IoClearScreen(Interpreter* interpreter,
+							 int		  argc,
+							 Value**	  arguments) {
 	if (argc != 0) {
-		return NewErrorValue(interpreter, "clearScreen() expects 0 arguments");
+		return NewErrorValue(
+			interpreter,
+			"clearScreen() expects 0 arguments");
 	}
 	printf("\x1B[2J\x1B[H");
 	fflush(stdout);
 	return interpreter->Null;
 }
 
-static Value*
-_IoSetColor(Interpreter* interpreter, int argc, Value** arguments) {
+static Value* _IoSetColor(Interpreter* interpreter,
+						  int		   argc,
+						  Value**	   arguments) {
 	if (argc > 2) {
 		return NewErrorValue(
 			interpreter,
@@ -248,24 +271,30 @@ _IoSetColor(Interpreter* interpreter, int argc, Value** arguments) {
 // Decompiler
 // ----------------------------------------------------------------
 /**
- * @brief Decompiles a compiled user function back into readable source text.
+ * @brief Decompiles a compiled user function back into readable
+ * source text.
  * @param interpreter Pointer to the interpreter instance.
- * @param uf Pointer to the UserFunction whose bytecode will be decompiled.
- * @return Newly allocated string containing the decompiled text. Caller must
- * free.
+ * @param uf Pointer to the UserFunction whose bytecode will be
+ * decompiled.
+ * @return Newly allocated string containing the decompiled text.
+ * Caller must free.
  * @origin src/decompiler.c:56
  */
-extern String DecompileFunction(Interpreter* interpreter, UserFunction* uf);
+extern String DecompileFunction(Interpreter*  interpreter,
+								UserFunction* uf);
 
-static Value*
-_IoDecompile(Interpreter* interpreter, int argc, Value** arguments) {
+static Value* _IoDecompile(Interpreter* interpreter,
+						   int			argc,
+						   Value**		arguments) {
 	if (argc != 1) {
-		return NewErrorValue(interpreter,
-							 "decompile() expects exactly 1 argument");
+		return NewErrorValue(
+			interpreter,
+			"decompile() expects exactly 1 argument");
 	}
 	if (!ValueIsUserFunction(arguments[0])) {
-		return NewErrorValue(interpreter,
-							 "decompile() expects a function as its argument");
+		return NewErrorValue(
+			interpreter,
+			"decompile() expects a function as its argument");
 	}
 
 	UserFunction* uf	 = CoerceToUserFunction(arguments[0]);
@@ -332,13 +361,14 @@ Value* LoadCoreIo(Interpreter* interpreter) {
 		if (func.Value != NULL) {
 			HashMapSet(ioMap, hKey, _IoModuleFunctions[i].Value);
 		} else {
-			HashMapSet(ioMap,
-					   hKey,
-					   NewNativeFunctionValue(
-						   interpreter,
-						   CreateNativeFunctionMeta((const String) hKey,
-													func.Argc,
-													func.CFunction)));
+			HashMapSet(
+				ioMap,
+				hKey,
+				NewNativeFunctionValue(
+					interpreter,
+					CreateNativeFunctionMeta((const String) hKey,
+											 func.Argc,
+											 func.CFunction)));
 		}
 	}
 

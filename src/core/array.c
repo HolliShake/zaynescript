@@ -9,7 +9,8 @@
 extern void Push(Interpreter* interpreter, Value* value);
 
 /**
- * @brief Pops and returns the top value from the interpreter's stack.
+ * @brief Pops and returns the top value from the interpreter's
+ * stack.
  * @param interpreter The interpreter instance.
  * @return The popped value.
  * @origin src/interpreter.c:107
@@ -17,7 +18,8 @@ extern void Push(Interpreter* interpreter, Value* value);
 extern Value* Popp(Interpreter* interpreter);
 
 /**
- * @brief Peeks at the top value on the interpreter's stack without removing it.
+ * @brief Peeks at the top value on the interpreter's stack
+ * without removing it.
  * @param interpreter The interpreter instance.
  * @return The top value on the stack.
  * @origin src/interpreter.c:115
@@ -33,20 +35,25 @@ extern Value* Peek(Interpreter* interpreter);
  * @return The return value of the function call.
  * @origin src/operation.c:717
  */
-extern Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
+extern Value*
+DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
 
-Value* _ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
+Value* _ArrayEach(Interpreter* interpreter,
+				  int		   argc,
+				  Value**	   arguments) {
 	// Reserve 1 arg for thisArg"
 	if (argc != 2) {
-		return NewErrorValue(interpreter, "Array.each expects 1 argument");
+		return NewErrorValue(interpreter,
+							 "Array.each expects 1 argument");
 	}
 
 	Value* thisArg	= arguments[0];
 	Value* callback = arguments[1];
 
 	if (!ValueIsArray(thisArg)) {
-		return NewErrorValue(interpreter,
-							 "First argument to Array.each must be an array");
+		return NewErrorValue(
+			interpreter,
+			"First argument to Array.each must be an array");
 	}
 
 	if (!ValueIsCallable(callback)) {
@@ -60,9 +67,10 @@ Value* _ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
 						: CoerceToUserFunction(callback)->Argc;
 
 	if (argNeeded != 2 && argNeeded != VARARG) {
-		return NewErrorValue(interpreter,
-							 "Callback function for Array.each must take "
-							 "exactly 2 arguments (item, index)");
+		return NewErrorValue(
+			interpreter,
+			"Callback function for Array.each must take "
+			"exactly 2 arguments (item, index)");
 	}
 
 	Array* array = CoerceToArray(thisArg);
@@ -82,18 +90,22 @@ Value* _ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
 	return arrayVal;
 }
 
-Value* _ArrayKeep(Interpreter* interpreter, int argc, Value** arguments) {
+Value* _ArrayKeep(Interpreter* interpreter,
+				  int		   argc,
+				  Value**	   arguments) {
 	// Reserve 1 arg for thisArg"
 	if (argc != 2) {
-		return NewErrorValue(interpreter, "Array.keep expects 1 argument");
+		return NewErrorValue(interpreter,
+							 "Array.keep expects 1 argument");
 	}
 
 	Value* thisArg	= arguments[0];
 	Value* callback = arguments[1];
 
 	if (!ValueIsArray(thisArg)) {
-		return NewErrorValue(interpreter,
-							 "First argument to Array.keep must be an array");
+		return NewErrorValue(
+			interpreter,
+			"First argument to Array.keep must be an array");
 	}
 
 	if (!ValueIsCallable(callback)) {
@@ -107,9 +119,10 @@ Value* _ArrayKeep(Interpreter* interpreter, int argc, Value** arguments) {
 						: CoerceToUserFunction(callback)->Argc;
 
 	if (argNeeded != 2 && argNeeded != VARARG) {
-		return NewErrorValue(interpreter,
-							 "Callback function for Array.keep must take "
-							 "exactly 2 arguments (item, index)");
+		return NewErrorValue(
+			interpreter,
+			"Callback function for Array.keep must take "
+			"exactly 2 arguments (item, index)");
 	}
 
 	Array* array = CoerceToArray(thisArg);
@@ -131,18 +144,22 @@ Value* _ArrayKeep(Interpreter* interpreter, int argc, Value** arguments) {
 	return arrayVal;
 }
 
-Value* _ArrayPush(Interpreter* interpreter, int argc, Value** arguments) {
+Value* _ArrayPush(Interpreter* interpreter,
+				  int		   argc,
+				  Value**	   arguments) {
 	// Reserve 1 arg for thisArg"
 	if (argc != 2) {
-		return NewErrorValue(interpreter, "Array.push expects 1 argument");
+		return NewErrorValue(interpreter,
+							 "Array.push expects 1 argument");
 	}
 
 	Value* thisArg	  = arguments[0];
 	Value* itemToPush = arguments[1];
 
 	if (!ValueIsArray(thisArg)) {
-		return NewErrorValue(interpreter,
-							 "First argument to Array.push must be an array");
+		return NewErrorValue(
+			interpreter,
+			"First argument to Array.push must be an array");
 	}
 
 	Array* array = CoerceToArray(thisArg);
@@ -151,22 +168,27 @@ Value* _ArrayPush(Interpreter* interpreter, int argc, Value** arguments) {
 	return interpreter->Null;
 }
 
-Value* _ArrayPop(Interpreter* interpreter, int argc, Value** arguments) {
+Value* _ArrayPop(Interpreter* interpreter,
+				 int		  argc,
+				 Value**	  arguments) {
 	// Reserve 1 arg for thisArg"
 	if (argc != 1) {
-		return NewErrorValue(interpreter, "Array.pop expects no arguments");
+		return NewErrorValue(interpreter,
+							 "Array.pop expects no arguments");
 	}
 
 	Value* thisArg = arguments[0];
 
 	if (!ValueIsArray(thisArg)) {
-		return NewErrorValue(interpreter,
-							 "First argument to Array.pop must be an array");
+		return NewErrorValue(
+			interpreter,
+			"First argument to Array.pop must be an array");
 	}
 
 	Array* array = CoerceToArray(thisArg);
 	if (ArrayLength(array) == 0) {
-		return NewErrorValue(interpreter, "Cannot pop from an empty array");
+		return NewErrorValue(interpreter,
+							 "Cannot pop from an empty array");
 	}
 
 	void* poppedItem = ArrayGet(array, ArrayLength(array) - 1);
@@ -175,18 +197,22 @@ Value* _ArrayPop(Interpreter* interpreter, int argc, Value** arguments) {
 	return poppedItem;
 }
 
-static Value*
-_ArrayLength(Interpreter* interpreter, int argc, Value** arguments) {
+static Value* _ArrayLength(Interpreter* interpreter,
+						   int			argc,
+						   Value**		arguments) {
 	// Reserve 1 arg for thisArg"
 	if (argc != 1) {
-		return NewErrorValue(interpreter, "Array.length expects no arguments");
+		return NewErrorValue(
+			interpreter,
+			"Array.length expects no arguments");
 	}
 
 	Value* thisArg = arguments[0];
 
 	if (!ValueIsArray(thisArg)) {
-		return NewErrorValue(interpreter,
-							 "First argument to Array.length must be an array");
+		return NewErrorValue(
+			interpreter,
+			"First argument to Array.length must be an array");
 	}
 
 	Array* array = CoerceToArray(thisArg);
@@ -221,7 +247,8 @@ static ModuleFunction _ArrayClassMethods[] = {
 
 Value* CreateArrayClass(Interpreter* interpreter) {
 	Value* arrayClass =
-		NewClassValue(interpreter, CreateUserClass("Array", NULL));
+		NewClassValue(interpreter,
+					  CreateUserClass("Array", NULL));
 	Class* cls = CoerceToUserClass(arrayClass);
 
 	// Define Array methods here (e.g., push, pop, length, etc.)
@@ -246,8 +273,9 @@ Value* CreateArrayClass(Interpreter* interpreter) {
 }
 
 Value* LoadCoreArray(Interpreter* interpreter) {
-	Value* val = (interpreter->Array != NULL) ? interpreter->Array
-											  : CreateArrayClass(interpreter);
+	Value* val = (interpreter->Array != NULL)
+					 ? interpreter->Array
+					 : CreateArrayClass(interpreter);
 
 	Value*	 module = NewObjectValue(interpreter);
 	HashMap* map	= CoerceToHashMap(module);

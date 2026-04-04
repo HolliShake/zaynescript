@@ -1,11 +1,14 @@
 /**
  * @file operation.h
- * @brief Core runtime operation declarations used by the interpreter.
+ * @brief Core runtime operation declarations used by the
+ * interpreter.
  *
- * Provides function declarations for environment management, attribute access,
- * index get/set, constructor calls, method dispatch, function calls, all
- * arithmetic and bitwise operators, comparison operators, and module import.
- * These operations form the building blocks of the interpreter's dispatch loop.
+ * Provides function declarations for environment management,
+ * attribute access, index get/set, constructor calls, method
+ * dispatch, function calls, all arithmetic and bitwise
+ * operators, comparison operators, and module import. These
+ * operations form the building blocks of the interpreter's
+ * dispatch loop.
  */
 
 #include "./core/loader.h"
@@ -21,8 +24,8 @@
 #	define OPERATION_H
 
 /**
- * @brief Saves an environment as the root environment on the interpreter's
- * environment stack.
+ * @brief Saves an environment as the root environment on the
+ * interpreter's environment stack.
  *
  * @param interp The interpreter instance
  * @param env    The environment value to save as root
@@ -30,8 +33,8 @@
 void SaveRootEnv(Interpreter* interp, Value* env);
 
 /**
- * @brief Pushes the current environment onto the interpreter's environment
- * stack.
+ * @brief Pushes the current environment onto the interpreter's
+ * environment stack.
  *
  * @param interp   The interpreter instance
  * @param envObj   The environment value to save
@@ -39,15 +42,16 @@ void SaveRootEnv(Interpreter* interp, Value* env);
 void SaveEnv(Interpreter* interp, Value* envObj);
 
 /**
- * @brief Pops the current environment from the environment stack.
+ * @brief Pops the current environment from the environment
+ * stack.
  *
  * @param interp The interpreter instance
  */
 void RestoreEnv(Interpreter* interp);
 
 /**
- * @brief Restores the nth environment from the environment stack and
- * synchronizes it with the current CallEnv.
+ * @brief Restores the nth environment from the environment stack
+ * and synchronizes it with the current CallEnv.
  *
  * @param interp The interpreter instance
  * @param n The index of the environment to restore (0-based)
@@ -65,21 +69,24 @@ void RestoreNthEnvAndSync(Interpreter* interp, int n);
  *
  * @return true if the method exists, false otherwise
  */
-bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method);
+bool IsMethodOfObject(Interpreter* interp,
+					  Value*	   obj,
+					  Value*	   method);
 
 /**
  * @brief Generic attribute retrieval function.
- * Handles arrays (by index or prototype), objects (by key or prototype),
- * classes (static members), and class instances (instance members or
- * prototype).
+ * Handles arrays (by index or prototype), objects (by key or
+ * prototype), classes (static members), and class instances
+ * (instance members or prototype).
  *
  * @param interp        The interpreter instance
  * @param obj           The object to retrieve the attribute from
  * @param index         The attribute/key to retrieve
- * @param forMethodCall Whether the attribute is being retrieved for a method
- * call
+ * @param forMethodCall Whether the attribute is being retrieved
+ * for a method call
  *
- * @return The retrieved attribute value, or Null value if not found
+ * @return The retrieved attribute value, or Null value if not
+ * found
  */
 Value* GenericGetAttribute(Interpreter* interp,
 						   Value*		obj,
@@ -99,11 +106,12 @@ Value* DoImportCore(Interpreter* interp, String moduleName);
 
 /**
  * @brief Performs import lib operation.
- * Loads a user library module by reading and compiling a .zs file.
+ * Loads a user library module by reading and compiling a .zs
+ * file.
  *
  * @param interp      The interpreter instance
- * @param moduleName  The name/path of the module to import (e.g.,
- * "request/app")
+ * @param moduleName  The name/path of the module to import
+ * (e.g., "request/app")
  *
  * @return Module value, or error value if not found
  */
@@ -132,7 +140,10 @@ Value* DoImportFile(Interpreter* interp, String filePath);
  *
  * @return Null value on success, or error value on failure
  */
-Value* DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val);
+Value* DoSetIndex(Interpreter* interp,
+				  Value*	   obj,
+				  Value*	   index,
+				  Value*	   val);
 
 /**
  * @brief Retrieves an attribute from an object.
@@ -148,8 +159,8 @@ Value* DoGetIndex(Interpreter* interp, Value* obj, Value* index);
 
 /**
  * @brief Performs constructor call operation.
- * Creates a new class instance and calls the constructor if present.
- * If no constructor exists, expects 0 arguments.
+ * Creates a new class instance and calls the constructor if
+ * present. If no constructor exists, expects 0 arguments.
  *
  * @param interp      The interpreter instance
  * @param clsValue    The class to instantiate
@@ -157,7 +168,8 @@ Value* DoGetIndex(Interpreter* interp, Value* obj, Value* index);
  *
  * @return Null value on success, or error value on failure
  */
-Value* DoCallCtor(Interpreter* interp, Value* clsValue, int argc);
+Value*
+DoCallCtor(Interpreter* interp, Value* clsValue, int argc);
 
 /**
  * @brief Performs method call operation.
@@ -171,13 +183,16 @@ Value* DoCallCtor(Interpreter* interp, Value* clsValue, int argc);
  *
  * @return Null value on success, or error value on failure
  */
-Value*
-DoCallMethod(Interpreter* interp, Value* obj, Value* methodName, int argc);
+Value* DoCallMethod(Interpreter* interp,
+					Value*		 obj,
+					Value*		 methodName,
+					int			 argc);
 
 /**
  * @brief Performs function call operation.
  * Handles both native functions and user-defined functions.
- * Validates argument count and creates appropriate environment for execution.
+ * Validates argument count and creates appropriate environment
+ * for execution.
  *
  * @param interp      The interpreter instance
  * @param fn          The function to call
@@ -186,14 +201,16 @@ DoCallMethod(Interpreter* interp, Value* obj, Value* methodName, int argc);
  *
  * @return Null value on success, or error value on failure
  */
-Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
+Value*
+DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
 
 /**
  * @brief Performs logical NOT operation on a value.
  * Coerces the value to boolean and negates it.
  *
  * @param interp The interpreter instance
- * @param val    The value to perform the logical NOT operation on
+ * @param val    The value to perform the logical NOT operation
+ * on
  *
  * @return Boolean value (True or False)
  */
@@ -215,23 +232,26 @@ Value* DoPos(Interpreter* interp, Value* val);
  * Negates numeric values.
  *
  * @param interp The interpreter instance
- * @param val    The value to perform the unary minus operation on
+ * @param val    The value to perform the unary minus operation
+ * on
  *
- * @return Negated numeric value, or error value for invalid operand
+ * @return Negated numeric value, or error value for invalid
+ * operand
  */
 Value* DoNeg(Interpreter* interp, Value* val);
 
 /**
  * @brief Performs multiplication operation on two values.
  * Supports integer and numeric operands.
- * Returns int if result fits in int range, otherwise returns num.
+ * Returns int if result fits in int range, otherwise returns
+ * num.
  *
  * @param interp The interpreter instance
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Resulting value of the multiplication, or error value for invalid
- * operands
+ * @return Resulting value of the multiplication, or error value
+ * for invalid operands
  */
 Value* DoMul(Interpreter* interp, Value* lhs, Value* rhs);
 
@@ -257,7 +277,8 @@ Value* DoDiv(Interpreter* interp, Value* lhs, Value* rhs);
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Resulting value of the modulo operation, or error value
+ * @return Resulting value of the modulo operation, or error
+ * value
  */
 Value* DoMod(Interpreter* interp, Value* lhs, Value* rhs);
 
@@ -268,8 +289,8 @@ Value* DoMod(Interpreter* interp, Value* lhs, Value* rhs);
  * @param interp The interpreter instance
  * @param val    The value to increment
  *
- * @return Resulting value of the increment operation, or error value for
- * invalid operand
+ * @return Resulting value of the increment operation, or error
+ * value for invalid operand
  */
 Value* DoInc(Interpreter* interp, Value* val);
 
@@ -282,7 +303,8 @@ Value* DoInc(Interpreter* interp, Value* val);
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Resulting value of the addition, or error value for invalid operands
+ * @return Resulting value of the addition, or error value for
+ * invalid operands
  */
 Value* DoAdd(Interpreter* interp, Value* lhs, Value* rhs);
 
@@ -293,8 +315,8 @@ Value* DoAdd(Interpreter* interp, Value* lhs, Value* rhs);
  * @param interp The interpreter instance
  * @param val    The value to decrement
  *
- * @return Resulting value of the decrement operation, or error value for
- * invalid operand
+ * @return Resulting value of the decrement operation, or error
+ * value for invalid operand
  */
 Value* DoDec(Interpreter* interp, Value* val);
 
@@ -306,8 +328,8 @@ Value* DoDec(Interpreter* interp, Value* val);
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Resulting value of the subtraction, or error value for invalid
- * operands
+ * @return Resulting value of the subtraction, or error value for
+ * invalid operands
  */
 Value* DoSub(Interpreter* interp, Value* lhs, Value* rhs);
 
@@ -319,8 +341,8 @@ Value* DoSub(Interpreter* interp, Value* lhs, Value* rhs);
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Resulting value of the left shift operation, or error value for
- * invalid operands
+ * @return Resulting value of the left shift operation, or error
+ * value for invalid operands
  */
 Value* DoLShift(Interpreter* interp, Value* lhs, Value* rhs);
 
@@ -332,8 +354,8 @@ Value* DoLShift(Interpreter* interp, Value* lhs, Value* rhs);
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Resulting value of the right shift operation, or error value for
- * invalid operands
+ * @return Resulting value of the right shift operation, or error
+ * value for invalid operands
  */
 Value* DoRShift(Interpreter* interp, Value* lhs, Value* rhs);
 
@@ -345,19 +367,21 @@ Value* DoRShift(Interpreter* interp, Value* lhs, Value* rhs);
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Boolean value (True or False), or error value for invalid operands
+ * @return Boolean value (True or False), or error value for
+ * invalid operands
  */
 Value* DoLT(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * @brief Performs less than or equal to comparison on two values.
- * Supports numeric operands.
+ * @brief Performs less than or equal to comparison on two
+ * values. Supports numeric operands.
  *
  * @param interp The interpreter instance
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Boolean value (True or False), or error value for invalid operands
+ * @return Boolean value (True or False), or error value for
+ * invalid operands
  */
 Value* DoLTE(Interpreter* interp, Value* lhs, Value* rhs);
 
@@ -369,19 +393,21 @@ Value* DoLTE(Interpreter* interp, Value* lhs, Value* rhs);
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Boolean value (True or False), or error value for invalid operands
+ * @return Boolean value (True or False), or error value for
+ * invalid operands
  */
 Value* DoGT(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * @brief Performs greater than or equal to comparison on two values.
- * Supports numeric operands.
+ * @brief Performs greater than or equal to comparison on two
+ * values. Supports numeric operands.
  *
  * @param interp The interpreter instance
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Boolean value (True or False), or error value for invalid operands
+ * @return Boolean value (True or False), or error value for
+ * invalid operands
  */
 Value* DoGTE(Interpreter* interp, Value* lhs, Value* rhs);
 
@@ -417,8 +443,8 @@ Value* DoNE(Interpreter* interp, Value* lhs, Value* rhs);
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Resulting value of the bitwise AND operation, or error value for
- * invalid operands
+ * @return Resulting value of the bitwise AND operation, or error
+ * value for invalid operands
  */
 Value* DoAnd(Interpreter* interp, Value* lhs, Value* rhs);
 
@@ -430,8 +456,8 @@ Value* DoAnd(Interpreter* interp, Value* lhs, Value* rhs);
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Resulting value of the bitwise OR operation, or error value for
- * invalid operands
+ * @return Resulting value of the bitwise OR operation, or error
+ * value for invalid operands
  */
 Value* DoOr(Interpreter* interp, Value* lhs, Value* rhs);
 
@@ -443,22 +469,25 @@ Value* DoOr(Interpreter* interp, Value* lhs, Value* rhs);
  * @param lhs    Left-hand side value
  * @param rhs    Right-hand side value
  *
- * @return Resulting value of the bitwise XOR operation, or error value for
- * invalid operands
+ * @return Resulting value of the bitwise XOR operation, or error
+ * value for invalid operands
  */
 Value* DoXor(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * @brief Loads a function from the interpreter's functions array.
- * If closure is true, clones the function.
- * Sets up captures from root and local environments.
+ * @brief Loads a function from the interpreter's functions
+ * array. If closure is true, clones the function. Sets up
+ * captures from root and local environments.
  *
  * @param interp     The interpreter instance
- * @param offset     The offset of the function in the functions array
- * @param closure    Whether to create a closure (clone) of the function
+ * @param offset     The offset of the function in the functions
+ * array
+ * @param closure    Whether to create a closure (clone) of the
+ * function
  *
  * @return The loaded function value
  */
-Value* DoLoadFunction(Interpreter* interp, int offset, bool closure);
+Value*
+DoLoadFunction(Interpreter* interp, int offset, bool closure);
 
 #endif

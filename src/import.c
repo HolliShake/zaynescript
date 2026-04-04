@@ -1,6 +1,7 @@
 #include "./import.h"
 
-ImportNode* CreateOrGetImportNode(Interpreter* interpreter, String module) {
+ImportNode* CreateOrGetImportNode(Interpreter* interpreter,
+								  String	   module) {
 	ImportNode* node = interpreter->ImportHead;
 	while (node != NULL) {
 		if (strcmp(node->Path, module) == 0) {
@@ -29,11 +30,13 @@ void ImportNodeAddDependency(ImportNode* dst, ImportNode* src) {
 	}
 
 	dst->Dependencies[dst->DepCount++] = (ImportNode*) src;
-	dst->Dependencies = Reallocate(dst->Dependencies,
-								   sizeof(ImportNode*) * (dst->DepCount + 1));
+	dst->Dependencies =
+		Reallocate(dst->Dependencies,
+				   sizeof(ImportNode*) * (dst->DepCount + 1));
 }
 
-bool ImportNodeHasCircularDependency(ImportNode* node, String modulePath) {
+bool ImportNodeHasCircularDependency(ImportNode* node,
+									 String		 modulePath) {
 	if (strcmp(node->Path, modulePath) == 0) {
 		return true;
 	}
@@ -45,7 +48,8 @@ bool ImportNodeHasCircularDependency(ImportNode* node, String modulePath) {
 		if (dep->State == SAFE)
 			continue;
 
-		// If we hit a node currently in our traversal stack, it's a cycle
+		// If we hit a node currently in our traversal stack,
+		// it's a cycle
 		if (dep->State == VISITING)
 			return true;
 
@@ -57,7 +61,8 @@ bool ImportNodeHasCircularDependency(ImportNode* node, String modulePath) {
 		}
 
 		// CRITICAL: Mark as Safe. Do not reset to 0.
-		// We know for a fact this branch does not lead to modulePath.
+		// We know for a fact this branch does not lead to
+		// modulePath.
 		dep->State = SAFE;
 	}
 

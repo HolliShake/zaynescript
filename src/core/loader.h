@@ -2,8 +2,9 @@
  * @file loader.h
  * @brief Core module loader interface.
  *
- * Defines the CoreMapper structure and the LoadCoreModule function for
- * resolving and loading built-in modules by name at runtime.
+ * Defines the CoreMapper structure and the LoadCoreModule
+ * function for resolving and loading built-in modules by name at
+ * runtime.
  */
 
 #include "../global.h"
@@ -42,8 +43,10 @@ typedef struct core_module_mapping_struct {
  *
  * @param interpreter The interpreter instance
  * @param moduleName  The name of the core module to load
- * @return Value* Pointer to the loaded core module, or NULL if not found
+ * @return Value* Pointer to the loaded core module, or NULL if
+ * not found
  */
-Value* LoadCoreModule(Interpreter* interpreter, String moduleName);
+Value* LoadCoreModule(Interpreter* interpreter,
+					  String	   moduleName);
 
 #endif /* CORE_LOADER_H */

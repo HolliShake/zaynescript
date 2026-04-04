@@ -11,7 +11,8 @@ extern String ValueToString(Value* value);
 /**
  * @brief Frees a value and its associated memory
  *
- * @param interp The interpreter instance (used for big-number context cleanup)
+ * @param interp The interpreter instance (used for big-number
+ * context cleanup)
  * @param value The value to free
  */
 static void _Free(Interpreter* interp, Value* value) {
@@ -308,9 +309,8 @@ static size_t _Sweep(Interpreter* interpreter) {
 }
 
 void GarbageCollect(Interpreter* interpreter) {
-	printf("Collects!!!");
-	// printf("GC: Starting garbage collection... Allocated = %d bytes,
-	// Threshold = %d bytes\n", interpreter->Allocated,
+	// printf("GC: Starting garbage collection... Allocated = %d
+	// bytes, Threshold = %d bytes\n", interpreter->Allocated,
 	// interpreter->GcThreshold);
 	Mark(interpreter->GcRoot);
 	Mark(interpreter->Array);

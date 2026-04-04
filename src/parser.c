@@ -822,7 +822,8 @@ static Ast* _ParseSwitchExpression(Parser* parser) {
 				ThrowError(parser->Lexer->Path,
 						   parser->Lexer->Data,
 						   parser->Next.Position,
-						   "expected an expression for default case body");
+						   "expected an expression for default "
+						   "case body");
 			}
 		}
 	}
@@ -1523,7 +1524,8 @@ static Ast* _ParseSwitchStatement(Parser* parser) {
 				ThrowError(parser->Lexer->Path,
 						   parser->Lexer->Data,
 						   parser->Next.Position,
-						   "expected a statement block for default case body");
+						   "expected a statement block for "
+						   "default case body");
 			}
 		}
 	}
