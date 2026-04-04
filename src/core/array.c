@@ -9,7 +9,8 @@
 extern void Push(Interpreter* interpreter, Value* value);
 
 /**
- * @brief Pops and returns the top value from the interpreter's stack.
+ * @brief Pops and returns the top value from the interpreter's
+ * stack.
  * @param interpreter The interpreter instance.
  * @return The popped value.
  * @origin src/interpreter.c:107
@@ -17,7 +18,8 @@ extern void Push(Interpreter* interpreter, Value* value);
 extern Value* Popp(Interpreter* interpreter);
 
 /**
- * @brief Peeks at the top value on the interpreter's stack without removing it.
+ * @brief Peeks at the top value on the interpreter's stack
+ * without removing it.
  * @param interpreter The interpreter instance.
  * @return The top value on the stack.
  * @origin src/interpreter.c:115

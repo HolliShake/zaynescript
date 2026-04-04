@@ -5,7 +5,7 @@
 TARGET   := zscript.exe
 
 CC       := clang
-CFLAGS   := -Wno-pointer-sign -fsanitize=address,leak -g3 -fno-omit-frame-pointer
+CFLAGS   := -Wno-pointer-sign -fsanitize=address,leak -g3 -fno-omit-frame-pointer -fno-optimize-sibling-calls
 CFLAGSR  := -Wno-pointer-sign
 
 # ── Super-optimized release flags ──────────────────────────
@@ -73,7 +73,7 @@ uninstall:
 	rm -rf $(LIBDIR)
 
 run: debug
-	ASAN_OPTIONS=fast_unwind_on_malloc=0:malloc_context_size=50 LC_ALL=en_US.UTF-8 ./$(TARGET)
+	ASAN_OPTIONS=fast_unwind_on_malloc=0:malloc_context_size=30 LC_ALL=en_US.UTF-8 ./$(TARGET)
 
 amalgamate:
 	@echo "Running amalgamation..."

@@ -59,3 +59,11 @@ const rej = callMeMaybe()
   .catch(function (e) {
     println(e);
   });
+
+async function throwE() {
+  throw "Some Error";
+  return 2;
+}
+
+const pr = throwE();
+println(pr);

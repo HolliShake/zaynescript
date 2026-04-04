@@ -82,13 +82,14 @@ static Token TokenizeIdentifier(Lexer* lexer) {
 	String value  = RunesToString(lexer->Data, start, lexer->Indx);
 
 	// Check for keywords
-	const String keywords[] = {
-		KEY_IF,		  KEY_ELSE,	 KEY_SWITCH, KEY_CASE,	KEY_DEFAULT, KEY_WHILE,
-		KEY_FOR,	  KEY_DO,	 KEY_TRY,	 KEY_CATCH, KEY_RETURN,	 KEY_BREAK,
-		KEY_CONTINUE, KEY_NULL,	 KEY_TRUE,	 KEY_FALSE, KEY_CLASS,	 KEY_ENUM,
-		KEY_IMPORT,	  KEY_FROM,	 KEY_STATIC, KEY_CONST, KEY_VAR,	 KEY_LOCAL,
-		KEY_FN,		  KEY_ASYNC, KEY_AWAIT,	 KEY_NEW,	KEY_THIS
-	};
+	const String keywords[] = { KEY_IF,		  KEY_ELSE,	 KEY_SWITCH, KEY_CASE,
+								KEY_DEFAULT,  KEY_WHILE, KEY_FOR,	 KEY_DO,
+								KEY_TRY,	  KEY_CATCH, KEY_RETURN, KEY_BREAK,
+								KEY_CONTINUE, KEY_RAISE, KEY_ASSERT, KEY_NULL,
+								KEY_TRUE,	  KEY_FALSE, KEY_CLASS,	 KEY_ENUM,
+								KEY_IMPORT,	  KEY_FROM,	 KEY_STATIC, KEY_CONST,
+								KEY_VAR,	  KEY_LOCAL, KEY_FN,	 KEY_ASYNC,
+								KEY_AWAIT,	  KEY_NEW,	 KEY_THIS };
 
 	for (size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++) {
 		if (strcmp(value, keywords[i]) == 0) {
@@ -145,14 +146,16 @@ static Token TokenizeString(Lexer* lexer) {
 	Rune	 quote = CurrentRune(lexer);
 	Advance(lexer);	 // Skip opening quote
 
-	// FIX: Safely calculate maxLength by skipping escaped characters
-	// so an escaped quote (\") doesn't end the count early!
+	// FIX: Safely calculate maxLength by skipping escaped
+	// characters so an escaped quote (\") doesn't end the count
+	// early!
 	int maxLength = 0;
 	int scan	  = lexer->Indx;
 	while (lexer->Data[scan] != 0 && lexer->Data[scan] != quote) {
 		if (lexer->Data[scan] == '\\' && lexer->Data[scan + 1] != 0) {
 			scan++;	 // Skip the backslash
-			// For \xHH, skip the hex digits (they produce 1 rune)
+			// For \xHH, skip the hex digits (they produce 1
+			// rune)
 			if (lexer->Data[scan] == 'x') {
 				scan++;	 // skip 'x'
 				while (
@@ -213,7 +216,8 @@ static Token TokenizeString(Lexer* lexer) {
 							Advance(lexer);
 						}
 						decoded[decodedLength++] = value;
-						continue;  // already advanced past digits
+						continue;  // already advanced past
+								   // digits
 					}
 				case '\\':
 					decoded[decodedLength++] = '\\';
@@ -225,7 +229,8 @@ static Token TokenizeString(Lexer* lexer) {
 					decoded[decodedLength++] = '"';
 					break;
 				default:
-					// Keep unknown escape content without the backslash.
+					// Keep unknown escape content without the
+					// backslash.
 					if (CurrentRune(lexer) != 0) {
 						decoded[decodedLength++] = CurrentRune(lexer);
 					}
@@ -265,7 +270,8 @@ static Token TokenizeSymbol(Lexer* lexer) {
 	// Check for multi-character symbols
 	Rune next = CurrentRune(lexer);
 
-	// Check for three-character operators first (e.g., <<=, >>=, ...)
+	// Check for three-character operators first (e.g., <<=, >>=,
+	// ...)
 	if ((current == '<' && next == '<' && PeekRune(lexer, 1) == '=')
 		|| (current == '>' && next == '>' && PeekRune(lexer, 1) == '=')
 		|| (current == '.' && next == '.' && PeekRune(lexer, 1) == '.')) {

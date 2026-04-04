@@ -13,7 +13,8 @@ void* _Callocate(String file, int line, size_t count, size_t size) {
 	void* ptr = calloc(count, size);
 	if (ptr == NULL) {
 		fprintf(stderr,
-				"[%s:%d] Failed to allocate memory with Callocate!!!\n",
+				"[%s:%d] Failed to allocate memory with "
+				"Callocate!!!\n",
 				file,
 				line);
 		exit(EXIT_FAILURE);
@@ -341,7 +342,8 @@ GetErrorLine(String path, Rune* runes, Position position, String message) {
 		}
 	}
 
-	// Calculate the range of lines to display (0-based internally)
+	// Calculate the range of lines to display (0-based
+	// internally)
 	int startLine =
 		(position.LineStart - PADDING > 1) ? position.LineStart - PADDING : 1;
 	int endLine = (position.LineStart + PADDING < lineCount)
@@ -373,12 +375,14 @@ GetErrorLine(String path, Rune* runes, Position position, String message) {
 			lineEndIdx--;
 		}
 
-		// Find the actual end of the line (scan until newline or null)
+		// Find the actual end of the line (scan until newline or
+		// null)
 		int actualLineEnd = lineStartIdx;
 		while (runes[actualLineEnd] != '\n' && runes[actualLineEnd] != 0) {
 			actualLineEnd++;
 		}
-		actualLineEnd--;  // Back up to last character before newline/null
+		actualLineEnd--;  // Back up to last character before
+						  // newline/null
 
 		// Convert runes to string for this line
 		char lineBuffer[MAX_LINE_WIDTH];
@@ -573,12 +577,13 @@ String NormalizePath(String pathStr) {
 				// Pop the last directory off the stack
 				top--;
 			} else if (!is_abs) {
-				// If it's a relative path and we are at the top, we must keep
+				// If it's a relative path and we are at the top,
+				// we must keep
 				// ".."
 				stack[top++] = token;
 			}
-			// If it's absolute and top == 0, we can't go above root, so do
-			// nothing.
+			// If it's absolute and top == 0, we can't go above
+			// root, so do nothing.
 		} else {
 			// Normal directory or file name
 			stack[top++] = token;
@@ -594,7 +599,8 @@ String NormalizePath(String pathStr) {
 	// Handle root for absolute paths
 	if (is_abs) {
 #ifdef _WIN32
-		// If it was a drive letter (e.g., C:\), strtok leaves "C:" in stack[0]
+		// If it was a drive letter (e.g., C:\), strtok leaves
+		// "C:" in stack[0]
 		if (!(isalpha(pathStr[0]) && pathStr[1] == ':')) {
 			strcpy(result, PATH_SEPARATOR);	 // UNC or root slash
 		}
@@ -640,7 +646,8 @@ String Basename(String pathStr) {
 		}
 	}
 
-	// Get the filename part (after last separator, or the whole string)
+	// Get the filename part (after last separator, or the whole
+	// string)
 	String filename = lastSep ? lastSep + 1 : pathStr;
 
 	// Find the last dot to strip the extension
@@ -657,23 +664,25 @@ String Basename(String pathStr) {
 }
 
 String Dirname(String pathStr) {
-	// If path is empty or null, standard behavior is to return "." (current
-	// dir)
+	// If path is empty or null, standard behavior is to return
+	// "." (current dir)
 	if (!pathStr || pathStr[0] == '\0') {
 		String dot = Allocate(2);
 		strcpy(dot, ".");
 		return dot;
 	}
 
-	// Work on a copy of the string so we don't mutate the user's input
+	// Work on a copy of the string so we don't mutate the user's
+	// input
 	size_t len	= strlen(pathStr);
 	String path = Allocate(len + 1);
 	if (!path)
 		return NULL;
 	strcpy(path, pathStr);
 
-	// 1. Strip any trailing separators (e.g., "src/folder/" -> "src/folder")
-	// But don't strip if the string is just the root "/"
+	// 1. Strip any trailing separators (e.g., "src/folder/" ->
+	// "src/folder") But don't strip if the string is just the
+	// root "/"
 	while (len > 1 && (path[len - 1] == '/' || path[len - 1] == '\\')) {
 		path[len - 1] = '\0';
 		len--;
@@ -696,17 +705,20 @@ String Dirname(String pathStr) {
 		return dot;
 	}
 
-	// 4. If the separator is at the very beginning (e.g., "/file.txt")
+	// 4. If the separator is at the very beginning (e.g.,
+	// "/file.txt")
 	if (last_sep == path) {
 		// Keep the root slash, terminate right after it
 		path[1] = '\0';
 	} else {
-		// Separator is in the middle. Strip any sequence of duplicate slashes.
+		// Separator is in the middle. Strip any sequence of
+		// duplicate slashes.
 		while (last_sep > path
 			   && (*(last_sep - 1) == '/' || *(last_sep - 1) == '\\')) {
 			last_sep--;
 		}
-		*last_sep = '\0';  // Terminate the string here to drop the basename
+		*last_sep = '\0';  // Terminate the string here to drop
+						   // the basename
 	}
 
 	return path;
@@ -717,7 +729,8 @@ String AbsolutePathFromBase(String baseStr, String pathStr) {
 		return NULL;
 	}
 
-	// 1. If the path is already absolute, the base is irrelevant.
+	// 1. If the path is already absolute, the base is
+	// irrelevant.
 	if (IsAbsolutePath(pathStr)) {
 		String abs_copy = Allocate(strlen(pathStr) + 1);
 		strcpy(abs_copy, pathStr);
@@ -726,8 +739,8 @@ String AbsolutePathFromBase(String baseStr, String pathStr) {
 		return normalized_path;
 	}
 
-	// 2. If the base is empty, just return the path (or you could fallback to
-	// CWD)
+	// 2. If the base is empty, just return the path (or you
+	// could fallback to CWD)
 	if (!baseStr || baseStr[0] == '\0') {
 		String path_copy = Allocate(strlen(pathStr) + 1);
 		strcpy(path_copy, pathStr);
@@ -746,8 +759,8 @@ String AbsolutePathFromBase(String baseStr, String pathStr) {
 		needs_separator = false;
 	}
 
-	// Skip leading separators in the target path to avoid double slashes (e.g.,
-	// "base//" "path")
+	// Skip leading separators in the target path to avoid double
+	// slashes (e.g., "base//" "path")
 	String p = pathStr;
 	while (p[0] == '/' || p[0] == '\\') {
 		p++;
@@ -800,12 +813,14 @@ String AbsolutePath(String pathStr) {
 		}
 	}
 
-	// Skip leading separators in the relative path to avoid double separators
+	// Skip leading separators in the relative path to avoid
+	// double separators
 	while (path[0] == '/' || path[0] == '\\') {
 		path++;
 	}
 
-	// Allocate memory for: CWD + Separator + Path + Null Terminator
+	// Allocate memory for: CWD + Separator + Path + Null
+	// Terminator
 	size_t total_len = cwd_len + (needs_separator ? 1 : 0) + strlen(path) + 1;
 	String resolved_raw_path = Allocate(total_len);
 

@@ -2,11 +2,12 @@
  * @file function.h
  * @brief User-defined and native function management interface.
  *
- * This header defines the interface for creating, cloning, and managing both
- * user-defined functions (compiled from source) and native functions
- * (implemented in C). User functions carry bytecode, local variable counts,
- * and closure capture metadata. Native functions wrap a C callback pointer
- * with name and argument-count metadata.
+ * This header defines the interface for creating, cloning, and
+ * managing both user-defined functions (compiled from source)
+ * and native functions (implemented in C). User functions carry
+ * bytecode, local variable counts, and closure capture metadata.
+ * Native functions wrap a C callback pointer with name and
+ * argument-count metadata.
  */
 
 #include "./global.h"
@@ -20,8 +21,8 @@
  * @param name The name of the function.
  * @param argc The number of arguments the function takes.
  * @param async Whether the function is asynchronous.
- * @return Pointer to the newly created UserFunction structure, or NULL on
- * failure.
+ * @return Pointer to the newly created UserFunction structure,
+ * or NULL on failure.
  */
 UserFunction* CreateUserFunction(String name, int argc, bool async);
 
@@ -30,8 +31,8 @@ UserFunction* CreateUserFunction(String name, int argc, bool async);
  *
  * @param name The name of the function.
  * @param argc The number of arguments the function takes.
- * @return Pointer to the newly created UserFunction structure, or NULL on
- * failure.
+ * @return Pointer to the newly created UserFunction structure,
+ * or NULL on failure.
  */
 UserFunction* CreateMainUserFunction(String name, int argc);
 
@@ -39,15 +40,16 @@ UserFunction* CreateMainUserFunction(String name, int argc);
  * @brief Clones an existing user function.
  *
  * @param userFunction Pointer to the user function to clone.
- * @return Pointer to the cloned UserFunction structure, or NULL on failure.
+ * @return Pointer to the cloned UserFunction structure, or NULL
+ * on failure.
  */
 UserFunction* UserFunctionClone(UserFunction* userFunction);
 
 /**
  * @brief Emits a local variable to the user function.
  *
- * @param userFunction Pointer to the user function to emit the local variable
- * to.
+ * @param userFunction Pointer to the user function to emit the
+ * local variable to.
  * @return The offset of the local variable.
  */
 int UserFunctionEmitLocal(UserFunction* userFunction);
@@ -55,11 +57,12 @@ int UserFunctionEmitLocal(UserFunction* userFunction);
 /**
  * @brief Adds a captured variable to the user function.
  *
- * @param userFunction Pointer to the user function to add the captured variable
- * to.
- * @param depth The depth of the captured variable's scope relative to the
- * closure.
- * @param sourceOffset The source offset of the captured variable.
+ * @param userFunction Pointer to the user function to add the
+ * captured variable to.
+ * @param depth The depth of the captured variable's scope
+ * relative to the closure.
+ * @param sourceOffset The source offset of the captured
+ * variable.
  * @return The offset of the captured variable.
  */
 int UserFunctionAddCapture(UserFunction* userFunction,
@@ -67,7 +70,8 @@ int UserFunctionAddCapture(UserFunction* userFunction,
 						   int			 sourceOffset);
 
 /**
- * @brief Converts a user function structure to its string representation.
+ * @brief Converts a user function structure to its string
+ * representation.
  *
  * @param userFunction Pointer to the UserFunction structure.
  * @return String representation of the user function.
@@ -87,16 +91,16 @@ void FreeUserFunction(UserFunction* userFunction);
  * @param name The name of the native function.
  * @param argc The number of arguments the native function takes.
  * @param funcPtr Pointer to the native function implementation.
- * @return Pointer to the newly created NativeFunction structure, or NULL on
- * failure.
+ * @return Pointer to the newly created NativeFunction structure,
+ * or NULL on failure.
  */
 NativeFunction* CreateNativeFunctionMeta(const String			name,
 										 int					argc,
 										 NativeFunctionCallback funcPtr);
 
 /**
- * @brief Converts a native function metadata structure to its string
- * representation.
+ * @brief Converts a native function metadata structure to its
+ * string representation.
  *
  * @param meta Pointer to the NativeFunction structure.
  * @return String representation of the native function metadata.

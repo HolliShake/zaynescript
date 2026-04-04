@@ -45,7 +45,8 @@ bool ImportNodeHasCircularDependency(ImportNode* node, String modulePath) {
 		if (dep->State == SAFE)
 			continue;
 
-		// If we hit a node currently in our traversal stack, it's a cycle
+		// If we hit a node currently in our traversal stack,
+		// it's a cycle
 		if (dep->State == VISITING)
 			return true;
 
@@ -57,7 +58,8 @@ bool ImportNodeHasCircularDependency(ImportNode* node, String modulePath) {
 		}
 
 		// CRITICAL: Mark as Safe. Do not reset to 0.
-		// We know for a fact this branch does not lead to modulePath.
+		// We know for a fact this branch does not lead to
+		// modulePath.
 		dep->State = SAFE;
 	}
 

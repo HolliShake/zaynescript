@@ -1,10 +1,12 @@
 /**
  * @file value.h
- * @brief Runtime value creation, type checking, and comparison interface.
+ * @brief Runtime value creation, type checking, and comparison
+ * interface.
  *
- * Provides factory functions for creating typed runtime values (integers,
- * strings, booleans, functions, classes, etc.), type-inspection predicates,
- * string conversion, and equality comparison.
+ * Provides factory functions for creating typed runtime values
+ * (integers, strings, booleans, functions, classes, etc.),
+ * type-inspection predicates, string conversion, and equality
+ * comparison.
  */
 
 #include "./array.h"
@@ -21,7 +23,8 @@
  *
  * @param interpreter Pointer to the interpreter instance
  * @param message The error message string
- * @return Pointer to newly allocated Value structure containing the error
+ * @return Pointer to newly allocated Value structure containing
+ * the error
  */
 Value* NewErrorValue(Interpreter* interpreter, String message);
 
@@ -31,8 +34,8 @@ Value* NewErrorValue(Interpreter* interpreter, String message);
  * @param interpreter Pointer to the interpreter instance
  * @param fmt Format string for the error message
  * @param ... Additional arguments for formatting the message
- * @return Pointer to newly allocated Value structure containing the error
- * message
+ * @return Pointer to newly allocated Value structure containing
+ * the error message
  */
 Value* NewErrorFValue(Interpreter* interpreter, String fmt, ...);
 
@@ -41,7 +44,8 @@ Value* NewErrorFValue(Interpreter* interpreter, String fmt, ...);
  *
  * @param interpreter Pointer to the interpreter instance
  * @param value The integer value to store
- * @return Pointer to newly allocated Value structure containing the integer
+ * @return Pointer to newly allocated Value structure containing
+ * the integer
  */
 Value* NewIntValue(Interpreter* interpreter, int value);
 
@@ -50,16 +54,19 @@ Value* NewIntValue(Interpreter* interpreter, int value);
  *
  * @param interpreter Pointer to the interpreter instance
  * @param value The big integer value to store
- * @return Pointer to newly allocated Value structure containing the big integer
+ * @return Pointer to newly allocated Value structure containing
+ * the big integer
  */
 Value* NewBigIntValue(Interpreter* interpreter, bf_t* value);
 
 /**
- * @brief Creates a new double-precision floating point number value
+ * @brief Creates a new double-precision floating point number
+ * value
  *
  * @param interpreter Pointer to the interpreter instance
  * @param value The numeric value to store
- * @return Pointer to newly allocated Value structure containing the number
+ * @return Pointer to newly allocated Value structure containing
+ * the number
  */
 Value* NewNumValue(Interpreter* interpreter, double value);
 
@@ -68,7 +75,8 @@ Value* NewNumValue(Interpreter* interpreter, double value);
  *
  * @param interpreter Pointer to the interpreter instance
  * @param value The bignum value to store
- * @return Pointer to newly allocated Value structure containing the bignum
+ * @return Pointer to newly allocated Value structure containing
+ * the bignum
  */
 Value* NewBigNumValue(Interpreter* interpreter, bf_t* value);
 
@@ -77,7 +85,8 @@ Value* NewBigNumValue(Interpreter* interpreter, bf_t* value);
  *
  * @param interpreter Pointer to the interpreter instance
  * @param value The string to store
- * @return Pointer to newly allocated Value structure containing the string
+ * @return Pointer to newly allocated Value structure containing
+ * the string
  */
 Value* NewStrValue(Interpreter* interpreter, String value);
 
@@ -86,7 +95,8 @@ Value* NewStrValue(Interpreter* interpreter, String value);
  *
  * @param interpreter Pointer to the interpreter instance
  * @param value The boolean value to store
- * @return Pointer to newly allocated Value structure containing the boolean
+ * @return Pointer to newly allocated Value structure containing
+ * the boolean
  */
 Value* NewBoolValue(Interpreter* interpreter, int value);
 
@@ -94,7 +104,8 @@ Value* NewBoolValue(Interpreter* interpreter, int value);
  * @brief Creates a new null value
  *
  * @param interpreter Pointer to the interpreter instance
- * @return Pointer to newly allocated Value structure representing null
+ * @return Pointer to newly allocated Value structure
+ * representing null
  */
 Value* NewNullValue(Interpreter* interpreter);
 
@@ -102,9 +113,10 @@ Value* NewNullValue(Interpreter* interpreter);
  * @brief Creates a new promise value
  *
  * @param interpreter Pointer to the interpreter instance
- * @param stateMachine Pointer to the StateMachine structure representing the
- * promise's execution state
- * @return Pointer to newly allocated Value structure representing a promise
+ * @param stateMachine Pointer to the StateMachine structure
+ * representing the promise's execution state
+ * @return Pointer to newly allocated Value structure
+ * representing a promise
  */
 Value* NewPromiseValue(Interpreter* interpreter, StateMachine* stateMachine);
 
@@ -112,9 +124,10 @@ Value* NewPromiseValue(Interpreter* interpreter, StateMachine* stateMachine);
  * @brief Creates a new user function value
  *
  * @param interpreter Pointer to the interpreter instance
- * @param userFunction Pointer to the UserFunction structure to wrap
- * @return Pointer to newly allocated Value structure containing the user
- * function
+ * @param userFunction Pointer to the UserFunction structure to
+ * wrap
+ * @return Pointer to newly allocated Value structure containing
+ * the user function
  */
 Value* NewUserFunctionValue(Interpreter*  interpreter,
 							UserFunction* userFunction);
@@ -123,9 +136,10 @@ Value* NewUserFunctionValue(Interpreter*  interpreter,
  * @brief Creates a new native function value
  *
  * @param interpreter Pointer to the interpreter instance
- * @param nativeFunctionMeta Pointer to the NativeFunction structure to wrap
- * @return Pointer to newly allocated Value structure containing the native
- * function
+ * @param nativeFunctionMeta Pointer to the NativeFunction
+ * structure to wrap
+ * @return Pointer to newly allocated Value structure containing
+ * the native function
  */
 Value* NewNativeFunctionValue(Interpreter*	  interpreter,
 							  NativeFunction* nativeFunctionMeta);
@@ -134,8 +148,10 @@ Value* NewNativeFunctionValue(Interpreter*	  interpreter,
  * @brief Creates a new environment value
  *
  * @param interpreter Pointer to the interpreter instance
- * @param environment Pointer to the Environment structure to wrap
- * @return Pointer to newly allocated Value structure containing the environment
+ * @param environment Pointer to the Environment structure to
+ * wrap
+ * @return Pointer to newly allocated Value structure containing
+ * the environment
  */
 Value* NewEnvironmentValue(Interpreter* interpreter, Environment* environment);
 
@@ -143,7 +159,8 @@ Value* NewEnvironmentValue(Interpreter* interpreter, Environment* environment);
  * @brief Creates a new array value
  *
  * @param interpreter Pointer to the interpreter instance
- * @return Pointer to newly allocated Value structure containing the array
+ * @return Pointer to newly allocated Value structure containing
+ * the array
  */
 Value* NewArrayValue(Interpreter* interpreter);
 
@@ -151,7 +168,8 @@ Value* NewArrayValue(Interpreter* interpreter);
  * @brief Creates a new object value
  *
  * @param interpreter Pointer to the interpreter instance
- * @return Pointer to newly allocated Value structure containing the object
+ * @return Pointer to newly allocated Value structure containing
+ * the object
  */
 Value* NewObjectValue(Interpreter* interpreter);
 
@@ -160,7 +178,8 @@ Value* NewObjectValue(Interpreter* interpreter);
  *
  * @param interpreter Pointer to the interpreter instance
  * @param cls Pointer to the Class structure to wrap
- * @return Pointer to newly allocated Value structure containing the class
+ * @return Pointer to newly allocated Value structure containing
+ * the class
  */
 Value* NewClassValue(Interpreter* interpreter, Class* cls);
 
@@ -169,8 +188,8 @@ Value* NewClassValue(Interpreter* interpreter, Class* cls);
  *
  * @param interpreter Pointer to the interpreter instance
  * @param instance Pointer to the ClassInstance structure to wrap
- * @return Pointer to newly allocated Value structure containing the class
- * instance
+ * @return Pointer to newly allocated Value structure containing
+ * the class instance
  */
 Value* NewClassInstanceValue(Interpreter* interpreter, ClassInstance* instance);
 
@@ -223,7 +242,8 @@ bool ValueIsNum(Value* value);
 bool ValueIsBigNum(Value* value);
 
 /**
- * @brief Checks if a value is any numeric type (int, num, bigint, or bignum)
+ * @brief Checks if a value is any numeric type (int, num,
+ * bigint, or bignum)
  *
  * @param value Pointer to the Value to check
  * @return true if the value is any numeric type, false otherwise
@@ -274,7 +294,8 @@ bool ValueIsUserFunction(Value* value);
  * @brief Checks if a value is a native function
  *
  * @param value Pointer to the Value to check
- * @return true if the value is a native function, false otherwise
+ * @return true if the value is a native function, false
+ * otherwise
  */
 bool ValueIsNativeFunction(Value* value);
 

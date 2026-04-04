@@ -139,7 +139,8 @@ String ValueToString(Value* value) {
 			}
 		case VLT_NUM:
 			buffer = Allocate(64);
-			// Check if the number can be represented as an integer
+			// Check if the number can be represented as an
+			// integer
 			double num = value->Value.Num;
 			if (floor(num) == num && num >= INT_MIN && num <= INT_MAX) {
 				// It's a whole number that fits in an int
@@ -149,7 +150,8 @@ String ValueToString(Value* value) {
 				// It's a whole number that fits in a long
 				snprintf(buffer, 64, "%ld", (long) num);
 			} else {
-				// It's a fractional number, use %.15g for better precision
+				// It's a fractional number, use %.15g for better
+				// precision
 				snprintf(buffer, 64, "%.15g", num);
 			}
 			return buffer;
@@ -167,7 +169,8 @@ String ValueToString(Value* value) {
 					runeCount++;
 				}
 
-				// Estimate buffer size (max 4 bytes per rune + null terminator)
+				// Estimate buffer size (max 4 bytes per rune +
+				// null terminator)
 				size_t bufferSize = runeCount * 4 + 1;
 				buffer			  = Allocate(bufferSize);
 

@@ -1,7 +1,8 @@
 #include "./decompiler.h"
 
 /**
- * @brief Reads a string from a bytecode array at the given offset.
+ * @brief Reads a string from a bytecode array at the given
+ * offset.
  * @param codes The bytecode array.
  * @param alignStart The byte offset to start reading from.
  * @return The decoded string.
@@ -369,19 +370,6 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
 				{
 					int size = _ReadOffset(uf->Codes, ip);
 					_AppendFmt(&result, "OP_POPN_TRY %d\n", size);
-					ip += 4;
-					break;
-				}
-			case OP_ENTER_SCOPE:
-				_Append(&result, "OP_ENTER_SCOPE\n");
-				break;
-			case OP_EXIT_SCOPE:
-				_Append(&result, "OP_EXIT_SCOPE\n");
-				break;
-			case OP_EXITN_SCOPE:
-				{
-					int size = _ReadOffset(uf->Codes, ip);
-					_AppendFmt(&result, "OP_EXITN_SCOPE %d\n", size);
 					ip += 4;
 					break;
 				}

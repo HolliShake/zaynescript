@@ -49,8 +49,10 @@ static Value* _IoGenericPrint(Interpreter* interpreter,
 	}
 	*p = '\0';
 
-	// single write syscall — faster than printf format processing
-	fwrite(buffer, 1, total - 1, stdout);  // total-1 excludes '\0'
+	// single write syscall — faster than printf format
+	// processing
+	fwrite(buffer, 1, total - 1,
+		   stdout);	 // total-1 excludes '\0'
 	if (newline)
 		putchar('\n');
 
@@ -160,9 +162,9 @@ static Value* _IoFormat(Interpreter* interpreter, int argc, Value** arguments) {
 							 "format() expects at least 1 argument");
 	}
 	if (!ValueIsStr(arguments[0])) {
-		return NewErrorValue(
-			interpreter,
-			"format() expects the first argument to be a string");
+		return NewErrorValue(interpreter,
+							 "format() expects the first "
+							 "argument to be a string");
 	}
 
 	String formatStr = ValueToString(arguments[0]);
@@ -248,11 +250,13 @@ _IoSetColor(Interpreter* interpreter, int argc, Value** arguments) {
 // Decompiler
 // ----------------------------------------------------------------
 /**
- * @brief Decompiles a compiled user function back into readable source text.
+ * @brief Decompiles a compiled user function back into readable
+ * source text.
  * @param interpreter Pointer to the interpreter instance.
- * @param uf Pointer to the UserFunction whose bytecode will be decompiled.
- * @return Newly allocated string containing the decompiled text. Caller must
- * free.
+ * @param uf Pointer to the UserFunction whose bytecode will be
+ * decompiled.
+ * @return Newly allocated string containing the decompiled text.
+ * Caller must free.
  * @origin src/decompiler.c:56
  */
 extern String DecompileFunction(Interpreter* interpreter, UserFunction* uf);

@@ -25,7 +25,8 @@ static double _ParseDateString(String dateStr) {
 	bool	  found	   = false;
 
 	// YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss or YYYY-MM-DD HH:mm:ss
-	// We try multiple patterns. sscanf returns number of items assigned.
+	// We try multiple patterns. sscanf returns number of items
+	// assigned.
 	if (sscanf(dateStr, "%d-%d-%d %d:%d:%d", &y, &m, &d, &H, &M, &S) >= 3) {
 		found = true;
 	} else if (sscanf(dateStr, "%d-%d-%dT%d:%d:%d", &y, &m, &d, &H, &M, &S)
@@ -82,8 +83,9 @@ static Value* _DateInit(Interpreter* interpreter, int argc, Value** arguments) {
 			timestamp = CoerceToNum(arg);
 		}
 	} else if (argc >= 3) {
-		// new Date(year, month, [date, hours, minutes, seconds, ms])
-		// Note: argc includes 'this', so arguments are at 1, 2, ...
+		// new Date(year, month, [date, hours, minutes, seconds,
+		// ms]) Note: argc includes 'this', so arguments are at
+		// 1, 2, ...
 		struct tm timeinfo = { 0 };
 
 		// Year
@@ -204,7 +206,8 @@ _DateToString(Interpreter* interpreter, int argc, Value** arguments) {
 	time_t		   rawtime = (time_t) (ts / 1000.0);
 	char		   buffer[128];
 	// Example: "Sat Jan 17 2026 12:34:56"
-	// ctime includes newline, so we might want to manually format or strip it
+	// ctime includes newline, so we might want to manually
+	// format or strip it
 	String tstr = ctime(&rawtime);
 	if (tstr) {
 		size_t len = strlen(tstr);

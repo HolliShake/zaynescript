@@ -1,8 +1,5 @@
 #include "./operation.h"
 
-#include "global.h"
-
-#include <stdio.h>
 
 #define FreeTempBf(interpreter, bf, val)                                       \
 	do {                                                                       \
@@ -30,7 +27,8 @@
 extern void Push(Interpreter* interpreter, Value* value);
 
 /**
- * @brief Pops and returns the top value from the interpreter's stack.
+ * @brief Pops and returns the top value from the interpreter's
+ * stack.
  * @param interpreter The interpreter instance.
  * @return The popped value.
  * @origin src/interpreter.c:107
@@ -46,7 +44,8 @@ extern Value* Popp(Interpreter* interpreter);
 extern void PopN(Interpreter* interpreter, int n);
 
 /**
- * @brief Peeks at the top value on the interpreter's stack without removing it.
+ * @brief Peeks at the top value on the interpreter's stack
+ * without removing it.
  * @param interpreter The interpreter instance.
  * @return The top value on the stack.
  * @origin src/interpreter.c:115
@@ -81,7 +80,8 @@ static void _DupTop(Interpreter* interpreter) {
 }
 
 /**
- * @brief Runs the interpreter's main execution loop on a function value.
+ * @brief Runs the interpreter's main execution loop on a
+ * function value.
  * @param interpreter The interpreter instance.
  * @param fnValue The compiled function value to execute.
  * @origin src/interpreter.c:390
@@ -89,7 +89,8 @@ static void _DupTop(Interpreter* interpreter) {
 extern void Run(Interpreter* interpreter, Value* fnValue);
 
 /**
- * @brief Array of core module mappers for built-in module resolution.
+ * @brief Array of core module mappers for built-in module
+ * resolution.
  * @origin src/core/loader.c:4
  */
 extern CoreMapper _CoreModuleMappers[];
@@ -443,7 +444,8 @@ extern void FreeAst(Ast* ast);
 extern Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
 
 /**
- * @brief Compiles an AST into a callable function value (bytecode).
+ * @brief Compiles an AST into a callable function value
+ * (bytecode).
  * @param compiler The compiler instance.
  * @param programAst The AST to compile.
  * @return The compiled function value.
@@ -521,10 +523,10 @@ static Value* DoImportFileOrLib(Interpreter* interpreter,
 	ImportNode* newNode = CreateOrGetImportNode(interpreter, filePath);
 
 	if (newNode->State == VISITING) {
-		String errMsg =
-			FormatString("%s: circular dependency detected when importing '%s'",
-						 IMPORT_ERROR,
-						 filePath);
+		String errMsg = FormatString("%s: circular dependency detected when "
+									 "importing '%s'",
+									 IMPORT_ERROR,
+									 filePath);
 		Value* errVal = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 		free(filePath);
@@ -532,9 +534,11 @@ static Value* DoImportFileOrLib(Interpreter* interpreter,
 		return errVal;
 	}
 
-	// Note: I removed your old `ImportNodeHasCircularDependency(currentModule,
-	// filePath)` check here because checking `newNode->State == VISITING` does
-	// the exact same thing in O(1) time without traversing the whole graph!
+	// Note: I removed your old
+	// `ImportNodeHasCircularDependency(currentModule, filePath)`
+	// check here because checking `newNode->State == VISITING`
+	// does the exact same thing in O(1) time without traversing
+	// the whole graph!
 
 	ImportNodeAddDependency(currentModule, newNode);
 
@@ -645,10 +649,10 @@ Value* DoCallCtor(Interpreter* interpreter, Value* clsValue, int argc) {
 
 	if (!ValueIsClass(clsValue)) {
 		PopN(interpreter, argc);
-		return NewErrorFValue(
-			interpreter,
-			"%s: attempted to call constructor on non-class value",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: attempted to call "
+							  "constructor on non-class value",
+							  TYPE_ERROR);
 	}
 
 	Class* cls = CoerceToUserClass(clsValue);
@@ -681,8 +685,9 @@ Value* DoCallCtor(Interpreter* interpreter, Value* clsValue, int argc) {
 	Value* result = DoCall(interpreter, constructor, ++argc, true);
 
 	if (ValueIsNull(result)) {
-		Popp(interpreter);				   // Pop constructor return value
-		Push(interpreter, instanceValue);  // Push instance as return value
+		Popp(interpreter);	  // Pop constructor return value
+		Push(interpreter,
+			 instanceValue);  // Push instance as return value
 	}
 
 	return result;
@@ -693,9 +698,8 @@ Value* DoCallMethod(Interpreter* interpreter,
 					Value*		 methodName,
 					int			 argc) {
 	bool withThis = IsMethodOfObject(interpreter, obj, methodName);
-	if (withThis) {
-		++argc;				// add 1 for 'this'
-	} else {
+	if (!withThis) {
+		argc--;
 		Popp(interpreter);	// pop 'this'
 	}
 
@@ -751,13 +755,14 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 	}
 
 	if (ValueIsPromise(fn)) {
-		sm			= CoerceToStateMachine(fn);
-		sm->StckBot = interpreter->StckC;
-		sm->EnvrBot = interpreter->EnvrC;
+		interpreter->ActiveTask = fn;
+		sm						= CoerceToStateMachine(fn);
+		sm->StckBot				= interpreter->StckC;
+		sm->EnvrBot				= interpreter->EnvrC;
 
 		if (1) {
-			// 2. ANCHOR: Set the new bottom to the CURRENT top of the
-			// stack
+			// 2. ANCHOR: Set the new bottom to the CURRENT top
+			// of the stack
 			interpreter->EnvrC = sm->EnvrBot;
 			interpreter->StckC = sm->StckBot;
 
@@ -770,8 +775,8 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 				interpreter->EnvrC = sm->EnvrBot + sm->EnvrTop;
 			}
 
-			// 4. Restore to the OFFSET position (interpreter->Stacks +
-			// sm->StackBot)
+			// 4. Restore to the OFFSET position
+			// (interpreter->Stacks + sm->StackBot)
 			if (sm->Stacks != NULL && sm->StckTop > 0) {
 				memcpy(&interpreter->Stacks[sm->StckBot],
 					   sm->Stacks,
@@ -826,14 +831,10 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 		Value** args = Allocate(sizeof(Value*) * argc);
 		args[0]		 = NULL;
 
-		int end = 0;
-		if (withThis) {
-			end		= 1;
-			args[0] = Popp(interpreter);
-		}
-
-		for (int i = argc - 1; i >= end; i--) {
+		for (int i = 0; i < argc; i++) {
 			args[i] = Popp(interpreter);
+			// printf("ARG[%d]: %s\n", i,
+			// ValueToString(args[i]));
 		}
 
 		Value* res = nativeFunc(interpreter, argc, args);
@@ -1290,8 +1291,8 @@ Value* DoLShift(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		FreeTempBf(interpreter, lhsNum, lhs);
 		FreeTempBf(interpreter, rhsNum, rhs);
 		bf_mul_2exp(resNum, shiftAmount, BF_PREC_INF, BF_RNDZ);
-		// Left shift should never produce a fraction on integers,
-		// but guard anyway in case lhs is a float
+		// Left shift should never produce a fraction on
+		// integers, but guard anyway in case lhs is a float
 		if (shiftAmount < 0) {
 			bf_rint(resNum, BF_RNDD);
 		}
@@ -1327,8 +1328,8 @@ Value* DoRShift(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		bf_t* resNum = Allocate(sizeof(bf_t));
 		bf_init(&interpreter->BfContext, resNum);
 
-		// Get shift amount from rhs and negate it (right shift = left
-		// shift by -n)
+		// Get shift amount from rhs and negate it (right shift =
+		// left shift by -n)
 		slimb_t shiftAmount;
 #if LIMB_BITS == 32
 		bf_get_int32(&shiftAmount, rhsNum, 0);
@@ -1346,8 +1347,8 @@ Value* DoRShift(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		FreeTempBf(interpreter, lhsNum, lhs);
 		FreeTempBf(interpreter, rhsNum, rhs);
 		bf_mul_2exp(resNum, shiftAmount, BF_PREC_INF, BF_RNDZ);
-		// Right shift can produce a fraction, floor it (arithmetic
-		// shift behavior)
+		// Right shift can produce a fraction, floor it
+		// (arithmetic shift behavior)
 		bf_rint(resNum, BF_RNDD);
 
 		int prec = BFPrecession(lhs) | BFPrecession(rhs);
@@ -1471,6 +1472,10 @@ Value* DoGTE(Interpreter* interpreter, Value* lhs, Value* rhs) {
 }
 
 Value* DoEQ(Interpreter* interpreter, Value* lhs, Value* rhs) {
+	if (ValueIsEqual(lhs, rhs)) {
+		return interpreter->True;
+	}
+
 	if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
 		bf_t* lhsNum	 = CoerceToBitField(interpreter, lhs);
 		bf_t* rhsNum	 = CoerceToBitField(interpreter, rhs);
@@ -1479,7 +1484,8 @@ Value* DoEQ(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		FreeTempBf(interpreter, rhsNum, rhs);
 		return comparison ? interpreter->True : interpreter->False;
 	}
-	return ValueIsEqual(lhs, rhs) ? interpreter->True : interpreter->False;
+
+	return interpreter->False;
 }
 
 Value* DoNE(Interpreter* interpreter, Value* lhs, Value* rhs) {

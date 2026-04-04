@@ -1,5 +1,7 @@
 #include "./promise.h"
 
+extern void EnqueueTask(Interpreter* interpreter, Value* task);
+
 Value* _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 2) {
 		return NewErrorValue(interpreter, "Promise.then expects 2 arguments");
@@ -15,9 +17,9 @@ Value* _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
 	}
 
 	if (!ValueIsCallable(thenCallback)) {
-		return NewErrorValue(
-			interpreter,
-			"Second argument to Promise.then must be a function");
+		return NewErrorValue(interpreter,
+							 "Second argument to Promise.then "
+							 "must be a function");
 	}
 
 	int argNeeded = ValueIsNativeFunction(thenCallback)
@@ -32,21 +34,21 @@ Value* _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
 
 	StateMachine* originalSM = CoerceToStateMachine(thisArg);
 
-	StateMachine* sm		 = CreateStateMachine(PENDING,
-												  true,
-												  0,
-												  interpreter->CallEnv,
-												  thisArg,
-												  thenCallback);
-	Value*		  newPromise = NewPromiseValue(interpreter, sm);
+	StateMachine* sm = CreateStateMachine(PENDING,
+										  true,
+										  0,
+										  interpreter->CallEnv,
+										  thisArg,
+										  thenCallback);
+
+	sm->Line = originalSM->Line;
+
+	Value* newPromise = NewPromiseValue(interpreter, sm);
 
 	if (originalSM->State == PENDING) {
 		StateMachineAddWaitList(originalSM, newPromise);
 	} else {
-		int tail =
-			(interpreter->TaskQueueHead + interpreter->TaskQueueC) % STACK_SIZE;
-		interpreter->TaskQueue[tail] = newPromise;
-		interpreter->TaskQueueC++;
+		EnqueueTask(interpreter, newPromise);
 	}
 
 	return newPromise;
@@ -67,9 +69,9 @@ Value* _PromiseError(Interpreter* interpreter, int argc, Value** arguments) {
 	}
 
 	if (!ValueIsCallable(catchCallback)) {
-		return NewErrorValue(
-			interpreter,
-			"Second argument to Promise.error must be a function");
+		return NewErrorValue(interpreter,
+							 "Second argument to Promise.error "
+							 "must be a function");
 	}
 
 	int argNeeded = ValueIsNativeFunction(catchCallback)
@@ -82,15 +84,26 @@ Value* _PromiseError(Interpreter* interpreter, int argc, Value** arguments) {
 							 "exactly 1 argument (error)");
 	}
 
-	StateMachine* sm		 = CreateStateMachine(PENDING,
-												  true,
-												  0,
-												  interpreter->CallEnv,
-												  thisArg,
-												  catchCallback);
-	Value*		  newPromise = NewPromiseValue(interpreter, sm);
+	StateMachine* originalSM = CoerceToStateMachine(thisArg);
+	originalSM->IsCatched	 = true;
 
-	StateMachineAddWaitList(CoerceToStateMachine(thisArg), newPromise);
+	StateMachine* sm = CreateStateMachine(PENDING,
+										  true,
+										  0,
+										  interpreter->CallEnv,
+										  thisArg,
+										  catchCallback);
+
+	sm->Line = originalSM->Line;
+
+	Value* newPromise = NewPromiseValue(interpreter, sm);
+
+	if (originalSM->State == PENDING) {
+		// Queue the catch callback to run as soon as possible
+		StateMachineAddWaitList(originalSM, newPromise);
+	} else if (originalSM->State == REJECTED) {
+		EnqueueTask(interpreter, newPromise);
+	}
 
 	return newPromise;
 }

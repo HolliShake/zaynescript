@@ -75,13 +75,15 @@ static Value* _OsSystem(Interpreter* interpreter, int argc, Value** arguments) {
 
 	String cmd	  = ValueToString(arguments[0]);
 	int	   status = system(cmd);
-	// Note: ensure free(cmd) matches how your interpreter allocates strings
+	// Note: ensure free(cmd) matches how your interpreter
+	// allocates strings
 	free(cmd);
 
 	return NewIntValue(interpreter, status);
 }
 
-// _OsGetType remains the same as your original (it was correctly using #ifdefs)
+// _OsGetType remains the same as your original (it was correctly
+// using #ifdefs)
 static Value*
 _OsGetType(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 0) {
