@@ -4,6 +4,7 @@
 [![Language: C](https://img.shields.io/badge/Language-C-informational.svg)](https://en.wikipedia.org/wiki/C_(programming_language))
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)](#building)
 [![Docs](https://img.shields.io/badge/Docs-online-green.svg)](https://hollishake.github.io/zaynescript)
+[![GitHub](https://img.shields.io/badge/GitHub-HolliShake%2FLanguageX-181717.svg?logo=github)](https://github.com/HolliShake/LanguageX)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════╗
@@ -19,45 +20,6 @@
 ```
 
 **ZayneScript** is a custom interpreted scripting language written in pure C. It features dynamic typing, first-class functions with closures, object-oriented programming with classes, and a comprehensive standard library.
-
-## Features
-
--   **Dynamic Typing**: Variables can hold values of any type.
--   **Functions**: First-class functions, closures, recursion, and higher-order functions.
--   **Async Functions**: Functions can be declared `async` to run asynchronously.
--   **BigInt Support**: Arbitrary-precision integers using the `n` suffix (e.g., `100n`).
--   **Object-Oriented**:
-    -   Class-based inheritance.
-    -   Static methods and static properties.
-    -   Constructors (`init`).
-    -   `this` keyword for instance access.
--   **Data Structures**:
-    -   **Arrays**: Dynamic arrays with built-in methods (`push`, `pop`, `length`, `each`, `keep`).
-    -   **Objects**: Key-value pairs with dot and bracket notation, object shorthand, and spread syntax.
--   **Control Flow**:
-    -   `if`/`else` conditionals with optional initializer (`:=`).
-    -   `for`, `while` (with optional initializer), and `do-while` loops.
-    -   `break` and `continue` statements.
-    -   `switch` statements and expression-position `switch`.
-    -   `try`/`catch` blocks for error handling.
-    -   Ternary expressions: `cond ? a : b` and postfix `value if (cond) else alt`.
--   **Operators**:
-    -   Arithmetic: `+`, `-`, `*`, `/`, `%`
-    -   Bitwise: `&`, `|`, `^`, `<<`, `>>`
-    -   Logical: `&&`, `||`, `!`
-    -   Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`
-    -   Augmented assignment: `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `|=`, `^=`, `<<=`, `>>=`
-    -   Increment / Decrement: `++`, `--` (prefix and postfix)
-    -   Spread: `...` in array and object literals
--   **Standard Library**:
-    -   `core:io`: Input/Output (`print`, `println`, `scan`, `parseNum`, `format`, `clearScreen`, `setColor`).
-    -   `core:math`: Math library (`sin`, `cos`, `pow`, `sqrt`, etc.).
-    -   `core:os`: OS utilities (`getCwd`, `getPid`, `getUser`, `getType`, `system`).
-    -   `core:Array`: Array class with static helpers.
-    -   `core:Date`: Date and time class.
-    -   `core:Promise`: Promise class for manual async composition.
-    -   `core:sqlite`: SQLite3 bindings (`Database`, `Statement`).
--   **Modules**: Named and wildcard imports, `lib:` user libraries, and relative file imports.
 
 ## Building
 
