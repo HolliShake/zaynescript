@@ -54,6 +54,15 @@ static AppState* _GetApp(ClassInstance* cls) {
 	return NULL;
 }
 
+static void _AppStateFree(AppState* app) {
+	for (size_t i = 0; i < app->count; i++) {
+		free(app->routes[i].method); /* strdup'd, or NULL for wildcard */
+		free(app->routes[i].path);
+	}
+	free(app->routes);
+	free(app);
+}
+
 static void _AppAddRoute(AppState*	 app,
 						 const char* method,
 						 const char* path,
@@ -481,6 +490,8 @@ static Value* _AppListen(Interpreter* interp, int argc, Value** args) {
 	struct mg_connection* lc = mg_http_listen(&app->mgr, url, _EvHandler, app);
 	if (lc == NULL) {
 		mg_mgr_free(&app->mgr);
+		_AppStateFree(app);
+		HashMapSet(cls->Members, "_ptr", NewOpquePtrValue(interp, NULL));
 		return NewErrorFValue(interp,
 							  "listen(): failed to bind on port %d",
 							  port);
@@ -501,6 +512,8 @@ static Value* _AppListen(Interpreter* interp, int argc, Value** args) {
 		mg_mgr_poll(&app->mgr, 100);
 
 	mg_mgr_free(&app->mgr);
+	_AppStateFree(app);
+	HashMapSet(cls->Members, "_ptr", NewOpquePtrValue(interp, NULL));
 	return interp->Null;
 }
 
