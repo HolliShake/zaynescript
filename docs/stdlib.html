@@ -136,7 +136,11 @@
                     <li><a href="#sqlite-stmt-all">all</a></li>
                     <li><a href="#sqlite-stmt-bind">bind</a></li>
                     <li><a href="#sqlite-stmt-pluck">pluck</a></li>
-                    <li><a href="#sqlite-stmt-columns">columns
+                    <li><a href="#sqlite-stmt-columns">columns</a></li>
+                    <li><a href="#sqlite-stmt-finalize">finalize</a></li>
+                    <li><a href="#sqlite-patterns">Common patterns</a></li>
+                </ul>
+            </div>
         </aside>
 
         <!-- Main content -->
@@ -805,10 +809,6 @@ const def = new Database();               // also in-memory</code></pre>
                 <p class="method-desc">
                     Executes one or more semicolon-separated SQL statements with no
                     parameter binding. Ideal for DDL (<code>CREATE</code>,
-                    <code>DROP</code>, <code>ALTER</code>), <code>PRAGMA</code>s, and
-                    multi-statement migration scripts.
-                    Returns <code>null</code> on success; an error on failure.
-                </p>. Ideal for DDL (<code>CREATE</code>,
                     <code>DROP</code>, <code>ALTER</code>), <code>PRAGMA</code>s, and
                     multi-statement migration scripts.
                     Returns <code>null</code> on success; an error on failure.
