@@ -21,6 +21,8 @@ EXT_HEADER_ORDER = [
     # libbf
     "libbf/cutils.h",
     "libbf/libbf.h",
+    # sqlite3 (used by core/sqlite.c)
+    "sqlite/sqlite3.h",
     # utf8proc (low-level)
     "utf/utf8proc/utf8proc.h",
     # utf wrapper
@@ -28,6 +30,10 @@ EXT_HEADER_ORDER = [
 ]
 
 # External dependency sources.
+# NOTE: sqlite/sqlite3.c is intentionally excluded — it must be compiled as a
+# separate translation unit (or linked as a shared library via -lsqlite3) because
+# it defines internal typedefs (Parse, Token, etc.) that conflict with the
+# project's own symbols when included in the same compilation unit.
 EXT_SOURCE_ORDER = [
     "libbf/cutils.c",
     "libbf/libbf.c",
@@ -67,6 +73,7 @@ HEADER_ORDER = [
     "src/core/math.h",
     "src/core/os.h",
     "src/core/promise.h",
+    "src/core/sqlite.h",
     "src/core/loader.h",
     # Layer 5: high-level headers
     "src/operation.h",
@@ -79,6 +86,7 @@ HEADER_ORDER = [
 # then main.c last).
 SOURCE_ORDER = [
     "src/global.c",
+    "src/import.c",
     "src/position.c",
     "src/array.c",
     "src/astnode.c",
@@ -98,6 +106,7 @@ SOURCE_ORDER = [
     "src/core/math.c",
     "src/core/os.c",
     "src/core/promise.c",
+    "src/core/sqlite.c",
     "src/core/loader.c",
     "src/operation.c",
     "src/parser.c",

@@ -28,10 +28,12 @@ SRCS     := main.c \
             $(wildcard src/core/*.c) \
             $(wildcard utf/*.c) \
             $(wildcard utf/utf8proc/*.c) \
-            $(wildcard libbf/*.c) \
-            $(wildcard sqlite/*.c)
+            $(wildcard libbf/*.c)
 
-LDFLAGS  := -lm -ldl -lpthread
+SQLITE_SO := sqlite/libsqlite3.so
+
+LDFLAGS       := -lm -ldl -lpthread -Lsqlite -lsqlite3 -Wl,-rpath,'$$ORIGIN/sqlite'
+LDFLAGS_INST  := -lm -ldl -lpthread -Lsqlite -lsqlite3 -Wl,-rpath,'$$ORIGIN/../lib/zscript'
 
 # ----------------------------------------------------------------
 
@@ -39,27 +41,43 @@ PREFIX   ?= /usr/local
 BINDIR   ?= $(PREFIX)/bin
 LIBDIR   ?= $(PREFIX)/lib/zscript
 
-.PHONY: all release debug clean run install uninstall amalgamate
+.PHONY: all release release-install debug clean run install uninstall amalgamate
 
 all: debug
 
-release:
+release: $(SQLITE_SO)
 	@echo "Building in release mode (clang, super-optimized)..."
 	$(CC) $(CFLAGSR) $(CFLAGS_OPT) -DBUILD_DATE='"$(BUILD_DATE)"' $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_OPT)
 	@echo "Build successful → $(TARGET)"
 
-debug:
+release-install: $(SQLITE_SO)
+	@echo "Building in release mode (install RPATH)..."
+	$(CC) $(CFLAGSR) $(CFLAGS_OPT) -DBUILD_DATE='"$(BUILD_DATE)"' $(SRCS) -o $(TARGET) $(LDFLAGS_INST) $(LDFLAGS_OPT)
+	@echo "Build successful → $(TARGET)"
+
+debug: $(SQLITE_SO)
 	@echo "Building in debug mode..."
 	$(CC) $(CFLAGS) -O0 -DBUILD_DATE='"$(BUILD_DATE)"' $(SRCS) -o $(TARGET) $(LDFLAGS)
 	@echo "Build successful → $(TARGET)"
 
-clean:
-	rm -f $(TARGET)
+$(SQLITE_SO): sqlite/sqlite3.c
+	@echo "Building SQLite shared library..."
+	$(CC) -fPIC -shared -O2 -o $@ $<
 
-install: release
+clean:
+	rm -f $(TARGET) $(SQLITE_SO)
+
+install: release-install
 	@echo "Installing $(TARGET) → $(BINDIR)/zscript"
 	install -d $(BINDIR)
 	install -m 755 $(TARGET) $(BINDIR)/zscript
+	install -d $(LIBDIR)
+	@if [ ! -f $(LIBDIR)/libsqlite3.so ]; then \
+		echo "Installing $(SQLITE_SO) → $(LIBDIR)/libsqlite3.so"; \
+		install -m 755 $(SQLITE_SO) $(LIBDIR)/libsqlite3.so; \
+	else \
+		echo "Skipping $(LIBDIR)/libsqlite3.so (already exists)"; \
+	fi
 	@echo "Installing lib → $(LIBDIR)/lib/"
 	cd lib && find . -type d -exec install -d $(LIBDIR)/lib/{} \; \
 	       && find . -type f -exec install -m 644 {} $(LIBDIR)/lib/{} \;
