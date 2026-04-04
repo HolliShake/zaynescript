@@ -16,7 +16,6 @@ CoreMapper _CoreModuleMappers[] = {
 Value* LoadCoreModule(Interpreter* interpreter, String moduleName) {
 	for (int i = 0; _CoreModuleMappers[i].Name != NULL; i++) {
 		if (strcmp(_CoreModuleMappers[i].Name, moduleName) == 0) {
-			printf("%s == %s\n", _CoreModuleMappers[i].Name, moduleName);
 			return _CoreModuleMappers[i].Loader(interpreter);
 		}
 	}
