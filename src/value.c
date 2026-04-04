@@ -1,5 +1,7 @@
 #include "./value.h"
 
+#include "global.h"
+
 static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
 	Value* v  = Allocate(sizeof(Value));
 	v->Type	  = type;
@@ -355,19 +357,12 @@ bool ValueIsEqual(Value* a, Value* b) {
 	else if (ValueIsNum(a) && ValueIsNum(b)) {
 		return CoerceToI64(a) == CoerceToI64(b);
 	} else if (ValueIsStr(a) && ValueIsStr(b)) {
-		Rune* lhsRunes = (Rune*) a->Value.Opaque;
-		Rune* rhsRunes = (Rune*) b->Value.Opaque;
-		// Compare rune by rune
-		int i	  = 0;
-		int equal = 1;
-		while (lhsRunes[i] != 0 || rhsRunes[i] != 0) {
-			if (lhsRunes[i] != rhsRunes[i]) {
-				equal = 0;
-				break;
-			}
-			i++;
-		}
-		return equal;
+		String astr = RunesStrToString((Rune*) a->Value.Opaque);
+		String bstr = RunesStrToString((Rune*) b->Value.Opaque);
+		bool   eq	= strcmp(astr, bstr) == 0;
+		free(astr);
+		free(bstr);
+		return eq;
 	} else if (ValueIsBool(a) && ValueIsBool(b)) {
 		return CoerceToBool(a) == CoerceToBool(b);
 	} else if (ValueIsNull(a) && ValueIsNull(b)) {
