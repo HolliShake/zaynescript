@@ -534,12 +534,6 @@ static Value* DoImportFileOrLib(Interpreter* interpreter,
 		return errVal;
 	}
 
-	// Note: I removed your old
-	// `ImportNodeHasCircularDependency(currentModule, filePath)`
-	// check here because checking `newNode->State == VISITING`
-	// does the exact same thing in O(1) time without traversing
-	// the whole graph!
-
 	ImportNodeAddDependency(currentModule, newNode);
 
 	// 4. Cache Check
