@@ -20,9 +20,7 @@
 String ReadInternalFile(String path) {
 	FILE* file = fopen(path, "rb");
 	if (!file) {
-		fprintf(stderr,
-				"Error: Could not open file '%s'\n",
-				path);
+		fprintf(stderr, "Error: Could not open file '%s'\n", path);
 		return NULL;
 	}
 
@@ -32,10 +30,9 @@ String ReadInternalFile(String path) {
 
 	char* buffer = (char*) malloc(size + 1);
 	if (!buffer) {
-		fprintf(
-			stderr,
-			"Error: Could not allocate memory for file '%s'\n",
-			path);
+		fprintf(stderr,
+				"Error: Could not allocate memory for file '%s'\n",
+				path);
 		fclose(file);
 		return NULL;
 	}
@@ -75,10 +72,9 @@ int RunTestInProcess(const char* testPath, const char* exePath) {
 						NULL,
 						&si,
 						&pi)) {
-		fprintf(
-			stderr,
-			"  FAILED: Could not create process (error %lu)\n",
-			GetLastError());
+		fprintf(stderr,
+				"  FAILED: Could not create process (error %lu)\n",
+				GetLastError());
 		return EXIT_FAILURE;
 	}
 
@@ -126,9 +122,7 @@ int RunTestInProcess(const char* testPath, const char* exePath) {
 
 		char	buffer[256];
 		ssize_t bytesRead;
-		while ((bytesRead =
-					read(pipefd[0], buffer, sizeof(buffer) - 1))
-			   > 0) {
+		while ((bytesRead = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
 			buffer[bytesRead] = '\0';
 			printf("%s",
 				   buffer);	 // Removed the prepended spaces that
@@ -185,16 +179,15 @@ void RunTests() {
 		if (*p == '/')
 			*p = '\\';
 	}
-#elif defined(__APPLE__) || defined(__FreeBSD__)                \
-	|| defined(__OpenBSD__) || defined(__NetBSD__)
+#elif defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)       \
+	|| defined(__NetBSD__)
 // macOS and BSD systems
 #	if defined(__APPLE__)
 	uint32_t size = sizeof(exePath);
 	if (_NSGetExecutablePath(exePath, &size) != 0) {
 		strcpy(exePath, "./main");
 	}
-#	elif defined(__FreeBSD__) || defined(__OpenBSD__)          \
-		|| defined(__NetBSD__)
+#	elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
 	int	   mib[4];
 	size_t len = sizeof(exePath);
 	mib[0]	   = CTL_KERN;
@@ -217,8 +210,7 @@ void RunTests() {
 #	endif
 #else
 	// Linux and other Unix-like systems
-	ssize_t len =
-		readlink("/proc/self/exe", exePath, sizeof(exePath) - 1);
+	ssize_t len = readlink("/proc/self/exe", exePath, sizeof(exePath) - 1);
 	if (len != -1) {
 		exePath[len] = '\0';
 	} else {
@@ -237,8 +229,7 @@ void RunTests() {
 
 		// Check if file has .zs extension
 		size_t nameLen = strlen(entry->d_name);
-		if (nameLen < 3
-			|| strcmp(entry->d_name + nameLen - 3, ".zs") != 0) {
+		if (nameLen < 3 || strcmp(entry->d_name + nameLen - 3, ".zs") != 0) {
 			continue;
 		}
 
@@ -254,17 +245,9 @@ void RunTests() {
 		// Build full path with proper directory separator
 		char fullPath[512];
 #ifdef _WIN32
-		snprintf(fullPath,
-				 sizeof(fullPath),
-				 "%s%s",
-				 testsPath,
-				 entry->d_name);
+		snprintf(fullPath, sizeof(fullPath), "%s%s", testsPath, entry->d_name);
 #else
-		snprintf(fullPath,
-				 sizeof(fullPath),
-				 "%s%s",
-				 testsPath,
-				 entry->d_name);
+		snprintf(fullPath, sizeof(fullPath), "%s%s", testsPath, entry->d_name);
 #endif
 
 		printf("Running test: %s\n", fullPath);
@@ -338,53 +321,41 @@ void PrintHelp() {
 				   "══════════════════════╗\n" CLR);
 	/* Empty */
 	printf(CLR_CYN "║" CLR "                                    "
-						   "                                "
+				   "                                "
 				   "                      " CLR_CYN "║\n" CLR);
 	/* ASCII banner */
-	printf(
-		CLR_CYN
-		"║" CLR_BYEL
-		"  ███████╗ █████╗ ██╗   ██╗███╗   ██╗███████╗███████╗ "
-		"██████╗██████╗ ██╗██████╗ ████████╗ " CLR_CYN
-		"║\n" CLR);
 	printf(CLR_CYN "║" CLR_BYEL
-				   "  ╚══███╔╝██╔══██╗╚██╗ ██╔╝████╗  "
+				   "  ███████╗ █████╗ ██╗   ██╗███╗   ██╗███████╗███████╗ "
+				   "██████╗██████╗ ██╗██████╗ ████████╗ " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN "║" CLR_BYEL "  ╚══███╔╝██╔══██╗╚██╗ ██╔╝████╗  "
 				   "██║██╔════╝██╔════╝██╔════╝██╔══██╗██║██╔══█"
 				   "█╗╚══██╔══╝ " CLR_CYN "║\n" CLR);
-	printf(CLR_CYN
-		   "║" CLR_BYEL "    ███╔╝ ███████║ ╚████╔╝ ██╔██╗ "
-						"██║█████╗  ███████╗██║     "
-		   "██████╔╝██║██████╔╝   ██║    " CLR_CYN "║\n" CLR);
-	printf(CLR_CYN
-		   "║" CLR_BYEL "   ███╔╝  ██╔══██║  ╚██╔╝  "
-						"██║╚██╗██║██╔══╝  ╚════██║██║     "
-		   "██╔══██╗██║██╔═══╝    ██║    " CLR_CYN "║\n" CLR);
-	printf(CLR_CYN "║" CLR_BYEL
-				   "  ███████╗██║  ██║   ██║   ██║ "
+	printf(CLR_CYN "║" CLR_BYEL "    ███╔╝ ███████║ ╚████╔╝ ██╔██╗ "
+				   "██║█████╗  ███████╗██║     "
+				   "██████╔╝██║██████╔╝   ██║    " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN "║" CLR_BYEL "   ███╔╝  ██╔══██║  ╚██╔╝  "
+				   "██║╚██╗██║██╔══╝  ╚════██║██║     "
+				   "██╔══██╗██║██╔═══╝    ██║    " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN "║" CLR_BYEL "  ███████╗██║  ██║   ██║   ██║ "
 				   "╚████║███████╗███████║╚██████╗██║  "
 				   "██║██║██║        ██║    " CLR_CYN "║\n" CLR);
-	printf(CLR_CYN "║" CLR_BYEL
-				   "  ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚═╝  "
+	printf(CLR_CYN "║" CLR_BYEL "  ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚═╝  "
 				   "╚═══╝╚══════╝╚══════╝ ╚═════╝╚═╝  "
 				   "╚═╝╚═╝╚═╝        ╚═╝    " CLR_CYN "║\n" CLR);
 	/* Empty */
 	printf(CLR_CYN "║" CLR "                                    "
-						   "                                "
+				   "                                "
 				   "                      " CLR_CYN "║\n" CLR);
 	/* Subtitle */
-	printf(CLR_CYN
-		   "║" CLR "                                " CLR_BWHT
-		   "A Custom Programming Language" CLR
-		   "                             " CLR_CYN "║\n" CLR);
-	printf(CLR_CYN
-		   "║" CLR
-		   "                                      " CLR_DIM
-		   "Implemented in C" CLR
-		   "                                    " CLR_CYN
-		   "║\n" CLR);
+	printf(CLR_CYN "║" CLR "                                " CLR_BWHT
+				   "A Custom Programming Language" CLR
+				   "                             " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN "║" CLR "                                      " CLR_DIM
+				   "Implemented in C" CLR
+				   "                                    " CLR_CYN "║\n" CLR);
 	/* Empty */
 	printf(CLR_CYN "║" CLR "                                    "
-						   "                                "
+				   "                                "
 				   "                      " CLR_CYN "║\n" CLR);
 	/* Info section */
 	printf(CLR_CYN "║" CLR "  " CLR_BWHT "Features:" CLR
@@ -399,12 +370,12 @@ void PrintHelp() {
 				   "   Philipp Andrew Redondo                   "
 				   "               "
 				   "                      " CLR_CYN "║\n" CLR);
-	printf(CLR_CYN "║" CLR "  " CLR_BWHT "Build:" CLR
-				   "    " CLR_YEL "%-78s" CLR CLR_CYN "║\n" CLR,
+	printf(CLR_CYN "║" CLR "  " CLR_BWHT "Build:" CLR "    " CLR_YEL
+				   "%-78s" CLR CLR_CYN "║\n" CLR,
 		   BUILD_DATE);
 	/* Empty */
 	printf(CLR_CYN "║" CLR "                                    "
-						   "                                "
+				   "                                "
 				   "                      " CLR_CYN "║\n" CLR);
 	/* Usage */
 	printf(CLR_CYN "║" CLR "  " CLR_BOLD "usage:" CLR
@@ -454,8 +425,7 @@ int main(int argc, char** argv) {
 
 	// Check if help flag is provided
 	if (argc > 1
-		&& (strcmp(argv[1], "--help") == 0
-			|| strcmp(argv[1], "-h") == 0)) {
+		&& (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) {
 		PrintHelp();
 		return EXIT_SUCCESS;
 	}
@@ -476,8 +446,7 @@ int main(int argc, char** argv) {
 			*p = '\\';
 	}
 #else
-	ssize_t execLen =
-		readlink("/proc/self/exe", execBuf, sizeof(execBuf) - 1);
+	ssize_t execLen = readlink("/proc/self/exe", execBuf, sizeof(execBuf) - 1);
 	if (execLen != -1) {
 		execBuf[execLen] = '\0';
 	} else {

@@ -1,79 +1,70 @@
 #include "./function.h"
 
-UserFunction*
-CreateUserFunction(String name, int argc, bool async) {
+UserFunction* CreateUserFunction(String name, int argc, bool async) {
 	UserFunction* userFunction = Allocate(sizeof(UserFunction));
 	userFunction->Scope		   = NULL;
-	userFunction->Name =
-		name != NULL ? AllocateString(name) : NULL;
-	userFunction->Async	   = async;
-	userFunction->Codes	   = Allocate(sizeof(uint8_t) * 1);
-	userFunction->Codes[0] = 255;
-	userFunction->CodeC	   = 0;
-	userFunction->Lines	   = Allocate(sizeof(LineInfo) * 1);
-	userFunction->LineC	   = 0;
-	userFunction->Argc	   = argc;
-	userFunction->LocalC   = 0;
-	userFunction->CaptureMetas =
-		Allocate(sizeof(CaptureMeta) * 1);
-	userFunction->CaptureC = 0;
-	userFunction->Captures = Allocate(sizeof(EnvCell*) * 1);
+	userFunction->Name		   = name != NULL ? AllocateString(name) : NULL;
+	userFunction->Async		   = async;
+	userFunction->Codes		   = Allocate(sizeof(uint8_t) * 1);
+	userFunction->Codes[0]	   = 255;
+	userFunction->CodeC		   = 0;
+	userFunction->Lines		   = Allocate(sizeof(LineInfo) * 1);
+	userFunction->LineC		   = 0;
+	userFunction->Argc		   = argc;
+	userFunction->LocalC	   = 0;
+	userFunction->CaptureMetas = Allocate(sizeof(CaptureMeta) * 1);
+	userFunction->CaptureC	   = 0;
+	userFunction->Captures	   = Allocate(sizeof(EnvCell*) * 1);
 	return userFunction;
 }
 
 UserFunction* CreateMainUserFunction(String name, int argc) {
 	UserFunction* userFunction = Allocate(sizeof(UserFunction));
 	userFunction->Scope		   = NULL;
-	userFunction->Name =
-		name != NULL ? AllocateString(name) : NULL;
-	userFunction->Async	   = false;
-	userFunction->Codes	   = Allocate(sizeof(uint8_t) * 1);
-	userFunction->Codes[0] = 255;
-	userFunction->CodeC	   = 0;
-	userFunction->Lines	   = Allocate(sizeof(LineInfo) * 1);
-	userFunction->LineC	   = 0;
-	userFunction->Argc	   = argc;
-	userFunction->LocalC   = 0;
-	userFunction->CaptureMetas =
-		Allocate(sizeof(CaptureMeta) * 1);
-	userFunction->CaptureC = 0;
-	userFunction->Captures = Allocate(sizeof(EnvCell*) * 1);
+	userFunction->Name		   = name != NULL ? AllocateString(name) : NULL;
+	userFunction->Async		   = false;
+	userFunction->Codes		   = Allocate(sizeof(uint8_t) * 1);
+	userFunction->Codes[0]	   = 255;
+	userFunction->CodeC		   = 0;
+	userFunction->Lines		   = Allocate(sizeof(LineInfo) * 1);
+	userFunction->LineC		   = 0;
+	userFunction->Argc		   = argc;
+	userFunction->LocalC	   = 0;
+	userFunction->CaptureMetas = Allocate(sizeof(CaptureMeta) * 1);
+	userFunction->CaptureC	   = 0;
+	userFunction->Captures	   = Allocate(sizeof(EnvCell*) * 1);
 	return userFunction;
 }
 
 UserFunction* UserFunctionClone(UserFunction* userFunction) {
 	UserFunction* clone = CreateUserFunction(
-		userFunction->Name != NULL
-			? AllocateString(userFunction->Name)
-			: NULL,
+		userFunction->Name != NULL ? AllocateString(userFunction->Name) : NULL,
 		userFunction->Argc,
 		userFunction->Async);
 	clone->Scope = userFunction->Scope;
 	clone->LineC = userFunction->LineC;
 	clone->Lines =
-		Reallocate(clone->Lines,
-				   sizeof(LineInfo) * (userFunction->LineC + 1));
+		Reallocate(clone->Lines, sizeof(LineInfo) * (userFunction->LineC + 1));
 	memcpy(clone->Lines,
 		   userFunction->Lines,
 		   sizeof(LineInfo) * (userFunction->LineC + 1));
 	clone->CodeC = userFunction->CodeC;
 	clone->Codes =
-		Reallocate(clone->Codes,
-				   sizeof(uint8_t) * (userFunction->CodeC + 1));
+		Reallocate(clone->Codes, sizeof(uint8_t) * (userFunction->CodeC + 1));
 	memcpy(clone->Codes,
 		   userFunction->Codes,
 		   sizeof(uint8_t) * (userFunction->CodeC + 1));
-	clone->LocalC		= userFunction->LocalC;
-	clone->CaptureC		= userFunction->CaptureC;
-	clone->CaptureMetas = Reallocate(
-		clone->CaptureMetas,
-		sizeof(CaptureMeta) * (userFunction->CaptureC + 1));
+	clone->LocalC	= userFunction->LocalC;
+	clone->CaptureC = userFunction->CaptureC;
+	clone->CaptureMetas =
+		Reallocate(clone->CaptureMetas,
+				   sizeof(CaptureMeta) * (userFunction->CaptureC + 1));
 	memcpy(clone->CaptureMetas,
 		   userFunction->CaptureMetas,
 		   sizeof(CaptureMeta) * userFunction->CaptureC);
-	clone->Captures = Reallocate(
-		clone->Captures,
-		sizeof(EnvCell*) * (userFunction->CaptureC + 1));
+	clone->Captures =
+		Reallocate(clone->Captures,
+				   sizeof(EnvCell*) * (userFunction->CaptureC + 1));
 	// Initialize Captures to NULL - they will be set up in
 	// DoLoadFunction
 	for (int i = 0; i < userFunction->CaptureC; i++) {
@@ -93,37 +84,30 @@ int UserFunctionAddCapture(UserFunction* userFunction,
 	CaptureMeta capture;
 	capture.Depth = depth;
 	capture.Src	  = sourceOffset;
-	capture.Dst =
-		offset;	 // The destination offset is determined by the
-				 // current capture count
-	userFunction->CaptureMetas[userFunction->CaptureC++] =
-		capture;
-	userFunction->CaptureMetas = Reallocate(
-		userFunction->CaptureMetas,
-		sizeof(CaptureMeta) * (userFunction->CaptureC + 1));
+	capture.Dst	  = offset;	 // The destination offset is determined by the
+						   // current capture count
+	userFunction->CaptureMetas[userFunction->CaptureC++] = capture;
+	userFunction->CaptureMetas =
+		Reallocate(userFunction->CaptureMetas,
+				   sizeof(CaptureMeta) * (userFunction->CaptureC + 1));
 	userFunction->Captures[offset] = NULL;
-	userFunction->Captures		   = Reallocate(
-		userFunction->Captures,
-		sizeof(EnvCell*) * (userFunction->CaptureC + 1));
+	userFunction->Captures =
+		Reallocate(userFunction->Captures,
+				   sizeof(EnvCell*) * (userFunction->CaptureC + 1));
 	return offset;
 }
 
 String UserFunctionToString(UserFunction* userFunction) {
-	const String name = userFunction->Name != NULL
-							? userFunction->Name
-							: "<anonymous>";
+	const String name =
+		userFunction->Name != NULL ? userFunction->Name : "<anonymous>";
 
 	if (userFunction->Argc == -1) {
 		// Variadic function
 		size_t nameLen = strlen(name);
 		size_t bufferSize =
-			nameLen
-			+ 32;  // "function " + name + "(...$n) {...}" + null
+			nameLen + 32;  // "function " + name + "(...$n) {...}" + null
 		String buffer = Allocate(bufferSize);
-		snprintf(buffer,
-				 bufferSize,
-				 "function %s(...$n) {...}",
-				 name);
+		snprintf(buffer, bufferSize, "function %s(...$n) {...}", name);
 		return buffer;
 	} else {
 		// Fixed argument count
@@ -150,11 +134,9 @@ String UserFunctionToString(UserFunction* userFunction) {
 		args[0]		  = '\0';
 		size_t offset = 0;
 		for (int i = 0; i < userFunction->Argc; i++) {
-			int written	 = snprintf(args + offset,
-									argsSize + 1 - offset,
-									"$%d",
-									i + 1);
-			offset		+= written;
+			int written =
+				snprintf(args + offset, argsSize + 1 - offset, "$%d", i + 1);
+			offset += written;
 			if (i < userFunction->Argc - 1) {
 				strcpy(args + offset, ", ");
 				offset += 2;
@@ -162,16 +144,12 @@ String UserFunctionToString(UserFunction* userFunction) {
 		}
 
 		// Build final string
-		size_t nameLen	  = strlen(name);
-		size_t bufferSize = nameLen + argsSize
-							+ 32;  // "function " + name + "(" +
-								   // args + ") {...}" + null
+		size_t nameLen = strlen(name);
+		size_t bufferSize =
+			nameLen + argsSize + 32;  // "function " + name + "(" +
+									  // args + ") {...}" + null
 		String buffer = Allocate(bufferSize);
-		snprintf(buffer,
-				 bufferSize,
-				 "function %s(%s) {...}",
-				 name,
-				 args);
+		snprintf(buffer, bufferSize, "function %s(%s) {...}", name, args);
 		free(args);
 		return buffer;
 	}
@@ -193,10 +171,9 @@ void FreeUserFunction(UserFunction* userFunction) {
 	free(userFunction);
 }
 
-NativeFunction*
-CreateNativeFunctionMeta(const String			name,
-						 int					argc,
-						 NativeFunctionCallback funcPtr) {
+NativeFunction* CreateNativeFunctionMeta(const String			name,
+										 int					argc,
+										 NativeFunctionCallback funcPtr) {
 	NativeFunction* meta = Allocate(sizeof(NativeFunction));
 	meta->Name			 = AllocateString(name);
 	meta->Argc			 = argc;
@@ -210,10 +187,9 @@ String NativeFunctionMetaToString(NativeFunction* meta) {
 
 	if (meta->Argc == -1) {
 		// Variadic function
-		size_t nameLen = strlen(meta->Name);
-		size_t bufferSize =
-			nameLen + 32;  // "native function " + name +
-						   // "(...$n) {...}" + null
+		size_t nameLen	  = strlen(meta->Name);
+		size_t bufferSize = nameLen + 32;  // "native function " + name +
+										   // "(...$n) {...}" + null
 		String buffer = Allocate(bufferSize);
 		snprintf(buffer,
 				 bufferSize,
@@ -245,11 +221,9 @@ String NativeFunctionMetaToString(NativeFunction* meta) {
 		args[0]		  = '\0';
 		size_t offset = 0;
 		for (int i = 0; i < meta->Argc; i++) {
-			int written	 = snprintf(args + offset,
-									argsSize + 1 - offset,
-									"$%d",
-									i + 1);
-			offset		+= written;
+			int written =
+				snprintf(args + offset, argsSize + 1 - offset, "$%d", i + 1);
+			offset += written;
 			if (i < meta->Argc - 1) {
 				strcpy(args + offset, ", ");
 				offset += 2;

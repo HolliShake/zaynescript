@@ -31,8 +31,7 @@ static void SkipWhitespace(Lexer* lexer) {
 }
 
 // Helper function to create a token
-static Token
-MakeToken(TokenKind type, String value, Position position) {
+static Token MakeToken(TokenKind type, String value, Position position) {
 	Token token;
 	token.Type	   = type;
 	token.Value	   = value;
@@ -72,33 +71,27 @@ static String RunesToString(Rune* runes, int start, int end) {
 
 // Tokenize identifier or keyword
 static Token TokenizeIdentifier(Lexer* lexer) {
-	Position pos =
-		PositionFromLineAndColm(lexer->Line, lexer->Colm);
-	int start = lexer->Indx;
+	Position pos   = PositionFromLineAndColm(lexer->Line, lexer->Colm);
+	int		 start = lexer->Indx;
 
 	while (utf_is_letter_or_digit(CurrentRune(lexer))) {
 		Advance(lexer);
 	}
 
 	pos.ColmEnded = lexer->Colm;
-	String value =
-		RunesToString(lexer->Data, start, lexer->Indx);
+	String value  = RunesToString(lexer->Data, start, lexer->Indx);
 
 	// Check for keywords
-	const String keywords[] = {
-		KEY_IF,		  KEY_ELSE,	 KEY_SWITCH, KEY_CASE,
-		KEY_DEFAULT,  KEY_WHILE, KEY_FOR,	 KEY_DO,
-		KEY_TRY,	  KEY_CATCH, KEY_RETURN, KEY_BREAK,
-		KEY_CONTINUE, KEY_RAISE, KEY_ASSERT, KEY_NULL,
-		KEY_TRUE,	  KEY_FALSE, KEY_CLASS,	 KEY_ENUM,
-		KEY_IMPORT,	  KEY_FROM,	 KEY_STATIC, KEY_CONST,
-		KEY_VAR,	  KEY_LOCAL, KEY_FN,	 KEY_ASYNC,
-		KEY_AWAIT,	  KEY_NEW,	 KEY_THIS
-	};
+	const String keywords[] = { KEY_IF,		  KEY_ELSE,	 KEY_SWITCH, KEY_CASE,
+								KEY_DEFAULT,  KEY_WHILE, KEY_FOR,	 KEY_DO,
+								KEY_TRY,	  KEY_CATCH, KEY_RETURN, KEY_BREAK,
+								KEY_CONTINUE, KEY_RAISE, KEY_ASSERT, KEY_NULL,
+								KEY_TRUE,	  KEY_FALSE, KEY_CLASS,	 KEY_ENUM,
+								KEY_IMPORT,	  KEY_FROM,	 KEY_STATIC, KEY_CONST,
+								KEY_VAR,	  KEY_LOCAL, KEY_FN,	 KEY_ASYNC,
+								KEY_AWAIT,	  KEY_NEW,	 KEY_THIS };
 
-	for (size_t i = 0;
-		 i < sizeof(keywords) / sizeof(keywords[0]);
-		 i++) {
+	for (size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++) {
 		if (strcmp(value, keywords[i]) == 0) {
 			return MakeToken(TK_KEY, value, pos);
 		}
@@ -109,13 +102,11 @@ static Token TokenizeIdentifier(Lexer* lexer) {
 
 // Tokenize number (integer or float)
 static Token TokenizeNumber(Lexer* lexer) {
-	Position pos =
-		PositionFromLineAndColm(lexer->Line, lexer->Colm);
-	int	 start		= lexer->Indx;
-	bool hasDecimal = false;
+	Position pos		= PositionFromLineAndColm(lexer->Line, lexer->Colm);
+	int		 start		= lexer->Indx;
+	bool	 hasDecimal = false;
 
-	while (utf_is_digit(CurrentRune(lexer))
-		   || CurrentRune(lexer) == '.') {
+	while (utf_is_digit(CurrentRune(lexer)) || CurrentRune(lexer) == '.') {
 		if (CurrentRune(lexer) == '.') {
 			if (hasDecimal)
 				break;	// Second decimal point, stop
@@ -125,11 +116,9 @@ static Token TokenizeNumber(Lexer* lexer) {
 	}
 
 	if (CurrentRune(lexer) == 'e' || CurrentRune(lexer) == 'E') {
-		hasDecimal =
-			true;  // Scientific notation counts as a float
+		hasDecimal = true;	// Scientific notation counts as a float
 		Advance(lexer);
-		if (CurrentRune(lexer) == '+'
-			|| CurrentRune(lexer) == '-') {
+		if (CurrentRune(lexer) == '+' || CurrentRune(lexer) == '-') {
 			Advance(lexer);	 // Skip exponent sign
 		}
 		while (utf_is_digit(CurrentRune(lexer))) {
@@ -141,10 +130,8 @@ static Token TokenizeNumber(Lexer* lexer) {
 	int		  end  = lexer->Indx;
 
 	if (CurrentRune(lexer) == 'n' || CurrentRune(lexer) == 'N') {
-		Advance(lexer);	 // Skip exponent sign
-		kind = hasDecimal
-				   ? TK_BNUM
-				   : TK_BINT;  // Big numeric or big integer
+		Advance(lexer);							// Skip exponent sign
+		kind = hasDecimal ? TK_BNUM : TK_BINT;	// Big numeric or big integer
 	}
 
 	pos.ColmEnded = lexer->Colm;
@@ -155,9 +142,8 @@ static Token TokenizeNumber(Lexer* lexer) {
 
 // Tokenize string literal
 static Token TokenizeString(Lexer* lexer) {
-	Position pos =
-		PositionFromLineAndColm(lexer->Line, lexer->Colm);
-	Rune quote = CurrentRune(lexer);
+	Position pos   = PositionFromLineAndColm(lexer->Line, lexer->Colm);
+	Rune	 quote = CurrentRune(lexer);
 	Advance(lexer);	 // Skip opening quote
 
 	// FIX: Safely calculate maxLength by skipping escaped
@@ -165,22 +151,20 @@ static Token TokenizeString(Lexer* lexer) {
 	// early!
 	int maxLength = 0;
 	int scan	  = lexer->Indx;
-	while (lexer->Data[scan] != 0
-		   && lexer->Data[scan] != quote) {
-		if (lexer->Data[scan] == '\\'
-			&& lexer->Data[scan + 1] != 0) {
+	while (lexer->Data[scan] != 0 && lexer->Data[scan] != quote) {
+		if (lexer->Data[scan] == '\\' && lexer->Data[scan + 1] != 0) {
 			scan++;	 // Skip the backslash
 			// For \xHH, skip the hex digits (they produce 1
 			// rune)
 			if (lexer->Data[scan] == 'x') {
 				scan++;	 // skip 'x'
-				while (lexer->Data[scan] != 0
-					   && ((lexer->Data[scan] >= '0'
-							&& lexer->Data[scan] <= '9')
-						   || (lexer->Data[scan] >= 'a'
-							   && lexer->Data[scan] <= 'f')
-						   || (lexer->Data[scan] >= 'A'
-							   && lexer->Data[scan] <= 'F'))) {
+				while (
+					lexer->Data[scan] != 0
+					&& ((lexer->Data[scan] >= '0' && lexer->Data[scan] <= '9')
+						|| (lexer->Data[scan] >= 'a'
+							&& lexer->Data[scan] <= 'f')
+						|| (lexer->Data[scan] >= 'A'
+							&& lexer->Data[scan] <= 'F'))) {
 					scan++;
 				}
 				maxLength++;  // \xHH produces one character
@@ -192,11 +176,10 @@ static Token TokenizeString(Lexer* lexer) {
 		scan++;
 	}
 
-	Rune* decoded = Allocate(sizeof(Rune) * (maxLength + 1));
+	Rune* decoded		= Allocate(sizeof(Rune) * (maxLength + 1));
 	int	  decodedLength = 0;
 
-	while (CurrentRune(lexer) != 0
-		   && CurrentRune(lexer) != quote) {
+	while (CurrentRune(lexer) != 0 && CurrentRune(lexer) != quote) {
 		if (CurrentRune(lexer) == '\\') {
 			Advance(lexer);	 // Skip escape character
 			switch (CurrentRune(lexer)) {
@@ -225,11 +208,9 @@ static Token TokenizeString(Lexer* lexer) {
 							if (c >= '0' && c <= '9')
 								value = value * 16 + (c - '0');
 							else if (c >= 'a' && c <= 'f')
-								value =
-									value * 16 + (c - 'a' + 10);
+								value = value * 16 + (c - 'a' + 10);
 							else if (c >= 'A' && c <= 'F')
-								value =
-									value * 16 + (c - 'A' + 10);
+								value = value * 16 + (c - 'A' + 10);
 							else
 								break;
 							Advance(lexer);
@@ -251,8 +232,7 @@ static Token TokenizeString(Lexer* lexer) {
 					// Keep unknown escape content without the
 					// backslash.
 					if (CurrentRune(lexer) != 0) {
-						decoded[decodedLength++] =
-							CurrentRune(lexer);
+						decoded[decodedLength++] = CurrentRune(lexer);
 					}
 					break;
 			}
@@ -266,7 +246,7 @@ static Token TokenizeString(Lexer* lexer) {
 	}
 
 	decoded[decodedLength] = 0;
-	String value = RunesToString(decoded, 0, decodedLength);
+	String value		   = RunesToString(decoded, 0, decodedLength);
 	free(decoded);
 
 	if (CurrentRune(lexer) == quote) {
@@ -281,9 +261,8 @@ static Token TokenizeString(Lexer* lexer) {
 
 // Tokenize symbol
 static Token TokenizeSymbol(Lexer* lexer) {
-	Position pos =
-		PositionFromLineAndColm(lexer->Line, lexer->Colm);
-	int start = lexer->Indx;
+	Position pos   = PositionFromLineAndColm(lexer->Line, lexer->Colm);
+	int		 start = lexer->Indx;
 
 	Rune current = CurrentRune(lexer);
 	Advance(lexer);
@@ -293,18 +272,14 @@ static Token TokenizeSymbol(Lexer* lexer) {
 
 	// Check for three-character operators first (e.g., <<=, >>=,
 	// ...)
-	if ((current == '<' && next == '<'
-		 && PeekRune(lexer, 1) == '=')
-		|| (current == '>' && next == '>'
-			&& PeekRune(lexer, 1) == '=')
-		|| (current == '.' && next == '.'
-			&& PeekRune(lexer, 1) == '.')) {
+	if ((current == '<' && next == '<' && PeekRune(lexer, 1) == '=')
+		|| (current == '>' && next == '>' && PeekRune(lexer, 1) == '=')
+		|| (current == '.' && next == '.' && PeekRune(lexer, 1) == '.')) {
 		Advance(lexer);
 		Advance(lexer);
 	}
 	// Check for two-character operators
-	else if ((current == '=' && next == '=')
-			 || (current == '=' && next == '>')
+	else if ((current == '=' && next == '=') || (current == '=' && next == '>')
 			 || (current == ':' && next == '=')
 			 || (current == '!' && next == '=')
 			 || (current == '<' && next == '=')
@@ -328,8 +303,7 @@ static Token TokenizeSymbol(Lexer* lexer) {
 	}
 
 	pos.ColmEnded = lexer->Colm;
-	String value =
-		RunesToString(lexer->Data, start, lexer->Indx);
+	String value  = RunesToString(lexer->Data, start, lexer->Indx);
 
 	return MakeToken(TK_SYM, value, pos);
 }
@@ -350,22 +324,18 @@ Token NextToken(Lexer* lexer) {
 		SkipWhitespace(lexer);
 
 		// Check for single-line comments starting with //
-		if (CurrentRune(lexer) == '/'
-			&& PeekRune(lexer, 1) == '/') {
-			while (CurrentRune(lexer) != '\n'
-				   && CurrentRune(lexer) != 0) {
+		if (CurrentRune(lexer) == '/' && PeekRune(lexer, 1) == '/') {
+			while (CurrentRune(lexer) != '\n' && CurrentRune(lexer) != 0) {
 				Advance(lexer);
 			}
 			continue;
 		}
 
 		// Check for multi-line comments
-		if (CurrentRune(lexer) == '/'
-			&& PeekRune(lexer, 1) == '*') {
+		if (CurrentRune(lexer) == '/' && PeekRune(lexer, 1) == '*') {
 			Advance(lexer);	 // Skip '/'
 			Advance(lexer);	 // Skip '*'
-			while (!(CurrentRune(lexer) == '*'
-					 && PeekRune(lexer, 1) == '/')
+			while (!(CurrentRune(lexer) == '*' && PeekRune(lexer, 1) == '/')
 				   && CurrentRune(lexer) != 0) {
 				Advance(lexer);
 			}
@@ -380,9 +350,8 @@ Token NextToken(Lexer* lexer) {
 		break;
 	}
 
-	Position pos =
-		PositionFromLineAndColm(lexer->Line, lexer->Colm);
-	Rune current = CurrentRune(lexer);
+	Position pos	 = PositionFromLineAndColm(lexer->Line, lexer->Colm);
+	Rune	 current = CurrentRune(lexer);
 
 	// End of file
 	if (current == 0) {

@@ -118,8 +118,7 @@ Value* NewNullValue(Interpreter* interpreter);
  * @return Pointer to newly allocated Value structure
  * representing a promise
  */
-Value* NewPromiseValue(Interpreter*	 interpreter,
-					   StateMachine* stateMachine);
+Value* NewPromiseValue(Interpreter* interpreter, StateMachine* stateMachine);
 
 /**
  * @brief Creates a new user function value
@@ -142,9 +141,8 @@ Value* NewUserFunctionValue(Interpreter*  interpreter,
  * @return Pointer to newly allocated Value structure containing
  * the native function
  */
-Value*
-NewNativeFunctionValue(Interpreter*	   interpreter,
-					   NativeFunction* nativeFunctionMeta);
+Value* NewNativeFunctionValue(Interpreter*	  interpreter,
+							  NativeFunction* nativeFunctionMeta);
 
 /**
  * @brief Creates a new environment value
@@ -155,8 +153,7 @@ NewNativeFunctionValue(Interpreter*	   interpreter,
  * @return Pointer to newly allocated Value structure containing
  * the environment
  */
-Value* NewEnvironmentValue(Interpreter* interpreter,
-						   Environment* environment);
+Value* NewEnvironmentValue(Interpreter* interpreter, Environment* environment);
 
 /**
  * @brief Creates a new array value
@@ -194,8 +191,7 @@ Value* NewClassValue(Interpreter* interpreter, Class* cls);
  * @return Pointer to newly allocated Value structure containing
  * the class instance
  */
-Value* NewClassInstanceValue(Interpreter*	interpreter,
-							 ClassInstance* instance);
+Value* NewClassInstanceValue(Interpreter* interpreter, ClassInstance* instance);
 
 /**
  * @brief Converts a value to a string representation

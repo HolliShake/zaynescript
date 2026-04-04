@@ -55,9 +55,7 @@ Environment* CreateEnvironment(Value* parent, int localC);
  * set.
  * @param value Pointer to the Value to store in the slot.
  */
-void EnvironmentSetLocal(Environment* environment,
-						 int		  offset,
-						 Value*		  value);
+void EnvironmentSetLocal(Environment* environment, int offset, Value* value);
 
 /**
  * @brief Retrieves the environment cell at a specific local
@@ -71,8 +69,7 @@ void EnvironmentSetLocal(Environment* environment,
  * retrieve.
  * @return Pointer to the EnvCell at the given offset.
  */
-EnvCell* EnvironmentGetLocal(Environment* environment,
-							 int		  offset);
+EnvCell* EnvironmentGetLocal(Environment* environment, int offset);
 
 /**
  * @brief Clones an environment from an Environment value.

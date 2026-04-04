@@ -1,7 +1,6 @@
 #include "./import.h"
 
-ImportNode* CreateOrGetImportNode(Interpreter* interpreter,
-								  String	   module) {
+ImportNode* CreateOrGetImportNode(Interpreter* interpreter, String module) {
 	ImportNode* node = interpreter->ImportHead;
 	while (node != NULL) {
 		if (strcmp(node->Path, module) == 0) {
@@ -30,13 +29,11 @@ void ImportNodeAddDependency(ImportNode* dst, ImportNode* src) {
 	}
 
 	dst->Dependencies[dst->DepCount++] = (ImportNode*) src;
-	dst->Dependencies =
-		Reallocate(dst->Dependencies,
-				   sizeof(ImportNode*) * (dst->DepCount + 1));
+	dst->Dependencies = Reallocate(dst->Dependencies,
+								   sizeof(ImportNode*) * (dst->DepCount + 1));
 }
 
-bool ImportNodeHasCircularDependency(ImportNode* node,
-									 String		 modulePath) {
+bool ImportNodeHasCircularDependency(ImportNode* node, String modulePath) {
 	if (strcmp(node->Path, modulePath) == 0) {
 		return true;
 	}

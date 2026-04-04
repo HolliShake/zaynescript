@@ -24,8 +24,7 @@
  * @return Pointer to the newly created UserFunction structure,
  * or NULL on failure.
  */
-UserFunction*
-CreateUserFunction(String name, int argc, bool async);
+UserFunction* CreateUserFunction(String name, int argc, bool async);
 
 /**
  * @brief Creates a new main user function.
@@ -95,10 +94,9 @@ void FreeUserFunction(UserFunction* userFunction);
  * @return Pointer to the newly created NativeFunction structure,
  * or NULL on failure.
  */
-NativeFunction*
-CreateNativeFunctionMeta(const String			name,
-						 int					argc,
-						 NativeFunctionCallback funcPtr);
+NativeFunction* CreateNativeFunctionMeta(const String			name,
+										 int					argc,
+										 NativeFunctionCallback funcPtr);
 
 /**
  * @brief Converts a native function metadata structure to its

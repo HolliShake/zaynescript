@@ -46,7 +46,6 @@ typedef struct core_module_mapping_struct {
  * @return Value* Pointer to the loaded core module, or NULL if
  * not found
  */
-Value* LoadCoreModule(Interpreter* interpreter,
-					  String	   moduleName);
+Value* LoadCoreModule(Interpreter* interpreter, String moduleName);
 
 #endif /* CORE_LOADER_H */

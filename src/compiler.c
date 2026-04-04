@@ -1,7 +1,5 @@
 #include "./compiler.h"
 
-#include "global.h"
-
 
 #define PushArray(type, array, count, val, defaultValue)                       \
 	do {                                                                       \

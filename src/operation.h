@@ -69,9 +69,7 @@ void RestoreNthEnvAndSync(Interpreter* interp, int n);
  *
  * @return true if the method exists, false otherwise
  */
-bool IsMethodOfObject(Interpreter* interp,
-					  Value*	   obj,
-					  Value*	   method);
+bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method);
 
 /**
  * @brief Generic attribute retrieval function.
@@ -140,10 +138,7 @@ Value* DoImportFile(Interpreter* interp, String filePath);
  *
  * @return Null value on success, or error value on failure
  */
-Value* DoSetIndex(Interpreter* interp,
-				  Value*	   obj,
-				  Value*	   index,
-				  Value*	   val);
+Value* DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val);
 
 /**
  * @brief Retrieves an attribute from an object.
@@ -168,8 +163,7 @@ Value* DoGetIndex(Interpreter* interp, Value* obj, Value* index);
  *
  * @return Null value on success, or error value on failure
  */
-Value*
-DoCallCtor(Interpreter* interp, Value* clsValue, int argc);
+Value* DoCallCtor(Interpreter* interp, Value* clsValue, int argc);
 
 /**
  * @brief Performs method call operation.
@@ -183,10 +177,8 @@ DoCallCtor(Interpreter* interp, Value* clsValue, int argc);
  *
  * @return Null value on success, or error value on failure
  */
-Value* DoCallMethod(Interpreter* interp,
-					Value*		 obj,
-					Value*		 methodName,
-					int			 argc);
+Value*
+DoCallMethod(Interpreter* interp, Value* obj, Value* methodName, int argc);
 
 /**
  * @brief Performs function call operation.
@@ -201,8 +193,7 @@ Value* DoCallMethod(Interpreter* interp,
  *
  * @return Null value on success, or error value on failure
  */
-Value*
-DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
+Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
 
 /**
  * @brief Performs logical NOT operation on a value.
@@ -487,7 +478,6 @@ Value* DoXor(Interpreter* interp, Value* lhs, Value* rhs);
  *
  * @return The loaded function value
  */
-Value*
-DoLoadFunction(Interpreter* interp, int offset, bool closure);
+Value* DoLoadFunction(Interpreter* interp, int offset, bool closure);
 
 #endif

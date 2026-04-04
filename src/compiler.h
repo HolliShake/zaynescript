@@ -30,8 +30,7 @@
  * @return Pointer to the newly created Compiler structure, or
  * NULL on allocation failure.
  */
-Compiler* CreateCompiler(Interpreter* interpreter,
-						 Parser*	  parser);
+Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
 
 /**
  * @brief Compiles the parsed AST into bytecode.

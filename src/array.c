@@ -12,8 +12,7 @@ void ArrayPush(Array* array, void* value) {
 	if (array->Count >= array->Capacity) {
 		array->Capacity *= 2;
 		array->Items =
-			Reallocate(array->Items,
-					   sizeof(void*) * array->Capacity);
+			Reallocate(array->Items, sizeof(void*) * array->Capacity);
 	}
 	array->Items[array->Count++] = value;
 }
@@ -64,8 +63,7 @@ void ArrayExtend(Array* array, Array* other) {
 			array->Capacity *= 2;
 		}
 		array->Items =
-			Reallocate(array->Items,
-					   sizeof(void*) * array->Capacity);
+			Reallocate(array->Items, sizeof(void*) * array->Capacity);
 	}
 
 	for (size_t i = 0; i < other->Count; i++) {

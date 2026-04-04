@@ -54,10 +54,7 @@ void ClassExtend(Class* cls, Value* base);
  * @param isStatic Boolean indicating whether the member is
  * static (true) or instance (false).
  */
-void ClassDefineMember(Class* cls,
-					   Value* key,
-					   Value* value,
-					   bool	  isStatic);
+void ClassDefineMember(Class* cls, Value* key, Value* value, bool isStatic);
 
 /**
  * @brief Defines a member (static or instance) on a user-defined
@@ -95,10 +92,7 @@ void ClassDefineMemberByString(Class* cls,
  * callable members only.
  * @return true if the member exists, false otherwise.
  */
-bool ClassHasMember(Class* cls,
-					String key,
-					bool   isStatic,
-					bool   callable);
+bool ClassHasMember(Class* cls, String key, bool isStatic, bool callable);
 
 /**
  * @brief Retrieves a member (static or instance) from a

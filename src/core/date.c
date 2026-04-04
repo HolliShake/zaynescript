@@ -2,8 +2,7 @@
 
 // Helper to get timestamp from instance
 static double _GetTimestamp(ClassInstance* instance) {
-	Value* val =
-		(Value*) HashMapGet(instance->Members, "_value");
+	Value* val = (Value*) HashMapGet(instance->Members, "_value");
 	if (val && ValueIsNum(val)) {
 		return val->Value.Num;
 	}
@@ -28,48 +27,19 @@ static double _ParseDateString(String dateStr) {
 	// YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss or YYYY-MM-DD HH:mm:ss
 	// We try multiple patterns. sscanf returns number of items
 	// assigned.
-	if (sscanf(dateStr,
-			   "%d-%d-%d %d:%d:%d",
-			   &y,
-			   &m,
-			   &d,
-			   &H,
-			   &M,
-			   &S)
-		>= 3) {
+	if (sscanf(dateStr, "%d-%d-%d %d:%d:%d", &y, &m, &d, &H, &M, &S) >= 3) {
 		found = true;
-	} else if (sscanf(dateStr,
-					  "%d-%d-%dT%d:%d:%d",
-					  &y,
-					  &m,
-					  &d,
-					  &H,
-					  &M,
-					  &S)
+	} else if (sscanf(dateStr, "%d-%d-%dT%d:%d:%d", &y, &m, &d, &H, &M, &S)
 			   >= 3) {
 		found = true;
 	}
 	// YYYY/MM/DD
-	else if (sscanf(dateStr,
-					"%d/%d/%d %d:%d:%d",
-					&y,
-					&m,
-					&d,
-					&H,
-					&M,
-					&S)
+	else if (sscanf(dateStr, "%d/%d/%d %d:%d:%d", &y, &m, &d, &H, &M, &S)
 			 >= 3) {
 		found = true;
 	}
 	// MM/DD/YYYY
-	else if (sscanf(dateStr,
-					"%d/%d/%d %d:%d:%d",
-					&m,
-					&d,
-					&y,
-					&H,
-					&M,
-					&S)
+	else if (sscanf(dateStr, "%d/%d/%d %d:%d:%d", &m, &d, &y, &H, &M, &S)
 			 >= 3) {
 		found = true;
 	}
@@ -92,9 +62,7 @@ static double _ParseDateString(String dateStr) {
 	return 0.0;	 // Invalid/Empty
 }
 
-static Value* _DateInit(Interpreter* interpreter,
-						int			 argc,
-						Value**		 arguments) {
+static Value* _DateInit(Interpreter* interpreter, int argc, Value** arguments) {
 	Value*		   thisArg = arguments[0];
 	ClassInstance* cls	   = CoerceToClassInstance(thisArg);
 
@@ -121,22 +89,17 @@ static Value* _DateInit(Interpreter* interpreter,
 		struct tm timeinfo = { 0 };
 
 		// Year
-		timeinfo.tm_year =
-			(int) CoerceToNum(arguments[1]) - 1900;
+		timeinfo.tm_year = (int) CoerceToNum(arguments[1]) - 1900;
 		// Month (0-11)
 		timeinfo.tm_mon = (int) CoerceToNum(arguments[2]);
 		// Day (default 1)
-		timeinfo.tm_mday =
-			(argc > 3) ? (int) CoerceToNum(arguments[3]) : 1;
+		timeinfo.tm_mday = (argc > 3) ? (int) CoerceToNum(arguments[3]) : 1;
 		// Hours
-		timeinfo.tm_hour =
-			(argc > 4) ? (int) CoerceToNum(arguments[4]) : 0;
+		timeinfo.tm_hour = (argc > 4) ? (int) CoerceToNum(arguments[4]) : 0;
 		// Minutes
-		timeinfo.tm_min =
-			(argc > 5) ? (int) CoerceToNum(arguments[5]) : 0;
+		timeinfo.tm_min = (argc > 5) ? (int) CoerceToNum(arguments[5]) : 0;
 		// Seconds
-		timeinfo.tm_sec =
-			(argc > 6) ? (int) CoerceToNum(arguments[6]) : 0;
+		timeinfo.tm_sec = (argc > 6) ? (int) CoerceToNum(arguments[6]) : 0;
 
 		// Make time returns seconds
 		time_t rawtime = mktime(&timeinfo);
@@ -152,101 +115,92 @@ static Value* _DateInit(Interpreter* interpreter,
 	return interpreter->Null;
 }
 
-static Value* _DateGetFullYear(Interpreter* interpreter,
-							   int			argc,
-							   Value**		arguments) {
-	ClassInstance* cls	   = CoerceToClassInstance(arguments[0]);
-	double		   ts	   = _GetTimestamp(cls);
-	time_t		   rawtime = (time_t) (ts / 1000.0);
+static Value*
+_DateGetFullYear(Interpreter* interpreter, int argc, Value** arguments) {
+	ClassInstance* cls		= CoerceToClassInstance(arguments[0]);
+	double		   ts		= _GetTimestamp(cls);
+	time_t		   rawtime	= (time_t) (ts / 1000.0);
 	struct tm*	   timeinfo = localtime(&rawtime);
 	if (!timeinfo)
 		return NewIntValue(interpreter, 0);
 	return NewIntValue(interpreter, timeinfo->tm_year + 1900);
 }
 
-static Value* _DateGetMonth(Interpreter* interpreter,
-							int			 argc,
-							Value**		 arguments) {
-	ClassInstance* cls	   = CoerceToClassInstance(arguments[0]);
-	double		   ts	   = _GetTimestamp(cls);
-	time_t		   rawtime = (time_t) (ts / 1000.0);
+static Value*
+_DateGetMonth(Interpreter* interpreter, int argc, Value** arguments) {
+	ClassInstance* cls		= CoerceToClassInstance(arguments[0]);
+	double		   ts		= _GetTimestamp(cls);
+	time_t		   rawtime	= (time_t) (ts / 1000.0);
 	struct tm*	   timeinfo = localtime(&rawtime);
 	if (!timeinfo)
 		return NewIntValue(interpreter, 0);
 	return NewIntValue(interpreter, timeinfo->tm_mon);
 }
 
-static Value* _DateGetDate(Interpreter* interpreter,
-						   int			argc,
-						   Value**		arguments) {
-	ClassInstance* cls	   = CoerceToClassInstance(arguments[0]);
-	double		   ts	   = _GetTimestamp(cls);
-	time_t		   rawtime = (time_t) (ts / 1000.0);
+static Value*
+_DateGetDate(Interpreter* interpreter, int argc, Value** arguments) {
+	ClassInstance* cls		= CoerceToClassInstance(arguments[0]);
+	double		   ts		= _GetTimestamp(cls);
+	time_t		   rawtime	= (time_t) (ts / 1000.0);
 	struct tm*	   timeinfo = localtime(&rawtime);
 	if (!timeinfo)
 		return NewIntValue(interpreter, 0);
 	return NewIntValue(interpreter, timeinfo->tm_mday);
 }
 
-static Value* _DateGetDay(Interpreter* interpreter,
-						  int		   argc,
-						  Value**	   arguments) {
-	ClassInstance* cls	   = CoerceToClassInstance(arguments[0]);
-	double		   ts	   = _GetTimestamp(cls);
-	time_t		   rawtime = (time_t) (ts / 1000.0);
+static Value*
+_DateGetDay(Interpreter* interpreter, int argc, Value** arguments) {
+	ClassInstance* cls		= CoerceToClassInstance(arguments[0]);
+	double		   ts		= _GetTimestamp(cls);
+	time_t		   rawtime	= (time_t) (ts / 1000.0);
 	struct tm*	   timeinfo = localtime(&rawtime);
 	if (!timeinfo)
 		return NewIntValue(interpreter, 0);
 	return NewIntValue(interpreter, timeinfo->tm_wday);
 }
 
-static Value* _DateGetHours(Interpreter* interpreter,
-							int			 argc,
-							Value**		 arguments) {
-	ClassInstance* cls	   = CoerceToClassInstance(arguments[0]);
-	double		   ts	   = _GetTimestamp(cls);
-	time_t		   rawtime = (time_t) (ts / 1000.0);
+static Value*
+_DateGetHours(Interpreter* interpreter, int argc, Value** arguments) {
+	ClassInstance* cls		= CoerceToClassInstance(arguments[0]);
+	double		   ts		= _GetTimestamp(cls);
+	time_t		   rawtime	= (time_t) (ts / 1000.0);
 	struct tm*	   timeinfo = localtime(&rawtime);
 	if (!timeinfo)
 		return NewIntValue(interpreter, 0);
 	return NewIntValue(interpreter, timeinfo->tm_hour);
 }
 
-static Value* _DateGetMinutes(Interpreter* interpreter,
-							  int		   argc,
-							  Value**	   arguments) {
-	ClassInstance* cls	   = CoerceToClassInstance(arguments[0]);
-	double		   ts	   = _GetTimestamp(cls);
-	time_t		   rawtime = (time_t) (ts / 1000.0);
+static Value*
+_DateGetMinutes(Interpreter* interpreter, int argc, Value** arguments) {
+	ClassInstance* cls		= CoerceToClassInstance(arguments[0]);
+	double		   ts		= _GetTimestamp(cls);
+	time_t		   rawtime	= (time_t) (ts / 1000.0);
 	struct tm*	   timeinfo = localtime(&rawtime);
 	if (!timeinfo)
 		return NewIntValue(interpreter, 0);
 	return NewIntValue(interpreter, timeinfo->tm_min);
 }
 
-static Value* _DateGetSeconds(Interpreter* interpreter,
-							  int		   argc,
-							  Value**	   arguments) {
-	ClassInstance* cls	   = CoerceToClassInstance(arguments[0]);
-	double		   ts	   = _GetTimestamp(cls);
-	time_t		   rawtime = (time_t) (ts / 1000.0);
+static Value*
+_DateGetSeconds(Interpreter* interpreter, int argc, Value** arguments) {
+	ClassInstance* cls		= CoerceToClassInstance(arguments[0]);
+	double		   ts		= _GetTimestamp(cls);
+	time_t		   rawtime	= (time_t) (ts / 1000.0);
 	struct tm*	   timeinfo = localtime(&rawtime);
 	if (!timeinfo)
 		return NewIntValue(interpreter, 0);
 	return NewIntValue(interpreter, timeinfo->tm_sec);
 }
 
-static Value* _DateGetTime(Interpreter* interpreter,
-						   int			argc,
-						   Value**		arguments) {
+static Value*
+_DateGetTime(Interpreter* interpreter, int argc, Value** arguments) {
 	ClassInstance* cls = CoerceToClassInstance(arguments[0]);
 	double		   ts  = _GetTimestamp(cls);
 	return NewNumValue(interpreter, ts);
 }
 
-static Value* _DateToString(Interpreter* interpreter,
-							int			 argc,
-							Value**		 arguments) {
+static Value*
+_DateToString(Interpreter* interpreter, int argc, Value** arguments) {
 	ClassInstance* cls	   = CoerceToClassInstance(arguments[0]);
 	double		   ts	   = _GetTimestamp(cls);
 	time_t		   rawtime = (time_t) (ts / 1000.0);
@@ -314,8 +268,7 @@ static ModuleFunction _DateClassMethods[] = {
 
 Value* CreateDateClass(Interpreter* interpreter) {
 	Value* dateClass =
-		NewClassValue(interpreter,
-					  CreateUserClass("Date", NULL));
+		NewClassValue(interpreter, CreateUserClass("Date", NULL));
 	Class* cls = CoerceToUserClass(dateClass);
 
 	// Register methods
@@ -340,10 +293,9 @@ Value* CreateDateClass(Interpreter* interpreter) {
 }
 
 Value* LoadCoreDate(Interpreter* interpreter) {
-	Value* val =
-		(interpreter->Date != NULL)
-			? interpreter->Date
-			: (interpreter->Date = CreateDateClass(interpreter));
+	Value* val = (interpreter->Date != NULL)
+					 ? interpreter->Date
+					 : (interpreter->Date = CreateDateClass(interpreter));
 
 	Value*	 module = NewObjectValue(interpreter);
 	HashMap* map	= CoerceToHashMap(module);

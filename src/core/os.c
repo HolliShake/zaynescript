@@ -12,43 +12,34 @@
 #	include <unistd.h>	 // for getpid, getcwd
 #endif
 
-static Value* _OsGetCwd(Interpreter* interpreter,
-						int			 argc,
-						Value**		 arguments) {
+static Value* _OsGetCwd(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 0) {
-		return NewErrorValue(
-			interpreter,
-			"getCwd() expects exactly 0 arguments");
+		return NewErrorValue(interpreter,
+							 "getCwd() expects exactly 0 arguments");
 	}
 
 	char cwd[1024];
 	if (getcwd(cwd, sizeof(cwd)) != NULL) {
 		return NewStrValue(interpreter, cwd);
 	}
-	return NewErrorValue(
-		interpreter,
-		"Failed to get current working directory");
+	return NewErrorValue(interpreter,
+						 "Failed to get current working directory");
 }
 
-static Value* _OsGetPid(Interpreter* interpreter,
-						int			 argc,
-						Value**		 arguments) {
+static Value* _OsGetPid(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 0) {
-		return NewErrorValue(
-			interpreter,
-			"getPid() expects exactly 0 arguments");
+		return NewErrorValue(interpreter,
+							 "getPid() expects exactly 0 arguments");
 	}
 
 	return NewIntValue(interpreter, (int) getpid());
 }
 
-static Value* _OsGetUser(Interpreter* interpreter,
-						 int		  argc,
-						 Value**	  arguments) {
+static Value*
+_OsGetUser(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 0) {
-		return NewErrorValue(
-			interpreter,
-			"getUser() expects exactly 0 arguments");
+		return NewErrorValue(interpreter,
+							 "getUser() expects exactly 0 arguments");
 	}
 
 	char username[256];
@@ -72,18 +63,14 @@ static Value* _OsGetUser(Interpreter* interpreter,
 	return NewErrorValue(interpreter, "Failed to get username");
 }
 
-static Value* _OsSystem(Interpreter* interpreter,
-						int			 argc,
-						Value**		 arguments) {
+static Value* _OsSystem(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1) {
-		return NewErrorValue(
-			interpreter,
-			"system() expects exactly 1 argument");
+		return NewErrorValue(interpreter,
+							 "system() expects exactly 1 argument");
 	}
 	if (!ValueIsStr(arguments[0])) {
-		return NewErrorValue(
-			interpreter,
-			"system() expects a string as its argument");
+		return NewErrorValue(interpreter,
+							 "system() expects a string as its argument");
 	}
 
 	String cmd	  = ValueToString(arguments[0]);
@@ -97,13 +84,11 @@ static Value* _OsSystem(Interpreter* interpreter,
 
 // _OsGetType remains the same as your original (it was correctly
 // using #ifdefs)
-static Value* _OsGetType(Interpreter* interpreter,
-						 int		  argc,
-						 Value**	  arguments) {
+static Value*
+_OsGetType(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 0) {
-		return NewErrorValue(
-			interpreter,
-			"getType() expects exactly 0 arguments");
+		return NewErrorValue(interpreter,
+							 "getType() expects exactly 0 arguments");
 	}
 #if defined(_WIN32)
 	return NewStrValue(interpreter, "win32");
@@ -159,14 +144,13 @@ Value* LoadCoreOs(Interpreter* interpreter) {
 		if (func.Value != NULL) {
 			HashMapSet(osMap, hKey, _OsModuleFunctions[i].Value);
 		} else {
-			HashMapSet(
-				osMap,
-				hKey,
-				NewNativeFunctionValue(
-					interpreter,
-					CreateNativeFunctionMeta((const String) hKey,
-											 func.Argc,
-											 func.CFunction)));
+			HashMapSet(osMap,
+					   hKey,
+					   NewNativeFunctionValue(
+						   interpreter,
+						   CreateNativeFunctionMeta((const String) hKey,
+													func.Argc,
+													func.CFunction)));
 		}
 	}
 

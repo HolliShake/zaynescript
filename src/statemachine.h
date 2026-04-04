@@ -108,9 +108,7 @@ void StateMachineUpdate(StateMachine*	  stateMachine,
  * @param value The value that the StateMachine is waiting for
  * (e.g., a promise).
  */
-void StateMachineAwait(StateMachine* stateMachine,
-					   size_t		 ip,
-					   Value*		 value);
+void StateMachineAwait(StateMachine* stateMachine, size_t ip, Value* value);
 
 /**
  * @brief Transitions the StateMachine to a fulfilled state with
@@ -127,8 +125,7 @@ void StateMachineAwait(StateMachine* stateMachine,
  * @param value The value to set on the StateMachine (e.g.,
  * resolved value).
  */
-void StateMachineFulfill(StateMachine* stateMachine,
-						 Value*		   value);
+void StateMachineFulfill(StateMachine* stateMachine, Value* value);
 
 /**
  * @brief Transitions the StateMachine to a rejected state with a
@@ -144,8 +141,7 @@ void StateMachineFulfill(StateMachine* stateMachine,
  * @param value The rejection reason value (e.g., an error
  * Value).
  */
-void StateMachineReject(StateMachine* stateMachine,
-						Value*		  value);
+void StateMachineReject(StateMachine* stateMachine, Value* value);
 
 /**
  * @brief Adds a value to the StateMachine's wait list.
@@ -160,8 +156,7 @@ void StateMachineReject(StateMachine* stateMachine,
  * @param value The value to add to the wait list (e.g., a
  * promise).
  */
-void StateMachineAddWaitList(StateMachine* stateMachine,
-							 Value*		   value);
+void StateMachineAddWaitList(StateMachine* stateMachine, Value* value);
 
 /**
  * @brief Frees a StateMachine and its resources.

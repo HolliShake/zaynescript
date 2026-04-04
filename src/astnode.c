@@ -123,10 +123,7 @@ Ast* AstSingle(AstType type, Ast* operand, Position position) {
 	return ast;
 }
 
-Ast* AstBinary(AstType	type,
-			   Ast*		lhs,
-			   Ast*		rhs,
-			   Position position) {
+Ast* AstBinary(AstType type, Ast* lhs, Ast* rhs, Position position) {
 	Ast* ast = InitAst(type, position);
 	ast->A	 = lhs;
 	ast->B	 = rhs;
@@ -150,9 +147,7 @@ Ast* AstRaise(Ast* expression, Position position) {
 	return ast;
 }
 
-Ast* AstAssert(Ast*		expression,
-			   Ast*		fallback,
-			   Position position) {
+Ast* AstAssert(Ast* expression, Ast* fallback, Position position) {
 	Ast* ast = InitAst(AST_ASSERT, position);
 	ast->A	 = expression;
 	ast->B	 = fallback;
@@ -181,20 +176,15 @@ Ast* AstExpressionStatement(Ast* expression, Position position) {
 	return ast;
 }
 
-Ast* AstClassMember(bool	 _static_,
-					Ast*	 node,
-					Position position) {
-	Ast* ast   = InitAst(AST_CLASS_MEMBER, position);
-	ast->A	   = node;
-	ast->Value = (_static_) ? AllocateString("static")
-							: AllocateString("instance");
+Ast* AstClassMember(bool _static_, Ast* node, Position position) {
+	Ast* ast = InitAst(AST_CLASS_MEMBER, position);
+	ast->A	 = node;
+	ast->Value =
+		(_static_) ? AllocateString("static") : AllocateString("instance");
 	return ast;
 }
 
-Ast* AstClass(Ast*	   name,
-			  Ast*	   super,
-			  Ast*	   body,
-			  Position position) {
+Ast* AstClass(Ast* name, Ast* super, Ast* body, Position position) {
 	Ast* ast = InitAst(AST_CLASS, position);
 	ast->A	 = name;
 	ast->B	 = super;
@@ -215,18 +205,14 @@ Ast* AstFunction(Ast*	  fnName,
 	return ast;
 }
 
-Ast* AstImport(Ast*		imports,
-			   Ast*		moduleName,
-			   Position position) {
+Ast* AstImport(Ast* imports, Ast* moduleName, Position position) {
 	Ast* ast = InitAst(AST_IMPORT, position);
 	ast->A	 = imports;
 	ast->B	 = moduleName;
 	return ast;
 }
 
-Ast* AstVarDeclaration(AstType	type,
-					   Ast*		declarations,
-					   Position position) {
+Ast* AstVarDeclaration(AstType type, Ast* declarations, Position position) {
 	Ast* ast = InitAst(type, position);
 	ast->A	 = declarations;
 	return ast;
@@ -258,18 +244,14 @@ Ast* AstSwitch(Ast*		expression,
 	return ast;
 }
 
-Ast* AstSwitchCase(Ast*		caseValue,
-				   Ast*		caseBody,
-				   Position position) {
+Ast* AstSwitchCase(Ast* caseValue, Ast* caseBody, Position position) {
 	Ast* ast = InitAst(AST_SWITCH_CASE, position);
 	ast->A	 = caseValue;
 	ast->B	 = caseBody;
 	return ast;
 }
 
-Ast* AstFor(Ast*	 initializerConditionMutator,
-			Ast*	 body,
-			Position position) {
+Ast* AstFor(Ast* initializerConditionMutator, Ast* body, Position position) {
 	Ast* ast = InitAst(AST_FOR, position);
 	ast->A	 = initializerConditionMutator;
 	ast->B	 = body;

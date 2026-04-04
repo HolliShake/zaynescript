@@ -1,7 +1,5 @@
 #include "./statemachine.h"
 
-#include "global.h"
-
 StateMachine* CreateStateMachine(StateMachineState initial,
 								 bool			   isCallback,
 								 size_t			   ip,
@@ -20,12 +18,11 @@ StateMachine* CreateStateMachine(StateMachineState initial,
 	sm->Stacks		 = NULL;
 	sm->StckTop		 = 0;
 	sm->StckBot		 = 0;
-	sm->WaitList	 = Allocate(sizeof(Value*)),
-	sm->WaitList[0]	 = NULL;
-	sm->WaitListC	 = 0;
-	sm->EnvStack	 = NULL;
-	sm->EnvrTop		 = 0;
-	sm->EnvrBot		 = 0;
+	sm->WaitList = Allocate(sizeof(Value*)), sm->WaitList[0] = NULL;
+	sm->WaitListC = 0;
+	sm->EnvStack  = NULL;
+	sm->EnvrTop	  = 0;
+	sm->EnvrBot	  = 0;
 	return sm;
 }
 
@@ -49,34 +46,29 @@ void StateMachineUpdate(StateMachine*	  stateMachine,
 	stateMachine->Value = value;
 }
 
-void StateMachineAwait(StateMachine* stateMachine,
-					   size_t		 ip,
-					   Value*		 promise) {
+void StateMachineAwait(StateMachine* stateMachine, size_t ip, Value* promise) {
 	stateMachine->State	  = PENDING;
 	stateMachine->Ip	  = ip;
 	stateMachine->WaitFor = promise;
 }
 
-void StateMachineFulfill(StateMachine* stateMachine,
-						 Value*		   value) {
+void StateMachineFulfill(StateMachine* stateMachine, Value* value) {
 	stateMachine->State = FULFILLED;
 	stateMachine->Ip	= 0;
 	stateMachine->Value = value;
 }
 
-void StateMachineReject(StateMachine* stateMachine,
-						Value*		  value) {
+void StateMachineReject(StateMachine* stateMachine, Value* value) {
 	stateMachine->State = REJECTED;
 	stateMachine->Ip	= 0;
 	stateMachine->Value = value;
 }
 
-void StateMachineAddWaitList(StateMachine* stateMachine,
-							 Value*		   value) {
+void StateMachineAddWaitList(StateMachine* stateMachine, Value* value) {
 	stateMachine->WaitList[stateMachine->WaitListC++] = value;
-	stateMachine->WaitList = Reallocate(
-		stateMachine->WaitList,
-		sizeof(Value*) * (stateMachine->WaitListC + 1));
+	stateMachine->WaitList =
+		Reallocate(stateMachine->WaitList,
+				   sizeof(Value*) * (stateMachine->WaitListC + 1));
 	stateMachine->WaitList[stateMachine->WaitListC] =
 		NULL;  // keep NULL-terminated
 }

@@ -63,8 +63,7 @@ Interpreter* CreateInterpreter(String execPath);
  *
  * @see CreateInterpreter()
  */
-void Interpret(Interpreter* interpreter,
-			   Value*		fnValue /*UserFunction*/);
+void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/);
 
 /**
  * Frees the interpreter and all associated memory.

@@ -279,10 +279,7 @@ Ast* AstSingle(AstType type, Ast* operand, Position position);
  * @return Pointer to newly allocated AST_BINARY node, or NULL on
  * allocation failure.
  */
-Ast* AstBinary(AstType	type,
-			   Ast*		lhs,
-			   Ast*		rhs,
-			   Position position);
+Ast* AstBinary(AstType type, Ast* lhs, Ast* rhs, Position position);
 
 /**
  * @brief Creates an AST node representing a ternary conditional
@@ -416,10 +413,7 @@ Ast* AstClassMember(bool _static_, Ast* node, Position position);
  * @return Pointer to newly allocated AST_CLASS node, or NULL on
  * allocation failure.
  */
-Ast* AstClass(Ast*	   name,
-			  Ast*	   super,
-			  Ast*	   body,
-			  Position position);
+Ast* AstClass(Ast* name, Ast* super, Ast* body, Position position);
 
 /**
  * @brief Creates an AST node representing a function definition.
@@ -476,9 +470,7 @@ Ast* AstImport(Ast* imports, Ast* moduleName, Position position);
  * @return Pointer to newly allocated AST_VAR_DECLARATION node,
  * or NULL on allocation failure.
  */
-Ast* AstVarDeclaration(AstType	type,
-					   Ast*		declarations,
-					   Position position);
+Ast* AstVarDeclaration(AstType type, Ast* declarations, Position position);
 
 /**
  * @brief Creates an AST node representing an empty statement
@@ -507,10 +499,7 @@ Ast* AstEmptyStatement(Position position);
  * @return Pointer to newly allocated AST_IF node, or NULL on
  * allocation failure.
  */
-Ast* AstIf(Ast*		condition,
-		   Ast*		thenBranch,
-		   Ast*		elseBranch,
-		   Position position);
+Ast* AstIf(Ast* condition, Ast* thenBranch, Ast* elseBranch, Position position);
 
 /**
  * @brief Creates an AST node representing a switch statement.
@@ -559,9 +548,7 @@ Ast* AstSwitchCase(Ast* value, Ast* body, Position position);
  * @return Pointer to newly allocated AST_FOR node, or NULL on
  * allocation failure.
  */
-Ast* AstFor(Ast*	 initializerConditionMutator,
-			Ast*	 body,
-			Position position);
+Ast* AstFor(Ast* initializerConditionMutator, Ast* body, Position position);
 
 /**
  * @brief Creates an AST node representing a while statement.

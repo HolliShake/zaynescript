@@ -22,8 +22,7 @@
  * @return Pointer to the newly created ImportNode structure, or
  * NULL on failure.
  */
-ImportNode* CreateOrGetImportNode(Interpreter* interpreter,
-								  String	   module);
+ImportNode* CreateOrGetImportNode(Interpreter* interpreter, String module);
 
 /**
  * @brief Adds a dependency from one import node to another.
@@ -55,8 +54,7 @@ void ImportNodeAddDependency(ImportNode* dst, ImportNode* src);
  * @return true if a circular dependency is detected, false
  * otherwise.
  */
-bool ImportNodeHasCircularDependency(ImportNode* node,
-									 String		 modulePath);
+bool ImportNodeHasCircularDependency(ImportNode* node, String modulePath);
 
 /**
  * @brief Checks if one import node depends on another.
@@ -71,8 +69,7 @@ bool ImportNodeHasCircularDependency(ImportNode* node,
  * @return true if the destination node depends on the source
  * node, false otherwise.
  */
-bool ImportNodeHasDependency(ImportNode* node,
-							 ImportNode* dependency);
+bool ImportNodeHasDependency(ImportNode* node, ImportNode* dependency);
 
 /**
  * @brief Frees all memory associated with an import node and its

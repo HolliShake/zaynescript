@@ -30,7 +30,6 @@
  * source text. The caller is responsible for freeing this
  * string.
  */
-String DecompileFunction(Interpreter*  interpreter,
-						 UserFunction* uf);
+String DecompileFunction(Interpreter* interpreter, UserFunction* uf);
 
 #endif

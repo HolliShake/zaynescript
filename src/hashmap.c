@@ -23,10 +23,9 @@ static void _Rehash(HashMap* hashmap) {
 	HashNode* oldBuckets = hashmap->Buckets;
 
 	// Double the size
-	hashmap->Size  = oldSize * 2;
-	hashmap->Count = 0;
-	hashmap->Buckets =
-		Allocate(sizeof(HashNode) * hashmap->Size);
+	hashmap->Size	 = oldSize * 2;
+	hashmap->Count	 = 0;
+	hashmap->Buckets = Allocate(sizeof(HashNode) * hashmap->Size);
 
 	if (hashmap->Buckets == NULL) {
 		// Allocation failed, restore old state
@@ -97,8 +96,7 @@ void HashMapSet(HashMap* hashmap, String key, void* value) {
 	}
 
 	// Check load factor and rehash if necessary
-	double loadFactor =
-		(double) hashmap->Count / (double) hashmap->Size;
+	double loadFactor = (double) hashmap->Count / (double) hashmap->Size;
 	if (loadFactor >= LOAD_FACTOR_THRESHOLD) {
 		_Rehash(hashmap);
 	}
@@ -165,16 +163,14 @@ void HashMapExtend(HashMap* dest, HashMap* src) {
 
 	// Pre-calculate if we need to rehash to avoid multiple
 	// rehashes
-	size_t totalCount = dest->Count + src->Count;
-	double projectedLoadFactor =
-		(double) totalCount / (double) dest->Size;
+	size_t totalCount		   = dest->Count + src->Count;
+	double projectedLoadFactor = (double) totalCount / (double) dest->Size;
 
 	// Rehash proactively if needed to avoid multiple rehashes
 	// during insertion
 	while (projectedLoadFactor >= LOAD_FACTOR_THRESHOLD) {
 		_Rehash(dest);
-		projectedLoadFactor =
-			(double) totalCount / (double) dest->Size;
+		projectedLoadFactor = (double) totalCount / (double) dest->Size;
 	}
 
 	for (size_t i = 0; i < src->Size; i++) {
@@ -218,8 +214,7 @@ void HashMapExtend(HashMap* dest, HashMap* src) {
 
 				// Add new node if key doesn't exist
 				if (!found) {
-					HashNode* newNode =
-						Allocate(sizeof(HashNode));
+					HashNode* newNode = Allocate(sizeof(HashNode));
 					if (newNode != NULL) {
 						newNode->Key  = clonedKey;
 						newNode->Val  = node->Val;
@@ -266,9 +261,9 @@ String HashMapToString(HashMap* hashmap) {
 		HashNode* node = &hashmap->Buckets[i];
 		while (node != NULL && node->Key != NULL) {
 			String valStr = ValueToString((Value*) node->Val);
-			bufferSize += strlen(node->Key)
-						  + (valStr ? strlen(valStr) : 4) + 10;
-			node		= node->Next;
+			bufferSize +=
+				strlen(node->Key) + (valStr ? strlen(valStr) : 4) + 10;
+			node = node->Next;
 			free(valStr);
 		}
 	}

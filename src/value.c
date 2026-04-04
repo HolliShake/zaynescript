@@ -1,7 +1,6 @@
 #include "./value.h"
 
-static Value* _CreateValue(Interpreter* interpreter,
-						   ValueType	type) {
+static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
 	Value* v  = Allocate(sizeof(Value));
 	v->Type	  = type;
 	v->Marked = 0;
@@ -18,8 +17,7 @@ Value* NewErrorValue(Interpreter* interpreter, String message) {
 	return v;
 }
 
-Value*
-NewErrorFValue(Interpreter* interpreter, String fmt, ...) {
+Value* NewErrorFValue(Interpreter* interpreter, String fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 	int size = vsnprintf(NULL, 0, fmt, args) + 1;
@@ -77,8 +75,7 @@ Value* NewNullValue(Interpreter* interpreter) {
 	return v;
 }
 
-Value* NewPromiseValue(Interpreter*	 interpreter,
-					   StateMachine* stateMachine) {
+Value* NewPromiseValue(Interpreter* interpreter, StateMachine* stateMachine) {
 	Value* v		= _CreateValue(interpreter, VLT_PROMISE);
 	v->Value.Opaque = stateMachine;
 	return v;
@@ -86,21 +83,19 @@ Value* NewPromiseValue(Interpreter*	 interpreter,
 
 Value* NewUserFunctionValue(Interpreter*  interpreter,
 							UserFunction* userFunction) {
-	Value* v = _CreateValue(interpreter, VLT_USER_FUNCTION);
+	Value* v		= _CreateValue(interpreter, VLT_USER_FUNCTION);
 	v->Value.Opaque = userFunction;
 	return v;
 }
 
-Value*
-NewNativeFunctionValue(Interpreter*	   interpreter,
-					   NativeFunction* nativeFunctionMeta) {
-	Value* v = _CreateValue(interpreter, VLT_NATV_FUNCTION);
+Value* NewNativeFunctionValue(Interpreter*	  interpreter,
+							  NativeFunction* nativeFunctionMeta) {
+	Value* v		= _CreateValue(interpreter, VLT_NATV_FUNCTION);
 	v->Value.Opaque = nativeFunctionMeta;
 	return v;
 }
 
-Value* NewEnvironmentValue(Interpreter* interpreter,
-						   Environment* environment) {
+Value* NewEnvironmentValue(Interpreter* interpreter, Environment* environment) {
 	Value* v		= _CreateValue(interpreter, VLT_ENVIRONMENT);
 	v->Value.Opaque = environment;
 	return v;
@@ -126,7 +121,7 @@ Value* NewClassValue(Interpreter* interpreter, Class* cls) {
 
 Value* NewClassInstanceValue(Interpreter*	interpreter,
 							 ClassInstance* instance) {
-	Value* v = _CreateValue(interpreter, VLT_CLASS_INSTANCE);
+	Value* v		= _CreateValue(interpreter, VLT_CLASS_INSTANCE);
 	v->Value.Opaque = instance;
 	return v;
 }
@@ -140,16 +135,14 @@ String ValueToString(Value* value) {
 			return buffer;
 		case VLT_BINT:
 			{
-				return BFIntToString(
-					(bf_t*) value->Value.Opaque);
+				return BFIntToString((bf_t*) value->Value.Opaque);
 			}
 		case VLT_NUM:
 			buffer = Allocate(64);
 			// Check if the number can be represented as an
 			// integer
 			double num = value->Value.Num;
-			if (floor(num) == num && num >= INT_MIN
-				&& num <= INT_MAX) {
+			if (floor(num) == num && num >= INT_MIN && num <= INT_MAX) {
 				// It's a whole number that fits in an int
 				snprintf(buffer, 64, "%d", (int) num);
 			} else if (floor(num) == num && num >= LONG_MIN
@@ -164,8 +157,7 @@ String ValueToString(Value* value) {
 			return buffer;
 		case VLT_BNUM:
 			{
-				return BFNumToString(
-					(bf_t*) value->Value.Opaque);
+				return BFNumToString((bf_t*) value->Value.Opaque);
 			}
 		case VLT_ERROR:
 		case VLT_STR:
@@ -185,8 +177,7 @@ String ValueToString(Value* value) {
 				size_t pos = 0;
 				for (size_t i = 0; i < runeCount; i++) {
 					unsigned char utf8Buffer[5];
-					int			  utf8Size =
-						utf_encode_char(runes[i], utf8Buffer);
+					int utf8Size = utf_encode_char(runes[i], utf8Buffer);
 					for (int j = 0; j < utf8Size; j++) {
 						buffer[pos++] = utf8Buffer[j];
 					}
@@ -195,13 +186,11 @@ String ValueToString(Value* value) {
 				return buffer;
 			}
 		case VLT_BOOL:
-			return AllocateString(value->Value.I32 ? "true"
-												   : "false");
+			return AllocateString(value->Value.I32 ? "true" : "false");
 		case VLT_NULL:
 			return AllocateString("null");
 		case VLT_USER_FUNCTION:
-			return UserFunctionToString(
-				CoerceToUserFunction(value));
+			return UserFunctionToString(CoerceToUserFunction(value));
 		case VLT_ENVIRONMENT:
 			return AllocateString("environment");
 		case VLT_ARRAY:
@@ -209,44 +198,37 @@ String ValueToString(Value* value) {
 		case VLT_OBJECT:
 			return HashMapToString(CoerceToHashMap(value));
 		case VLT_CLASS:
-			return FormatString("<Class.%s />",
-								CoerceToUserClass(value)->Name);
+			return FormatString("<Class.%s />", CoerceToUserClass(value)->Name);
 		case VLT_CLASS_INSTANCE:
-			return ClassInstanceToString(
-				CoerceToClassInstance(value));
+			return ClassInstanceToString(CoerceToClassInstance(value));
 		case VLT_NATV_FUNCTION:
-			return NativeFunctionMetaToString(
-				CoerceToNativeFunction(value));
+			return NativeFunctionMetaToString(CoerceToNativeFunction(value));
 		case VLT_PROMISE:
 			{
 				StateMachine* sm = CoerceToStateMachine(value);
 				switch (sm->State) {
 					case PENDING:
-						return AllocateString(
-							"<Promise.PENDING />");
+						return AllocateString("<Promise.PENDING />");
 					case FULFILLED:
 						{
-							String inner =
-								ValueToString(sm->Value);
-							String result = FormatString(
-								"<Promise.FULFILLED {%s} />",
-								inner);
+							String inner = ValueToString(sm->Value);
+							String result =
+								FormatString("<Promise.FULFILLED {%s} />",
+											 inner);
 							free(inner);
 							return result;
 						}
 					case REJECTED:
 						{
-							String inner =
-								ValueToString(sm->Value);
-							String result = FormatString(
-								"<Promise.REJECTED {%s} />",
-								inner);
+							String inner = ValueToString(sm->Value);
+							String result =
+								FormatString("<Promise.REJECTED {%s} />",
+											 inner);
 							free(inner);
 							return result;
 						}
 					default:
-						return AllocateString(
-							"<Promise.UNKNOWN />");
+						return AllocateString("<Promise.UNKNOWN />");
 				}
 			}
 		default:
@@ -286,8 +268,7 @@ String ValueTypeOf(Value* value) {
 			return "Class";
 		case VLT_CLASS_INSTANCE:
 			{
-				ClassInstance* cls =
-					CoerceToClassInstance(value);
+				ClassInstance* cls = CoerceToClassInstance(value);
 				return CoerceToUserClass(cls->Proto)->Name;
 			}
 		case VLT_PROMISE:
@@ -316,8 +297,8 @@ bool ValueIsBigNum(Value* value) {
 }
 
 bool ValueIsAnyNum(Value* value) {
-	return ValueIsNum(value) || ValueIsBigNum(value)
-		   || ValueIsBigNum(value) || ValueIsBigInt(value);
+	return ValueIsNum(value) || ValueIsBigNum(value) || ValueIsBigNum(value)
+		   || ValueIsBigInt(value);
 }
 
 bool ValueIsStr(Value* value) {
@@ -345,8 +326,7 @@ bool ValueIsNativeFunction(Value* value) {
 }
 
 bool ValueIsCallable(Value* value) {
-	return ValueIsUserFunction(value)
-		   || ValueIsNativeFunction(value);
+	return ValueIsUserFunction(value) || ValueIsNativeFunction(value);
 }
 
 bool ValueIsArray(Value* value) {
