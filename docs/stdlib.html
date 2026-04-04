@@ -14,7 +14,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             hljs.highlightAll();
-            const headings = document.querySelectorAll('.docs-main h2[id]');
+            const headings = document.querySelectorAll('.docs-main h2[id], .docs-main h3[id]');
             const links = document.querySelectorAll('.docs-sidebar a[href^="#"]');
             const obs = new IntersectionObserver(entries => {
                 entries.forEach(e => {
@@ -24,7 +24,7 @@
                         if (link) link.classList.add('active');
                     }
                 });
-            }, { rootMargin: '-20% 0px -75% 0px' });
+            }, { rootMargin: '-10% 0px -80% 0px' });
             headings.forEach(h => obs.observe(h));
         });
     </script>

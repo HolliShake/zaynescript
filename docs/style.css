@@ -272,6 +272,10 @@ a:hover {
     height: calc(100vh - var(--header-height));
     overflow-y: auto;
     padding: 1.5rem 0 2rem;
+    /* align-self: flex-start is REQUIRED so that sticky works inside a flex
+       container — without it the sidebar stretches to the container height
+       and position:sticky has nothing to scroll through */
+    align-self: flex-start;
 }
 
 .sidebar-group {
@@ -332,11 +336,13 @@ a:hover {
     margin: 3rem 0 0.75rem;
     border-top: 1px solid var(--border);
     padding-top: 1.75rem;
+    scroll-margin-top: calc(var(--header-height) + 1rem);
 }
 
 .docs-main h3 {
     font-size: 1.05rem;
     margin: 1.75rem 0 0.5rem;
+    scroll-margin-top: calc(var(--header-height) + 1rem);
 }
 
 .docs-main h4 {
