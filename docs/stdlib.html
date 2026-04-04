@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Standard Library — ZayneScript</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script>document.addEventListener('DOMContentLoaded', () => hljs.highlightAll());</script>
+</head>
+<body>
+
+<!-- ── Header ───────────────────────────────────────────────── -->
+<header class="site-header">
+  <div class="logo"><span>Zayne</span>Script</div>
+  <nav class="header-nav">
+    <a href="index.html">Home</a>
+    <a href="language.html">Language Guide</a>
+    <a href="stdlib.html" class="active">Standard Library</a>
+  </nav>
+  <a class="header-github" href="https://github.com/HolliShake/zaynescript" target="_blank" rel="noopener">
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+               0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
+               -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66
+               .07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15
+               -.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09
+               2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82
+               2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01
+               2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
+    </svg>
+    GitHub
+  </a>
+</header>
+
+<!-- ── Layout ────────────────────────────────────────────────── -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Standard Library</div>
+      <a href="#core-io">core:io</a>
+      <a href="#io-print">  print</a>
+      <a href="#io-println">  println</a>
+      <a href="#io-scan">  scan</a>
+      <a href="#io-parseNum">  parseNum</a>
+      <a href="#io-format">  format</a>
+      <a href="#io-clearScreen">  clearScreen</a>
+      <a href="#io-setColor">  setColor</a>
+      <a href="#io-decompile">  decompile</a>
+      <a href="#core-math">core:math</a>
+      <a href="#math-single">  Single-arg functions</a>
+      <a href="#math-double">  Two-arg functions</a>
+      <a href="#math-const">  Constants</a>
+      <a href="#core-os">core:os</a>
+      <a href="#os-getCwd">  getCwd</a>
+      <a href="#os-getPid">  getPid</a>
+      <a href="#os-getUser">  getUser</a>
+      <a href="#os-getType">  getType</a>
+      <a href="#os-system">  system</a>
+      <a href="#core-array">core:Array</a>
+      <a href="#array-push">  push</a>
+      <a href="#array-pop">  pop</a>
+      <a href="#array-length">  length</a>
+      <a href="#array-each">  each</a>
+      <a href="#array-keep">  keep</a>
+      <a href="#core-date">core:Date</a>
+      <a href="#date-ctor">  Constructor</a>
+      <a href="#date-getters">  Instance getters</a>
+      <a href="#date-getTime">  getTime</a>
+      <a href="#date-toString">  toString</a>
+      <a href="#core-promise">core:Promise</a>
+      <a href="#promise-then">  then</a>
+      <a href="#promise-error">  error</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Other</div>
+      <a href="index.html">Home</a>
+      <a href="language.html">Language Guide</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="docs-main page-content">
+
+    <h1>Standard Library</h1>
+    <p style="color:var(--text-muted)">ZayneScript ships six built-in modules accessible via the <code>core:</code> import prefix. Each module is loaded on demand — import only what you need.</p>
+
+    <!-- ── core:io ─────────────────────────────────────────── -->
+    <h2 id="core-io">core:io — Input / Output</h2>
+<pre><code class="language-javascript">import { print, println, scan, parseNum,
+         format, clearScreen, setColor, decompile } from "core:io";</code></pre>
+
+    <hr class="section-divider" />
+
+    <h3 id="io-print">print</h3>
+    <div class="method-sig">print(...args)</div>
+    <p>Writes all arguments (space-separated) to stdout <strong>without</strong> a trailing newline. Accepts any number of arguments of any type.</p>
+<pre><code class="language-javascript">print("x =", 42); // x = 42  (no newline)</code></pre>
+
+    <h3 id="io-println">println</h3>
+    <div class="method-sig">println(...args)</div>
+    <p>Like <code>print</code> but appends a newline. Calling with no arguments prints a blank line.</p>
+<pre><code class="language-javascript">println("Hello", "World"); // Hello World
+println();                 // (blank line)</code></pre>
+
+    <h3 id="io-scan">scan</h3>
+    <div class="method-sig">scan(prompt?: string) → string</div>
+    <p>Reads one line from stdin and returns it as a string (newline stripped). If <code>prompt</code> is provided it is printed first without a trailing newline. Returns <code>null</code> on EOF.</p>
+<pre><code class="language-javascript">const name = scan("Enter your name: ");
+println("Hello,", name);</code></pre>
+
+    <h3 id="io-parseNum">parseNum</h3>
+    <div class="method-sig">parseNum(str: string) → int | num</div>
+    <p>Parses <code>str</code> into a number. Returns an <code>int</code> when the parsed value has no fractional part, otherwise a <code>num</code> (float).</p>
+<pre><code class="language-javascript">const n = parseNum(scan("Enter a number: "));
+println(n * 2);</code></pre>
+
+    <h3 id="io-format">format</h3>
+    <div class="method-sig">format(template: string, ...args) → string</div>
+    <p>Returns a new string with each <code>{}</code> placeholder in <code>template</code> replaced by the next argument in order. Extra arguments are ignored; extra placeholders remain as-is.</p>
+<pre><code class="language-javascript">const msg = format("Hello, {}! You are {} years old.", "Alice", 30);
+println(msg); // Hello, Alice! You are 30 years old.</code></pre>
+
+    <h3 id="io-clearScreen">clearScreen</h3>
+    <div class="method-sig">clearScreen()</div>
+    <p>Clears the terminal screen using ANSI escape codes.</p>
+<pre><code class="language-javascript">clearScreen();</code></pre>
+
+    <h3 id="io-setColor">setColor</h3>
+    <div class="method-sig">setColor(fg?: int, bg?: int)</div>
+    <p>Sets the terminal foreground (and optionally background) colour using ANSI colour codes. Calling with no arguments resets to default colours.</p>
+    <table>
+      <thead><tr><th>Code</th><th>Colour</th></tr></thead>
+      <tbody>
+        <tr><td><code>30</code></td><td>Black</td></tr>
+        <tr><td><code>31</code></td><td>Red</td></tr>
+        <tr><td><code>32</code></td><td>Green</td></tr>
+        <tr><td><code>33</code></td><td>Yellow</td></tr>
+        <tr><td><code>34</code></td><td>Blue</td></tr>
+        <tr><td><code>35</code></td><td>Magenta</td></tr>
+        <tr><td><code>36</code></td><td>Cyan</td></tr>
+        <tr><td><code>37</code></td><td>White</td></tr>
+        <tr><td><code>0</code></td><td>Reset</td></tr>
+      </tbody>
+    </table>
+<pre><code class="language-javascript">setColor(32);          // green text
+println("Success!");
+setColor();            // reset</code></pre>
+
+    <h3 id="io-decompile">decompile</h3>
+    <div class="method-sig">decompile(fn: function) → string</div>
+    <p>Decompiles a compiled user function back into a human-readable source representation. Useful for debugging or inspecting generated bytecode.</p>
+<pre><code class="language-javascript">fn add(a, b) { return a + b; }
+println(decompile(add));</code></pre>
+
+    <!-- ── core:math ──────────────────────────────────────── -->
+    <h2 id="core-math">core:math — Mathematics</h2>
+<pre><code class="language-javascript">// Named imports
+import { sqrt, pow, sin, cos, pi, e } from "core:math";
+
+// Wildcard — module bound as `math`
+import "core:math";
+println(math.sqrt(16)); // 4</code></pre>
+
+    <h3 id="math-single">Single-argument functions</h3>
+    <p>Each accepts one <code>num</code> argument and returns a <code>num</code>.</p>
+    <table>
+      <thead><tr><th>Function</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>abs(x)</code></td><td>Absolute value</td></tr>
+        <tr><td><code>acos(x)</code></td><td>Arc cosine (radians)</td></tr>
+        <tr><td><code>asin(x)</code></td><td>Arc sine (radians)</td></tr>
+        <tr><td><code>atan(x)</code></td><td>Arc tangent (radians)</td></tr>
+        <tr><td><code>ceil(x)</code></td><td>Round up to nearest integer</td></tr>
+        <tr><td><code>cos(x)</code></td><td>Cosine (radians)</td></tr>
+        <tr><td><code>cosh(x)</code></td><td>Hyperbolic cosine</td></tr>
+        <tr><td><code>exp(x)</code></td><td><em>e</em>^x</td></tr>
+        <tr><td><code>floor(x)</code></td><td>Round down to nearest integer</td></tr>
+        <tr><td><code>log(x)</code></td><td>Natural logarithm</td></tr>
+        <tr><td><code>log10(x)</code></td><td>Base-10 logarithm</td></tr>
+        <tr><td><code>round(x)</code></td><td>Round to nearest integer</td></tr>
+        <tr><td><code>sin(x)</code></td><td>Sine (radians)</td></tr>
+        <tr><td><code>sinh(x)</code></td><td>Hyperbolic sine</td></tr>
+        <tr><td><code>sqrt(x)</code></td><td>Square root</td></tr>
+        <tr><td><code>tan(x)</code></td><td>Tangent (radians)</td></tr>
+        <tr><td><code>tanh(x)</code></td><td>Hyperbolic tangent</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="math-double">Two-argument functions</h3>
+    <table>
+      <thead><tr><th>Function</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>atan2(y, x)</code></td><td>Arc tangent of y/x (full quadrant)</td></tr>
+        <tr><td><code>hypot(x, y)</code></td><td>√(x² + y²)</td></tr>
+        <tr><td><code>max(a, b)</code></td><td>Larger of two values</td></tr>
+        <tr><td><code>min(a, b)</code></td><td>Smaller of two values</td></tr>
+        <tr><td><code>pow(base, exp)</code></td><td>base^exp</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="math-const">Constants</h3>
+    <table>
+      <thead><tr><th>Name</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td><code>pi</code></td><td><code>3.14159265358979323846</code></td></tr>
+        <tr><td><code>e</code></td><td><code>2.71828182845904523536</code></td></tr>
+      </tbody>
+    </table>
+<pre><code class="language-javascript">import { sin, cos, sqrt, pow, pi, e } from "core:math";
+
+println(sqrt(2));       // 1.4142135623730951
+println(pow(2, 10));    // 1024
+println(sin(pi / 2));   // 1
+println(e);             // 2.718281828459045</code></pre>
+
+    <!-- ── core:os ─────────────────────────────────────────── -->
+    <h2 id="core-os">core:os — Operating System Utilities</h2>
+<pre><code class="language-javascript">import { getCwd, getPid, getUser, getType, system } from "core:os";</code></pre>
+
+    <h3 id="os-getCwd">getCwd</h3>
+    <div class="method-sig">getCwd() → string</div>
+    <p>Returns the current working directory as a string.</p>
+<pre><code class="language-javascript">println(getCwd()); // /home/alice/projects</code></pre>
+
+    <h3 id="os-getPid">getPid</h3>
+    <div class="method-sig">getPid() → int</div>
+    <p>Returns the process ID of the running interpreter.</p>
+<pre><code class="language-javascript">println(getPid()); // 12345</code></pre>
+
+    <h3 id="os-getUser">getUser</h3>
+    <div class="method-sig">getUser() → string</div>
+    <p>Returns the current OS username. Falls back to the <code>USER</code> environment variable on headless Linux environments.</p>
+<pre><code class="language-javascript">println(getUser()); // alice</code></pre>
+
+    <h3 id="os-getType">getType</h3>
+    <div class="method-sig">getType() → string</div>
+    <p>Returns a string identifying the host platform: <code>"win32"</code>, <code>"mac"</code>, <code>"linux"</code>, or <code>"unknown"</code>.</p>
+<pre><code class="language-javascript">if (getType() == "linux") {
+    println("Running on Linux");
+}</code></pre>
+
+    <h3 id="os-system">system</h3>
+    <div class="method-sig">system(cmd: string) → int</div>
+    <p>Executes <code>cmd</code> in the system shell (equivalent to C <code>system()</code>). Returns the exit status code.</p>
+    <div class="callout callout-warning">
+      <strong>Warning</strong>
+      Never pass untrusted user input directly to <code>system()</code>. Validate and sanitise all inputs to prevent command injection.
+    </div>
+<pre><code class="language-javascript">const code = system("ls -la");
+println("exit:", code);</code></pre>
+
+    <!-- ── core:Array ─────────────────────────────────────── -->
+    <h2 id="core-array">core:Array — Array Class</h2>
+<pre><code class="language-javascript">import { Array } from "core:Array";</code></pre>
+    <div class="callout callout-note">
+      <strong>Note</strong>
+      Array methods (<code>push</code>, <code>pop</code>, <code>length</code>, <code>each</code>, <code>keep</code>) are available on every array literal without an explicit import. Import <code>core:Array</code> only when you need the class descriptor itself — e.g. to add static helper methods at runtime.
+    </div>
+
+    <h3 id="array-push">push</h3>
+    <div class="method-sig">array.push(value)</div>
+    <p>Appends <code>value</code> to the end of the array. Returns <code>null</code>.</p>
+<pre><code class="language-javascript">const arr = [1, 2];
+arr.push(3);
+println(arr); // [1, 2, 3]</code></pre>
+
+    <h3 id="array-pop">pop</h3>
+    <div class="method-sig">array.pop() → value</div>
+    <p>Removes and returns the last element. Throws an error if the array is empty.</p>
+<pre><code class="language-javascript">const last = arr.pop();
+println(last); // 3
+println(arr);  // [1, 2]</code></pre>
+
+    <h3 id="array-length">length</h3>
+    <div class="method-sig">array.length() → int</div>
+    <p>Returns the number of elements in the array.</p>
+<pre><code class="language-javascript">println([10, 20, 30].length()); // 3</code></pre>
+
+    <h3 id="array-each">each</h3>
+    <div class="method-sig">array.each(callback(index, element)) → array</div>
+    <p>Calls <code>callback(index, element)</code> for every element and returns a new array containing each return value. Analogous to <code>Array.prototype.map</code> in JavaScript.</p>
+<pre><code class="language-javascript">const nums    = [1, 2, 3, 4, 5];
+const doubled = nums.each(fn(i, e) { return e * 2; });
+println(doubled); // [2, 4, 6, 8, 10]
+
+// Vararg functions receive (index, element)
+nums.each(println);
+// 0 1
+// 1 2
+// 2 3 ...</code></pre>
+
+    <h3 id="array-keep">keep</h3>
+    <div class="method-sig">array.keep(callback(index, element)) → array</div>
+    <p>Returns a new array containing only the elements for which <code>callback</code> returns a truthy value. Analogous to <code>Array.prototype.filter</code>.</p>
+<pre><code class="language-javascript">const evens = nums.keep(fn(i, e) { return e % 2 == 0; });
+println(evens); // [2, 4]</code></pre>
+
+    <h3>Adding static helpers at runtime</h3>
+<pre><code class="language-javascript">import { Array } from "core:Array";
+
+Array.sum = fn(arr) {
+    local total = 0;
+    arr.each(fn(i, e) { total += e; });
+    return total;
+};
+
+println(Array.sum([1, 2, 3, 4, 5])); // 15</code></pre>
+
+    <!-- ── core:Date ──────────────────────────────────────── -->
+    <h2 id="core-date">core:Date — Date and Time</h2>
+<pre><code class="language-javascript">import { Date } from "core:Date";
+// Or wildcard:
+import "core:Date";</code></pre>
+
+    <h3 id="date-ctor">Constructor</h3>
+    <table>
+      <thead><tr><th>Form</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>new Date()</code></td><td>Current date and time</td></tr>
+        <tr><td><code>new Date(ms: number)</code></td><td>Unix timestamp in <strong>milliseconds</strong></td></tr>
+        <tr><td><code>new Date(dateStr: string)</code></td><td>Parse a date string</td></tr>
+        <tr><td><code>new Date(year, month, [day, h, m, s, ms])</code></td><td>Component form</td></tr>
+      </tbody>
+    </table>
+    <p>Supported date string formats: <code>YYYY-MM-DD</code>, <code>YYYY-MM-DD HH:mm:ss</code>, <code>YYYY-MM-DDTHH:mm:ss</code>, <code>YYYY/MM/DD HH:mm:ss</code>.</p>
+    <div class="callout callout-note">
+      <strong>Note</strong>
+      <code>month</code> is <strong>0-based</strong> (January = 0, December = 11), consistent with JavaScript's <code>Date</code>.
+    </div>
+<pre><code class="language-javascript">const now = new Date();
+println(now.toString()); // e.g. Fri Apr 04 2026 14:30:00
+
+const d1 = new Date("2023-12-25");
+println(d1.getFullYear()); // 2023
+println(d1.getMonth());    // 11  (0-based)
+println(d1.getDate());     // 25
+
+// year=2024, month=Jan(0), day=1, 12:30:45
+const d2 = new Date(2024, 0, 1, 12, 30, 45);
+
+// Unix timestamp (milliseconds)
+const d3 = new Date(1705449600000);</code></pre>
+
+    <h3 id="date-getters">Instance getters</h3>
+    <table>
+      <thead><tr><th>Method</th><th>Returns</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>getFullYear()</code></td><td><code>int</code></td><td>4-digit year (e.g. 2026)</td></tr>
+        <tr><td><code>getMonth()</code></td><td><code>int</code></td><td>Month 0–11 (0 = January)</td></tr>
+        <tr><td><code>getDate()</code></td><td><code>int</code></td><td>Day of month 1–31</td></tr>
+        <tr><td><code>getDay()</code></td><td><code>int</code></td><td>Day of week 0–6 (0 = Sunday)</td></tr>
+        <tr><td><code>getHours()</code></td><td><code>int</code></td><td>Hours 0–23</td></tr>
+        <tr><td><code>getMinutes()</code></td><td><code>int</code></td><td>Minutes 0–59</td></tr>
+        <tr><td><code>getSeconds()</code></td><td><code>int</code></td><td>Seconds 0–59</td></tr>
+      </tbody>
+    </table>
+<pre><code class="language-javascript">const d = new Date("2026-04-04T14:30:00");
+println(d.getFullYear()); // 2026
+println(d.getMonth());    // 3   (April = index 3)
+println(d.getDate());     // 4
+println(d.getDay());      // 6   (Saturday)
+println(d.getHours());    // 14
+println(d.getMinutes());  // 30
+println(d.getSeconds());  // 0</code></pre>
+
+    <h3 id="date-getTime">getTime</h3>
+    <div class="method-sig">date.getTime() → num</div>
+    <p>Returns the internal Unix timestamp in <strong>milliseconds</strong>.</p>
+<pre><code class="language-javascript">println(new Date().getTime()); // e.g. 1743778200000</code></pre>
+
+    <h3 id="date-toString">toString</h3>
+    <div class="method-sig">date.toString() → string</div>
+    <p>Returns a human-readable string, e.g. <code>"Sat Apr 04 2026 14:30:00"</code>.</p>
+<pre><code class="language-javascript">println(new Date().toString());</code></pre>
+
+    <!-- ── core:Promise ──────────────────────────────────── -->
+    <h2 id="core-promise">core:Promise — Promises</h2>
+<pre><code class="language-javascript">import { Promise } from "core:Promise";</code></pre>
+    <p>Promises are created <strong>implicitly</strong> by calling any <code>async</code> function. You rarely need to construct them manually. The two instance methods below form the chaining API.</p>
+
+    <h3 id="promise-then">then</h3>
+    <div class="method-sig">promise.then(callback(value)) → Promise</div>
+    <p>Registers a callback to run when the promise resolves. The callback receives the resolved value and its return value becomes the resolved value of the new promise returned by <code>then</code>, enabling chaining.</p>
+    <div class="callout callout-note">
+      <strong>Note</strong>
+      The callback must accept exactly <strong>1 argument</strong> (or use a vararg signature). A wrong arity produces a runtime error.
+    </div>
+<pre><code class="language-javascript">fn getData() async { return 42; }
+
+getData()
+    .then(fn(v) {
+        println("value:", v);  // value: 42
+        return v * 2;
+    })
+    .then(fn(v) {
+        println("doubled:", v); // doubled: 84
+    });</code></pre>
+
+    <h3 id="promise-error">error</h3>
+    <div class="method-sig">promise.error(callback(err)) → Promise</div>
+    <p>Registers a callback to run if the promise (or any preceding promise in the chain) is <strong>rejected</strong>. The callback receives the error value.</p>
+<pre><code class="language-javascript">fn mayFail() async {
+    return somethingRisky();
+}
+
+mayFail()
+    .then(fn(v) { println("Got:", v); })
+    .error(fn(e) { println("Error:", e); });</code></pre>
+
+    <h3>Full example</h3>
+<pre><code class="language-javascript">import { println } from "core:io";
+
+fn step1() async { return "hello"; }
+fn step2(s) async { return s + " world"; }
+
+fn pipeline() async {
+    const s = await step1();
+    return await step2(s);
+}
+
+pipeline()
+    .then(fn(result) {
+        println(result); // hello world
+    })
+    .error(fn(e) {
+        println("Failed:", e);
+    });</code></pre>
+
+  </main>
+
+</div><!-- /.layout -->
+
+<footer class="site-footer">
+  ZayneScript © 2025–Present Philipp Andrew Redondo. MIT License.
+</footer>
+
+<script>
+  /* scroll-spy */
+  (function () {
+    const links = document.querySelectorAll('.sidebar a[href^="#"]');
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          links.forEach(l => l.classList.remove('active'));
+          const a = document.querySelector('.sidebar a[href="#' + e.target.id + '"]');
+          if (a) a.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-50px 0px -70% 0px' });
+    document.querySelectorAll('h2[id], h3[id]').forEach(h => observer.observe(h));
+  })();
+</script>
+
+</body>
+</html>
