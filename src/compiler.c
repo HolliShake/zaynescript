@@ -3064,16 +3064,13 @@ static void _CompileContinueStatement(Compiler*		compiler,
 				   "inside a loop");
 	}
 
-	if (ScopeInside(scope, SCOPE_TRY_BLOCK)) {
-		int n = ScopeCountNested(scope, SCOPE_TRY_BLOCK);
-		// Pop try blocks until we exit the try block
-		if (n == 1) {
-			_EmitLine(compiler, uf, node->Position);
-			_Emit(compiler, uf, OP_POP_TRY);
-		} else {
-			_EmitLine(compiler, uf, node->Position);
-			_EmitArg(compiler, uf, OP_POPN_TRY, n);
-		}
+	int tryToPop = ScopeCountNestedUntil(scope, SCOPE_TRY_BLOCK, SCOPE_LOOP);
+	if (tryToPop == 1) {
+		_EmitLine(compiler, uf, node->Position);
+		_Emit(compiler, uf, OP_POP_TRY);
+	} else if (tryToPop > 1) {
+		_EmitLine(compiler, uf, node->Position);
+		_EmitArg(compiler, uf, OP_POPN_TRY, tryToPop);
 	}
 
 	_EmitLine(compiler, uf, node->Position);
@@ -3093,16 +3090,13 @@ static void _CompileBreakStatement(Compiler*	 compiler,
 				   "inside a loop");
 	}
 
-	if (ScopeInside(scope, SCOPE_TRY_BLOCK)) {
-		int n = ScopeCountNested(scope, SCOPE_TRY_BLOCK);
-		// Pop try blocks until we exit the try block
-		if (n == 1) {
-			_EmitLine(compiler, uf, node->Position);
-			_Emit(compiler, uf, OP_POP_TRY);
-		} else {
-			_EmitLine(compiler, uf, node->Position);
-			_EmitArg(compiler, uf, OP_POPN_TRY, n);
-		}
+	int tryToPop = ScopeCountNestedUntil(scope, SCOPE_TRY_BLOCK, SCOPE_LOOP);
+	if (tryToPop == 1) {
+		_EmitLine(compiler, uf, node->Position);
+		_Emit(compiler, uf, OP_POP_TRY);
+	} else if (tryToPop > 1) {
+		_EmitLine(compiler, uf, node->Position);
+		_EmitArg(compiler, uf, OP_POPN_TRY, tryToPop);
 	}
 
 	_EmitLine(compiler, uf, node->Position);

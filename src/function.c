@@ -85,7 +85,7 @@ int UserFunctionAddCapture(UserFunction* userFunction,
 	capture.Depth = depth;
 	capture.Src	  = sourceOffset;
 	capture.Dst	  = offset;	 // The destination offset is determined by the
-						   // current capture count
+							 // current capture count
 	userFunction->CaptureMetas[userFunction->CaptureC++] = capture;
 	userFunction->CaptureMetas =
 		Reallocate(userFunction->CaptureMetas,

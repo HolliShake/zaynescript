@@ -1,5 +1,7 @@
 #include "./scope.h"
 
+#include "global.h"
+
 Symbol* CreateSymbol(bool isGlobal,
 					 bool isLocalToFn,
 					 bool isConstant,
@@ -252,6 +254,28 @@ int ScopeCountNested(Scope* scope, ScopeType type) {
 		if (scope->Type == type) {
 			count++;
 		}
+		scope = scope->Parent;
+	}
+	return count;
+}
+
+int ScopeCountNestedUntil(Scope* scope, ScopeType type, ScopeType untilType) {
+	int count = 0;
+	while (scope != NULL) {
+		// Universally stop at function boundaries.
+		// Control flow unwinding cannot cross into a parent function's scope.
+		if (scope->Type == SCOPE_FUNCTION) {
+			return count;
+		}
+
+		if (scope->Type == untilType) {
+			return count;
+		}
+
+		if (scope->Type == type) {
+			count++;
+		}
+
 		scope = scope->Parent;
 	}
 	return count;
