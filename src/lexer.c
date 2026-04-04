@@ -146,42 +146,24 @@ static Token TokenizeString(Lexer* lexer) {
 	Rune	 quote = CurrentRune(lexer);
 	Advance(lexer);	 // Skip opening quote
 
-	// FIX: Safely calculate maxLength by skipping escaped
-	// characters so an escaped quote (\") doesn't end the count
-	// early!
-	int maxLength = 0;
-	int scan	  = lexer->Indx;
+	int scan = lexer->Indx;
 	while (lexer->Data[scan] != 0 && lexer->Data[scan] != quote) {
 		if (lexer->Data[scan] == '\\' && lexer->Data[scan + 1] != 0) {
-			scan++;	 // Skip the backslash
-			// For \xHH, skip the hex digits (they produce 1
-			// rune)
-			if (lexer->Data[scan] == 'x') {
-				scan++;	 // skip 'x'
-				while (
-					lexer->Data[scan] != 0
-					&& ((lexer->Data[scan] >= '0' && lexer->Data[scan] <= '9')
-						|| (lexer->Data[scan] >= 'a'
-							&& lexer->Data[scan] <= 'f')
-						|| (lexer->Data[scan] >= 'A'
-							&& lexer->Data[scan] <= 'F'))) {
-					scan++;
-				}
-				maxLength++;  // \xHH produces one character
-				continue;
-			}
-			maxLength++;  // Count the escaped character
+			scan += 2;	// Safely skip the backslash and the escaped char
+		} else {
+			scan++;
 		}
-		maxLength++;
-		scan++;
 	}
 
-	Rune* decoded		= Allocate(sizeof(Rune) * (maxLength + 1));
-	int	  decodedLength = 0;
+	int	  maxPossibleLength = scan - lexer->Indx;
+	Rune* decoded			= Allocate(sizeof(Rune) * (maxPossibleLength + 1));
+	int	  decodedLength		= 0;
 
+	// 2. SINGLE-PASS DECODING
 	while (CurrentRune(lexer) != 0 && CurrentRune(lexer) != quote) {
 		if (CurrentRune(lexer) == '\\') {
-			Advance(lexer);	 // Skip escape character
+			Advance(lexer);	 // Skip escape character '\'
+
 			switch (CurrentRune(lexer)) {
 				case 'b':
 					decoded[decodedLength++] = '\b';
@@ -198,27 +180,6 @@ static Token TokenizeString(Lexer* lexer) {
 				case 'e':
 					decoded[decodedLength++] = '\033';
 					break;	// The ANSI Escape!
-				case 'x':
-					{
-						// \xHH hex escape
-						Advance(lexer);	 // skip 'x'
-						Rune value = 0;
-						while (CurrentRune(lexer) != 0) {
-							Rune c = CurrentRune(lexer);
-							if (c >= '0' && c <= '9')
-								value = value * 16 + (c - '0');
-							else if (c >= 'a' && c <= 'f')
-								value = value * 16 + (c - 'a' + 10);
-							else if (c >= 'A' && c <= 'F')
-								value = value * 16 + (c - 'A' + 10);
-							else
-								break;
-							Advance(lexer);
-						}
-						decoded[decodedLength++] = value;
-						continue;  // already advanced past
-								   // digits
-					}
 				case '\\':
 					decoded[decodedLength++] = '\\';
 					break;
@@ -228,16 +189,37 @@ static Token TokenizeString(Lexer* lexer) {
 				case '"':
 					decoded[decodedLength++] = '"';
 					break;
+				case 'x':
+					{
+						Advance(lexer);	 // skip 'x'
+						Rune value = 0;
+
+						// Decode hex using fast bitwise operations
+						while (CurrentRune(lexer) != 0) {
+							Rune c = CurrentRune(lexer);
+							if (c >= '0' && c <= '9')
+								value = (value << 4) | (c - '0');
+							else if (c >= 'a' && c <= 'f')
+								value = (value << 4) | (c - 'a' + 10);
+							else if (c >= 'A' && c <= 'F')
+								value = (value << 4) | (c - 'A' + 10);
+							else
+								break;
+							Advance(lexer);
+						}
+						decoded[decodedLength++] = value;
+						continue;  // Skip the Advance() at the bottom of the
+								   // outer block
+					}
 				default:
-					// Keep unknown escape content without the
-					// backslash.
+					// Keep unknown escape content without the backslash
 					if (CurrentRune(lexer) != 0) {
 						decoded[decodedLength++] = CurrentRune(lexer);
 					}
 					break;
 			}
 			if (CurrentRune(lexer) != 0) {
-				Advance(lexer);	 // Skip escaped character
+				Advance(lexer);	 // Skip the resolved escape character
 			}
 		} else {
 			decoded[decodedLength++] = CurrentRune(lexer);
@@ -246,7 +228,8 @@ static Token TokenizeString(Lexer* lexer) {
 	}
 
 	decoded[decodedLength] = 0;
-	String value		   = RunesToString(decoded, 0, decodedLength);
+
+	String value = RunesToString(decoded, 0, decodedLength);
 	free(decoded);
 
 	if (CurrentRune(lexer) == quote) {
