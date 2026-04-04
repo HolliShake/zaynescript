@@ -1,145 +1,157 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ZayneScript — A Scripting Language Written in C</title>
-  <meta name="description" content="ZayneScript is a dynamic, interpreted scripting language written in pure C with first-class functions, closures, async/await, classes, and a rich standard library." />
-  <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-  <script>document.addEventListener('DOMContentLoaded', () => hljs.highlightAll());</script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ZayneScript — A Scripting Language Written in C</title>
+    <meta name="description"
+        content="ZayneScript is a dynamic, interpreted scripting language written in pure C with first-class functions, closures, async/await, classes, and a rich standard library." />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>document.addEventListener('DOMContentLoaded', () => hljs.highlightAll());</script>
 </head>
+
 <body>
 
-<!-- ================================================================
+    <!-- ================================================================
      Header
      ================================================================ -->
-<header class="site-header">
-  <a class="logo" href="index.html">Zayne<span>Script</span></a>
-  <nav>
-    <a href="index.html" class="active">Home</a>
-    <a href="language.html">Language Guide</a>
-    <a href="stdlib.html">Standard Library</a>
-    <a href="https://github.com" target="_blank" rel="noopener">GitHub</a>
-  </nav>
-</header>
+    <header class="site-header">
+        <a class="logo" href="index.html">Zayne<span>Script</span></a>
+        <nav>
+            <a href="index.html" class="active">Home</a>
+            <a href="language.html">Language Guide</a>
+            <a href="stdlib.html">Standard Library</a>
+            <a href="https://github.com" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+    </header>
 
-<!-- ================================================================
+    <!-- ================================================================
      Hero
      ================================================================ -->
-<section class="hero">
-  <div class="hero-badge">v1.0 · Written in Pure C</div>
-  <h1>ZayneScript</h1>
-  <p>
-    A dynamic, interpreted scripting language written in pure C.
-    First-class functions, closures, async/await, BigInt, OOP, and a
-    rich built-in standard library — all in a single executable.
-  </p>
-  <div class="btn-group">
-    <a class="btn btn-primary" href="language.html">Language Guide</a>
-    <a class="btn btn-secondary" href="stdlib.html">Standard Library</a>
-    <a class="btn btn-secondary" href="#quick-start">Quick Start</a>
-  </div>
-</section>
+    <section class="hero">
+        <div class="hero-badge">v1.0 · Written in Pure C</div>
+        <h1>ZayneScript</h1>
+        <p>
+            A dynamic, interpreted scripting language written in pure C.
+            First-class functions, closures, async/await, BigInt, OOP, and a
+            rich built-in standard library — all in a single executable.
+        </p>
+        <div class="btn-group">
+            <a class="btn btn-primary" href="language.html">Language Guide</a>
+            <a class="btn btn-secondary" href="stdlib.html">Standard Library</a>
+            <a class="btn btn-secondary" href="#quick-start">Quick Start</a>
+        </div>
+    </section>
 
-<!-- ================================================================
+    <!-- ================================================================
      Features
      ================================================================ -->
-<div class="page-content" style="padding-top: 0;">
+    <div class="page-content" style="padding-top: 0;">
 
-  <div class="features-grid">
-    <div class="feature-card">
-      <div class="feature-icon">⚡</div>
-      <h3>Dynamic Typing</h3>
-      <p>Variables hold any type at runtime. No annotations required — write expressive code without ceremony.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🔒</div>
-      <h3>First-Class Functions</h3>
-      <p>Functions are values. Pass them around, return them from other functions, and capture variables in closures.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🔄</div>
-      <h3>Async / Await</h3>
-      <p>Declare <code>async</code> functions and use <code>await</code> to suspend execution. Includes Promise chaining with <code>.then()</code> and <code>.error()</code>.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🔢</div>
-      <h3>BigInt Support</h3>
-      <p>Arbitrary-precision integers using the <code>n</code> suffix — <code>100n + 2n</code>. No overflow surprises with large numbers.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🏗️</div>
-      <h3>Object-Oriented</h3>
-      <p>Class-based inheritance, constructors, static methods/properties, and <code>this</code> binding.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">📦</div>
-      <h3>Module System</h3>
-      <p>Named and wildcard imports, <code>core:</code> built-ins, <code>lib:</code> user libraries, and relative path imports.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🗃️</div>
-      <h3>Rich Data Structures</h3>
-      <p>Dynamic arrays with methods (<code>push</code>, <code>pop</code>, <code>each</code>, <code>keep</code>), and flexible key-value objects with spread syntax.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🎛️</div>
-      <h3>Expressive Control Flow</h3>
-      <p><code>if</code>/<code>for</code>/<code>while</code>/<code>do-while</code>, <code>switch</code> expressions, <code>try</code>/<code>catch</code>, and ternary forms.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">📚</div>
-      <h3>Standard Library</h3>
-      <p>Built-in modules for I/O, math, OS utilities, arrays, dates, and promises. Import only what you need.</p>
-    </div>
-  </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Dynamic Typing</h3>
+                <p>Variables hold any type at runtime. No annotations required — write expressive code without ceremony.
+                </p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔒</div>
+                <h3>First-Class Functions</h3>
+                <p>Functions are values. Pass them around, return them from other functions, and capture variables in
+                    closures.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔄</div>
+                <h3>Async / Await</h3>
+                <p>Declare <code>async</code> functions and use <code>await</code> to suspend execution. Includes
+                    Promise chaining with <code>.then()</code> and <code>.error()</code>.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔢</div>
+                <h3>BigInt Support</h3>
+                <p>Arbitrary-precision integers using the <code>n</code> suffix — <code>100n + 2n</code>. No overflow
+                    surprises with large numbers.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🏗️</div>
+                <h3>Object-Oriented</h3>
+                <p>Class-based inheritance, constructors, static methods/properties, and <code>this</code> binding.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📦</div>
+                <h3>Module System</h3>
+                <p>Named and wildcard imports, <code>core:</code> built-ins, <code>lib:</code> user libraries, and
+                    relative path imports.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🗃️</div>
+                <h3>Rich Data Structures</h3>
+                <p>Dynamic arrays with methods (<code>push</code>, <code>pop</code>, <code>each</code>,
+                    <code>keep</code>), and flexible key-value objects with spread syntax.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎛️</div>
+                <h3>Expressive Control Flow</h3>
+                <p><code>if</code>/<code>for</code>/<code>while</code>/<code>do-while</code>, <code>switch</code>
+                    expressions, <code>try</code>/<code>catch</code>, and ternary forms.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📚</div>
+                <h3>Standard Library</h3>
+                <p>Built-in modules for I/O, math, OS utilities, arrays, dates, and promises. Import only what you need.
+                </p>
+            </div>
+        </div>
 
-  <!-- ================================================================
+        <!-- ================================================================
        Quick Start
        ================================================================ -->
-  <section id="quick-start" class="quick-start">
-    <h2>Quick Start</h2>
+        <section id="quick-start" class="quick-start">
+            <h2>Quick Start</h2>
 
-    <div class="steps">
-      <div class="step">
-        <div>
-          <strong>Build</strong> — requires GCC and GNU Make.
-          <pre><code class="language-bash"># Linux / macOS (recommended)
+            <div class="steps">
+                <div class="step">
+                    <div>
+                        <strong>Build</strong> — requires GCC and GNU Make.
+                        <pre><code class="language-bash"># Linux / macOS (recommended)
 make
 
 # Or compile manually
 gcc -O3 -DNDEBUG -Wno-pointer-sign \
     main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c ./libbf/*.c \
     -o zscript.exe -lm -ldl -lpthread</code></pre>
-        </div>
-      </div>
-      <div class="step">
-        <div>
-          <strong>Write a script</strong> — create <code>hello.zs</code>:
-          <pre><code class="language-javascript">import { println } from "core:io";
+                    </div>
+                </div>
+                <div class="step">
+                    <div>
+                        <strong>Write a script</strong> — create <code>hello.zs</code>:
+                        <pre><code class="language-javascript">import { println } from "core:io";
 
 println("Hello, ZayneScript!");</code></pre>
-        </div>
-      </div>
-      <div class="step">
-        <div>
-          <strong>Run it</strong>:
-          <pre><code class="language-bash">./zscript.exe --run hello.zs</code></pre>
-        </div>
-      </div>
-    </div>
-  </section>
+                    </div>
+                </div>
+                <div class="step">
+                    <div>
+                        <strong>Run it</strong>:
+                        <pre><code class="language-bash">./zscript.exe --run hello.zs</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-  <!-- ================================================================
+        <!-- ================================================================
        Taste of the Language
        ================================================================ -->
-  <h2>A Taste of ZayneScript</h2>
+        <h2>A Taste of ZayneScript</h2>
 
-  <p>The following snippet demonstrates variables, closures, classes, async/await, and the standard library:</p>
+        <p>The following snippet demonstrates variables, closures, classes, async/await, and the standard library:</p>
 
-  <pre><code class="language-javascript">import { println, format } from "core:io";
+        <pre><code class="language-javascript">import { println, format } from "core:io";
 import { sqrt, pi }        from "core:math";
 
 // ----- Closures -----
@@ -180,12 +192,12 @@ main();
 // ----- BigInt -----
 println(2n ** 64n); // 18446744073709551616n</code></pre>
 
-  <!-- ================================================================
+        <!-- ================================================================
        Building
        ================================================================ -->
-  <h2>Building</h2>
-  <h3>Linux / macOS</h3>
-  <pre><code class="language-bash"># Debug build (default)
+        <h2>Building</h2>
+        <h3>Linux / macOS</h3>
+        <pre><code class="language-bash"># Debug build (default)
 make
 
 # Optimised release build
@@ -197,55 +209,92 @@ make run
 # Remove binary
 make clean</code></pre>
 
-  <h3>Windows (MinGW / GCC)</h3>
-  <pre><code class="language-bash">.\run.bat --compile</code></pre>
+        <h3>Windows (MinGW / GCC)</h3>
+        <pre><code class="language-bash">.\run.bat --compile</code></pre>
 
-  <!-- ================================================================
+        <!-- ================================================================
        Usage
        ================================================================ -->
-  <h2>Usage</h2>
-  <table>
-    <thead>
-      <tr><th>Command</th><th>Description</th></tr>
-    </thead>
-    <tbody>
-      <tr><td><code>./zscript.exe --run &lt;file.zs&gt;</code></td><td>Execute a script file</td></tr>
-      <tr><td><code>./zscript.exe --tests</code></td><td>Run all scripts in the <code>tests/</code> directory</td></tr>
-      <tr><td><code>./zscript.exe --help</code></td><td>Print help text</td></tr>
-    </tbody>
-  </table>
+        <h2>Usage</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Command</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>./zscript.exe --run &lt;file.zs&gt;</code></td>
+                    <td>Execute a script file</td>
+                </tr>
+                <tr>
+                    <td><code>./zscript.exe --tests</code></td>
+                    <td>Run all scripts in the <code>tests/</code> directory</td>
+                </tr>
+                <tr>
+                    <td><code>./zscript.exe --help</code></td>
+                    <td>Print help text</td>
+                </tr>
+            </tbody>
+        </table>
 
-  <!-- ================================================================
+        <!-- ================================================================
        Project Layout
        ================================================================ -->
-  <h2>Project Structure</h2>
-  <table>
-    <thead>
-      <tr><th>Path</th><th>Contents</th></tr>
-    </thead>
-    <tbody>
-      <tr><td><code>src/</code></td><td>Interpreter core: lexer, parser, compiler, bytecode evaluator</td></tr>
-      <tr><td><code>src/core/</code></td><td>Standard library modules (io, math, os, array, date, promise)</td></tr>
-      <tr><td><code>tests/</code></td><td>Example <code>.zs</code> scripts demonstrating every feature</td></tr>
-      <tr><td><code>lib/</code></td><td>User-level library files importable via <code>lib:</code></td></tr>
-      <tr><td><code>utf/</code></td><td>UTF-8 processing helpers (utf8proc)</td></tr>
-      <tr><td><code>libbf/</code></td><td>BigInt backend (libbf)</td></tr>
-      <tr><td><code>main.c</code></td><td>Interpreter entry point</td></tr>
-    </tbody>
-  </table>
+        <h2>Project Structure</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Path</th>
+                    <th>Contents</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>src/</code></td>
+                    <td>Interpreter core: lexer, parser, compiler, bytecode evaluator</td>
+                </tr>
+                <tr>
+                    <td><code>src/core/</code></td>
+                    <td>Standard library modules (io, math, os, array, date, promise)</td>
+                </tr>
+                <tr>
+                    <td><code>tests/</code></td>
+                    <td>Example <code>.zs</code> scripts demonstrating every feature</td>
+                </tr>
+                <tr>
+                    <td><code>lib/</code></td>
+                    <td>User-level library files importable via <code>lib:</code></td>
+                </tr>
+                <tr>
+                    <td><code>utf/</code></td>
+                    <td>UTF-8 processing helpers (utf8proc)</td>
+                </tr>
+                <tr>
+                    <td><code>libbf/</code></td>
+                    <td>BigInt backend (libbf)</td>
+                </tr>
+                <tr>
+                    <td><code>main.c</code></td>
+                    <td>Interpreter entry point</td>
+                </tr>
+            </tbody>
+        </table>
 
-</div>
+    </div>
 
-<!-- ================================================================
+    <!-- ================================================================
      Footer
      ================================================================ -->
-<footer class="site-footer">
-  <p>ZayneScript &copy; 2025–Present Philipp Andrew Redondo. Released under the MIT License.</p>
-  <p style="margin-top:0.4rem;">
-    <a href="language.html">Language Guide</a> &nbsp;·&nbsp;
-    <a href="stdlib.html">Standard Library</a>
-  </p>
-</footer>
+    <footer class="site-footer">
+        <p>ZayneScript &copy; 2025–Present Philipp Andrew Redondo. Released under the MIT License.</p>
+        <p style="margin-top:0.4rem;">
+            <a href="language.html">Language Guide</a> &nbsp;·&nbsp;
+            <a href="stdlib.html">Standard Library</a>
+        </p>
+    </footer>
 
 </body>
+
 </html>

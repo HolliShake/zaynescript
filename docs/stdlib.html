@@ -1,421 +1,507 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Standard Library — ZayneScript</title>
-  <meta name="description" content="ZayneScript standard library reference: core:io, core:math, core:os, core:Array, core:Date, core:Promise." />
-  <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      hljs.highlightAll();
-      const headings = document.querySelectorAll('.docs-main h2[id]');
-      const links    = document.querySelectorAll('.docs-sidebar a[href^="#"]');
-      const obs = new IntersectionObserver(entries => {
-        entries.forEach(e => {
-          if (e.isIntersecting) {
-            links.forEach(l => l.classList.remove('active'));
-            const link = document.querySelector(`.docs-sidebar a[href="#${e.target.id}"]`);
-            if (link) link.classList.add('active');
-          }
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Standard Library — ZayneScript</title>
+    <meta name="description"
+        content="ZayneScript standard library reference: core:io, core:math, core:os, core:Array, core:Date, core:Promise." />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            hljs.highlightAll();
+            const headings = document.querySelectorAll('.docs-main h2[id]');
+            const links = document.querySelectorAll('.docs-sidebar a[href^="#"]');
+            const obs = new IntersectionObserver(entries => {
+                entries.forEach(e => {
+                    if (e.isIntersecting) {
+                        links.forEach(l => l.classList.remove('active'));
+                        const link = document.querySelector(`.docs-sidebar a[href="#${e.target.id}"]`);
+                        if (link) link.classList.add('active');
+                    }
+                });
+            }, { rootMargin: '-20% 0px -75% 0px' });
+            headings.forEach(h => obs.observe(h));
         });
-      }, { rootMargin: '-20% 0px -75% 0px' });
-      headings.forEach(h => obs.observe(h));
-    });
-  </script>
+    </script>
 </head>
+
 <body>
 
-<!-- ================================================================
+    <!-- ================================================================
      Header
      ================================================================ -->
-<header class="site-header">
-  <a class="logo" href="index.html">Zayne<span>Script</span></a>
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="language.html">Language Guide</a>
-    <a href="stdlib.html" class="active">Standard Library</a>
-    <a href="https://github.com" target="_blank" rel="noopener">GitHub</a>
-  </nav>
-</header>
+    <header class="site-header">
+        <a class="logo" href="index.html">Zayne<span>Script</span></a>
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="language.html">Language Guide</a>
+            <a href="stdlib.html" class="active">Standard Library</a>
+            <a href="https://github.com" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+    </header>
 
-<!-- ================================================================
+    <!-- ================================================================
      Two-column layout
      ================================================================ -->
-<div class="docs-wrapper">
+    <div class="docs-wrapper">
 
-  <!-- Sidebar -->
-  <aside class="docs-sidebar">
-    <div class="sidebar-group">
-      <div class="sidebar-group-title">Modules</div>
-      <ul>
-        <li><a href="#io">core:io</a></li>
-        <li><a href="#math">core:math</a></li>
-        <li><a href="#os">core:os</a></li>
-        <li><a href="#array">core:Array</a></li>
-        <li><a href="#date">core:Date</a></li>
-        <li><a href="#promise">core:Promise</a></li>
-      </ul>
-    </div>
-    <div class="sidebar-group">
-      <div class="sidebar-group-title">core:io</div>
-      <ul>
-        <li><a href="#io-print">print</a></li>
-        <li><a href="#io-println">println</a></li>
-        <li><a href="#io-scan">scan</a></li>
-        <li><a href="#io-parsenum">parseNum</a></li>
-        <li><a href="#io-format">format</a></li>
-        <li><a href="#io-clearscreen">clearScreen</a></li>
-        <li><a href="#io-setcolor">setColor</a></li>
-        <li><a href="#io-decompile">decompile</a></li>
-      </ul>
-    </div>
-    <div class="sidebar-group">
-      <div class="sidebar-group-title">core:math</div>
-      <ul>
-        <li><a href="#math-single">Single-arg functions</a></li>
-        <li><a href="#math-double">Two-arg functions</a></li>
-        <li><a href="#math-constants">Constants</a></li>
-      </ul>
-    </div>
-    <div class="sidebar-group">
-      <div class="sidebar-group-title">core:os</div>
-      <ul>
-        <li><a href="#os-getcwd">getCwd</a></li>
-        <li><a href="#os-getpid">getPid</a></li>
-        <li><a href="#os-getuser">getUser</a></li>
-        <li><a href="#os-gettype">getType</a></li>
-        <li><a href="#os-system">system</a></li>
-      </ul>
-    </div>
-    <div class="sidebar-group">
-      <div class="sidebar-group-title">core:Array</div>
-      <ul>
-        <li><a href="#arr-push">push</a></li>
-        <li><a href="#arr-pop">pop</a></li>
-        <li><a href="#arr-length">length</a></li>
-        <li><a href="#arr-each">each</a></li>
-        <li><a href="#arr-keep">keep</a></li>
-      </ul>
-    </div>
-    <div class="sidebar-group">
-      <div class="sidebar-group-title">core:Date</div>
-      <ul>
-        <li><a href="#date-constructor">constructor</a></li>
-        <li><a href="#date-getters">Getters</a></li>
-        <li><a href="#date-gettime">getTime</a></li>
-        <li><a href="#date-tostring">toString</a></li>
-      </ul>
-    </div>
-    <div class="sidebar-group">
-      <div class="sidebar-group-title">core:Promise</div>
-      <ul>
-        <li><a href="#promise-then">then</a></li>
-        <li><a href="#promise-error">error</a></li>
-      </ul>
-    </div>
-  </aside>
+        <!-- Sidebar -->
+        <aside class="docs-sidebar">
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">Modules</div>
+                <ul>
+                    <li><a href="#io">core:io</a></li>
+                    <li><a href="#math">core:math</a></li>
+                    <li><a href="#os">core:os</a></li>
+                    <li><a href="#array">core:Array</a></li>
+                    <li><a href="#date">core:Date</a></li>
+                    <li><a href="#promise">core:Promise</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">core:io</div>
+                <ul>
+                    <li><a href="#io-print">print</a></li>
+                    <li><a href="#io-println">println</a></li>
+                    <li><a href="#io-scan">scan</a></li>
+                    <li><a href="#io-parsenum">parseNum</a></li>
+                    <li><a href="#io-format">format</a></li>
+                    <li><a href="#io-clearscreen">clearScreen</a></li>
+                    <li><a href="#io-setcolor">setColor</a></li>
+                    <li><a href="#io-decompile">decompile</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">core:math</div>
+                <ul>
+                    <li><a href="#math-single">Single-arg functions</a></li>
+                    <li><a href="#math-double">Two-arg functions</a></li>
+                    <li><a href="#math-constants">Constants</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">core:os</div>
+                <ul>
+                    <li><a href="#os-getcwd">getCwd</a></li>
+                    <li><a href="#os-getpid">getPid</a></li>
+                    <li><a href="#os-getuser">getUser</a></li>
+                    <li><a href="#os-gettype">getType</a></li>
+                    <li><a href="#os-system">system</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">core:Array</div>
+                <ul>
+                    <li><a href="#arr-push">push</a></li>
+                    <li><a href="#arr-pop">pop</a></li>
+                    <li><a href="#arr-length">length</a></li>
+                    <li><a href="#arr-each">each</a></li>
+                    <li><a href="#arr-keep">keep</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">core:Date</div>
+                <ul>
+                    <li><a href="#date-constructor">constructor</a></li>
+                    <li><a href="#date-getters">Getters</a></li>
+                    <li><a href="#date-gettime">getTime</a></li>
+                    <li><a href="#date-tostring">toString</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">core:Promise</div>
+                <ul>
+                    <li><a href="#promise-then">then</a></li>
+                    <li><a href="#promise-error">error</a></li>
+                </ul>
+            </div>
+        </aside>
 
-  <!-- Main content -->
-  <main class="docs-main">
+        <!-- Main content -->
+        <main class="docs-main">
 
-    <h1>Standard Library</h1>
-    <p class="page-intro">
-      ZayneScript ships six built-in modules accessible via the
-      <code>core:</code> import prefix. Each module provides functions or a
-      class that is loaded on demand — only import what you need.
-    </p>
+            <h1>Standard Library</h1>
+            <p class="page-intro">
+                ZayneScript ships six built-in modules accessible via the
+                <code>core:</code> import prefix. Each module provides functions or a
+                class that is loaded on demand — only import what you need.
+            </p>
 
-    <!-- ==============================================================
+            <!-- ==============================================================
          core:io
          ============================================================== -->
-    <h2 id="io">core:io — Input / Output</h2>
-    <p>Import with:</p>
-    <pre><code class="language-javascript">import { print, println, scan, parseNum, format,
+            <h2 id="io">core:io — Input / Output</h2>
+            <p>Import with:</p>
+            <pre><code class="language-javascript">import { print, println, scan, parseNum, format,
          clearScreen, setColor, decompile } from "core:io";</code></pre>
 
-    <hr />
+            <hr />
 
-    <h3 id="io-print">print</h3>
-    <div class="method">
-      <div class="method-sig">print(...args)</div>
-      <p class="method-desc">
-        Writes each argument (space-separated) to stdout without a trailing
-        newline. Accepts any number of arguments of any type.
-      </p>
-    </div>
-    <pre><code class="language-javascript">print("x =", 42); // x = 42  (no newline)</code></pre>
+            <h3 id="io-print">print</h3>
+            <div class="method">
+                <div class="method-sig">print(...args)</div>
+                <p class="method-desc">
+                    Writes each argument (space-separated) to stdout without a trailing
+                    newline. Accepts any number of arguments of any type.
+                </p>
+            </div>
+            <pre><code class="language-javascript">print("x =", 42); // x = 42  (no newline)</code></pre>
 
-    <h3 id="io-println">println</h3>
-    <div class="method">
-      <div class="method-sig">println(...args)</div>
-      <p class="method-desc">
-        Like <code>print</code> but appends a newline after all arguments.
-        Calling with no arguments prints a blank line.
-      </p>
-    </div>
-    <pre><code class="language-javascript">println("Hello", "World"); // Hello World
+            <h3 id="io-println">println</h3>
+            <div class="method">
+                <div class="method-sig">println(...args)</div>
+                <p class="method-desc">
+                    Like <code>print</code> but appends a newline after all arguments.
+                    Calling with no arguments prints a blank line.
+                </p>
+            </div>
+            <pre><code class="language-javascript">println("Hello", "World"); // Hello World
 println();                 // (blank line)</code></pre>
 
-    <h3 id="io-scan">scan</h3>
-    <div class="method">
-      <div class="method-sig">scan(prompt?: string) → string</div>
-      <p class="method-desc">
-        Reads one line from stdin and returns it as a string (newline
-        stripped). If <code>prompt</code> is provided it is printed first
-        without a trailing newline.
-        Returns <code>null</code> on EOF.
-      </p>
-    </div>
-    <pre><code class="language-javascript">const name = scan("Enter your name: ");
+            <h3 id="io-scan">scan</h3>
+            <div class="method">
+                <div class="method-sig">scan(prompt?: string) → string</div>
+                <p class="method-desc">
+                    Reads one line from stdin and returns it as a string (newline
+                    stripped). If <code>prompt</code> is provided it is printed first
+                    without a trailing newline.
+                    Returns <code>null</code> on EOF.
+                </p>
+            </div>
+            <pre><code class="language-javascript">const name = scan("Enter your name: ");
 println("Hello,", name);</code></pre>
 
-    <h3 id="io-parsenum">parseNum</h3>
-    <div class="method">
-      <div class="method-sig">parseNum(str: string) → int | num</div>
-      <p class="method-desc">
-        Parses <code>str</code> into a number. Returns an integer when the
-        parsed value has no fractional part, otherwise a float.
-      </p>
-    </div>
-    <pre><code class="language-javascript">const n = parseNum(scan("Enter a number: "));
+            <h3 id="io-parsenum">parseNum</h3>
+            <div class="method">
+                <div class="method-sig">parseNum(str: string) → int | num</div>
+                <p class="method-desc">
+                    Parses <code>str</code> into a number. Returns an integer when the
+                    parsed value has no fractional part, otherwise a float.
+                </p>
+            </div>
+            <pre><code class="language-javascript">const n = parseNum(scan("Enter a number: "));
 println(n * 2);</code></pre>
 
-    <h3 id="io-format">format</h3>
-    <div class="method">
-      <div class="method-sig">format(template: string, ...args) → string</div>
-      <p class="method-desc">
-        Returns a new string with each <code>{}</code> placeholder in
-        <code>template</code> replaced by the next argument in order.
-        Extra arguments are ignored; extra placeholders are left as-is.
-      </p>
-    </div>
-    <pre><code class="language-javascript">const msg = format("Hello, {}! You are {} years old.", "Alice", 30);
+            <h3 id="io-format">format</h3>
+            <div class="method">
+                <div class="method-sig">format(template: string, ...args) → string</div>
+                <p class="method-desc">
+                    Returns a new string with each <code>{}</code> placeholder in
+                    <code>template</code> replaced by the next argument in order.
+                    Extra arguments are ignored; extra placeholders are left as-is.
+                </p>
+            </div>
+            <pre><code class="language-javascript">const msg = format("Hello, {}! You are {} years old.", "Alice", 30);
 println(msg); // Hello, Alice! You are 30 years old.</code></pre>
 
-    <h3 id="io-clearscreen">clearScreen</h3>
-    <div class="method">
-      <div class="method-sig">clearScreen()</div>
-      <p class="method-desc">Clears the terminal screen using ANSI escape codes.</p>
-    </div>
-    <pre><code class="language-javascript">clearScreen();</code></pre>
+            <h3 id="io-clearscreen">clearScreen</h3>
+            <div class="method">
+                <div class="method-sig">clearScreen()</div>
+                <p class="method-desc">Clears the terminal screen using ANSI escape codes.</p>
+            </div>
+            <pre><code class="language-javascript">clearScreen();</code></pre>
 
-    <h3 id="io-setcolor">setColor</h3>
-    <div class="method">
-      <div class="method-sig">setColor(fg?: int, bg?: int)</div>
-      <p class="method-desc">
-        Sets the terminal foreground (and optionally background) colour using
-        ANSI colour codes. Calling with no arguments resets to default colours.
-        Typical foreground codes: <code>31</code> red, <code>32</code> green,
-        <code>33</code> yellow, <code>34</code> blue, <code>0</code> reset.
-      </p>
-    </div>
-    <pre><code class="language-javascript">setColor(32);          // green text
+            <h3 id="io-setcolor">setColor</h3>
+            <div class="method">
+                <div class="method-sig">setColor(fg?: int, bg?: int)</div>
+                <p class="method-desc">
+                    Sets the terminal foreground (and optionally background) colour using
+                    ANSI colour codes. Calling with no arguments resets to default colours.
+                    Typical foreground codes: <code>31</code> red, <code>32</code> green,
+                    <code>33</code> yellow, <code>34</code> blue, <code>0</code> reset.
+                </p>
+            </div>
+            <pre><code class="language-javascript">setColor(32);          // green text
 println("Success!");
 setColor();            // reset</code></pre>
 
-    <h3 id="io-decompile">decompile</h3>
-    <div class="method">
-      <div class="method-sig">decompile(fn: function) → string</div>
-      <p class="method-desc">
-        Decompiles a compiled user function back into a human-readable source
-        representation. Useful for debugging or inspecting generated bytecode.
-      </p>
-    </div>
-    <pre><code class="language-javascript">fn add(a, b) { return a + b; }
+            <h3 id="io-decompile">decompile</h3>
+            <div class="method">
+                <div class="method-sig">decompile(fn: function) → string</div>
+                <p class="method-desc">
+                    Decompiles a compiled user function back into a human-readable source
+                    representation. Useful for debugging or inspecting generated bytecode.
+                </p>
+            </div>
+            <pre><code class="language-javascript">fn add(a, b) { return a + b; }
 println(decompile(add));</code></pre>
 
-    <!-- ==============================================================
+            <!-- ==============================================================
          core:math
          ============================================================== -->
-    <h2 id="math">core:math — Mathematics</h2>
-    <p>Import with:</p>
-    <pre><code class="language-javascript">// Named imports
+            <h2 id="math">core:math — Mathematics</h2>
+            <p>Import with:</p>
+            <pre><code class="language-javascript">// Named imports
 import { sqrt, pow, sin, cos, pi, e } from "core:math";
 
 // Or wildcard — module bound as `math`
 import "core:math";
 println(math.sqrt(16)); // 4</code></pre>
 
-    <hr />
+            <hr />
 
-    <h3 id="math-single">Single-argument functions</h3>
-    <p>Each accepts one numeric argument and returns a <code>num</code>:</p>
-    <table>
-      <thead>
-        <tr><th>Function</th><th>Description</th></tr>
-      </thead>
-      <tbody>
-        <tr><td><code>abs(x)</code></td><td>Absolute value</td></tr>
-        <tr><td><code>acos(x)</code></td><td>Arc cosine (radians)</td></tr>
-        <tr><td><code>asin(x)</code></td><td>Arc sine (radians)</td></tr>
-        <tr><td><code>atan(x)</code></td><td>Arc tangent (radians)</td></tr>
-        <tr><td><code>ceil(x)</code></td><td>Round up to nearest integer</td></tr>
-        <tr><td><code>cos(x)</code></td><td>Cosine (radians)</td></tr>
-        <tr><td><code>cosh(x)</code></td><td>Hyperbolic cosine</td></tr>
-        <tr><td><code>exp(x)</code></td><td><em>e</em><sup>x</sup></td></tr>
-        <tr><td><code>floor(x)</code></td><td>Round down to nearest integer</td></tr>
-        <tr><td><code>log(x)</code></td><td>Natural logarithm</td></tr>
-        <tr><td><code>log10(x)</code></td><td>Base-10 logarithm</td></tr>
-        <tr><td><code>round(x)</code></td><td>Round to nearest integer</td></tr>
-        <tr><td><code>sin(x)</code></td><td>Sine (radians)</td></tr>
-        <tr><td><code>sinh(x)</code></td><td>Hyperbolic sine</td></tr>
-        <tr><td><code>sqrt(x)</code></td><td>Square root</td></tr>
-        <tr><td><code>tan(x)</code></td><td>Tangent (radians)</td></tr>
-        <tr><td><code>tanh(x)</code></td><td>Hyperbolic tangent</td></tr>
-      </tbody>
-    </table>
+            <h3 id="math-single">Single-argument functions</h3>
+            <p>Each accepts one numeric argument and returns a <code>num</code>:</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Function</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>abs(x)</code></td>
+                        <td>Absolute value</td>
+                    </tr>
+                    <tr>
+                        <td><code>acos(x)</code></td>
+                        <td>Arc cosine (radians)</td>
+                    </tr>
+                    <tr>
+                        <td><code>asin(x)</code></td>
+                        <td>Arc sine (radians)</td>
+                    </tr>
+                    <tr>
+                        <td><code>atan(x)</code></td>
+                        <td>Arc tangent (radians)</td>
+                    </tr>
+                    <tr>
+                        <td><code>ceil(x)</code></td>
+                        <td>Round up to nearest integer</td>
+                    </tr>
+                    <tr>
+                        <td><code>cos(x)</code></td>
+                        <td>Cosine (radians)</td>
+                    </tr>
+                    <tr>
+                        <td><code>cosh(x)</code></td>
+                        <td>Hyperbolic cosine</td>
+                    </tr>
+                    <tr>
+                        <td><code>exp(x)</code></td>
+                        <td><em>e</em><sup>x</sup></td>
+                    </tr>
+                    <tr>
+                        <td><code>floor(x)</code></td>
+                        <td>Round down to nearest integer</td>
+                    </tr>
+                    <tr>
+                        <td><code>log(x)</code></td>
+                        <td>Natural logarithm</td>
+                    </tr>
+                    <tr>
+                        <td><code>log10(x)</code></td>
+                        <td>Base-10 logarithm</td>
+                    </tr>
+                    <tr>
+                        <td><code>round(x)</code></td>
+                        <td>Round to nearest integer</td>
+                    </tr>
+                    <tr>
+                        <td><code>sin(x)</code></td>
+                        <td>Sine (radians)</td>
+                    </tr>
+                    <tr>
+                        <td><code>sinh(x)</code></td>
+                        <td>Hyperbolic sine</td>
+                    </tr>
+                    <tr>
+                        <td><code>sqrt(x)</code></td>
+                        <td>Square root</td>
+                    </tr>
+                    <tr>
+                        <td><code>tan(x)</code></td>
+                        <td>Tangent (radians)</td>
+                    </tr>
+                    <tr>
+                        <td><code>tanh(x)</code></td>
+                        <td>Hyperbolic tangent</td>
+                    </tr>
+                </tbody>
+            </table>
 
-    <h3 id="math-double">Two-argument functions</h3>
-    <table>
-      <thead>
-        <tr><th>Function</th><th>Description</th></tr>
-      </thead>
-      <tbody>
-        <tr><td><code>atan2(y, x)</code></td><td>Arc tangent of y/x (full quadrant)</td></tr>
-        <tr><td><code>hypot(x, y)</code></td><td>√(x² + y²)</td></tr>
-        <tr><td><code>max(a, b)</code></td><td>Larger of two values</td></tr>
-        <tr><td><code>min(a, b)</code></td><td>Smaller of two values</td></tr>
-        <tr><td><code>pow(base, exp)</code></td><td>base<sup>exp</sup></td></tr>
-      </tbody>
-    </table>
+            <h3 id="math-double">Two-argument functions</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Function</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>atan2(y, x)</code></td>
+                        <td>Arc tangent of y/x (full quadrant)</td>
+                    </tr>
+                    <tr>
+                        <td><code>hypot(x, y)</code></td>
+                        <td>√(x² + y²)</td>
+                    </tr>
+                    <tr>
+                        <td><code>max(a, b)</code></td>
+                        <td>Larger of two values</td>
+                    </tr>
+                    <tr>
+                        <td><code>min(a, b)</code></td>
+                        <td>Smaller of two values</td>
+                    </tr>
+                    <tr>
+                        <td><code>pow(base, exp)</code></td>
+                        <td>base<sup>exp</sup></td>
+                    </tr>
+                </tbody>
+            </table>
 
-    <h3 id="math-constants">Constants</h3>
-    <table>
-      <thead>
-        <tr><th>Name</th><th>Value</th></tr>
-      </thead>
-      <tbody>
-        <tr><td><code>pi</code></td><td>3.14159265358979323846</td></tr>
-        <tr><td><code>e</code></td><td>2.71828182845904523536</td></tr>
-      </tbody>
-    </table>
+            <h3 id="math-constants">Constants</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>pi</code></td>
+                        <td>3.14159265358979323846</td>
+                    </tr>
+                    <tr>
+                        <td><code>e</code></td>
+                        <td>2.71828182845904523536</td>
+                    </tr>
+                </tbody>
+            </table>
 
-    <pre><code class="language-javascript">import { sin, cos, sqrt, pow, pi, e } from "core:math";
+            <pre><code class="language-javascript">import { sin, cos, sqrt, pow, pi, e } from "core:math";
 
 println(sqrt(2));       // 1.4142135623730951
 println(pow(2, 10));    // 1024
 println(sin(pi / 2));   // 1
 println(e);             // 2.718281828459045</code></pre>
 
-    <!-- ==============================================================
+            <!-- ==============================================================
          core:os
          ============================================================== -->
-    <h2 id="os">core:os — Operating System Utilities</h2>
-    <p>Import with:</p>
-    <pre><code class="language-javascript">import { getCwd, getPid, getUser, getType, system } from "core:os";</code></pre>
+            <h2 id="os">core:os — Operating System Utilities</h2>
+            <p>Import with:</p>
+            <pre><code class="language-javascript">import { getCwd, getPid, getUser, getType, system } from "core:os";</code></pre>
 
-    <hr />
+            <hr />
 
-    <h3 id="os-getcwd">getCwd</h3>
-    <div class="method">
-      <div class="method-sig">getCwd() → string</div>
-      <p class="method-desc">Returns the current working directory as a string.</p>
-    </div>
-    <pre><code class="language-javascript">println(getCwd()); // /home/alice/projects</code></pre>
+            <h3 id="os-getcwd">getCwd</h3>
+            <div class="method">
+                <div class="method-sig">getCwd() → string</div>
+                <p class="method-desc">Returns the current working directory as a string.</p>
+            </div>
+            <pre><code class="language-javascript">println(getCwd()); // /home/alice/projects</code></pre>
 
-    <h3 id="os-getpid">getPid</h3>
-    <div class="method">
-      <div class="method-sig">getPid() → int</div>
-      <p class="method-desc">Returns the process ID of the running interpreter.</p>
-    </div>
-    <pre><code class="language-javascript">println(getPid()); // 12345</code></pre>
+            <h3 id="os-getpid">getPid</h3>
+            <div class="method">
+                <div class="method-sig">getPid() → int</div>
+                <p class="method-desc">Returns the process ID of the running interpreter.</p>
+            </div>
+            <pre><code class="language-javascript">println(getPid()); // 12345</code></pre>
 
-    <h3 id="os-getuser">getUser</h3>
-    <div class="method">
-      <div class="method-sig">getUser() → string</div>
-      <p class="method-desc">
-        Returns the current OS username. Falls back to the
-        <code>USER</code> environment variable on headless Linux environments.
-      </p>
-    </div>
-    <pre><code class="language-javascript">println(getUser()); // alice</code></pre>
+            <h3 id="os-getuser">getUser</h3>
+            <div class="method">
+                <div class="method-sig">getUser() → string</div>
+                <p class="method-desc">
+                    Returns the current OS username. Falls back to the
+                    <code>USER</code> environment variable on headless Linux environments.
+                </p>
+            </div>
+            <pre><code class="language-javascript">println(getUser()); // alice</code></pre>
 
-    <h3 id="os-gettype">getType</h3>
-    <div class="method">
-      <div class="method-sig">getType() → string</div>
-      <p class="method-desc">
-        Returns a string identifying the host platform:
-        <code>"win32"</code>, <code>"mac"</code>, <code>"linux"</code>, or
-        <code>"unknown"</code>.
-      </p>
-    </div>
-    <pre><code class="language-javascript">if (getType() == "linux") {
+            <h3 id="os-gettype">getType</h3>
+            <div class="method">
+                <div class="method-sig">getType() → string</div>
+                <p class="method-desc">
+                    Returns a string identifying the host platform:
+                    <code>"win32"</code>, <code>"mac"</code>, <code>"linux"</code>, or
+                    <code>"unknown"</code>.
+                </p>
+            </div>
+            <pre><code class="language-javascript">if (getType() == "linux") {
     println("Running on Linux");
 }</code></pre>
 
-    <h3 id="os-system">system</h3>
-    <div class="method">
-      <div class="method-sig">system(cmd: string) → int</div>
-      <p class="method-desc">
-        Executes <code>cmd</code> in the system shell (equivalent to C
-        <code>system()</code>). Returns the exit status code.
-      </p>
-    </div>
-    <div class="warning">
-      <strong>Warning:</strong> Never pass untrusted user input directly to
-      <code>system()</code>. Validate and sanitise all inputs first to avoid
-      command injection.
-    </div>
-    <pre><code class="language-javascript">const code = system("ls -la");
+            <h3 id="os-system">system</h3>
+            <div class="method">
+                <div class="method-sig">system(cmd: string) → int</div>
+                <p class="method-desc">
+                    Executes <code>cmd</code> in the system shell (equivalent to C
+                    <code>system()</code>). Returns the exit status code.
+                </p>
+            </div>
+            <div class="warning">
+                <strong>Warning:</strong> Never pass untrusted user input directly to
+                <code>system()</code>. Validate and sanitise all inputs first to avoid
+                command injection.
+            </div>
+            <pre><code class="language-javascript">const code = system("ls -la");
 println("exit:", code);</code></pre>
 
-    <!-- ==============================================================
+            <!-- ==============================================================
          core:Array
          ============================================================== -->
-    <h2 id="array">core:Array — Array Class</h2>
-    <p>Import with:</p>
-    <pre><code class="language-javascript">import { Array } from "core:Array";</code></pre>
-    <p>
-      Array methods are available directly on every array literal via the
-      prototype. You do <em>not</em> need to explicitly import
-      <code>core:Array</code> to use the built-in methods — they are always
-      present. Import it only when you need the <code>Array</code> class itself
-      (e.g. to add static helpers at runtime).
-    </p>
+            <h2 id="array">core:Array — Array Class</h2>
+            <p>Import with:</p>
+            <pre><code class="language-javascript">import { Array } from "core:Array";</code></pre>
+            <p>
+                Array methods are available directly on every array literal via the
+                prototype. You do <em>not</em> need to explicitly import
+                <code>core:Array</code> to use the built-in methods — they are always
+                present. Import it only when you need the <code>Array</code> class itself
+                (e.g. to add static helpers at runtime).
+            </p>
 
-    <hr />
+            <hr />
 
-    <h3 id="arr-push">push</h3>
-    <div class="method">
-      <div class="method-sig">array.push(value)</div>
-      <p class="method-desc">Appends <code>value</code> to the end of the array. Returns <code>null</code>.</p>
-    </div>
-    <pre><code class="language-javascript">const arr = [1, 2];
+            <h3 id="arr-push">push</h3>
+            <div class="method">
+                <div class="method-sig">array.push(value)</div>
+                <p class="method-desc">Appends <code>value</code> to the end of the array. Returns <code>null</code>.
+                </p>
+            </div>
+            <pre><code class="language-javascript">const arr = [1, 2];
 arr.push(3);
 println(arr); // [1, 2, 3]</code></pre>
 
-    <h3 id="arr-pop">pop</h3>
-    <div class="method">
-      <div class="method-sig">array.pop() → value</div>
-      <p class="method-desc">
-        Removes and returns the last element. Throws an error if the array is
-        empty.
-      </p>
-    </div>
-    <pre><code class="language-javascript">const last = arr.pop();
+            <h3 id="arr-pop">pop</h3>
+            <div class="method">
+                <div class="method-sig">array.pop() → value</div>
+                <p class="method-desc">
+                    Removes and returns the last element. Throws an error if the array is
+                    empty.
+                </p>
+            </div>
+            <pre><code class="language-javascript">const last = arr.pop();
 println(last); // 3
 println(arr);  // [1, 2]</code></pre>
 
-    <h3 id="arr-length">length</h3>
-    <div class="method">
-      <div class="method-sig">array.length() → int</div>
-      <p class="method-desc">Returns the number of elements in the array.</p>
-    </div>
-    <pre><code class="language-javascript">println([10, 20, 30].length()); // 3</code></pre>
+            <h3 id="arr-length">length</h3>
+            <div class="method">
+                <div class="method-sig">array.length() → int</div>
+                <p class="method-desc">Returns the number of elements in the array.</p>
+            </div>
+            <pre><code class="language-javascript">println([10, 20, 30].length()); // 3</code></pre>
 
-    <h3 id="arr-each">each</h3>
-    <div class="method">
-      <div class="method-sig">array.each(callback(index, element)) → array</div>
-      <p class="method-desc">
-        Calls <code>callback(index, element)</code> for every element and
-        returns a new array containing each return value. Analogous to
-        <code>Array.prototype.map</code> in JavaScript.
-      </p>
-    </div>
-    <pre><code class="language-javascript">const nums    = [1, 2, 3, 4, 5];
+            <h3 id="arr-each">each</h3>
+            <div class="method">
+                <div class="method-sig">array.each(callback(index, element)) → array</div>
+                <p class="method-desc">
+                    Calls <code>callback(index, element)</code> for every element and
+                    returns a new array containing each return value. Analogous to
+                    <code>Array.prototype.map</code> in JavaScript.
+                </p>
+            </div>
+            <pre><code class="language-javascript">const nums    = [1, 2, 3, 4, 5];
 const doubled = nums.each(fn(i, e) { return e * 2; });
 println(doubled); // [2, 4, 6, 8, 10]
 
@@ -425,24 +511,24 @@ nums.each(println);
 // 1 2
 // 2 3 ...</code></pre>
 
-    <h3 id="arr-keep">keep</h3>
-    <div class="method">
-      <div class="method-sig">array.keep(callback(index, element)) → array</div>
-      <p class="method-desc">
-        Returns a new array containing only the elements for which
-        <code>callback</code> returns a truthy value. Analogous to
-        <code>Array.prototype.filter</code>.
-      </p>
-    </div>
-    <pre><code class="language-javascript">const evens = nums.keep(fn(i, e) { return e % 2 == 0; });
+            <h3 id="arr-keep">keep</h3>
+            <div class="method">
+                <div class="method-sig">array.keep(callback(index, element)) → array</div>
+                <p class="method-desc">
+                    Returns a new array containing only the elements for which
+                    <code>callback</code> returns a truthy value. Analogous to
+                    <code>Array.prototype.filter</code>.
+                </p>
+            </div>
+            <pre><code class="language-javascript">const evens = nums.keep(fn(i, e) { return e % 2 == 0; });
 println(evens); // [2, 4]</code></pre>
 
-    <h3>Adding static helpers at runtime</h3>
-    <p>
-      Because <code>Array</code> is a first-class class value you can attach
-      arbitrary static functions to it:
-    </p>
-    <pre><code class="language-javascript">import { Array } from "core:Array";
+            <h3>Adding static helpers at runtime</h3>
+            <p>
+                Because <code>Array</code> is a first-class class value you can attach
+                arbitrary static functions to it:
+            </p>
+            <pre><code class="language-javascript">import { Array } from "core:Array";
 
 Array.sum = fn(arr) {
     local total = 0;
@@ -452,37 +538,37 @@ Array.sum = fn(arr) {
 
 println(Array.sum([1, 2, 3, 4, 5])); // 15</code></pre>
 
-    <!-- ==============================================================
+            <!-- ==============================================================
          core:Date
          ============================================================== -->
-    <h2 id="date">core:Date — Date and Time</h2>
-    <p>Import with:</p>
-    <pre><code class="language-javascript">import { Date } from "core:Date";
+            <h2 id="date">core:Date — Date and Time</h2>
+            <p>Import with:</p>
+            <pre><code class="language-javascript">import { Date } from "core:Date";
 // Or wildcard:
 import "core:Date";</code></pre>
 
-    <hr />
+            <hr />
 
-    <h3 id="date-constructor">Constructor</h3>
-    <div class="method">
-      <div class="method-sig">new Date()</div>
-      <div class="method-sig">new Date(timestamp: number)</div>
-      <div class="method-sig">new Date(dateString: string)</div>
-      <div class="method-sig">new Date(year, month, [day, hours, minutes, seconds, ms])</div>
-      <p class="method-desc" style="margin-top:.5rem;">
-        Creates a new Date instance.<br />
-        • <strong>No argument</strong> — current date and time.<br />
-        • <strong>Number</strong> — Unix timestamp in milliseconds.<br />
-        • <strong>String</strong> — parsed date. Supported formats:
-            <code>YYYY-MM-DD</code>,
-            <code>YYYY-MM-DD HH:mm:ss</code>,
-            <code>YYYY-MM-DDTHH:mm:ss</code>,
-            <code>YYYY/MM/DD HH:mm:ss</code>.<br />
-        • <strong>Components</strong> — year (full), month (0-based Jan=0),
-            day (default 1), hours, minutes, seconds, milliseconds.
-      </p>
-    </div>
-    <pre><code class="language-javascript">const now = new Date();
+            <h3 id="date-constructor">Constructor</h3>
+            <div class="method">
+                <div class="method-sig">new Date()</div>
+                <div class="method-sig">new Date(timestamp: number)</div>
+                <div class="method-sig">new Date(dateString: string)</div>
+                <div class="method-sig">new Date(year, month, [day, hours, minutes, seconds, ms])</div>
+                <p class="method-desc" style="margin-top:.5rem;">
+                    Creates a new Date instance.<br />
+                    • <strong>No argument</strong> — current date and time.<br />
+                    • <strong>Number</strong> — Unix timestamp in milliseconds.<br />
+                    • <strong>String</strong> — parsed date. Supported formats:
+                    <code>YYYY-MM-DD</code>,
+                    <code>YYYY-MM-DD HH:mm:ss</code>,
+                    <code>YYYY-MM-DDTHH:mm:ss</code>,
+                    <code>YYYY/MM/DD HH:mm:ss</code>.<br />
+                    • <strong>Components</strong> — year (full), month (0-based Jan=0),
+                    day (default 1), hours, minutes, seconds, milliseconds.
+                </p>
+            </div>
+            <pre><code class="language-javascript">const now = new Date();
 println(now.toString()); // e.g. Fri Apr 04 2026 14:30:00
 
 const d1 = new Date("2023-12-25");
@@ -495,22 +581,54 @@ const d2 = new Date(2024, 0, 1, 12, 30, 45);
 
 const d3 = new Date(1705449600000); // from timestamp ms</code></pre>
 
-    <h3 id="date-getters">Instance Getters</h3>
-    <table>
-      <thead>
-        <tr><th>Method</th><th>Returns</th><th>Notes</th></tr>
-      </thead>
-      <tbody>
-        <tr><td><code>getFullYear()</code></td><td><code>int</code></td><td>Full 4-digit year (e.g. 2026)</td></tr>
-        <tr><td><code>getMonth()</code></td><td><code>int</code></td><td>Month 0–11 (0 = January)</td></tr>
-        <tr><td><code>getDate()</code></td><td><code>int</code></td><td>Day of month 1–31</td></tr>
-        <tr><td><code>getDay()</code></td><td><code>int</code></td><td>Day of week 0–6 (0 = Sunday)</td></tr>
-        <tr><td><code>getHours()</code></td><td><code>int</code></td><td>Hours 0–23</td></tr>
-        <tr><td><code>getMinutes()</code></td><td><code>int</code></td><td>Minutes 0–59</td></tr>
-        <tr><td><code>getSeconds()</code></td><td><code>int</code></td><td>Seconds 0–59</td></tr>
-      </tbody>
-    </table>
-    <pre><code class="language-javascript">const d = new Date("2026-04-04T14:30:00");
+            <h3 id="date-getters">Instance Getters</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Method</th>
+                        <th>Returns</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>getFullYear()</code></td>
+                        <td><code>int</code></td>
+                        <td>Full 4-digit year (e.g. 2026)</td>
+                    </tr>
+                    <tr>
+                        <td><code>getMonth()</code></td>
+                        <td><code>int</code></td>
+                        <td>Month 0–11 (0 = January)</td>
+                    </tr>
+                    <tr>
+                        <td><code>getDate()</code></td>
+                        <td><code>int</code></td>
+                        <td>Day of month 1–31</td>
+                    </tr>
+                    <tr>
+                        <td><code>getDay()</code></td>
+                        <td><code>int</code></td>
+                        <td>Day of week 0–6 (0 = Sunday)</td>
+                    </tr>
+                    <tr>
+                        <td><code>getHours()</code></td>
+                        <td><code>int</code></td>
+                        <td>Hours 0–23</td>
+                    </tr>
+                    <tr>
+                        <td><code>getMinutes()</code></td>
+                        <td><code>int</code></td>
+                        <td>Minutes 0–59</td>
+                    </tr>
+                    <tr>
+                        <td><code>getSeconds()</code></td>
+                        <td><code>int</code></td>
+                        <td>Seconds 0–59</td>
+                    </tr>
+                </tbody>
+            </table>
+            <pre><code class="language-javascript">const d = new Date("2026-04-04T14:30:00");
 println(d.getFullYear()); // 2026
 println(d.getMonth());    // 3   (April = index 3)
 println(d.getDate());     // 4
@@ -519,50 +637,50 @@ println(d.getHours());    // 14
 println(d.getMinutes());  // 30
 println(d.getSeconds());  // 0</code></pre>
 
-    <h3 id="date-gettime">getTime</h3>
-    <div class="method">
-      <div class="method-sig">date.getTime() → num</div>
-      <p class="method-desc">
-        Returns the internal Unix timestamp in <strong>milliseconds</strong>.
-      </p>
-    </div>
-    <pre><code class="language-javascript">println(new Date().getTime()); // e.g. 1743778200000</code></pre>
+            <h3 id="date-gettime">getTime</h3>
+            <div class="method">
+                <div class="method-sig">date.getTime() → num</div>
+                <p class="method-desc">
+                    Returns the internal Unix timestamp in <strong>milliseconds</strong>.
+                </p>
+            </div>
+            <pre><code class="language-javascript">println(new Date().getTime()); // e.g. 1743778200000</code></pre>
 
-    <h3 id="date-tostring">toString</h3>
-    <div class="method">
-      <div class="method-sig">date.toString() → string</div>
-      <p class="method-desc">
-        Returns a human-readable string representation of the date, e.g.
-        <code>"Sat Apr 04 2026 14:30:00"</code>.
-      </p>
-    </div>
-    <pre><code class="language-javascript">println(new Date().toString());</code></pre>
+            <h3 id="date-tostring">toString</h3>
+            <div class="method">
+                <div class="method-sig">date.toString() → string</div>
+                <p class="method-desc">
+                    Returns a human-readable string representation of the date, e.g.
+                    <code>"Sat Apr 04 2026 14:30:00"</code>.
+                </p>
+            </div>
+            <pre><code class="language-javascript">println(new Date().toString());</code></pre>
 
-    <!-- ==============================================================
+            <!-- ==============================================================
          core:Promise
          ============================================================== -->
-    <h2 id="promise">core:Promise — Promises</h2>
-    <p>Import with:</p>
-    <pre><code class="language-javascript">import { Promise } from "core:Promise";</code></pre>
-    <p>
-      Promises are created <strong>implicitly</strong> by calling any
-      <code>async</code> function. You rarely construct them manually.
-      The two instance methods below form the chaining API.
-    </p>
+            <h2 id="promise">core:Promise — Promises</h2>
+            <p>Import with:</p>
+            <pre><code class="language-javascript">import { Promise } from "core:Promise";</code></pre>
+            <p>
+                Promises are created <strong>implicitly</strong> by calling any
+                <code>async</code> function. You rarely construct them manually.
+                The two instance methods below form the chaining API.
+            </p>
 
-    <hr />
+            <hr />
 
-    <h3 id="promise-then">then</h3>
-    <div class="method">
-      <div class="method-sig">promise.then(callback(value)) → Promise</div>
-      <p class="method-desc">
-        Registers a callback to run when the promise resolves. The callback
-        receives the resolved value as its sole argument. The return value of
-        the callback becomes the resolved value of the new promise returned by
-        <code>then</code>, enabling chaining.
-      </p>
-    </div>
-    <pre><code class="language-javascript">fn getData() async { return 42; }
+            <h3 id="promise-then">then</h3>
+            <div class="method">
+                <div class="method-sig">promise.then(callback(value)) → Promise</div>
+                <p class="method-desc">
+                    Registers a callback to run when the promise resolves. The callback
+                    receives the resolved value as its sole argument. The return value of
+                    the callback becomes the resolved value of the new promise returned by
+                    <code>then</code>, enabling chaining.
+                </p>
+            </div>
+            <pre><code class="language-javascript">fn getData() async { return 42; }
 
 getData()
     .then(fn(v) {
@@ -573,22 +691,22 @@ getData()
         println("doubled:", v); // doubled: 84
     });</code></pre>
 
-    <div class="note">
-      <strong>Note:</strong> The <code>then</code> callback must accept
-      exactly <strong>1 argument</strong> (or use a vararg signature). A
-      callback with the wrong arity will produce a runtime error.
-    </div>
+            <div class="note">
+                <strong>Note:</strong> The <code>then</code> callback must accept
+                exactly <strong>1 argument</strong> (or use a vararg signature). A
+                callback with the wrong arity will produce a runtime error.
+            </div>
 
-    <h3 id="promise-error">error</h3>
-    <div class="method">
-      <div class="method-sig">promise.error(callback(err)) → Promise</div>
-      <p class="method-desc">
-        Registers a callback to run if the promise (or any preceding promise
-        in the chain) is <strong>rejected</strong>. The callback receives the
-        error value. Returns a new promise for further chaining.
-      </p>
-    </div>
-    <pre><code class="language-javascript">fn mayFail() async {
+            <h3 id="promise-error">error</h3>
+            <div class="method">
+                <div class="method-sig">promise.error(callback(err)) → Promise</div>
+                <p class="method-desc">
+                    Registers a callback to run if the promise (or any preceding promise
+                    in the chain) is <strong>rejected</strong>. The callback receives the
+                    error value. Returns a new promise for further chaining.
+                </p>
+            </div>
+            <pre><code class="language-javascript">fn mayFail() async {
     return somethingRisky();
 }
 
@@ -596,8 +714,8 @@ mayFail()
     .then(fn(v) { println("Got:", v); })
     .error(fn(e) { println("Error:", e); });</code></pre>
 
-    <h3>Full async / Promise example</h3>
-    <pre><code class="language-javascript">import { println } from "core:io";
+            <h3>Full async / Promise example</h3>
+            <pre><code class="language-javascript">import { println } from "core:io";
 
 fn step1() async { return "hello"; }
 fn step2(s) async { return s + " world"; }
@@ -615,19 +733,20 @@ pipeline()
         println("Failed:", e);
     });</code></pre>
 
-  </main>
-</div>
+        </main>
+    </div>
 
-<!-- ================================================================
+    <!-- ================================================================
      Footer
      ================================================================ -->
-<footer class="site-footer">
-  <p>ZayneScript &copy; 2025–Present Philipp Andrew Redondo. Released under the MIT License.</p>
-  <p style="margin-top:0.4rem;">
-    <a href="index.html">Home</a> &nbsp;·&nbsp;
-    <a href="language.html">Language Guide</a>
-  </p>
-</footer>
+    <footer class="site-footer">
+        <p>ZayneScript &copy; 2025–Present Philipp Andrew Redondo. Released under the MIT License.</p>
+        <p style="margin-top:0.4rem;">
+            <a href="index.html">Home</a> &nbsp;·&nbsp;
+            <a href="language.html">Language Guide</a>
+        </p>
+    </footer>
 
 </body>
+
 </html>
