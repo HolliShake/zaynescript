@@ -3063,6 +3063,7 @@ static void _CompileContinueStatement(Compiler*		compiler,
 				   "continue statement can only be used "
 				   "inside a loop");
 	}
+
 	if (ScopeInside(scope, SCOPE_TRY_BLOCK)) {
 		int n = ScopeCountNested(scope, SCOPE_TRY_BLOCK);
 		// Pop try blocks until we exit the try block
@@ -3091,6 +3092,7 @@ static void _CompileBreakStatement(Compiler*	 compiler,
 				   "break statement can only be used "
 				   "inside a loop");
 	}
+
 	if (ScopeInside(scope, SCOPE_TRY_BLOCK)) {
 		int n = ScopeCountNested(scope, SCOPE_TRY_BLOCK);
 		// Pop try blocks until we exit the try block
