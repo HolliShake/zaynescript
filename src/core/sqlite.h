@@ -29,6 +29,7 @@
  *   db.close();
  */
 
+#include "../../sqlite/sqlite3.h"
 #include "../function.h"
 #include "../global.h"
 #include "../value.h"

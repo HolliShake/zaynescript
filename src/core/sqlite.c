@@ -1,11 +1,5 @@
 #include "./sqlite.h"
 
-#include "../../sqlite/sqlite3.h"
-
-// ─── Module-level handle for the Statement class ─────────────────────────────
-// Kept alive through the Database class's static "_StmtClass" member.
-static Value* _StmtClass = NULL;
-
 // ─── Opaque-pointer encode / decode ──────────────────────────────────────────
 
 static inline Value* _PtrToValue(Interpreter* interp, void* ptr) {
@@ -48,25 +42,75 @@ static sqlite3* _GetStmtDB(ClassInstance* instance) {
 	return (sqlite3*) _ValueToPtr(val);
 }
 
+// ─── Statement tracking (linked list, GC-visible)
+// ─────────────────────────────
+//
+// Each Database instance keeps a singly-linked list of every Statement it has
+// prepared, rooted at "_stmt_head" on the Database ClassInstance.  Each
+// Statement stores its successor as "_next".
+//
+// Because both links are ordinary ZS Value members the GC traces them normally,
+// keeping Statements alive as long as their originating Database is reachable.
+//
+// _DbClose walks this list and nulls out "_stmt" and "_db" on every node so
+// that any script-level call made after close returns a clean error rather than
+// dereferencing freed SQLite memory.  _StmtFinalize leaves "_next" intact so
+// the walk still works on partially-finalized lists.
+
+static void
+_TrackStatement(Interpreter* interp, ClassInstance* db_cls, Value* stmt_val) {
+	Value* head = (Value*) HashMapGet(db_cls->Members, "_stmt_head");
+	// Link new node → old head, then advance the head pointer.
+	ClassInstance* si = CoerceToClassInstance(stmt_val);
+	HashMapSet(si->Members, "_next", head ? head : interp->Null);
+	HashMapSet(db_cls->Members, "_stmt_head", stmt_val);
+}
+
+static void _InvalidateStatements(Interpreter* interp, ClassInstance* db_cls) {
+	Value* cur = (Value*) HashMapGet(db_cls->Members, "_stmt_head");
+	while (cur && !ValueIsNull(cur)) {
+		ClassInstance* si	= CoerceToClassInstance(cur);
+		Value*		   next = (Value*) HashMapGet(si->Members, "_next");
+		// Null both handles so any further method call on this Statement
+		// immediately hits the "finalized or invalid" / "no database" guards.
+		HashMapSet(si->Members, "_stmt", _PtrToValue(interp, NULL));
+		HashMapSet(si->Members, "_db", _PtrToValue(interp, NULL));
+		cur = next;
+	}
+	HashMapSet(db_cls->Members, "_stmt_head", interp->Null);
+}
+
 // ─── Per-statement flag helpers
 // ───────────────────────────────────────────────
 
-// Returns true when pluck mode is active (rows → first-column value only).
 static bool _GetPluck(ClassInstance* cls) {
 	Value* v = (Value*) HashMapGet(cls->Members, "_pluck");
 	return v && ValueIsBool(v) && v->Value.I32;
 }
 
-// Returns true after stmt.bind() has permanently locked the parameters.
 static bool _GetBound(ClassInstance* cls) {
 	Value* v = (Value*) HashMapGet(cls->Members, "_bound");
 	return v && ValueIsBool(v) && v->Value.I32;
 }
 
+// ─── Integer column helper
+// ────────────────────────────────────────────────
+//
+// SQLite stores integers as up to 64-bit signed values.  We read them with
+// sqlite3_column_int64 to avoid truncation, then return a 32-bit interpreter
+// integer when the value fits or a double otherwise.  Values above 2^53 will
+// lose precision in the double representation; a native int64 value type in the
+// interpreter would be needed to eliminate that entirely.
+
+static Value* _IntColValue(Interpreter* interp, sqlite3_int64 ival) {
+	if (ival >= INT32_MIN && ival <= INT32_MAX)
+		return NewIntValue(interp, (int) ival);
+	return NewNumValue(interp, (double) ival);
+}
+
 // ─── Row conversion
 // ───────────────────────────────────────────────────────────
 
-// Convert the current statement row to a ZS object keyed by column name.
 static Value* _StmtRowToObject(Interpreter* interp, sqlite3_stmt* stmt) {
 	Value*	 row = NewObjectValue(interp);
 	HashMap* map = CoerceToHashMap(row);
@@ -78,7 +122,7 @@ static Value* _StmtRowToObject(Interpreter* interp, sqlite3_stmt* stmt) {
 
 		switch (sqlite3_column_type(stmt, i)) {
 			case SQLITE_INTEGER:
-				colVal = NewIntValue(interp, sqlite3_column_int(stmt, i));
+				colVal = _IntColValue(interp, sqlite3_column_int64(stmt, i));
 				break;
 			case SQLITE_FLOAT:
 				colVal = NewNumValue(interp, sqlite3_column_double(stmt, i));
@@ -90,6 +134,13 @@ static Value* _StmtRowToObject(Interpreter* interp, sqlite3_stmt* stmt) {
 					colVal = NewStrValue(interp, text ? (String) text : "");
 					break;
 				}
+			case SQLITE_BLOB:
+				// BLOBs have no representation in the current value model and
+				// are returned as null.  To support them, add a byte-array
+				// value type and bind it here via sqlite3_column_blob /
+				// sqlite3_column_bytes.
+				colVal = interp->Null;
+				break;
 			case SQLITE_NULL:
 			default:
 				colVal = interp->Null;
@@ -101,11 +152,10 @@ static Value* _StmtRowToObject(Interpreter* interp, sqlite3_stmt* stmt) {
 	return row;
 }
 
-// Return the value of a single statement column (used by pluck mode).
 static Value* _ColValue(Interpreter* interp, sqlite3_stmt* stmt, int idx) {
 	switch (sqlite3_column_type(stmt, idx)) {
 		case SQLITE_INTEGER:
-			return NewIntValue(interp, sqlite3_column_int(stmt, idx));
+			return _IntColValue(interp, sqlite3_column_int64(stmt, idx));
 		case SQLITE_FLOAT:
 			return NewNumValue(interp, sqlite3_column_double(stmt, idx));
 		case SQLITE3_TEXT:
@@ -113,13 +163,14 @@ static Value* _ColValue(Interpreter* interp, sqlite3_stmt* stmt, int idx) {
 				const char* text = (const char*) sqlite3_column_text(stmt, idx);
 				return NewStrValue(interp, text ? (String) text : "");
 			}
+		case SQLITE_BLOB:
+			return interp->Null;
 		case SQLITE_NULL:
 		default:
 			return interp->Null;
 	}
 }
 
-// Build a row value, respecting pluck mode.
 static Value* _MakeRow(Interpreter* interp, sqlite3_stmt* stmt, bool pluck) {
 	if (pluck) {
 		if (sqlite3_column_count(stmt) == 0)
@@ -132,18 +183,19 @@ static Value* _MakeRow(Interpreter* interp, sqlite3_stmt* stmt, bool pluck) {
 // ─── Bind helpers
 // ─────────────────────────────────────────────────────────────
 
-// Bind a single ZS value to a 1-based SQLite parameter index.
 static int _BindParam(sqlite3_stmt* stmt, int idx, Value* val) {
 	if (ValueIsNull(val)) {
 		return sqlite3_bind_null(stmt, idx);
 	} else if (ValueIsInt(val)) {
-		return sqlite3_bind_int(stmt, idx, val->Value.I32);
+		// Use bind_int64 so the interface is correct even when the interpreter
+		// is later extended to a native 64-bit integer type.
+		return sqlite3_bind_int64(stmt, idx, (sqlite3_int64) val->Value.I32);
 	} else if (ValueIsNum(val)) {
 		return sqlite3_bind_double(stmt, idx, val->Value.Num);
 	} else if (ValueIsAnyNum(val)) {
 		return sqlite3_bind_double(stmt, idx, CoerceToNum(val));
 	} else if (ValueIsBool(val)) {
-		return sqlite3_bind_int(stmt, idx, val->Value.I32);
+		return sqlite3_bind_int64(stmt, idx, (sqlite3_int64) val->Value.I32);
 	} else if (ValueIsStr(val)) {
 		Rune*  runes = (Rune*) val->Value.Opaque;
 		String str	 = RunesStrToString(runes);
@@ -158,29 +210,17 @@ static int _BindParam(sqlite3_stmt* stmt, int idx, Value* val) {
 	}
 }
 
-// Bind a call-argument list to a prepared statement (better-sqlite3 semantics).
-//
-// Rules:
-//   • Primitive args → bound positionally to the next anonymous "?" slot.
-//   • Object args    → bound by name: for every @name / :name / $name
-//                      placeholder, look up "name" in the ZS object's HashMap
-//                      and bind the result (null if absent).
-//
-// Positional and named styles can be mixed just as in better-sqlite3.
-// Returns NULL on success or an error Value on failure.
 static Value* _BindParamList(Interpreter*  interp,
 							 sqlite3_stmt* stmt,
 							 sqlite3*	   db,
 							 int		   count,
 							 Value**	   params) {
-	int pos = 1;  // next positional slot
+	int pos = 1;
 
 	for (int i = 0; i < count; i++) {
 		Value* val = params[i];
 
 		if (ValueIsObject(val)) {
-			// Named-parameter path: walk SQLite's parameter list and look up
-			// each named slot against the ZS object's HashMap.
 			HashMap* map	 = CoerceToHashMap(val);
 			int		 nparams = sqlite3_bind_parameter_count(stmt);
 
@@ -199,7 +239,6 @@ static Value* _BindParamList(Interpreter*  interp,
 											 : "unknown error");
 			}
 		} else {
-			// Positional path.
 			int rc = _BindParam(stmt, pos++, val);
 			if (rc != SQLITE_OK)
 				return NewErrorFValue(interp,
@@ -215,10 +254,6 @@ static Value* _BindParamList(Interpreter*  interp,
 // ─── Execution setup helper
 // ───────────────────────────────────────────────────
 
-// Reset the statement and, when temporary params are provided, clear permanent
-// bindings and apply the new ones.  Errors if the statement is permanently
-// bound but params have also been supplied for this call. Returns NULL on
-// success or an error Value.
 static Value* _PrepareExec(Interpreter*	  interp,
 						   ClassInstance* cls,
 						   sqlite3_stmt*  stmt,
@@ -245,13 +280,16 @@ static Value* _PrepareExec(Interpreter*	  interp,
 // =============================================================================
 
 static Value* _StmtInit(Interpreter* interp, int argc, Value** arguments) {
-	// Instances are created internally by Database.prepare(); init is a no-op.
 	(void) argc;
 	(void) arguments;
-	return interp->Null;
+	// Instances are created internally by Database.prepare().
+	// Constructing a Statement directly in script is not supported.
+	return NewErrorValue(
+		interp,
+		"Statement cannot be constructed directly – use db.prepare()");
 }
 
-// stmt.run([...params]) -> { changes: int, lastInsertRowid: num }
+// stmt.run([...params]) -> { changes: int, lastInsertRowid: int|num }
 //
 // Executes a DML prepared statement and returns an info object describing the
 // changes made.  Parameters are bound only for this call unless stmt.bind() has
@@ -270,17 +308,27 @@ static Value* _StmtRun(Interpreter* interp, int argc, Value** arguments) {
 		return err;
 
 	int rc = sqlite3_step(stmt);
-	sqlite3_reset(stmt);
 
-	if (rc != SQLITE_DONE && rc != SQLITE_ROW)
-		return NewErrorFValue(interp, "sqlite3_step: %s", sqlite3_errmsg(db));
+	// Capture the error message BEFORE calling sqlite3_reset: reset may update
+	// the connection's extended error state, clobbering the message we need.
+	if (rc != SQLITE_DONE && rc != SQLITE_ROW) {
+		Value* e =
+			NewErrorFValue(interp, "sqlite3_step: %s", sqlite3_errmsg(db));
+		sqlite3_reset(stmt);
+		return e;
+	}
+
+	// Read rowid and change count before reset (they survive reset, but reading
+	// them here keeps the ordering explicit and easier to reason about).
+	int			  changes = sqlite3_changes(db);
+	sqlite3_int64 rowid	  = sqlite3_last_insert_rowid(db);
+
+	sqlite3_reset(stmt);
 
 	Value*	 result = NewObjectValue(interp);
 	HashMap* map	= CoerceToHashMap(result);
-	HashMapSet(map, "changes", NewIntValue(interp, sqlite3_changes(db)));
-	HashMapSet(map,
-			   "lastInsertRowid",
-			   NewNumValue(interp, (double) sqlite3_last_insert_rowid(db)));
+	HashMapSet(map, "changes", NewIntValue(interp, changes));
+	HashMapSet(map, "lastInsertRowid", _IntColValue(interp, rowid));
 	return result;
 }
 
@@ -308,8 +356,11 @@ static Value* _StmtGet(Interpreter* interp, int argc, Value** arguments) {
 	if (rc == SQLITE_ROW) {
 		result = _MakeRow(interp, stmt, pluck);
 	} else if (rc != SQLITE_DONE) {
+		// Capture error before reset.
+		Value* e =
+			NewErrorFValue(interp, "sqlite3_step: %s", sqlite3_errmsg(db));
 		sqlite3_reset(stmt);
-		return NewErrorFValue(interp, "sqlite3_step: %s", sqlite3_errmsg(db));
+		return e;
 	}
 
 	sqlite3_reset(stmt);
@@ -340,11 +391,15 @@ static Value* _StmtAll(Interpreter* interp, int argc, Value** arguments) {
 	while ((rc = sqlite3_step(stmt)) == SQLITE_ROW)
 		ArrayPush(arr, _MakeRow(interp, stmt, pluck));
 
+	// Capture error before reset.
+	if (rc != SQLITE_DONE) {
+		Value* e =
+			NewErrorFValue(interp, "sqlite3_step: %s", sqlite3_errmsg(db));
+		sqlite3_reset(stmt);
+		return e;
+	}
+
 	sqlite3_reset(stmt);
-
-	if (rc != SQLITE_DONE)
-		return NewErrorFValue(interp, "sqlite3_step: %s", sqlite3_errmsg(db));
-
 	return rows;
 }
 
@@ -370,7 +425,7 @@ static Value* _StmtBind(Interpreter* interp, int argc, Value** arguments) {
 		HashMapSet(cls->Members, "_bound", interp->True);
 	}
 
-	return arguments[0];  // return `this` for chaining
+	return arguments[0];
 }
 
 // stmt.pluck([bool]) -> this
@@ -383,7 +438,7 @@ static Value* _StmtPluck(Interpreter* interp, int argc, Value** arguments) {
 	if (argc > 1 && ValueIsBool(arguments[1]))
 		on = (arguments[1]->Value.I32 != 0);
 	HashMapSet(cls->Members, "_pluck", on ? interp->True : interp->False);
-	return arguments[0];  // chainable
+	return arguments[0];
 }
 
 // stmt.columns() -> array of { name, column, table, database, type }
@@ -429,6 +484,7 @@ static Value* _StmtColumns(Interpreter* interp, int argc, Value** arguments) {
 				   dbName ? (Value*) NewStrValue(interp, (String) dbName)
 						  : interp->Null);
 #else
+		// Built without SQLITE_ENABLE_COLUMN_METADATA; origin info unavailable.
 		HashMapSet(map, "column", interp->Null);
 		HashMapSet(map, "table", interp->Null);
 		HashMapSet(map, "database", interp->Null);
@@ -449,6 +505,8 @@ static Value* _StmtColumns(Interpreter* interp, int argc, Value** arguments) {
 //
 // Destroys the prepared statement and frees its resources.  Safe to call
 // multiple times.  After finalization the statement must not be used.
+// The "_next" tracking link is intentionally left intact so that a subsequent
+// _DbClose walk still terminates correctly on a partially-finalized list.
 static Value* _StmtFinalize(Interpreter* interp, int argc, Value** arguments) {
 	(void) argc;
 	ClassInstance* cls	= CoerceToClassInstance(arguments[0]);
@@ -457,6 +515,7 @@ static Value* _StmtFinalize(Interpreter* interp, int argc, Value** arguments) {
 		return interp->Null;
 	sqlite3_finalize(stmt);
 	HashMapSet(cls->Members, "_stmt", _PtrToValue(interp, NULL));
+	HashMapSet(cls->Members, "_db", _PtrToValue(interp, NULL));
 	return interp->Null;
 }
 
@@ -531,24 +590,32 @@ static Value* _DbInit(Interpreter* interp, int argc, Value** arguments) {
 	}
 
 	_SetDB(interp, cls, db);
+	// Initialise the GC-visible statement tracking list (see _TrackStatement).
+	HashMapSet(cls->Members, "_stmt_head", interp->Null);
 	return interp->Null;
 }
 
 // db.close() -> null
 //
-// Finalizes every open prepared statement on this connection (including any
-// one-shot Statement objects that were never explicitly finalized), then closes
-// the database.  This ensures sqlite3_close() completes immediately and ASAN
-// does not report per-connection allocations as leaks.
+// Invalidates every live Statement instance prepared on this connection by
+// nulling out their internal handles (preventing use-after-free), then
+// finalizes any remaining C-level statements and closes the database.
 static Value* _DbClose(Interpreter* interp, int argc, Value** arguments) {
 	(void) argc;
 	ClassInstance* cls = CoerceToClassInstance(arguments[0]);
 	sqlite3*	   db  = _GetDB(cls);
 	if (db) {
-		// Drain all remaining prepared statements so the close is not deferred.
+		// Walk the GC-visible linked list and null _stmt/_db on every Statement
+		// so that subsequent script-level calls produce a clean error instead
+		// of dereferencing freed SQLite memory.
+		_InvalidateStatements(interp, cls);
+
+		// Drain any C-level statements that survive (e.g. those created outside
+		// this binding) so sqlite3_close() completes immediately.
 		sqlite3_stmt* s;
 		while ((s = sqlite3_next_stmt(db, NULL)) != NULL)
 			sqlite3_finalize(s);
+
 		sqlite3_close(db);
 		_SetDB(interp, cls, NULL);
 	}
@@ -587,8 +654,8 @@ static Value* _DbExec(Interpreter* interp, int argc, Value** arguments) {
 
 // db.prepare(sql) -> Statement
 //
-// Compiles sql into a reusable Statement.  Call stmt.finalize() when done
-// (or rely on db.close() with sqlite3_close_v2 to clean up).
+// Compiles sql into a reusable Statement and registers it in the database's
+// tracking list so that db.close() can safely invalidate it.
 static Value* _DbPrepare(Interpreter* interp, int argc, Value** arguments) {
 	if (argc < 2)
 		return NewErrorValue(interp,
@@ -614,7 +681,6 @@ static Value* _DbPrepare(Interpreter* interp, int argc, Value** arguments) {
 							  "sqlite3_prepare_v2: %s",
 							  sqlite3_errmsg(db));
 
-	// Retrieve the Statement class stored as a static member of Database.
 	Class* dbCls		= CoerceToUserClass(cls->Proto);
 	Value* stmtClassVal = ClassGetMember(dbCls, "_StmtClass", true);
 	if (!stmtClassVal) {
@@ -624,11 +690,14 @@ static Value* _DbPrepare(Interpreter* interp, int argc, Value** arguments) {
 
 	ClassInstance* stmtInst = CreateClassInstance(stmtClassVal);
 	_SetStmt(interp, stmtInst, stmt);
-	// Cache the db handle so Statement methods can retrieve it for error
-	// messages and for sqlite3_changes / sqlite3_last_insert_rowid.
 	HashMapSet(stmtInst->Members, "_db", _PtrToValue(interp, db));
 
-	return NewClassInstanceValue(interp, stmtInst);
+	Value* stmtVal = NewClassInstanceValue(interp, stmtInst);
+
+	// Register in the database's tracking list so _DbClose can invalidate it.
+	_TrackStatement(interp, cls, stmtVal);
+
+	return stmtVal;
 }
 
 static ModuleFunction _DbClassMethods[] = {
@@ -678,22 +747,24 @@ _BuildClass(Interpreter* interp, const char* name, ModuleFunction methods[]) {
 	return classVal;
 }
 
+// LoadCoreSqlite is called once per module import.  The Statement class is
+// built fresh on each call and stored exclusively as a GC-visible static member
+// of Database — no interpreter-global C statics, no GC-invisible raw pointers.
 Value* LoadCoreSqlite(Interpreter* interp) {
-	if (!_StmtClass)
-		_StmtClass = _BuildClass(interp, "Statement", _StmtClassMethods);
-
-	Value* dbClass = _BuildClass(interp, "Database", _DbClassMethods);
+	Value* stmtClass = _BuildClass(interp, "Statement", _StmtClassMethods);
+	Value* dbClass	 = _BuildClass(interp, "Database", _DbClassMethods);
 
 	// Store Statement class as a static (class-level) member of Database so
-	// the GC keeps it alive as long as the Database class is reachable.
+	// the GC keeps it alive as long as the Database class is reachable, and
+	// so _DbPrepare can retrieve it without touching any C global.
 	ClassDefineMemberByString(CoerceToUserClass(dbClass),
 							  "_StmtClass",
-							  _StmtClass,
+							  stmtClass,
 							  true);
 
 	Value*	 module = NewObjectValue(interp);
 	HashMap* map	= CoerceToHashMap(module);
 	HashMapSet(map, "Database", dbClass);
-	HashMapSet(map, "Statement", _StmtClass);
+	HashMapSet(map, "Statement", stmtClass);
 	return module;
 }
