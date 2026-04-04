@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Language Guide — ZayneScript</title>
+    <meta name="description"
+        content="Complete language reference for ZayneScript: variables, functions, async/await, classes, control flow, operators, and modules." />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            hljs.highlightAll();
+            // Highlight active sidebar link on scroll
+            const headings = document.querySelectorAll('.docs-main h2[id]');
+            const links = document.querySelectorAll('.docs-sidebar a[href^="#"]');
+            const obs = new IntersectionObserver(entries => {
+                entries.forEach(e => {
+                    if (e.isIntersecting) {
+                        links.forEach(l => l.classList.remove('active'));
+                        const link = document.querySelector(`.docs-sidebar a[href="#${e.target.id}"]`);
+                        if (link) link.classList.add('active');
+                    }
+                });
+            }, { rootMargin: '-20% 0px -75% 0px' });
+            headings.forEach(h => obs.observe(h));
+        });
+    </script>
+</head>
+
+<body>
+
+    <!-- ================================================================
+     Header
+     ================================================================ -->
+    <header class="site-header">
+        <a class="logo" href="index.html">Zayne<span>Script</span></a>
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="language.html" class="active">Language Guide</a>
+            <a href="stdlib.html">Standard Library</a>
+            <a href="https://github.com" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+    </header>
+
+    <!-- ================================================================
+     Two-column layout
+     ================================================================ -->
+    <div class="docs-wrapper">
+
+        <!-- Sidebar -->
+        <aside class="docs-sidebar">
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">Getting Started</div>
+                <ul>
+                    <li><a href="#overview">Overview</a></li>
+                    <li><a href="#types">Data Types</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">Declarations</div>
+                <ul>
+                    <li><a href="#variables">Variables</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">Operators</div>
+                <ul>
+                    <li><a href="#operators">Operators</a></li>
+                    <li><a href="#ternary">Ternary Expressions</a></li>
+                    <li><a href="#spread">Spread Operator</a></li>
+                    <li><a href="#bigint">BigInt Literals</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">Functions</div>
+                <ul>
+                    <li><a href="#functions">Functions &amp; Closures</a></li>
+                    <li><a href="#async">Async / Await</a></li>
+                    <li><a href="#promises">Promises</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">Control Flow</div>
+                <ul>
+                    <li><a href="#if">if / else</a></li>
+                    <li><a href="#for">for Loop</a></li>
+                    <li><a href="#while">while Loop</a></li>
+                    <li><a href="#dowhile">do-while Loop</a></li>
+                    <li><a href="#switch">switch</a></li>
+                    <li><a href="#trycatch">try / catch</a></li>
+                    <li><a href="#break">break &amp; continue</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">OOP</div>
+                <ul>
+                    <li><a href="#classes">Classes</a></li>
+                    <li><a href="#static">Static Members</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">Data Structures</div>
+                <ul>
+                    <li><a href="#arrays">Arrays</a></li>
+                    <li><a href="#objects">Objects</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">Modules</div>
+                <ul>
+                    <li><a href="#imports">Imports</a></li>
+                    <li><a href="#user-libs">User Libraries</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <main class="docs-main">
+
+            <h1>Language Guide</h1>
+            <p class="page-intro">
+                A complete reference for the ZayneScript language: syntax, semantics,
+                and examples derived from the test suite and interpreter source.
+            </p>
+
+            <!-- ============================================================
+         Overview
+         ============================================================ -->
+            <h2 id="overview">Overview</h2>
+            <p>
+                ZayneScript is a dynamically-typed, interpreted scripting language compiled
+                to an internal bytecode format and evaluated by a C runtime. Its syntax
+                is intentionally close to JavaScript / C with a few purposeful
+                differences:
+            </p>
+            <ul>
+                <li>The <code>async</code> keyword appears <em>after</em> the parameter list.</li>
+                <li>Block-scoped variables use <code>local</code> instead of <code>let</code>.</li>
+                <li><code>for</code>/<code>while</code> loop initialisers use <code>:=</code> (short assign), not
+                    keyword declarations.</li>
+                <li>Switch expressions use <code>=&gt;</code> and are written in value position.</li>
+            </ul>
+
+            <!-- ============================================================
+         Data Types
+         ============================================================ -->
+            <h2 id="types">Data Types</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Examples</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>null</code></td>
+                        <td><code>null</code></td>
+                        <td>Absence of a value</td>
+                    </tr>
+                    <tr>
+                        <td><code>bool</code></td>
+                        <td><code>true</code>, <code>false</code></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><code>int</code></td>
+                        <td><code>0</code>, <code>-1</code>, <code>42</code></td>
+                        <td>Machine integer</td>
+                    </tr>
+                    <tr>
+                        <td><code>num</code></td>
+                        <td><code>3.14</code>, <code>1e-9</code></td>
+                        <td>64-bit double</td>
+                    </tr>
+                    <tr>
+                        <td><code>bigint</code></td>
+                        <td><code>100n</code>, <code>2n**64n</code></td>
+                        <td>Arbitrary precision (libbf)</td>
+                    </tr>
+                    <tr>
+                        <td><code>str</code></td>
+                        <td><code>"hello"</code>, <code>'world'</code></td>
+                        <td>UTF-8 string</td>
+                    </tr>
+                    <tr>
+                        <td><code>array</code></td>
+                        <td><code>[1, 2, 3]</code></td>
+                        <td>Dynamic, heterogeneous</td>
+                    </tr>
+                    <tr>
+                        <td><code>object</code></td>
+                        <td><code>{ x: 1 }</code></td>
+                        <td>Key-value map</td>
+                    </tr>
+                    <tr>
+                        <td><code>function</code></td>
+                        <td><code>fn() {}</code></td>
+                        <td>First-class, closures</td>
+                    </tr>
+                    <tr>
+                        <td><code>class</code></td>
+                        <td><code>class Foo {}</code></td>
+                        <td>Class descriptor</td>
+                    </tr>
+                    <tr>
+                        <td><code>promise</code></td>
+                        <td>returned by <code>async</code> calls</td>
+                        <td>Async future value</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- ============================================================
+         Variables
+         ============================================================ -->
+            <h2 id="variables">Variables</h2>
+            <p>There are three declaration keywords with distinct scoping rules:</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Keyword</th>
+                        <th>Scope</th>
+                        <th>Mutable</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>var</code></td>
+                        <td>Global (module level)</td>
+                        <td>Yes</td>
+                    </tr>
+                    <tr>
+                        <td><code>const</code></td>
+                        <td>Global (module level)</td>
+                        <td>No</td>
+                    </tr>
+                    <tr>
+                        <td><code>local</code></td>
+                        <td>Block / function</td>
+                        <td>Yes</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p>Multiple declarations can be combined in one statement using commas:</p>
+            <pre><code class="language-javascript">var globalX = 10;
+const PI = 3.14159;
+const a = 1, b = 2, c = 3;   // multiple consts
+
+fn example() {
+    local x = 20;
+    local f = 6, g = 7;       // multiple locals
+
+    if (true) {
+        local y = 30;         // block-scoped; not visible outside this if
+    }
+}</code></pre>
+
+            <div class="note">
+                <strong>Note:</strong> <code>local</code> variables declared inside
+                <code>if</code>, <code>for</code>, <code>while</code>, and other blocks
+                are restricted to that block's scope.
+            </div>
+
+            <!-- ============================================================
+         Operators
+         ============================================================ -->
+            <h2 id="operators">Operators</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Operators</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Arithmetic</td>
+                        <td><code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>%</code></td>
+                    </tr>
+                    <tr>
+                        <td>Bitwise</td>
+                        <td><code>&amp;</code> <code>|</code> <code>^</code> <code>&lt;&lt;</code> <code>&gt;&gt;</code>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Logical</td>
+                        <td><code>&amp;&amp;</code> <code>||</code> <code>!</code></td>
+                    </tr>
+                    <tr>
+                        <td>Comparison</td>
+                        <td><code>==</code> <code>!=</code> <code>&lt;</code> <code>&lt;=</code> <code>&gt;</code>
+                            <code>&gt;=</code></td>
+                    </tr>
+                    <tr>
+                        <td>Augmented assignment</td>
+                        <td><code>+=</code> <code>-=</code> <code>*=</code> <code>/=</code> <code>%=</code>
+                            <code>&amp;=</code> <code>|=</code> <code>^=</code> <code>&lt;&lt;=</code>
+                            <code>&gt;&gt;=</code></td>
+                    </tr>
+                    <tr>
+                        <td>Increment / Decrement</td>
+                        <td><code>++</code> <code>--</code> (prefix and postfix)</td>
+                    </tr>
+                    <tr>
+                        <td>Spread</td>
+                        <td><code>...</code> (in array and object literals)</td>
+                    </tr>
+                    <tr>
+                        <td>Exponentiation (BigInt)</td>
+                        <td><code>**</code></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- ============================================================
+         Ternary
+         ============================================================ -->
+            <h2 id="ternary">Ternary Expressions</h2>
+            <p>Two syntactic forms are supported:</p>
+            <pre><code class="language-javascript">// Standard C-style ternary
+local result = condition ? "yes" : "no";
+
+// Postfix if/else form
+local result = "yes" if (condition) else "no";</code></pre>
+
+            <!-- ============================================================
+         Spread
+         ============================================================ -->
+            <h2 id="spread">Spread Operator</h2>
+            <p>Use <code>...</code> to expand an array or object in place:</p>
+            <pre><code class="language-javascript">local a = [1, 2, 3];
+local b = [...a, 4, 5];         // [1, 2, 3, 4, 5]
+
+local obj1 = { x: 1 };
+local obj2 = { ...obj1, y: 2 }; // { x: 1, y: 2 }</code></pre>
+
+            <!-- ============================================================
+         BigInt
+         ============================================================ -->
+            <h2 id="bigint">BigInt Literals</h2>
+            <p>
+                Append <code>n</code> to any numeric literal to create an
+                arbitrary-precision BigInt:
+            </p>
+            <pre><code class="language-javascript">println(100n + 2n);   // 102n
+println(5n * 5n);     // 25n
+println(5n / 2n);     // 2n  (integer division)
+println(1 &lt;&lt; 2n);    // 4
+println(10.56n);      // BigInt from float literal
+println(2.2e2n);      // BigInt from scientific notation
+println(2n ** 64n);   // 18446744073709551616n</code></pre>
+
+            <div class="note">
+                <strong>Note:</strong> Mixed BigInt/non-BigInt arithmetic is supported in
+                shift operators; other mixed operations follow coercion rules.
+            </div>
+
+            <!-- ============================================================
+         Functions & Closures
+         ============================================================ -->
+            <h2 id="functions">Functions &amp; Closures</h2>
+            <p>
+                Functions are declared with <code>fn</code>. They are first-class values
+                and can be assigned to variables, passed as arguments, and returned from
+                other functions.
+            </p>
+            <pre><code class="language-javascript">fn greet(name) {
+    println("Hello", name);
+}
+
+// Anonymous function expression
+const square = fn(x) { return x * x; };
+
+// Higher-order function
+fn apply(f, x) { return f(x); }
+println(apply(square, 5)); // 25</code></pre>
+
+            <h3>Closures</h3>
+            <p>Inner functions capture variables from their enclosing scope and can mutate them:</p>
+            <pre><code class="language-javascript">fn counter() {
+    local count = 0;
+    return fn() {
+        count += 1;
+        return count;
+    };
+}
+
+var c = counter();
+println(c()); // 1
+println(c()); // 2
+println(c()); // 3</code></pre>
+
+            <h3>Multiple closures sharing state</h3>
+            <pre><code class="language-javascript">fn makeCounters() {
+    local shared = 0;
+    local inc = fn() { shared += 1; };
+    local dec = fn() { shared -= 1; };
+    local get = fn() { return shared; };
+    return [inc, dec, get];
+}
+
+var [inc, dec, get] = makeCounters();
+inc(); inc();
+println(get()); // 2
+dec();
+println(get()); // 1</code></pre>
+
+            <!-- ============================================================
+         Async / Await
+         ============================================================ -->
+            <h2 id="async">Async / Await</h2>
+            <p>
+                The <code>async</code> keyword is placed <strong>after</strong> the
+                parameter list. Calling an async function returns a
+                <strong>Promise</strong> immediately. Use <code>await</code> inside
+                another async function to suspend until the awaited promise resolves.
+            </p>
+            <pre><code class="language-javascript">fn fetchData() async {
+    return "payload";
+}
+
+fn main() async {
+    const data = await fetchData();
+    println("Got:", data); // Got: payload
+    return 1;
+}
+
+println(main()); // &lt;Promise&gt; — call is non-blocking</code></pre>
+
+            <h3>Anonymous async functions</h3>
+            <pre><code class="language-javascript">const task = fn() async {
+    return "done";
+};</code></pre>
+
+            <h3>Await chains</h3>
+            <pre><code class="language-javascript">fn topLevel() async { return "Hello"; }
+
+fn callMe() async {
+    println(await topLevel()); // Hello
+    println(await topLevel()); // Hello
+    return 1;
+}
+
+println(callMe()); // &lt;Promise&gt;</code></pre>
+
+            <!-- ============================================================
+         Promises
+         ============================================================ -->
+            <h2 id="promises">Promises</h2>
+            <p>
+                Every async function returns a Promise. The <code>.then(callback)</code>
+                method chains a reaction to the resolved value; its return value becomes
+                the next promise in the chain. <code>.error(callback)</code> handles
+                rejections.
+            </p>
+            <pre><code class="language-javascript">fn awaitable() async { return "Hola!"; }
+
+const v = awaitable()
+    .then(fn(v) {
+        println("resolved with:", v); // resolved with: Hola!
+        return 42;
+    })
+    .then(fn(v) {
+        println("chained value:", v); // chained value: 42
+        return "done";
+    })
+    .then(println); // done
+
+println(v); // &lt;Promise&gt;</code></pre>
+
+            <h3>Error handling with <code>.error()</code></h3>
+            <pre><code class="language-javascript">fn risky() async {
+    return someUndefinedOp();
+}
+
+risky()
+    .then(fn(v) { println("success:", v); })
+    .error(fn(e) { println("caught:", e); });</code></pre>
+
+            <!-- ============================================================
+         if / else
+         ============================================================ -->
+            <h2 id="if">if / else</h2>
+            <pre><code class="language-javascript">if (x &gt; 0) {
+    println("positive");
+} else {
+    println("non-positive");
+}</code></pre>
+
+            <h3>Optional initialiser (<code>:=</code>)</h3>
+            <p>
+                The <code>if</code> condition supports an initialiser separated by
+                <code>;</code>. The declared variable is scoped to the <code>if</code>
+                block:
+            </p>
+            <pre><code class="language-javascript">if (val := computeValue(); val &gt; 0) {
+    println("got", val);
+}</code></pre>
+
+            <!-- ============================================================
+         for Loop
+         ============================================================ -->
+            <h2 id="for">for Loop</h2>
+            <p>
+                The <code>for</code> initialiser uses <code>:=</code>; the loop variable
+                is scoped to the loop:
+            </p>
+            <pre><code class="language-javascript">for (i := 0; i &lt; 10; i++) {
+    println(i);
+}
+
+// Floating-point step
+for (x := 0.0; x &lt; 1.0; x += 0.1) {
+    println(x);
+}</code></pre>
+
+            <!-- ============================================================
+         while Loop
+         ============================================================ -->
+            <h2 id="while">while Loop</h2>
+            <pre><code class="language-javascript">// Standard while
+while (condition) {
+    // ...
+}
+
+// With initialiser — variable scoped to loop
+while (i := 0; i &lt; 10) {
+    println(i);
+    i++;
+}
+
+// With initialiser + mutator (three-part form)
+while (i := 0; i &lt; 10; i++) {
+    println(i);
+}</code></pre>
+
+            <!-- ============================================================
+         do-while
+         ============================================================ -->
+            <h2 id="dowhile">do-while Loop</h2>
+            <pre><code class="language-javascript">var n = 0;
+do {
+    println(n++);
+} while (n &lt; 5);</code></pre>
+
+            <!-- ============================================================
+         switch
+         ============================================================ -->
+            <h2 id="switch">switch</h2>
+            <p>Two forms are available: <strong>statement</strong> and <strong>expression</strong>.</p>
+
+            <h3>Statement form</h3>
+            <p>Uses <code>case</code> with <code>:</code> and block bodies. Comma-separated values match multiple
+                literals in one case:</p>
+            <pre><code class="language-javascript">switch (num) {
+    case 0, 1: {
+        println("matched 0 or 1");
+    }
+    case 2, 3: {
+        println("matched 2 or 3");
+    }
+    default: {
+        println("no match");
+    }
+}</code></pre>
+
+            <h3>Expression form</h3>
+            <p>Placed after the value being tested; uses <code>=&gt;</code> and produces a value. No <code>break</code>
+                needed:</p>
+            <pre><code class="language-javascript">const label = 100 switch {
+    case 10         =&gt; "Ten"
+    case 20         =&gt; "Twenty"
+    case 10, 30, 100 =&gt; "A Hundred"
+    default         =&gt; "Unknown"
+};
+
+println(label); // A Hundred</code></pre>
+
+            <!-- ============================================================
+         try / catch
+         ============================================================ -->
+            <h2 id="trycatch">try / catch</h2>
+            <p>Both <code>try</code> and <code>catch</code> bodies must be block statements:</p>
+            <pre><code class="language-javascript">try {
+    local x = riskyOperation();
+    println("success:", x);
+} catch (e) {
+    println("Error:", e);
+}</code></pre>
+
+            <div class="tip">
+                <strong>Tip:</strong> Any runtime error (type mismatch, undefined
+                variable, etc.) can be caught with <code>try/catch</code>.
+            </div>
+
+            <!-- ============================================================
+         break & continue
+         ============================================================ -->
+            <h2 id="break">break &amp; continue</h2>
+            <p>
+                <code>break</code> exits the nearest enclosing loop or switch.
+                <code>continue</code> skips the rest of the current loop iteration.
+                Both correctly unwind through nested <code>try/catch</code> blocks:
+            </p>
+            <pre><code class="language-javascript">for (i := 0; i &lt; 10; i++) {
+    if (i == 5) break;
+    if (i % 2 == 0) continue;
+    println(i); // 1 3
+}</code></pre>
+
+            <!-- ============================================================
+         Classes
+         ============================================================ -->
+            <h2 id="classes">Classes</h2>
+            <p>
+                Classes support single inheritance. The superclass is listed in
+                parentheses after the class name. The constructor is named
+                <code>init</code>.
+            </p>
+            <pre><code class="language-javascript">class Animal {
+    fn speak() {
+        println("...");
+    }
+}
+
+class Dog (Animal) {
+    fn init(name) {
+        this.name = name;
+    }
+
+    fn speak() {
+        println(this.name, "says Woof!");
+    }
+}
+
+const d = new Dog("Buddy");
+d.speak(); // Buddy says Woof!</code></pre>
+
+            <p>
+                A subclass automatically inherits all methods from the parent.
+                Override a method by re-declaring it in the subclass. Access the
+                instance with <code>this</code>.
+            </p>
+
+            <!-- ============================================================
+         Static Members
+         ============================================================ -->
+            <h2 id="static">Static Members</h2>
+            <p>
+                Use <code>static fn</code> for static methods and
+                <code>static name = value;</code> for static properties:
+            </p>
+            <pre><code class="language-javascript">class MathUtils {
+    static PI = 3.14159;
+
+    static fn square(x) {
+        return x * x;
+    }
+}
+
+println(MathUtils.PI);        // 3.14159
+println(MathUtils.square(4)); // 16</code></pre>
+
+            <!-- ============================================================
+         Arrays
+         ============================================================ -->
+            <h2 id="arrays">Arrays</h2>
+            <p>Arrays are dynamic and heterogeneous. They use zero-based integer indexing:</p>
+            <pre><code class="language-javascript">local list = [1, 2, 3];
+
+list.push(4);          // append
+list.pop();            // remove last → returns it
+println(list.length()); // 3
+println(list[0]);       // 1
+
+// Spread
+local more = [...list, 10, 20];</code></pre>
+
+            <h3>Iteration with <code>each</code></h3>
+            <p>
+                <code>each(callback)</code> calls <code>callback(index, element)</code>
+                for every item and returns a new array of the return values:
+            </p>
+            <pre><code class="language-javascript">const nums = [1, 2, 3, 4, 5];
+
+const doubled = nums.each(fn(i, e) { return e * 2; });
+println(doubled); // [2, 4, 6, 8, 10]
+
+// println accepts varargs — index then value
+nums.each(println);
+// 0 1
+// 1 2
+// 2 3 ...</code></pre>
+
+            <h3>Filtering with <code>keep</code></h3>
+            <p><code>keep(callback)</code> returns only the elements for which <code>callback</code> returns truthy:</p>
+            <pre><code class="language-javascript">const odds = nums.keep(fn(i, e) { return e % 2 != 0; });
+println(odds); // [1, 3, 5]</code></pre>
+
+            <!-- ============================================================
+         Objects
+         ============================================================ -->
+            <h2 id="objects">Objects</h2>
+            <p>Objects are key-value maps. Access properties with dot notation or bracket notation:</p>
+            <pre><code class="language-javascript">local person = {
+    name: "Alice",
+    age:  30
+};
+
+println(person.name);    // Alice
+println(person["age"]);  // 30
+
+// Shorthand: variable name == key name
+local x = 10;
+local obj = { x };       // equivalent to { x: x }
+
+// Spread
+local extended = { ...person, city: "NYC" };</code></pre>
+
+            <!-- ============================================================
+         Imports
+         ============================================================ -->
+            <h2 id="imports">Imports</h2>
+            <p>Three import forms are supported:</p>
+
+            <h3>Named imports</h3>
+            <pre><code class="language-javascript">import { println, scan, parseNum } from "core:io";
+import { sqrt, pi, pow }           from "core:math";
+import { getUser, getCwd }         from "core:os";
+import { Array }                   from "core:Array";
+import { Date }                    from "core:Date";
+import { Promise }                 from "core:Promise";</code></pre>
+
+            <h3>Wildcard import (module bound to its name)</h3>
+            <pre><code class="language-javascript">import "core:math";  // accessible as `math`
+println(math.sqrt(16)); // 4
+println(math.pi);       // 3.141592...</code></pre>
+
+            <h3>Relative file imports</h3>
+            <pre><code class="language-javascript">import "./utils";                        // runs ./utils.zs
+import { helper } from "./helpers/math"; // named import from file</code></pre>
+
+            <div class="note">
+                <strong>Note:</strong> The <code>.zs</code> extension is appended
+                automatically. Each module is executed once and cached; circular imports
+                are detected and produce a runtime error.
+            </div>
+
+            <!-- ============================================================
+         User Libraries
+         ============================================================ -->
+            <h2 id="user-libs">User Libraries (<code>lib:</code>)</h2>
+            <p>
+                User-authored <code>.zs</code> files placed in the <code>lib/</code>
+                directory are importable via the <code>lib:</code> prefix.
+                Subdirectories are supported using <code>/</code>:
+            </p>
+            <pre><code class="language-javascript">import { greet }  from "lib:request";    // lib/request.zs
+import "lib:nested/mod";                 // lib/nested/mod.zs → bound as `mod`</code></pre>
+
+        </main>
+    </div>
+
+    <!-- ================================================================
+     Footer
+     ================================================================ -->
+    <footer class="site-footer">
+        <p>ZayneScript &copy; 2025–Present Philipp Andrew Redondo. Released under the MIT License.</p>
+        <p style="margin-top:0.4rem;">
+            <a href="index.html">Home</a> &nbsp;·&nbsp;
+            <a href="stdlib.html">Standard Library</a>
+        </p>
+    </footer>
+
+</body>
+
+</html>
