@@ -194,8 +194,9 @@ static Token TokenizeString(Lexer* lexer) {
 						Advance(lexer);	 // skip 'x'
 						Rune value = 0;
 
-						// Decode hex using fast bitwise operations
-						while (CurrentRune(lexer) != 0) {
+						// Consume exactly 2 hex digits (standard \xHH)
+						for (int _hi = 0; _hi < 2 && CurrentRune(lexer) != 0;
+							 _hi++) {
 							Rune c = CurrentRune(lexer);
 							if (c >= '0' && c <= '9')
 								value = (value << 4) | (c - '0');
@@ -210,6 +211,50 @@ static Token TokenizeString(Lexer* lexer) {
 						decoded[decodedLength++] = value;
 						continue;  // Skip the Advance() at the bottom of the
 								   // outer block
+					}
+				case 'u':
+					{
+						Advance(lexer);	 // skip 'u'
+						Rune value = 0;
+
+						// Consume exactly 4 hex digits (\uXXXX)
+						for (int _hi = 0; _hi < 4 && CurrentRune(lexer) != 0;
+							 _hi++) {
+							Rune c = CurrentRune(lexer);
+							if (c >= '0' && c <= '9')
+								value = (value << 4) | (c - '0');
+							else if (c >= 'a' && c <= 'f')
+								value = (value << 4) | (c - 'a' + 10);
+							else if (c >= 'A' && c <= 'F')
+								value = (value << 4) | (c - 'A' + 10);
+							else
+								break;
+							Advance(lexer);
+						}
+						decoded[decodedLength++] = value;
+						continue;
+					}
+				case 'U':
+					{
+						Advance(lexer);	 // skip 'U'
+						Rune value = 0;
+
+						// Consume exactly 8 hex digits (\UXXXXXXXX)
+						for (int _hi = 0; _hi < 8 && CurrentRune(lexer) != 0;
+							 _hi++) {
+							Rune c = CurrentRune(lexer);
+							if (c >= '0' && c <= '9')
+								value = (value << 4) | (c - '0');
+							else if (c >= 'a' && c <= 'f')
+								value = (value << 4) | (c - 'a' + 10);
+							else if (c >= 'A' && c <= 'F')
+								value = (value << 4) | (c - 'A' + 10);
+							else
+								break;
+							Advance(lexer);
+						}
+						decoded[decodedLength++] = value;
+						continue;
 					}
 				default:
 					// Keep unknown escape content without the backslash
