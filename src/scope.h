@@ -316,6 +316,24 @@ Scope* ScopeGetFirst(Scope* scope, ScopeType type);
 int ScopeCountNested(Scope* scope, ScopeType type);
 
 /**
+ * @brief Counts the number of nested scopes of a given type
+ * until a certain scope type is reached
+ *
+ * Traverses up the scope chain and counts how many scopes
+ * of the specified type are encountered until a scope of
+ * the 'untilType' is reached. This is useful for counting
+ * nesting depth within a certain context.
+ *
+ * @param scope Pointer to the scope to start counting from
+ * @param type The type of scope to count
+ * @param untilType The type of scope that stops the counting
+ * when encountered
+ * @return Number of nested scopes of the given type until
+ * the 'untilType' is reached (0 if none found)
+ */
+int ScopeCountNestedUntil(Scope* scope, ScopeType type, ScopeType untilType);
+
+/**
  * @brief Frees all memory associated with a scope
  *
  * Recursively frees a scope and all its child scopes,
