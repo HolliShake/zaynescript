@@ -1,0 +1,631 @@
+#include "./mongoose.h"
+
+#include "../../mongoose/mongoose.h"
+#include "../function.h"
+#include "../hashmap.h"
+
+/* -----------------------------------------------------------------------
+ * Forward declarations
+ * --------------------------------------------------------------------- */
+extern void	  Push(Interpreter* interpreter, Value* value);
+extern Value* Popp(Interpreter* interpreter);
+extern Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
+
+/* -----------------------------------------------------------------------
+ * Internal C structures
+ * ----------------------------------------------------------------------- */
+
+#define MAX_MIDDLEWARE 32
+#define ROUTE_GROW	   16
+
+typedef struct {
+	char*  method;	/* "GET", "POST", … or NULL = wildcard */
+	char*  path;	/* mg_match() pattern                  */
+	Value* handler; /* callable Value*                    */
+} Route;
+
+typedef struct {
+	Route*		  routes;
+	size_t		  count;
+	size_t		  capacity;
+	Value*		  middleware[MAX_MIDDLEWARE];
+	size_t		  mw_count;
+	Interpreter*  interp;
+	struct mg_mgr mgr;
+	bool		  running;
+	Value*		  reqClass; /* GC-rooted via Server._ReqClass static member */
+	Value*		  resClass; /* GC-rooted via Server._ResClass static member */
+} AppState;
+
+typedef struct {
+	struct mg_connection*	conn;
+	struct mg_http_message* msg;
+	bool					responded;
+} ReqResCtx;
+
+/* -----------------------------------------------------------------------
+ * AppState helpers  (Server ClassInstance)
+ * ----------------------------------------------------------------------- */
+
+static AppState* _GetApp(ClassInstance* cls) {
+	Value* v = (Value*) HashMapGet(cls->Members, "_ptr");
+	if (v && ValueIsOpaquePtr(v))
+		return (AppState*) v->Value.Opaque;
+	return NULL;
+}
+
+static void _AppAddRoute(AppState*	 app,
+						 const char* method,
+						 const char* path,
+						 Value*		 handler) {
+	if (app->count >= app->capacity) {
+		app->capacity += ROUTE_GROW;
+		app->routes	   = realloc(app->routes, sizeof(Route) * app->capacity);
+	}
+	app->routes[app->count].method	= method ? strdup(method) : NULL;
+	app->routes[app->count].path	= strdup(path);
+	app->routes[app->count].handler = handler;
+	app->count++;
+}
+
+/* -----------------------------------------------------------------------
+ * ReqResCtx helpers  (Response ClassInstance)
+ * ----------------------------------------------------------------------- */
+
+static ReqResCtx* _GetCtx(ClassInstance* cls) {
+	Value* v = (Value*) HashMapGet(cls->Members, "_ctx");
+	if (v && ValueIsOpaquePtr(v))
+		return (ReqResCtx*) v->Value.Opaque;
+	return NULL;
+}
+
+/* -----------------------------------------------------------------------
+ * Response class methods
+ * ----------------------------------------------------------------------- */
+
+static Value* _ResInit(Interpreter* interp, int argc, Value** args) {
+	(void) argc;
+	(void) args;
+	return NewErrorValue(interp, "Response cannot be constructed directly");
+}
+
+/* res.send(body) */
+static Value* _ResSend(Interpreter* interp, int argc, Value** args) {
+	ClassInstance* cls = CoerceToClassInstance(args[0]);
+	ReqResCtx*	   ctx = _GetCtx(cls);
+	if (!ctx)
+		return NewErrorValue(interp, "res.send(): invalid context");
+	if (ctx->responded)
+		return interp->Null;
+
+	Value* sv	   = (Value*) HashMapGet(cls->Members, "_status");
+	int	   status  = (sv && ValueIsInt(sv)) ? sv->Value.I32 : 200;
+	Value* hv	   = (Value*) HashMapGet(cls->Members, "_hdrstr");
+	String headers = (hv && ValueIsStr(hv)) ? ValueToString(hv) : strdup("");
+	String body	   = (argc >= 2) ? ValueToString(args[1]) : strdup("");
+
+	mg_http_reply(ctx->conn, status, headers, "%s", body);
+	ctx->responded = true;
+	free(body);
+	free(headers);
+	return interp->Null;
+}
+
+/* res.json(obj) */
+static Value* _ResJson(Interpreter* interp, int argc, Value** args) {
+	if (argc < 2)
+		return NewErrorValue(interp, "res.json() requires a body argument");
+
+	ClassInstance* cls = CoerceToClassInstance(args[0]);
+	ReqResCtx*	   ctx = _GetCtx(cls);
+	if (!ctx)
+		return NewErrorValue(interp, "res.json(): invalid context");
+	if (ctx->responded)
+		return interp->Null;
+
+	Value* sv	  = (Value*) HashMapGet(cls->Members, "_status");
+	int	   status = (sv && ValueIsInt(sv)) ? sv->Value.I32 : 200;
+	Value* hv	  = (Value*) HashMapGet(cls->Members, "_hdrstr");
+	String extra  = (hv && ValueIsStr(hv)) ? ValueToString(hv) : strdup("");
+
+	size_t hlen	   = strlen(extra) + 64;
+	String headers = (String) Allocate(hlen);
+	snprintf(headers, hlen, "Content-Type: application/json\r\n%s", extra);
+	free(extra);
+
+	String body = ValueToString(args[1]);
+	mg_http_reply(ctx->conn, status, headers, "%s", body);
+	ctx->responded = true;
+	free(body);
+	free(headers);
+	return interp->Null;
+}
+
+/* res.status(code) → this  (chainable) */
+static Value* _ResStatus(Interpreter* interp, int argc, Value** args) {
+	if (argc < 2 || !ValueIsAnyNum(args[1]))
+		return NewErrorValue(interp,
+							 "res.status() requires a numeric status code");
+	ClassInstance* cls = CoerceToClassInstance(args[0]);
+	HashMapSet(cls->Members,
+			   "_status",
+			   NewIntValue(interp, (int) CoerceToNum(args[1])));
+	return args[0];
+}
+
+/* res.redirect(url) */
+static Value* _ResRedirect(Interpreter* interp, int argc, Value** args) {
+	if (argc < 2 || !ValueIsStr(args[1]))
+		return NewErrorValue(interp,
+							 "res.redirect() requires a URL string argument");
+	ClassInstance* cls = CoerceToClassInstance(args[0]);
+	ReqResCtx*	   ctx = _GetCtx(cls);
+	if (!ctx)
+		return NewErrorValue(interp, "res.redirect(): invalid context");
+	if (ctx->responded)
+		return interp->Null;
+
+	String location = ValueToString(args[1]);
+	char   header[512];
+	snprintf(header, sizeof(header), "Location: %s\r\n", location);
+	mg_http_reply(ctx->conn, 302, header, "");
+	ctx->responded = true;
+	free(location);
+	return interp->Null;
+}
+
+/* res.setHeader(name, value) → this */
+static Value* _ResSetHeader(Interpreter* interp, int argc, Value** args) {
+	if (argc < 3 || !ValueIsStr(args[1]) || !ValueIsStr(args[2]))
+		return NewErrorValue(interp,
+							 "res.setHeader() requires (name, value) strings");
+	ClassInstance* cls	= CoerceToClassInstance(args[0]);
+	String		   name = ValueToString(args[1]);
+	String		   val	= ValueToString(args[2]);
+	Value*		   curV = (Value*) HashMapGet(cls->Members, "_hdrstr");
+	String cur = (curV && ValueIsStr(curV)) ? ValueToString(curV) : strdup("");
+	char   extra[512];
+	snprintf(extra, sizeof(extra), "%s: %s\r\n", name, val);
+	size_t newlen = strlen(cur) + strlen(extra) + 1;
+	String merged = (String) Allocate(newlen);
+	snprintf(merged, newlen, "%s%s", cur, extra);
+	HashMapSet(cls->Members, "_hdrstr", NewStrValue(interp, merged));
+	free(name);
+	free(val);
+	free(cur);
+	free(merged);
+	return args[0];
+}
+
+static ModuleFunction _ResClassMethods[] = {
+	{ .Name		 = CONSTRUCTOR_NAME,
+	  .Argc		 = VARARG,
+	  .CFunction = (NativeFunctionCallback) _ResInit,
+	  .Value	 = NULL },
+	{ .Name		 = "send",
+	  .Argc		 = VARARG,
+	  .CFunction = (NativeFunctionCallback) _ResSend,
+	  .Value	 = NULL },
+	{ .Name		 = "json",
+	  .Argc		 = VARARG,
+	  .CFunction = (NativeFunctionCallback) _ResJson,
+	  .Value	 = NULL },
+	{ .Name		 = "status",
+	  .Argc		 = 2,
+	  .CFunction = (NativeFunctionCallback) _ResStatus,
+	  .Value	 = NULL },
+	{ .Name		 = "redirect",
+	  .Argc		 = 2,
+	  .CFunction = (NativeFunctionCallback) _ResRedirect,
+	  .Value	 = NULL },
+	{ .Name		 = "setHeader",
+	  .Argc		 = 3,
+	  .CFunction = (NativeFunctionCallback) _ResSetHeader,
+	  .Value	 = NULL },
+	{ .Name = NULL }
+};
+
+/* -----------------------------------------------------------------------
+ * Request class methods
+ * ----------------------------------------------------------------------- */
+
+static Value* _ReqInit(Interpreter* interp, int argc, Value** args) {
+	(void) argc;
+	(void) args;
+	return NewErrorValue(interp, "Request cannot be constructed directly");
+}
+
+static ModuleFunction _ReqClassMethods[] = {
+	{ .Name		 = CONSTRUCTOR_NAME,
+	  .Argc		 = VARARG,
+	  .CFunction = (NativeFunctionCallback) _ReqInit,
+	  .Value	 = NULL },
+	{ .Name = NULL }
+};
+
+/* -----------------------------------------------------------------------
+ * Build req / res class instances per-request
+ * ----------------------------------------------------------------------- */
+
+static Value*
+_BuildResInstance(Interpreter* interp, Value* resClass, ReqResCtx* ctx) {
+	ClassInstance* inst = CreateClassInstance(resClass);
+	HashMapSet(inst->Members, "_ctx", NewOpquePtrValue(interp, ctx));
+	HashMapSet(inst->Members, "_status", NewIntValue(interp, 200));
+	HashMapSet(inst->Members, "_hdrstr", NewStrValue(interp, ""));
+	return NewClassInstanceValue(interp, inst);
+}
+
+static Value* _BuildReqInstance(Interpreter*			interp,
+								Value*					reqClass,
+								struct mg_http_message* hm) {
+	ClassInstance* inst = CreateClassInstance(reqClass);
+
+	char method[16];
+	snprintf(method,
+			 sizeof(method),
+			 "%.*s",
+			 (int) hm->method.len,
+			 hm->method.buf);
+	HashMapSet(inst->Members, "method", NewStrValue(interp, method));
+
+	char path[1024];
+	snprintf(path, sizeof(path), "%.*s", (int) hm->uri.len, hm->uri.buf);
+	HashMapSet(inst->Members, "url", NewStrValue(interp, path));
+	HashMapSet(inst->Members, "path", NewStrValue(interp, path));
+
+	char query[2048] = "";
+	if (hm->query.len > 0)
+		snprintf(query,
+				 sizeof(query),
+				 "%.*s",
+				 (int) hm->query.len,
+				 hm->query.buf);
+	HashMapSet(inst->Members, "query", NewStrValue(interp, query));
+
+	char* body;
+	if (hm->body.len > 0) {
+		body = (char*) Allocate(hm->body.len + 1);
+		memcpy(body, hm->body.buf, hm->body.len);
+		body[hm->body.len] = '\0';
+	} else {
+		body = strdup("");
+	}
+	HashMapSet(inst->Members, "body", NewStrValue(interp, body));
+	free(body);
+
+	Value*	 hdrsObj = NewObjectValue(interp);
+	HashMap* hdrsMap = CoerceToHashMap(hdrsObj);
+	for (int i = 0; i < MG_MAX_HTTP_HEADERS; i++) {
+		if (hm->headers[i].name.len == 0)
+			break;
+		char hname[256], hval[1024];
+		snprintf(hname,
+				 sizeof(hname),
+				 "%.*s",
+				 (int) hm->headers[i].name.len,
+				 hm->headers[i].name.buf);
+		snprintf(hval,
+				 sizeof(hval),
+				 "%.*s",
+				 (int) hm->headers[i].value.len,
+				 hm->headers[i].value.buf);
+		for (char* p = hname; *p; p++)
+			*p = (char) tolower((unsigned char) *p);
+		HashMapSet(hdrsMap, hname, NewStrValue(interp, hval));
+	}
+	HashMapSet(inst->Members, "headers", hdrsObj);
+	HashMapSet(inst->Members, "params", NewObjectValue(interp));
+
+	return NewClassInstanceValue(interp, inst);
+}
+
+/* -----------------------------------------------------------------------
+ * Mongoose event handler
+ * ----------------------------------------------------------------------- */
+
+static void _EvHandler(struct mg_connection* c, int ev, void* ev_data) {
+	AppState* app = (AppState*) c->fn_data;
+
+	if (ev != MG_EV_HTTP_MSG)
+		return;
+
+	struct mg_http_message* hm	   = (struct mg_http_message*) ev_data;
+	Interpreter*			interp = app->interp;
+
+	ReqResCtx ctx = { .conn = c, .msg = hm, .responded = false };
+
+	Value* reqVal = _BuildReqInstance(interp, app->reqClass, hm);
+	Value* resVal = _BuildResInstance(interp, app->resClass, &ctx);
+
+	/* Middleware */
+	for (size_t i = 0; i < app->mw_count && !ctx.responded; i++) {
+		Value* mw = app->middleware[i];
+		if (!ValueIsCallable(mw))
+			continue;
+		Push(interp, resVal);
+		Push(interp, reqVal);
+		DoCall(interp, mw, 2, false);
+		Popp(interp);
+	}
+
+	if (ctx.responded)
+		return;
+
+	/* Route matching */
+	char uri[1024];
+	snprintf(uri, sizeof(uri), "%.*s", (int) hm->uri.len, hm->uri.buf);
+
+	char meth[16];
+	snprintf(meth, sizeof(meth), "%.*s", (int) hm->method.len, hm->method.buf);
+
+	bool matched = false;
+	for (size_t i = 0; i < app->count && !matched; i++) {
+		Route* r = &app->routes[i];
+
+		if (r->method && strcasecmp(r->method, meth) != 0)
+			continue;
+
+		struct mg_str caps[4];
+		memset(caps, 0, sizeof(caps));
+		if (!mg_match(mg_str_n(uri, strlen(uri)), mg_str(r->path), caps))
+			continue;
+
+		matched = true;
+
+		/* Populate req.params with wildcard captures */
+		ClassInstance* reqInst	 = CoerceToClassInstance(reqVal);
+		Value*		   paramsObj = NewObjectValue(interp);
+		HashMap*	   paramsMap = CoerceToHashMap(paramsObj);
+		for (int k = 0; k < 4; k++) {
+			if (caps[k].len == 0)
+				break;
+			char capKey[16], capBuf[512];
+			snprintf(capKey, sizeof(capKey), "%d", k);
+			snprintf(capBuf,
+					 sizeof(capBuf),
+					 "%.*s",
+					 (int) caps[k].len,
+					 caps[k].buf);
+			HashMapSet(paramsMap, capKey, NewStrValue(interp, capBuf));
+		}
+		HashMapSet(reqInst->Members, "params", paramsObj);
+
+		Push(interp, resVal);
+		Push(interp, reqVal);
+		DoCall(interp, r->handler, 2, false);
+		Popp(interp);
+	}
+
+	if (!matched && !ctx.responded)
+		mg_http_reply(c, 404, "", "Not Found");
+}
+
+/* -----------------------------------------------------------------------
+ * Server class methods
+ * ----------------------------------------------------------------------- */
+
+static Value* _ServerInit(Interpreter* interp, int argc, Value** args) {
+	(void) argc;
+	ClassInstance* cls		 = CoerceToClassInstance(args[0]);
+	Class*		   serverCls = CoerceToUserClass(cls->Proto);
+
+	Value* reqClass = ClassGetMember(serverCls, "_ReqClass", true);
+	Value* resClass = ClassGetMember(serverCls, "_ResClass", true);
+	if (!reqClass || !resClass)
+		return NewErrorValue(interp,
+							 "internal: Request/Response class not found");
+
+	AppState* app = (AppState*) Callocate(1, sizeof(AppState));
+	app->interp	  = interp;
+	app->running  = false;
+	app->reqClass = reqClass;
+	app->resClass = resClass;
+
+	HashMapSet(cls->Members, "_ptr", NewOpquePtrValue(interp, app));
+	return interp->Null;
+}
+
+#define DEFINE_ROUTE_METHOD(ZsName, HttpMethod)                                \
+	static Value* _App##ZsName(Interpreter* interp, int argc, Value** args) {  \
+		if (argc != 3 || !ValueIsStr(args[1]) || !ValueIsCallable(args[2]))    \
+			return NewErrorValue(interp,                                       \
+								 #ZsName "() requires (path, handler)");       \
+		ClassInstance* cls = CoerceToClassInstance(args[0]);                   \
+		AppState*	   app = _GetApp(cls);                                     \
+		if (!app)                                                              \
+			return NewErrorValue(interp,                                       \
+								 #ZsName "(): server not initialised");        \
+		String path = ValueToString(args[1]);                                  \
+		_AppAddRoute(app, HttpMethod, path, args[2]);                          \
+		free(path);                                                            \
+		return args[0];                                                        \
+	}
+
+DEFINE_ROUTE_METHOD(Get, "GET")
+DEFINE_ROUTE_METHOD(Post, "POST")
+DEFINE_ROUTE_METHOD(Put, "PUT")
+DEFINE_ROUTE_METHOD(Delete, "DELETE")
+DEFINE_ROUTE_METHOD(Patch, "PATCH")
+DEFINE_ROUTE_METHOD(All, NULL)
+
+static Value* _AppUse(Interpreter* interp, int argc, Value** args) {
+	if (argc < 2 || !ValueIsCallable(args[1]))
+		return NewErrorValue(interp, "use() requires a callback function");
+	ClassInstance* cls = CoerceToClassInstance(args[0]);
+	AppState*	   app = _GetApp(cls);
+	if (!app)
+		return NewErrorValue(interp, "use(): server not initialised");
+	if (app->mw_count >= MAX_MIDDLEWARE)
+		return NewErrorValue(interp, "use(): maximum middleware count reached");
+	app->middleware[app->mw_count++] = args[1];
+	return args[0];
+}
+
+static Value* _AppListen(Interpreter* interp, int argc, Value** args) {
+	if (argc < 2 || !ValueIsAnyNum(args[1]))
+		return NewErrorValue(interp,
+							 "listen() requires a port number argument");
+	ClassInstance* cls = CoerceToClassInstance(args[0]);
+	AppState*	   app = _GetApp(cls);
+	if (!app)
+		return NewErrorValue(interp, "listen(): server not initialised");
+
+	int	   port = (int) CoerceToNum(args[1]);
+	Value* cb	= (argc >= 3 && ValueIsCallable(args[2])) ? args[2] : NULL;
+
+	char url[64];
+	snprintf(url, sizeof(url), "http://0.0.0.0:%d", port);
+
+	mg_mgr_init(&app->mgr);
+	struct mg_connection* lc = mg_http_listen(&app->mgr, url, _EvHandler, app);
+	if (lc == NULL) {
+		mg_mgr_free(&app->mgr);
+		return NewErrorFValue(interp,
+							  "listen(): failed to bind on port %d",
+							  port);
+	}
+
+	app->running = true;
+
+	if (cb) {
+		String msg	  = FormatString("Server listening on port %d", port);
+		Value* msgVal = NewStrValue(interp, msg);
+		free(msg);
+		Push(interp, msgVal);
+		DoCall(interp, cb, 1, false);
+		Popp(interp);
+	}
+
+	while (app->running)
+		mg_mgr_poll(&app->mgr, 100);
+
+	mg_mgr_free(&app->mgr);
+	return interp->Null;
+}
+
+static Value* _AppClose(Interpreter* interp, int argc, Value** args) {
+	(void) argc;
+	ClassInstance* cls = CoerceToClassInstance(args[0]);
+	AppState*	   app = _GetApp(cls);
+	if (app)
+		app->running = false;
+	return interp->Null;
+}
+
+static ModuleFunction _ServerClassMethods[] = {
+	{ .Name		 = CONSTRUCTOR_NAME,
+	  .Argc		 = VARARG,
+	  .CFunction = (NativeFunctionCallback) _ServerInit,
+	  .Value	 = NULL },
+	{ .Name		 = "get",
+	  .Argc		 = 3,
+	  .CFunction = (NativeFunctionCallback) _AppGet,
+	  .Value	 = NULL },
+	{ .Name		 = "post",
+	  .Argc		 = 3,
+	  .CFunction = (NativeFunctionCallback) _AppPost,
+	  .Value	 = NULL },
+	{ .Name		 = "put",
+	  .Argc		 = 3,
+	  .CFunction = (NativeFunctionCallback) _AppPut,
+	  .Value	 = NULL },
+	{ .Name		 = "delete",
+	  .Argc		 = 3,
+	  .CFunction = (NativeFunctionCallback) _AppDelete,
+	  .Value	 = NULL },
+	{ .Name		 = "patch",
+	  .Argc		 = 3,
+	  .CFunction = (NativeFunctionCallback) _AppPatch,
+	  .Value	 = NULL },
+	{ .Name		 = "all",
+	  .Argc		 = 3,
+	  .CFunction = (NativeFunctionCallback) _AppAll,
+	  .Value	 = NULL },
+	{ .Name		 = "use",
+	  .Argc		 = 2,
+	  .CFunction = (NativeFunctionCallback) _AppUse,
+	  .Value	 = NULL },
+	{ .Name		 = "listen",
+	  .Argc		 = VARARG,
+	  .CFunction = (NativeFunctionCallback) _AppListen,
+	  .Value	 = NULL },
+	{ .Name		 = "close",
+	  .Argc		 = 1,
+	  .CFunction = (NativeFunctionCallback) _AppClose,
+	  .Value	 = NULL },
+	{ .Name = NULL }
+};
+
+/* -----------------------------------------------------------------------
+ * Class factory — identical to sqlite.c pattern
+ * ----------------------------------------------------------------------- */
+
+static Value*
+_BuildClass(Interpreter* interp, const char* name, ModuleFunction methods[]) {
+	Value* classVal =
+		NewClassValue(interp, CreateUserClass((String) name, NULL));
+	Class* cls = CoerceToUserClass(classVal);
+
+	for (int i = 0; methods[i].Name != NULL; i++) {
+		ModuleFunction* func = &methods[i];
+		if (func->CFunction) {
+			ClassDefineMemberByString(
+				cls,
+				func->Name,
+				NewNativeFunctionValue(
+					interp,
+					CreateNativeFunctionMeta((String) func->Name,
+											 func->Argc,
+											 func->CFunction)),
+				false);
+		}
+	}
+	return classVal;
+}
+
+/* -----------------------------------------------------------------------
+ * Internal structures
+ *
+ * AppState  – held as an opaque pointer inside the JS "app" object.
+ *             It owns the mg_mgr, the route table, and the global
+ *             middleware list.
+ *
+ * Route     – one registered route (method + path pattern + handler).
+ * RouteList – a simple growable array of routes.
+ * ----------------------------------------------------------------------- */
+
+#define MAX_MIDDLEWARE 32
+
+/* -----------------------------------------------------------------------
+ * Module entry point — mirrors LoadCoreSqlite pattern
+ *
+ * Request, Response and Server are built as proper class values.
+ * Server stores _ReqClass / _ResClass as GC-visible static members so
+ * CreateClassInstance() in _ServerInit picks them up and the GC keeps
+ * them alive.
+ * ----------------------------------------------------------------------- */
+Value* LoadCoreMongoose(Interpreter* interpreter) {
+	Value* reqClass = _BuildClass(interpreter, "Request", _ReqClassMethods);
+	Value* resClass = _BuildClass(interpreter, "Response", _ResClassMethods);
+	Value* serverClass =
+		_BuildClass(interpreter, "Server", _ServerClassMethods);
+
+	/* Root the sub-classes as static members of Server (same trick as
+	 * Database._StmtClass in sqlite.c) so the GC always traces them. */
+	ClassDefineMemberByString(CoerceToUserClass(serverClass),
+							  "_ReqClass",
+							  reqClass,
+							  true);
+	ClassDefineMemberByString(CoerceToUserClass(serverClass),
+							  "_ResClass",
+							  resClass,
+							  true);
+
+	Value*	 module = NewObjectValue(interpreter);
+	HashMap* map	= CoerceToHashMap(module);
+	HashMapSet(map, "Server", serverClass);
+	HashMapSet(map, "Request", reqClass);
+	HashMapSet(map, "Response", resClass);
+	return module;
+}

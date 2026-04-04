@@ -1,6 +1,5 @@
 #include "./loader.h"
 
-
 CoreMapper _CoreModuleMappers[] = {
 	{ .Name = "io", .Loader = LoadCoreIo },
 	{ .Name = "os", .Loader = LoadCoreOs },
@@ -9,6 +8,7 @@ CoreMapper _CoreModuleMappers[] = {
 	{ .Name = "Array", .Loader = LoadCoreArray },
 	{ .Name = "Promise", .Loader = LoadCorePromise },
 	{ .Name = "sqlite", .Loader = LoadCoreSqlite },
+	{ .Name = "mongoose", .Loader = LoadCoreMongoose },
 	// End marker
 	{ .Name = NULL, .Loader = NULL }
 };
@@ -16,6 +16,7 @@ CoreMapper _CoreModuleMappers[] = {
 Value* LoadCoreModule(Interpreter* interpreter, String moduleName) {
 	for (int i = 0; _CoreModuleMappers[i].Name != NULL; i++) {
 		if (strcmp(_CoreModuleMappers[i].Name, moduleName) == 0) {
+			printf("%s == %s\n", _CoreModuleMappers[i].Name, moduleName);
 			return _CoreModuleMappers[i].Loader(interpreter);
 		}
 	}

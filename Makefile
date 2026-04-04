@@ -30,10 +30,11 @@ SRCS     := main.c \
             $(wildcard utf/utf8proc/*.c) \
             $(wildcard libbf/*.c)
 
-SQLITE_SO := sqlite/libsqlite3.so
+SQLITE_SO   := sqlite/libsqlite3.so
+MONGOOSE_SO := mongoose/libmongoose.so
 
-LDFLAGS       := -lm -ldl -lpthread -Lsqlite -lsqlite3 -Wl,-rpath,'$$ORIGIN/sqlite'
-LDFLAGS_INST  := -lm -ldl -lpthread -Lsqlite -lsqlite3 -Wl,-rpath,'$$ORIGIN/../lib/zscript'
+LDFLAGS       := -lm -ldl -lpthread -Lsqlite -lsqlite3 -Lmongoose -lmongoose -Wl,-rpath,'$$ORIGIN/sqlite' -Wl,-rpath,'$$ORIGIN/mongoose'
+LDFLAGS_INST  := -lm -ldl -lpthread -Lsqlite -lsqlite3 -Lmongoose -lmongoose -Wl,-rpath,'$$ORIGIN/../lib/zscript' -Wl,-rpath,'$$ORIGIN/../lib/zscript'
 
 # ----------------------------------------------------------------
 
@@ -45,17 +46,17 @@ LIBDIR   ?= $(PREFIX)/lib/zscript
 
 all: debug
 
-release: $(SQLITE_SO)
+release: $(SQLITE_SO) $(MONGOOSE_SO)
 	@echo "Building in release mode (clang, super-optimized)..."
 	$(CC) $(CFLAGSR) $(CFLAGS_OPT) -DBUILD_DATE='"$(BUILD_DATE)"' $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_OPT)
 	@echo "Build successful → $(TARGET)"
 
-release-install: $(SQLITE_SO)
+release-install: $(SQLITE_SO) $(MONGOOSE_SO)
 	@echo "Building in release mode (install RPATH)..."
 	$(CC) $(CFLAGSR) $(CFLAGS_OPT) -DBUILD_DATE='"$(BUILD_DATE)"' $(SRCS) -o $(TARGET) $(LDFLAGS_INST) $(LDFLAGS_OPT)
 	@echo "Build successful → $(TARGET)"
 
-debug: $(SQLITE_SO)
+debug: $(SQLITE_SO) $(MONGOOSE_SO)
 	@echo "Building in debug mode..."
 	$(CC) $(CFLAGS) -O0 -DBUILD_DATE='"$(BUILD_DATE)"' $(SRCS) -o $(TARGET) $(LDFLAGS)
 	@echo "Build successful → $(TARGET)"
@@ -64,8 +65,12 @@ $(SQLITE_SO): sqlite/sqlite3.c
 	@echo "Building SQLite shared library..."
 	$(CC) -fPIC -shared -O2 -o $@ $<
 
+$(MONGOOSE_SO): mongoose/mongoose.c
+	@echo "Building Mongoose shared library..."
+	$(CC) -fPIC -shared -O2 -o $@ $<
+
 clean:
-	rm -f $(TARGET) $(SQLITE_SO)
+	rm -f $(TARGET) $(SQLITE_SO) $(MONGOOSE_SO)
 
 install: release-install
 	@echo "Installing $(TARGET) → $(BINDIR)/zscript"
@@ -77,6 +82,12 @@ install: release-install
 		install -m 755 $(SQLITE_SO) $(LIBDIR)/libsqlite3.so; \
 	else \
 		echo "Skipping $(LIBDIR)/libsqlite3.so (already exists)"; \
+	fi
+	@if [ ! -f $(LIBDIR)/libmongoose.so ]; then \
+		echo "Installing $(MONGOOSE_SO) → $(LIBDIR)/libmongoose.so"; \
+		install -m 755 $(MONGOOSE_SO) $(LIBDIR)/libmongoose.so; \
+	else \
+		echo "Skipping $(LIBDIR)/libmongoose.so (already exists)"; \
 	fi
 	@echo "Installing lib → $(LIBDIR)/lib/"
 	cd lib && find . -type d -exec install -d $(LIBDIR)/lib/{} \; \
