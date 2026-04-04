@@ -1,0 +1,42 @@
+title: ZayneScript
+description: >-
+  A dynamic, interpreted scripting language written in pure C.
+  First-class functions, closures, async/await, BigInt, classes,
+  and a rich built-in standard library.
+
+remote_theme: just-the-docs/just-the-docs@v0.10.0
+
+color_scheme: dark
+
+search_enabled: true
+search:
+  heading_level: 3
+  previews: 3
+  preview_words_before: 5
+  preview_words_after: 10
+  tokenizer_separator: /[\s/]+/
+  rel_url: true
+  button: false
+
+heading_anchors: true
+
+aux_links:
+  "GitHub ↗":
+    - "https://github.com/HolliShake/zaynescript"
+
+aux_links_new_tab: true
+
+nav_sort: order
+
+footer_content: >-
+  ZayneScript &copy; 2025&ndash;Present
+  <strong>Philipp Andrew Redondo</strong>.
+  Released under the <a href="https://opensource.org/licenses/MIT">MIT License</a>.
+
+back_to_top: true
+back_to_top_text: "↑ Back to top"
+
+plugins:
+  - jekyll-remote-theme
+  - jekyll-seo-tag
+  - jekyll-sitemap
