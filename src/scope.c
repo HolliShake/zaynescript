@@ -1,12 +1,18 @@
 #include "./scope.h"
 
-Symbol*
-CreateSymbol(bool isGlobal, bool isLocalToFn, bool isConstant, int offset) {
-	Symbol* symbol		= Allocate(sizeof(Symbol));
-	symbol->IsGlobal	= isGlobal;
-	symbol->IsLocalToFn = isLocalToFn;
-	symbol->IsConstant	= isConstant;
-	symbol->Offset		= offset;
+#include "global.h"
+
+Symbol* CreateSymbol(bool isGlobal,
+					 bool isLocalToFn,
+					 bool isConstant,
+					 int  offset,
+					 int  referenceCount) {
+	Symbol* symbol		   = Allocate(sizeof(Symbol));
+	symbol->IsGlobal	   = isGlobal;
+	symbol->IsLocalToFn	   = isLocalToFn;
+	symbol->IsConstant	   = isConstant;
+	symbol->Offset		   = offset;
+	symbol->ReferenceCount = referenceCount;
 	return symbol;
 }
 
@@ -56,6 +62,11 @@ bool ScopeIs(Scope* scope, ScopeType type) {
 
 bool ScopeInside(Scope* scope, ScopeType type) {
 	while (scope != NULL) {
+		// Reset
+		if (type == SCOPE_LOOP && (scope->Type == SCOPE_FUNCTION)) {
+			return false;
+		}
+
 		if (scope->Type == type) {
 			return true;
 		}
@@ -88,7 +99,8 @@ bool ScopeIsLocalToGlobal(Scope* scope, String name) {
 	Scope* current = scope;
 	while (current != NULL) {
 		if (HashMapContains(current->Symbols, name)) {
-			// Found the symbol, now check if we're inside a function scope
+			// Found the symbol, now check if we're inside a
+			// function scope
 			Scope* check = current;
 			while (check != NULL) {
 				if (check->Type == SCOPE_GLOBAL) {
@@ -99,7 +111,8 @@ bool ScopeIsLocalToGlobal(Scope* scope, String name) {
 			return false;
 		}
 		if (current->Type == SCOPE_GLOBAL) {
-			// We've reached a function boundary without finding the symbol
+			// We've reached a function boundary without
+			// finding the symbol
 			return false;
 		}
 		current = current->Parent;
@@ -111,7 +124,8 @@ bool ScopeIsLocalToFn(Scope* scope, String name) {
 	Scope* current = scope;
 	while (current != NULL) {
 		if (HashMapContains(current->Symbols, name)) {
-			// Found the symbol, now check if we're inside a function scope
+			// Found the symbol, now check if we're inside a
+			// function scope
 			Scope* check = current;
 			while (check != NULL) {
 				if (check->Type == SCOPE_FUNCTION) {
@@ -122,7 +136,8 @@ bool ScopeIsLocalToFn(Scope* scope, String name) {
 			return false;
 		}
 		if (current->Type == SCOPE_FUNCTION) {
-			// We've reached a function boundary without finding the symbol
+			// We've reached a function boundary without
+			// finding the symbol
 			return false;
 		}
 		current = current->Parent;
@@ -136,9 +151,10 @@ void ScopeSetSymbol(Scope* scope,
 					bool   isLocalToFn,
 					bool   isConstant,
 					int	   offset) {
-	// Note: memory leak (if 'name' already exists in scope->Symbols, HashMapSet
-	// overwrites the old Symbol* without freeing it)
-	Symbol* symbol = CreateSymbol(isGlobal, isLocalToFn, isConstant, offset);
+	// Note: memory leak (if 'name' already exists in
+	// scope->Symbols, HashMapSet overwrites the old Symbol*
+	// without freeing it)
+	Symbol* symbol = CreateSymbol(isGlobal, isLocalToFn, isConstant, offset, 0);
 	HashMapSet(scope->Symbols, name, symbol);
 }
 
@@ -195,9 +211,10 @@ void ScopeSetCapture(Scope* scope,
 	if (closureScope == NULL) {
 		return;
 	}
-	// Note: memory leak (if 'name' already exists in closureScope->Captures,
-	// HashMapSet overwrites the old Symbol* without freeing it)
-	Symbol* symbol = CreateSymbol(isGlobal, isLocalToFn, isConstant, offset);
+	// Note: memory leak (if 'name' already exists in
+	// closureScope->Captures, HashMapSet overwrites the old
+	// Symbol* without freeing it)
+	Symbol* symbol = CreateSymbol(isGlobal, isLocalToFn, isConstant, offset, 0);
 	HashMapSet(closureScope->Captures, name, symbol);
 }
 
@@ -231,9 +248,34 @@ Scope* ScopeGetFirst(Scope* scope, ScopeType type) {
 int ScopeCountNested(Scope* scope, ScopeType type) {
 	int count = 0;
 	while (scope != NULL) {
+		if (type == SCOPE_LOOP && (scope->Type == SCOPE_FUNCTION)) {
+			return count;
+		}
 		if (scope->Type == type) {
 			count++;
 		}
+		scope = scope->Parent;
+	}
+	return count;
+}
+
+int ScopeCountNestedUntil(Scope* scope, ScopeType type, ScopeType untilType) {
+	int count = 0;
+	while (scope != NULL) {
+		// Universally stop at function boundaries.
+		// Control flow unwinding cannot cross into a parent function's scope.
+		if (scope->Type == SCOPE_FUNCTION) {
+			return count;
+		}
+
+		if (scope->Type == untilType) {
+			return count;
+		}
+
+		if (scope->Type == type) {
+			count++;
+		}
+
 		scope = scope->Parent;
 	}
 	return count;

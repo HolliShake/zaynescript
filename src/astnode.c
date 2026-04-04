@@ -141,6 +141,19 @@ Ast* AstTernary(Ast*	 condition,
 	return ast;
 }
 
+Ast* AstRaise(Ast* expression, Position position) {
+	Ast* ast = InitAst(AST_RAISE, position);
+	ast->A	 = expression;
+	return ast;
+}
+
+Ast* AstAssert(Ast* expression, Ast* fallback, Position position) {
+	Ast* ast = InitAst(AST_ASSERT, position);
+	ast->A	 = expression;
+	ast->B	 = fallback;
+	return ast;
+}
+
 Ast* AstContinue(Position position) {
 	Ast* ast = InitAst(AST_CONTINUE, position);
 	return ast;

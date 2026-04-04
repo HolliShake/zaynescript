@@ -1,5 +1,15 @@
 import { println, format } from "core:io";
  
+var arr = [];
 
+for (i:=0;i<5;i++) {
+    arr.push(fn(j) {
+        println(i + j);
+    });
+}
 
-const xx = [1,2,3].each(println);
+arr.each(fn(e,i) {
+    e(i);
+});
+
+println("Done!");

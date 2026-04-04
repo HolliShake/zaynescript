@@ -4,3 +4,6 @@
 /tests/*.py
 /dist
 .github/*
+*.sqlite
+*.so
+*.js

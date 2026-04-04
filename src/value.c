@@ -1,5 +1,7 @@
 #include "./value.h"
 
+#include "global.h"
+
 static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
 	Value* v  = Allocate(sizeof(Value));
 	v->Type	  = type;
@@ -126,6 +128,12 @@ Value* NewClassInstanceValue(Interpreter*	interpreter,
 	return v;
 }
 
+Value* NewOpquePtrValue(Interpreter* interpreter, void* ptr) {
+	Value* v		= _CreateValue(interpreter, VLT_OPAQUE);
+	v->Value.Opaque = ptr;
+	return v;
+}
+
 String ValueToString(Value* value) {
 	String buffer;
 	switch (value->Type) {
@@ -139,7 +147,8 @@ String ValueToString(Value* value) {
 			}
 		case VLT_NUM:
 			buffer = Allocate(64);
-			// Check if the number can be represented as an integer
+			// Check if the number can be represented as an
+			// integer
 			double num = value->Value.Num;
 			if (floor(num) == num && num >= INT_MIN && num <= INT_MAX) {
 				// It's a whole number that fits in an int
@@ -149,7 +158,8 @@ String ValueToString(Value* value) {
 				// It's a whole number that fits in a long
 				snprintf(buffer, 64, "%ld", (long) num);
 			} else {
-				// It's a fractional number, use %.15g for better precision
+				// It's a fractional number, use %.15g for better
+				// precision
 				snprintf(buffer, 64, "%.15g", num);
 			}
 			return buffer;
@@ -167,7 +177,8 @@ String ValueToString(Value* value) {
 					runeCount++;
 				}
 
-				// Estimate buffer size (max 4 bytes per rune + null terminator)
+				// Estimate buffer size (max 4 bytes per rune +
+				// null terminator)
 				size_t bufferSize = runeCount * 4 + 1;
 				buffer			  = Allocate(bufferSize);
 
@@ -228,6 +239,10 @@ String ValueToString(Value* value) {
 						return AllocateString("<Promise.UNKNOWN />");
 				}
 			}
+		case VLT_OPAQUE:
+			{
+				return AllocateString("<Opaque Pointer>");
+			}
 		default:
 			return AllocateString("unknown");
 	}
@@ -271,6 +286,10 @@ String ValueTypeOf(Value* value) {
 		case VLT_PROMISE:
 			{
 				return "Promise";
+			}
+		case VLT_OPAQUE:
+			{
+				return "Opaque";
 			}
 		default:
 			return "Unknown";
@@ -346,25 +365,22 @@ bool ValueIsPromise(Value* value) {
 	return value->Type == VLT_PROMISE;
 }
 
+bool ValueIsOpaquePtr(Value* value) {
+	return value->Type == VLT_OPAQUE;
+}
+
 bool ValueIsEqual(Value* a, Value* b) {
 	if (a == b)
 		return true;
 	else if (ValueIsNum(a) && ValueIsNum(b)) {
 		return CoerceToI64(a) == CoerceToI64(b);
 	} else if (ValueIsStr(a) && ValueIsStr(b)) {
-		Rune* lhsRunes = (Rune*) a->Value.Opaque;
-		Rune* rhsRunes = (Rune*) b->Value.Opaque;
-		// Compare rune by rune
-		int i	  = 0;
-		int equal = 1;
-		while (lhsRunes[i] != 0 || rhsRunes[i] != 0) {
-			if (lhsRunes[i] != rhsRunes[i]) {
-				equal = 0;
-				break;
-			}
-			i++;
-		}
-		return equal;
+		String astr = RunesStrToString((Rune*) a->Value.Opaque);
+		String bstr = RunesStrToString((Rune*) b->Value.Opaque);
+		bool   eq	= strcmp(astr, bstr) == 0;
+		free(astr);
+		free(bstr);
+		return eq;
 	} else if (ValueIsBool(a) && ValueIsBool(b)) {
 		return CoerceToBool(a) == CoerceToBool(b);
 	} else if (ValueIsNull(a) && ValueIsNull(b)) {

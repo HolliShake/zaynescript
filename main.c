@@ -124,8 +124,10 @@ int RunTestInProcess(const char* testPath, const char* exePath) {
 		ssize_t bytesRead;
 		while ((bytesRead = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
 			buffer[bytesRead] = '\0';
-			printf("%s", buffer);  // Removed the prepended spaces that randomly
-								   // interrupt chunks and break ANSI codes
+			printf("%s",
+				   buffer);	 // Removed the prepended spaces that
+							 // randomly interrupt chunks and
+							 // break ANSI codes
 			fflush(stdout);
 		}
 
@@ -231,7 +233,8 @@ void RunTests() {
 			continue;
 		}
 
-		// Exclude interactive/long-running visualization test scripts
+		// Exclude interactive/long-running visualization test
+		// scripts
 		if (strcmp(entry->d_name, "test_doughnut.zs") == 0
 			|| strcmp(entry->d_name, "test_cube.zs") == 0
 			|| strcmp(entry->d_name, "test_star.zs") == 0
@@ -299,7 +302,8 @@ void RunTests() {
 
 void PrintHelp() {
 #ifdef _WIN32
-	// Set console to UTF-8 and enable ANSI escape processing on Windows
+	// Set console to UTF-8 and enable ANSI escape processing on
+	// Windows
 	SetConsoleOutputCP(CP_UTF8);
 	{
 		HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -312,46 +316,36 @@ void PrintHelp() {
 #endif
 
 	/* Box top */
-	printf(
-		CLR_CYN
-		"╔════════════════════════════════════════════════════════════════════"
-		"══════════════════════╗\n" CLR);
+	printf(CLR_CYN "╔═══════════════════════════════════════════"
+				   "═════════════════════════"
+				   "══════════════════════╗\n" CLR);
 	/* Empty */
-	printf(
-		CLR_CYN
-		"║" CLR
-		"                                                                    "
-		"                      " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN "║" CLR "                                    "
+				   "                                "
+				   "                      " CLR_CYN "║\n" CLR);
 	/* ASCII banner */
 	printf(CLR_CYN "║" CLR_BYEL
 				   "  ███████╗ █████╗ ██╗   ██╗███╗   ██╗███████╗███████╗ "
 				   "██████╗██████╗ ██╗██████╗ ████████╗ " CLR_CYN "║\n" CLR);
-	printf(CLR_CYN
-		   "║" CLR_BYEL "  ╚══███╔╝██╔══██╗╚██╗ ██╔╝████╗  "
-		   "██║██╔════╝██╔════╝██╔════╝██╔══██╗██║██╔══██╗╚══██╔══╝ " CLR_CYN
-		   "║\n" CLR);
-	printf(CLR_CYN
-		   "║" CLR_BYEL
-		   "    ███╔╝ ███████║ ╚████╔╝ ██╔██╗ ██║█████╗  ███████╗██║     "
-		   "██████╔╝██║██████╔╝   ██║    " CLR_CYN "║\n" CLR);
-	printf(CLR_CYN
-		   "║" CLR_BYEL
-		   "   ███╔╝  ██╔══██║  ╚██╔╝  ██║╚██╗██║██╔══╝  ╚════██║██║     "
-		   "██╔══██╗██║██╔═══╝    ██║    " CLR_CYN "║\n" CLR);
-	printf(CLR_CYN
-		   "║" CLR_BYEL
-		   "  ███████╗██║  ██║   ██║   ██║ ╚████║███████╗███████║╚██████╗██║  "
-		   "██║██║██║        ██║    " CLR_CYN "║\n" CLR);
-	printf(CLR_CYN
-		   "║" CLR_BYEL
-		   "  ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═══╝╚══════╝╚══════╝ ╚═════╝╚═╝  "
-		   "╚═╝╚═╝╚═╝        ╚═╝    " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN "║" CLR_BYEL "  ╚══███╔╝██╔══██╗╚██╗ ██╔╝████╗  "
+				   "██║██╔════╝██╔════╝██╔════╝██╔══██╗██║██╔══█"
+				   "█╗╚══██╔══╝ " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN "║" CLR_BYEL "    ███╔╝ ███████║ ╚████╔╝ ██╔██╗ "
+				   "██║█████╗  ███████╗██║     "
+				   "██████╔╝██║██████╔╝   ██║    " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN "║" CLR_BYEL "   ███╔╝  ██╔══██║  ╚██╔╝  "
+				   "██║╚██╗██║██╔══╝  ╚════██║██║     "
+				   "██╔══██╗██║██╔═══╝    ██║    " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN "║" CLR_BYEL "  ███████╗██║  ██║   ██║   ██║ "
+				   "╚████║███████╗███████║╚██████╗██║  "
+				   "██║██║██║        ██║    " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN "║" CLR_BYEL "  ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚═╝  "
+				   "╚═══╝╚══════╝╚══════╝ ╚═════╝╚═╝  "
+				   "╚═╝╚═╝╚═╝        ╚═╝    " CLR_CYN "║\n" CLR);
 	/* Empty */
-	printf(
-		CLR_CYN
-		"║" CLR
-		"                                                                    "
-		"                      " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN "║" CLR "                                    "
+				   "                                "
+				   "                      " CLR_CYN "║\n" CLR);
 	/* Subtitle */
 	printf(CLR_CYN "║" CLR "                                " CLR_BWHT
 				   "A Custom Programming Language" CLR
@@ -360,47 +354,46 @@ void PrintHelp() {
 				   "Implemented in C" CLR
 				   "                                    " CLR_CYN "║\n" CLR);
 	/* Empty */
-	printf(
-		CLR_CYN
-		"║" CLR
-		"                                                                    "
-		"                      " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN "║" CLR "                                    "
+				   "                                "
+				   "                      " CLR_CYN "║\n" CLR);
 	/* Info section */
 	printf(CLR_CYN "║" CLR "  " CLR_BWHT "Features:" CLR
-				   " Dynamic Typing • Functions • Arrays • Objects • Classes "
+				   " Dynamic Typing • Functions • Arrays • "
+				   "Objects • Classes "
 				   "                      " CLR_CYN "║\n" CLR);
 	printf(CLR_CYN "║" CLR "  " CLR_BWHT "License:" CLR
-				   "  MIT License                                             "
+				   "  MIT License                               "
+				   "              "
 				   "                      " CLR_CYN "║\n" CLR);
 	printf(CLR_CYN "║" CLR "  " CLR_BWHT "Author:" CLR
-				   "   Philipp Andrew Redondo                                  "
+				   "   Philipp Andrew Redondo                   "
+				   "               "
 				   "                      " CLR_CYN "║\n" CLR);
 	printf(CLR_CYN "║" CLR "  " CLR_BWHT "Build:" CLR "    " CLR_YEL
 				   "%-78s" CLR CLR_CYN "║\n" CLR,
 		   BUILD_DATE);
 	/* Empty */
-	printf(
-		CLR_CYN
-		"║" CLR
-		"                                                                    "
-		"                      " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN "║" CLR "                                    "
+				   "                                "
+				   "                      " CLR_CYN "║\n" CLR);
 	/* Usage */
-	printf(CLR_CYN
-		   "║" CLR "  " CLR_BOLD "usage:" CLR
-		   " zscript [--run <file.zs> | --tests | --help]               "
-		   "                      " CLR_CYN "║\n" CLR);
+	printf(CLR_CYN "║" CLR "  " CLR_BOLD "usage:" CLR
+				   " zscript [--run <file.zs> | --tests | "
+				   "--help]               "
+				   "                      " CLR_CYN "║\n" CLR);
 	/* Box bottom */
-	printf(
-		CLR_CYN
-		"╚════════════════════════════════════════════════════════════════════"
-		"══════════════════════╝\n" CLR);
+	printf(CLR_CYN "╚═══════════════════════════════════════════"
+				   "═════════════════════════"
+				   "══════════════════════╝\n" CLR);
 	printf("\n");
 	printf(CLR_BCYN "USAGE:\n" CLR);
 	printf("  %s [OPTIONS] [FILE]\n", "zscript");
 	printf("\n");
 	printf(CLR_BCYN "OPTIONS:\n" CLR);
 	printf("  " CLR_BGRN "--tests" CLR
-		   "              Run all test files in ./tests/ directory\n");
+		   "              Run all test files in ./tests/ "
+		   "directory\n");
 	printf("  " CLR_BGRN "--run <file>" CLR
 		   "         Run a specific .zs file\n");
 	printf("  " CLR_BGRN "--help, -h" CLR
@@ -486,8 +479,8 @@ int main(int argc, char** argv) {
 
 	Interpreter* interpreter = CreateInterpreter(execPath);
 
-	// NOTE: memory leak (ReadFile allocates a buffer, StringToRunes reads it,
-	// but the buffer is never freed)
+	// NOTE: memory leak (ReadFile allocates a buffer,
+	// StringToRunes reads it, but the buffer is never freed)
 	String fileContent = ReadInternalFile(path);
 	if (!fileContent) {
 		free(execPath);
@@ -514,6 +507,6 @@ int main(int argc, char** argv) {
 	free(execPath);
 	free(path);
 	free(data);
-	printf("Program Finished!\n");
+	printf("Program Finished!");
 	return EXIT_SUCCESS;
 }

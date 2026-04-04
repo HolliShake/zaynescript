@@ -1,6 +1,5 @@
 #include "./loader.h"
 
-
 CoreMapper _CoreModuleMappers[] = {
 	{ .Name = "io", .Loader = LoadCoreIo },
 	{ .Name = "os", .Loader = LoadCoreOs },
@@ -8,6 +7,8 @@ CoreMapper _CoreModuleMappers[] = {
 	{ .Name = "Date", .Loader = LoadCoreDate },
 	{ .Name = "Array", .Loader = LoadCoreArray },
 	{ .Name = "Promise", .Loader = LoadCorePromise },
+	{ .Name = "sqlite", .Loader = LoadCoreSqlite },
+	{ .Name = "mongoose", .Loader = LoadCoreMongoose },
 	// End marker
 	{ .Name = NULL, .Loader = NULL }
 };

@@ -49,7 +49,8 @@ static void _Rehash(HashMap* hashmap) {
 			HashMapSet(hashmap, node->Key, node->Val);
 			free(node->Key);
 
-			// free chain nodes (but not the first node in each bucket)
+			// free chain nodes (but not the first node in each
+			// bucket)
 			if (node != &oldBuckets[i]) {
 				free(node);
 			}
@@ -160,11 +161,13 @@ void HashMapExtend(HashMap* dest, HashMap* src) {
 		return;
 	}
 
-	// Pre-calculate if we need to rehash to avoid multiple rehashes
+	// Pre-calculate if we need to rehash to avoid multiple
+	// rehashes
 	size_t totalCount		   = dest->Count + src->Count;
 	double projectedLoadFactor = (double) totalCount / (double) dest->Size;
 
-	// Rehash proactively if needed to avoid multiple rehashes during insertion
+	// Rehash proactively if needed to avoid multiple rehashes
+	// during insertion
 	while (projectedLoadFactor >= LOAD_FACTOR_THRESHOLD) {
 		_Rehash(dest);
 		projectedLoadFactor = (double) totalCount / (double) dest->Size;
@@ -180,7 +183,8 @@ void HashMapExtend(HashMap* dest, HashMap* src) {
 				continue;
 			}
 
-			// Direct insertion without load factor check since we pre-rehashed
+			// Direct insertion without load factor check since
+			// we pre-rehashed
 			size_t	  index	   = _Hash(clonedKey, dest->Size);
 			HashNode* destNode = &dest->Buckets[index];
 
@@ -196,8 +200,9 @@ void HashMapExtend(HashMap* dest, HashMap* src) {
 				while (current != NULL) {
 					if (strcmp(current->Key, clonedKey) == 0) {
 						current->Val = node->Val;
-						free(clonedKey);  // Free cloned key since we're
-										  // updating existing
+						free(clonedKey);  // Free cloned key
+										  // since we're updating
+										  // existing
 						found = true;
 						break;
 					}
@@ -217,7 +222,8 @@ void HashMapExtend(HashMap* dest, HashMap* src) {
 						current->Next = newNode;
 						dest->Count++;
 					} else {
-						free(clonedKey);  // Free cloned key if node allocation
+						free(clonedKey);  // Free cloned key if
+										  // node allocation
 										  // failed
 					}
 				}
@@ -248,7 +254,8 @@ String HashMapToString(HashMap* hashmap) {
 		return NULL;
 	}
 
-	// Calculate approximate size needed for string representation
+	// Calculate approximate size needed for string
+	// representation
 	size_t bufferSize = 100;  // Initial size for "{ ... }"
 	for (size_t i = 0; i < hashmap->Size; i++) {
 		HashNode* node = &hashmap->Buckets[i];
@@ -303,10 +310,11 @@ void FreeHashMap(HashMap* hashmap) {
 			HashNode* next = node->Next;
 			free(node->Key);
 			node->Key = NULL;
-			// Note: we do not free node->Val here since we don't know its type
+			// Note: we do not free node->Val here since we don't
+			// know its type
 			if (node != &hashmap->Buckets[i]) {
-				free(node);	 // Free chain nodes, but not the first node in each
-							 // bucket
+				free(node);	 // Free chain nodes, but not the
+							 // first node in each bucket
 			}
 			node = next;
 		}

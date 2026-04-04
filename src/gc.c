@@ -1,5 +1,7 @@
 #include "./gc.h"
 
+#include "global.h"
+
 /**
  * @brief Converts a Value to its string representation.
  * @param value The value to convert.
@@ -11,7 +13,8 @@ extern String ValueToString(Value* value);
 /**
  * @brief Frees a value and its associated memory
  *
- * @param interp The interpreter instance (used for big-number context cleanup)
+ * @param interp The interpreter instance (used for big-number
+ * context cleanup)
  * @param value The value to free
  */
 static void _Free(Interpreter* interp, Value* value) {
@@ -112,6 +115,12 @@ static void _Free(Interpreter* interp, Value* value) {
 			{
 				StateMachine* sm = CoerceToStateMachine(value);
 				FreeStateMachine(sm);
+				value->Value.Opaque = NULL;
+				break;
+			}
+		case VLT_OPAQUE:
+			{
+				//  Do not free sqlite  here!
 				value->Value.Opaque = NULL;
 				break;
 			}
@@ -247,6 +256,11 @@ void Mark(Value* value) {
 				}
 				break;
 			}
+		case VLT_OPAQUE:
+			{
+				// logic here!
+				break;
+			}
 		default:
 			break;
 	}
@@ -308,8 +322,8 @@ static size_t _Sweep(Interpreter* interpreter) {
 }
 
 void GarbageCollect(Interpreter* interpreter) {
-	// printf("GC: Starting garbage collection... Allocated = %d bytes,
-	// Threshold = %d bytes\n", interpreter->Allocated,
+	// printf("GC: Starting garbage collection... Allocated = %d
+	// bytes, Threshold = %d bytes\n", interpreter->Allocated,
 	// interpreter->GcThreshold);
 	Mark(interpreter->GcRoot);
 	Mark(interpreter->Array);

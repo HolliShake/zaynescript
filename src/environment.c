@@ -47,7 +47,9 @@ Environment* EnvironmentCloneFromValue(Value* envValue) {
 
 void EnvironmentSync(Environment* src, Environment* dst) {
 	if (dst->LocalC != src->LocalC) {
-		Panic("EnvironmentSync: Local variable count mismatch (%d vs %d)\n",
+		Panic("EnvironmentSync: Local variable count "
+			  "mismatch "
+			  "(%d vs %d)\n",
 			  dst->LocalC,
 			  src->LocalC);
 	}

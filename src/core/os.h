@@ -2,8 +2,9 @@
  * @file os.h
  * @brief Core OS module interface
  *
- * This header file defines the interface for loading the core OS module
- * which provides operating system functionality for the interpreter.
+ * This header file defines the interface for loading the core OS
+ * module which provides operating system functionality for the
+ * interpreter.
  */
 
 #include "../function.h"
@@ -17,7 +18,8 @@
 /**
  * @brief Loads the core OS module
  *
- * @param  interpreter The interpreter instance to load the OS module into
+ * @param  interpreter The interpreter instance to load the OS
+ * module into
  * @return Value* Pointer to the loaded OS module
  */
 Value* LoadCoreOs(Interpreter* interpreter);

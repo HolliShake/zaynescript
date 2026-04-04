@@ -49,10 +49,23 @@ Interpreter* CreateInterpreter(String execPath) {
 
 #define SetVar(envObj, offset, value)                                          \
 	EnvironmentSetLocal(CoerceToEnvironment(envObj), offset, value)
+
 #define GetVar(envObj, offset)                                                 \
 	EnvironmentGetLocal(CoerceToEnvironment(envObj), offset)->Value
-#define GetCap(uFunct, offset)		  (uFunct->Captures[offset]->Value)
+
+#define GetCap(uFunct, offset) (uFunct->Captures[offset]->Value)
+
 #define SetCap(uFunct, offset, value) (uFunct->Captures[offset]->Value = value)
+
+#define LockVar(envObj, offset)                                                \
+	{                                                                          \
+		Environment* env  = CoerceToEnvironment(envObj);                       \
+		EnvCell*	 cell = EnvironmentGetLocal(env, offset);                  \
+		if (cell->RefCount > 0 && cell->IsCaptured) {                          \
+			cell->RefCount--;                                                  \
+			env->Locals[offset] = CreateEnvCell(cell->Value);                  \
+		}                                                                      \
+	}
 
 #define DumpStack()                                                            \
 	do {                                                                       \
@@ -62,8 +75,9 @@ Interpreter* CreateInterpreter(String execPath) {
 		for (int i = 0; i < interpreter->StckC; i++) {                         \
 			if (i > 0)                                                         \
 				printf(", ");                                                  \
-			/*Note: memory leak (ValueToString allocates a string that is      \
-			 * passed to printf but never freed)*/                             \
+			/*Note: memory leak (ValueToString allocates a                     \
+			 * string that is passed to printf but never                       \
+			 * freed)*/                                                        \
 			printf("%s", ValueToString(interpreter->Stacks[i]));               \
 		}                                                                      \
 		printf(" ]\n");                                                        \
@@ -118,6 +132,56 @@ Value* PeekAt(Interpreter* interpreter, int n) {
 	return interpreter->Stacks[(interpreter->StckC) - (n)];
 }
 
+void PushTrace(Interpreter* interpreter, LineInfo line, Value* fn) {
+	interpreter->CallStack[interpreter->CallStackC++] = (StackTrace){
+		.line	  = line,
+		.Function = fn,
+	};
+}
+
+void PopTrace(Interpreter* interpreter) {
+	--interpreter->CallStackC;
+}
+
+/******* Task Queue Management */
+void EnqueueTask(Interpreter* interpreter, Value* task) {
+	if (interpreter->TaskQueueC >= STACK_SIZE) {
+		InterpreterPanic("Task queue overflow");
+	}
+	int tail =
+		(interpreter->TaskQueueHead + interpreter->TaskQueueC) % STACK_SIZE;
+	interpreter->TaskQueue[tail] = task;
+	interpreter->TaskQueueC++;
+}
+
+Value* DequeueTask(Interpreter* interpreter) {
+	if (interpreter->TaskQueueC == 0) {
+		return NULL;
+	}
+	Value* task = interpreter->TaskQueue[interpreter->TaskQueueHead];
+	interpreter->TaskQueueHead = (interpreter->TaskQueueHead + 1) % STACK_SIZE;
+	interpreter->TaskQueueC--;
+	return task;
+}
+
+Value* DequeueTaskAt(Interpreter* interpreter, int index) {
+	if (interpreter->TaskQueueC == 0 || index < 0
+		|| index >= interpreter->TaskQueueC) {
+		return NULL;
+	}
+	int	   phys = (interpreter->TaskQueueHead + index) % STACK_SIZE;
+	Value* task = interpreter->TaskQueue[phys];
+	// Shift all logical elements after 'index' one slot toward
+	// the head
+	for (int i = index; i < interpreter->TaskQueueC - 1; i++) {
+		int cur	 = (interpreter->TaskQueueHead + i) % STACK_SIZE;
+		int next = (interpreter->TaskQueueHead + i + 1) % STACK_SIZE;
+		interpreter->TaskQueue[cur] = interpreter->TaskQueue[next];
+	}
+	interpreter->TaskQueueC--;
+	return task;
+}
+
 String ReadString(uint8_t* codes, int alignStart) {
 	String str	  = (String) (codes + alignStart);
 	int	   length = strlen(str);
@@ -163,9 +227,12 @@ static int _GetArg2(Interpreter* interp, Value* obj, Value* methodName) {
 }
 
 /******* TryCatch manipulation */
-static void _PushTry(Interpreter* interpreter, int jmp) {
+static void _PushTry(Interpreter* interpreter, int jmp, size_t* pausedAddress) {
 	interpreter->ExceptionHandlerStacks[interpreter->ExceptionHandlerStackC++] =
-		jmp;
+		(ExceptionHandler){
+			.JumpAddress   = jmp,
+			.PausedAddress = pausedAddress,
+		};
 }
 
 static void _PopNTry(Interpreter* interpreter, int n) {
@@ -177,7 +244,7 @@ static void _PoppTry(Interpreter* interpreter) {
 	_PopNTry(interpreter, 1);
 }
 
-static int _PeekTry(Interpreter* interpreter) {
+static ExceptionHandler _PeekTry(Interpreter* interpreter) {
 	return interpreter
 		->ExceptionHandlerStacks[interpreter->ExceptionHandlerStackC - 1];
 }
@@ -219,7 +286,8 @@ static LineInfo _GetLineFromPc(UserFunction* uf, size_t pc) {
 		}
 	}
 
-	// If exact match not found, return the line for the closest lower PC
+	// If exact match not found, return the line for the closest
+	// lower PC
 	if (high >= 0) {
 		return uf->Lines[high];
 	}
@@ -234,20 +302,26 @@ static void _Error(Interpreter*	 interpreter,
 				   String		 message) {
 	LineInfo line = _GetLineFromPc(uf, *ip);
 	if (interpreter->ActiveTask != NULL) {
-		String fmt = FormatString("[%s:%d]::%s: %s",
-								  line.Path,
-								  line.Line,
-								  type,
-								  message);
+		StateMachine* sm  = CoerceToStateMachine(interpreter->ActiveTask);
+		String		  fmt = FormatString("[%s:%d]::%s: %s",
+										 line.Path,
+										 line.Line,
+										 type,
+										 message);
 		free(message);
-		Value* err = NewErrorValue(interpreter, fmt);
-		free(fmt);
+		Value*		  error = NewErrorValue(interpreter, fmt);
+		StateMachine* activeTask =
+			CoerceToStateMachine(interpreter->ActiveTask);
+		StateMachineReject(activeTask, error);
+		Push(interpreter, interpreter->ActiveTask);
 		JumpToError(ip, uf->CodeC);
-		Push(interpreter, err);
 		return;
 	}
+
 	if (isCatched()) {
-		/* Caught: create the error value and hand it to the catch handler */
+		ExceptionHandler handler = _PeekTry(interpreter);
+		/* Caught: create the error value and hand it to the
+		 * catch handler */
 		String fmt = FormatString("[%s:%d]::%s: %s",
 								  line.Path,
 								  line.Line,
@@ -256,21 +330,24 @@ static void _Error(Interpreter*	 interpreter,
 		free(message);
 		Value* err = NewErrorValue(interpreter, fmt);
 		free(fmt);
-		JumpToError(ip, _PeekTry(interpreter));
+		// Jump the current function to end
+		JumpToError(ip, uf->CodeC);
+		// Jump the main function to the handle
+		JumpToError(handler.PausedAddress, handler.JumpAddress);
 		_PoppTry(interpreter);
 		Push(interpreter, err);
 		return;
 	}
-	/* Uncaught: no need to allocate a tracked Value, just report and abort */
-	fprintf(stderr,
-			"[%s:%d]::Panic: [%s:%d]::%s: %s\n",
-			__FILE__,
-			__LINE__,
-			line.Path,
-			line.Line,
-			type,
-			message);
+
+	/* Uncaught: no need to allocate a tracked Value, just report
+	 * and abort */
+	fprintf(stderr, "[%s:%d]::%s: %s\n", line.Path, line.Line, type, message);
 	free(message);
+	// Stack trace for debugging
+	for (int i = interpreter->CallStackC - 1; i >= 0; i--) {
+		StackTrace trace = interpreter->CallStack[i];
+		fprintf(stderr, "  |> [%s:%d]\n", trace.line.Path, trace.line.Line);
+	}
 	ForceGarbageCollect(interpreter);
 	FreeInterpreter(interpreter);
 	fprintf(stderr, "Program exited with panic.\n");
@@ -282,25 +359,39 @@ static void _RaiseError(Interpreter*  interpreter,
 						size_t*		  ip,
 						Value*		  error) {
 	if (interpreter->ActiveTask != NULL) {
-		Push(interpreter, error);
+		StateMachine* activeTask =
+			CoerceToStateMachine(interpreter->ActiveTask);
+		StateMachineReject(activeTask, error);
+		Push(interpreter, interpreter->ActiveTask);
 		JumpToError(ip, uf->CodeC);
 		return;
 	}
+
 	if (isCatched()) {
-		/* Caught: preserve the original error value as-is for the catch handler
+		ExceptionHandler handler = _PeekTry(interpreter);
+		/* Caught: preserve the original error value as-is for
+		 * the catch handler
 		 */
-		JumpToError(ip, _PeekTry(interpreter));
-		_PoppTry(interpreter);
+		// Jump the current function to end
+		JumpToError(ip, uf->CodeC);
+		// Jump the main function to the handle
+		JumpToError(handler.PausedAddress, handler.JumpAddress);
 		Push(interpreter, error);
 		return;
 	}
-	/* Uncaught: format for display only, no new error Value is created */
+	/* Uncaught: format for display only, no new error Value is
+	 * created */
 	LineInfo line	= _GetLineFromPc(uf, *ip);
 	String	 errStr = ValueToString(error);
 	String	 msg	= FormatString("[%s:%d]::%s", line.Path, line.Line, errStr);
 	free(errStr);
-	fprintf(stderr, "[%s:%d]::Panic: %s\n", __FILE__, __LINE__, msg);
+	fprintf(stderr, "%s\n", msg);
 	free(msg);
+	// Stack trace for debugging
+	for (int i = interpreter->CallStackC - 1; i >= 0; i--) {
+		StackTrace trace = interpreter->CallStack[i];
+		fprintf(stderr, "  |> [%s:%d]\n", trace.line.Path, trace.line.Line);
+	}
 	ForceGarbageCollect(interpreter);
 	FreeInterpreter(interpreter);
 	fprintf(stderr, "Program exited with panic.\n");
@@ -321,44 +412,6 @@ static void _TypeError(Interpreter*	 interpreter,
 	_Error(interpreter, uf, ip, TYPE_ERROR, message);
 }
 
-/******* Task Queue Management */
-static void _EnqueueTask(Interpreter* interpreter, Value* task) {
-	if (interpreter->TaskQueueC >= STACK_SIZE) {
-		InterpreterPanic("Task queue overflow");
-	}
-	int tail =
-		(interpreter->TaskQueueHead + interpreter->TaskQueueC) % STACK_SIZE;
-	interpreter->TaskQueue[tail] = task;
-	interpreter->TaskQueueC++;
-}
-
-static Value* _DequeueTask(Interpreter* interpreter) {
-	if (interpreter->TaskQueueC == 0) {
-		return NULL;
-	}
-	Value* task = interpreter->TaskQueue[interpreter->TaskQueueHead];
-	interpreter->TaskQueueHead = (interpreter->TaskQueueHead + 1) % STACK_SIZE;
-	interpreter->TaskQueueC--;
-	return task;
-}
-
-static Value* _DequeueTaskAt(Interpreter* interpreter, int index) {
-	if (interpreter->TaskQueueC == 0 || index < 0
-		|| index >= interpreter->TaskQueueC) {
-		return NULL;
-	}
-	int	   phys = (interpreter->TaskQueueHead + index) % STACK_SIZE;
-	Value* task = interpreter->TaskQueue[phys];
-	// Shift all logical elements after 'index' one slot toward the head
-	for (int i = index; i < interpreter->TaskQueueC - 1; i++) {
-		int cur	 = (interpreter->TaskQueueHead + i) % STACK_SIZE;
-		int next = (interpreter->TaskQueueHead + i + 1) % STACK_SIZE;
-		interpreter->TaskQueue[cur] = interpreter->TaskQueue[next];
-	}
-	interpreter->TaskQueueC--;
-	return task;
-}
-
 /******* Main interpreter loop */
 void Run(Interpreter* interpreter, Value* fnValue) {
 	StateMachine* sm = NULL;
@@ -367,27 +420,28 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 			? CoerceToUserFunction(fnValue)
 			: CoerceToUserFunction(
 				  (sm = CoerceToStateMachine(fnValue))->Function);
-	uint8_t		 opcode	 = 0;
-	Value*		 lhs	 = NULL;
-	Value*		 rhs	 = NULL;
-	Value*		 res	 = NULL;
-	Value*		 ext	 = NULL;
-	Value*		 arr	 = NULL;
-	Value*		 obj	 = NULL;
-	Value*		 cls	 = NULL;
-	Value*		 key	 = NULL;
-	Value*		 val	 = NULL;
-	Value*		 err	 = NULL;
-	Environment* env	 = NULL;
-	HashMap*	 map	 = NULL;
-	Array*		 array	 = NULL;
-	size_t		 ip		 = 0;
-	int			 offset	 = 0;
-	int			 argc	 = 0;
-	int			 flg	 = 0;
-	int			 size	 = 0;
-	bool		 catched = false;
-	String		 str	 = NULL;
+	uint8_t		 opcode		  = 0;
+	Value*		 lhs		  = NULL;
+	Value*		 rhs		  = NULL;
+	Value*		 res		  = NULL;
+	Value*		 ext		  = NULL;
+	Value*		 arr		  = NULL;
+	Value*		 obj		  = NULL;
+	Value*		 cls		  = NULL;
+	Value*		 key		  = NULL;
+	Value*		 val		  = NULL;
+	Value*		 err		  = NULL;
+	Environment* env		  = NULL;
+	HashMap*	 map		  = NULL;
+	Array*		 array		  = NULL;
+	size_t		 ip			  = 0;
+	int			 offset		  = 0;
+	int			 argc		  = 0;
+	int			 flg		  = 0;
+	int			 size		  = 0;
+	bool		 catched	  = false;
+	bool		 localhandler = false;
+	String		 str		  = NULL;
 
 	if (ValueIsPromise(fnValue))
 		ip = sm->Ip;
@@ -396,8 +450,9 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 		InterpreterPanic("Attempted to run a non-function value of type %s",
 						 ValueTypeOf(fnValue));
 
-#define Forward(size) (ip += size)
-#define JmpFrwd(addr) (ip = addr)
+#define Forward(size)		   (ip += size)
+#define JmpFrwd(addr)		   (ip = addr)
+#define SetLocalHandler(value) (localhandler = value)
 
 	while (ip != uf->CodeC) {
 		if (interpreter->Allocated >= interpreter->GcThreshold) {
@@ -551,13 +606,12 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					val = Popp(interpreter);
 					arr = Peek(interpreter);
 					if (!ValueIsArray(ext)) {
-						_TypeError(
-							interpreter,
-							uf,
-							&ip,
-							FormatString(
-								"expected array to push to be an array, got %s",
-								ValueTypeOf(ext)));
+						_TypeError(interpreter,
+								   uf,
+								   &ip,
+								   FormatString("expected array to push "
+												"to be an array, got %s",
+												ValueTypeOf(ext)));
 						break;
 					}
 					ArrayPush(CoerceToArray(arr), val);
@@ -625,13 +679,12 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					ext = Popp(interpreter);  // super class
 					cls = Peek(interpreter);  // class being extended
 					if (!ValueIsClass(ext)) {
-						_TypeError(
-							interpreter,
-							uf,
-							&ip,
-							FormatString(
-								"expected superclass to be a class, got %s",
-								ValueTypeOf(ext)));
+						_TypeError(interpreter,
+								   uf,
+								   &ip,
+								   FormatString("expected superclass "
+												"to be a class, got %s",
+												ValueTypeOf(ext)));
 						break;
 					}
 					ClassExtend(CoerceToUserClass(cls), ext);
@@ -697,16 +750,12 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_CALL_CTOR:
 				{
-					interpreter->CallStack[interpreter->CallStackC++] =
-						(StackTrace){
-							.line	  = _GetLineFromPc(uf, ip),
-							.Function = fnValue,
-						};
+					PushTrace(interpreter, _GetLineFromPc(uf, ip), fnValue);
 					argc = _ReadInt32(uf->Codes, ip);
 					Forward(4);
 					cls = Popp(interpreter);
 					res = DoCallCtor(interpreter, cls, argc);
-					--interpreter->CallStackC;
+					PopTrace(interpreter);
 					if (ValueIsError(res)) {
 						_RaiseError(interpreter, uf, &ip, res);
 						break;
@@ -715,16 +764,12 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_CALL:
 				{
-					interpreter->CallStack[interpreter->CallStackC++] =
-						(StackTrace){
-							.line	  = _GetLineFromPc(uf, ip),
-							.Function = fnValue,
-						};
+					PushTrace(interpreter, _GetLineFromPc(uf, ip), fnValue);
 					argc = _ReadInt32(uf->Codes, ip);
 					Forward(4);
 					obj = Popp(interpreter);
 					res = DoCall(interpreter, obj, argc, false);
-					--interpreter->CallStackC;
+					PopTrace(interpreter);
 					if (ValueIsError(res)) {
 						_RaiseError(interpreter, uf, &ip, res);
 						break;
@@ -733,17 +778,13 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_CALL_METHOD:
 				{
-					interpreter->CallStack[interpreter->CallStackC++] =
-						(StackTrace){
-							.line	  = _GetLineFromPc(uf, ip),
-							.Function = fnValue,
-						};
+					PushTrace(interpreter, _GetLineFromPc(uf, ip), fnValue);
 					argc = _ReadInt32(uf->Codes, ip);
 					Forward(4);
-					key = Popp(interpreter);  // method
+					key = Popp(interpreter);  // method name
 					obj = Popp(interpreter);  // 'this' object
 					res = DoCallMethod(interpreter, obj, key, argc);
-					--interpreter->CallStackC;
+					PopTrace(interpreter);
 					if (ValueIsError(res)) {
 						_RaiseError(interpreter, uf, &ip, res);
 						break;
@@ -796,30 +837,34 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					sm->Line	= _GetLineFromPc(uf, ip);
 					sm->CallEnv = interpreter->CallEnv;
 
-					// 1. Calculate the exact size of the current stack
-					// frame
+					// 1. Calculate the exact size of the current
+					// stack frame
 					int size	= interpreter->StckC - sm->StckBot;
 					int envsize = interpreter->EnvrC - sm->EnvrBot;
 
-					// Now your Panic message makes perfect sense!
+					// Now your Panic message makes perfect
+					// sense!
 					if (size < 0)
-						Panic("Invalid stack state: StckC (%d) is less "
+						Panic("Invalid stack state: StckC (%d) "
+							  "is less "
 							  "than "
 							  "StackBot (%d)",
 							  interpreter->StckC,
 							  (int) sm->StckBot);
 
-					// 2. Free old memory (Make sure 'free' matches
-					// 'Allocate'!)
+					// 2. Free old memory (Make sure 'free'
+					// matches 'Allocate'!)
 					if (sm->Stacks != NULL) {
 						free(sm->Stacks);  // Or your engine's
-										   // equivalent memory freer
+										   // equivalent memory
+										   // freer
 						sm->Stacks = NULL;
 					}
 
 					if (sm->EnvStack != NULL) {
 						free(sm->EnvStack);	 // Or your engine's
-											 // equivalent memory freer
+											 // equivalent memory
+											 // freer
 						sm->EnvStack = NULL;
 					}
 
@@ -841,33 +886,35 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					if (envsize > 0) {
 						sm->EnvStack = Allocate(sizeof(Value*) * envsize);
 
-						// This now perfectly copies exactly from EnvBot
-						// to EnvrC
+						// This now perfectly copies exactly from
+						// EnvBot to EnvrC
 						memcpy(sm->EnvStack,
 							   &interpreter->Envs[sm->EnvrBot],
 							   sizeof(Value*) * envsize);
 					}
 
-					// 4. Update StckC to reflect that this function's
-					// variables are popped off the main stack
+					// 4. Update StckC to reflect that this
+					// function's variables are popped off the
+					// main stack
 					interpreter->StckC = sm->StckBot;
 
-					// 5. Update EnvrC to reflect that this function's
-					// variables are popped off the main env stack
+					// 5. Update EnvrC to reflect that this
+					// function's variables are popped off the
+					// main env stack
 					interpreter->EnvrC = sm->EnvrBot;
 
 					// =================================================================
-					// 6. FIX: RESTORE THE CALLER'S ENVIRONMENT BEFORE
-					// RETURNING
+					// 6. FIX: RESTORE THE CALLER'S ENVIRONMENT
+					// BEFORE RETURNING
 					// =================================================================
 					if (interpreter->EnvrC > 0) {
 						interpreter->CallEnv =
 							interpreter->Envs[interpreter->EnvrC - 1];
 					} else {
-						// Fallback: If the stack is empty, we are back
-						// at the top level. Replace
-						// 'interpreter->GlobalEnv' with whatever your
-						// global env is actually named!
+						// Fallback: If the stack is empty, we
+						// are back at the top level. Replace
+						// 'interpreter->GlobalEnv' with whatever
+						// your global env is actually named!
 						interpreter->CallEnv = interpreter->RootEnv;
 					}
 					// =================================================================
@@ -875,7 +922,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					StateMachine* awaitedSM = CoerceToStateMachine(val);
 
 					if (awaitedSM->State == FULFILLED) {
-						_EnqueueTask(interpreter, fnValue);
+						EnqueueTask(interpreter, fnValue);
 					} else {
 						StateMachineAddWaitList(awaitedSM, fnValue);
 					}
@@ -887,7 +934,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				{
 					StateMachine* wait = CoerceToStateMachine(sm->WaitFor);
 					if (wait->Value == NULL)
-						Panic("Invalid state machine: WaitFor is NULL");
+						Panic("Invalid state machine: WaitFor "
+							  "is NULL");
 					Push(interpreter, wait->Value);
 					break;
 				}
@@ -1152,6 +1200,13 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					Forward(4);
 					break;
 				}
+			case OP_LOCK_VAR:
+				{
+					offset = _ReadInt32(uf->Codes, ip);
+					LockVar(interpreter->CallEnv, offset);
+					Forward(4);
+					break;
+				}
 			case OP_DUPTOP:
 				{
 					Push(interpreter, Peek(interpreter));
@@ -1205,13 +1260,15 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_SETUP_TRY:
 				{
+					SetLocalHandler(true);
 					offset = _ReadInt32(uf->Codes, ip);
-					_PushTry(interpreter, offset);
+					_PushTry(interpreter, offset, &ip);
 					Forward(4);
 					break;
 				}
 			case OP_POP_TRY:
 				{
+					SetLocalHandler(false);
 					_PoppTry(interpreter);
 					break;
 				}
@@ -1219,31 +1276,6 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				{
 					size = _ReadInt32(uf->Codes, ip);
 					_PopNTry(interpreter, size);
-					Forward(4);
-					break;
-				}
-			case OP_ENTER_SCOPE:
-				{
-					SaveEnv(interpreter, interpreter->CallEnv);
-					interpreter->CallEnv = NewEnvironmentValue(
-						interpreter,
-						EnvironmentCloneFromValue(interpreter->CallEnv));
-					break;
-				}
-			case OP_EXIT_SCOPE:
-				{
-					Environment* src =
-						CoerceToEnvironment(interpreter->CallEnv);
-					RestoreEnv(interpreter);
-					Environment* dst =
-						CoerceToEnvironment(interpreter->CallEnv);
-					EnvironmentSync(src, dst);
-					break;
-				}
-			case OP_EXITN_SCOPE:
-				{
-					size = _ReadInt32(uf->Codes, ip);
-					RestoreNthEnvAndSync(interpreter, size);
 					Forward(4);
 					break;
 				}
@@ -1305,6 +1337,11 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					JmpFrwd(offset);
 					break;
 				}
+			case OP_RAISE:
+				{
+					_RaiseError(interpreter, uf, &ip, Popp(interpreter));
+					break;
+				}
 			case OP_RETURN:
 				{
 					if (uf->Async) {
@@ -1314,9 +1351,9 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 						Push(interpreter, fnValue);
 
 						for (int i = 0; i < sm->WaitListC; i++) {
-							// Queue all listeners waiting on this state
-							// machine to be resumed
-							_EnqueueTask(interpreter, sm->WaitList[i]);
+							// Queue all listeners waiting on
+							// this state machine to be resumed
+							EnqueueTask(interpreter, sm->WaitList[i]);
 						}
 					}
 					return;
@@ -1346,41 +1383,64 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 
 	int old = interpreter->StckC;
 
-	// Consume all remaining tasks in the task queue (e.g. pending promises)
-	// before exiting the program
+	// Consume all remaining tasks in the task queue (e.g.
+	// pending promises) before exiting the program
 	Value* task = NULL;
-	while ((task = _DequeueTask(interpreter)) != NULL) {
+	while ((task = DequeueTask(interpreter)) != NULL) {
 		// Awaited
 		StateMachine* sm = CoerceToStateMachine(task);
 
-		interpreter->ActiveTask							  = task;
-		interpreter->CallStack[interpreter->CallStackC++] = (StackTrace){
-			.line	  = sm->Line,
-			.Function = task,
-		};
+		interpreter->ActiveTask = task;
+		PushTrace(interpreter, sm->Line, task);
 
 		if (!sm->IsCallback) {
 			DoCall(interpreter, task, 0, false);
 		} else {
 			StateMachine* parentSM = CoerceToStateMachine(sm->WaitFor);
 
-			// 1. Push the resolved/rejected value from the parent promise
+			bool isParentRejected =
+				ValueIsError(parentSM->Value) || parentSM->State == REJECTED;
+
+			// You also need to know if THIS task is a `.then`
+			// (success) or
+			// `.error` handler. Assuming you have a flag like
+			// `sm->IsErrorHandler`:
+
+			if (isParentRejected && !sm->IsCatched) {
+				// 1. FALL-THROUGH FOR ERRORS:
+				// Parent failed, but this is a .then() block.
+				// Skip the execution and propagate the rejection
+				// down the chain.
+				StateMachineReject(sm, parentSM->Value);
+				goto ENQUEUE_TASKS;
+			} else if (!isParentRejected && sm->IsCatched) {
+				// 2. FALL-THROUGH FOR SUCCESS:
+				// Parent succeeded, but this is an .error()
+				// block. Skip the execution and propagate the
+				// success down the chain.
+				StateMachineFulfill(sm, parentSM->Value);
+				goto ENQUEUE_TASKS;
+			}
+
+			// 1. Push the resolved/rejected value from the
+			// parent promise
 			Push(interpreter, parentSM->Value);
 
-			// 2. Call the callback function directly (not through the
-			// promise wrapper)
+			// 2. Call the callback function directly (not
+			// through the promise wrapper)
 			Value* result = DoCall(interpreter, sm->Function, 1, false);
 			if (ValueIsError(result)) {
-				// If an error is thrown during the callback, reject this
-				// state machine with that error and skip straight to step 3
+				// If an error is thrown during the callback,
+				// reject this state machine with that error and
+				// skip straight to step 3
 				StateMachineReject(sm, result);
 				goto ENQUEUE_TASKS;
 			}
 
 			result = Popp(interpreter);
 
-			// 3. Fulfill or reject this state machine based on callback
-			// result
+			// 3. Fulfill or reject this state machine based on
+			// callback result
 			if (ValueIsError(result)) {
 				StateMachineReject(sm, result);
 			} else {
@@ -1390,23 +1450,22 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 		ENQUEUE_TASKS:;
 			// 4. Enqueue all tasks waiting on this state machine
 			for (size_t i = 0; i < sm->WaitListC; i++) {
-				_EnqueueTask(interpreter, sm->WaitList[i]);
+				EnqueueTask(interpreter, sm->WaitList[i]);
 			}
 		}
 
-		--interpreter->CallStackC;
+		PopTrace(interpreter);
 
 		interpreter->ActiveTask = NULL;
 	}
-
-	printf("Program finished with exit code!\n");
 
 	interpreter->StckC	 = old;
 	interpreter->RootEnv = saveGbl;
 
 	if (interpreter->StckC != 1) {
 		DumpStack();
-		InterpreterPanic("internal error: stack not cleaned up after function "
+		InterpreterPanic("internal error: stack not cleaned up after "
+						 "function "
 						 "'%s' execution, "
 						 "expected 1 value on stack but got %d values",
 						 uf->Name != NULL ? uf->Name : "<anonymous>",

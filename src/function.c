@@ -65,7 +65,8 @@ UserFunction* UserFunctionClone(UserFunction* userFunction) {
 	clone->Captures =
 		Reallocate(clone->Captures,
 				   sizeof(EnvCell*) * (userFunction->CaptureC + 1));
-	// Initialize Captures to NULL - they will be set up in DoLoadFunction
+	// Initialize Captures to NULL - they will be set up in
+	// DoLoadFunction
 	for (int i = 0; i < userFunction->CaptureC; i++) {
 		clone->Captures[i] = NULL;
 	}
@@ -111,7 +112,8 @@ String UserFunctionToString(UserFunction* userFunction) {
 	} else {
 		// Fixed argument count
 		// Calculate required buffer size for arguments
-		// Each arg is "$N" where N can be multiple digits, plus ", " separator
+		// Each arg is "$N" where N can be multiple digits, plus
+		// ", " separator
 		size_t argsSize = 0;
 		for (int i = 0; i < userFunction->Argc; i++) {
 			// Calculate digits in (i + 1)
@@ -144,8 +146,8 @@ String UserFunctionToString(UserFunction* userFunction) {
 		// Build final string
 		size_t nameLen = strlen(name);
 		size_t bufferSize =
-			nameLen + argsSize
-			+ 32;  // "function " + name + "(" + args + ") {...}" + null
+			nameLen + argsSize + 32;  // "function " + name + "(" +
+									  // args + ") {...}" + null
 		String buffer = Allocate(bufferSize);
 		snprintf(buffer, bufferSize, "function %s(%s) {...}", name, args);
 		free(args);
@@ -180,14 +182,14 @@ NativeFunction* CreateNativeFunctionMeta(const String			name,
 }
 
 String NativeFunctionMetaToString(NativeFunction* meta) {
-	// fmt: native function %name ($1, $2) {} if argc != -1 else native function
-	// %name (...$n) {}
+	// fmt: native function %name ($1, $2) {} if argc != -1 else
+	// native function %name (...$n) {}
 
 	if (meta->Argc == -1) {
 		// Variadic function
-		size_t nameLen = strlen(meta->Name);
-		size_t bufferSize =
-			nameLen + 32;  // "native function " + name + "(...$n) {...}" + null
+		size_t nameLen	  = strlen(meta->Name);
+		size_t bufferSize = nameLen + 32;  // "native function " + name +
+										   // "(...$n) {...}" + null
 		String buffer = Allocate(bufferSize);
 		snprintf(buffer,
 				 bufferSize,
@@ -197,7 +199,8 @@ String NativeFunctionMetaToString(NativeFunction* meta) {
 	} else {
 		// Fixed argument count
 		// Calculate required buffer size for arguments
-		// Each arg is "$N" where N can be multiple digits, plus ", " separator
+		// Each arg is "$N" where N can be multiple digits, plus
+		// ", " separator
 		size_t argsSize = 0;
 		for (int i = 0; i < meta->Argc; i++) {
 			// Calculate digits in (i + 1)
@@ -231,7 +234,8 @@ String NativeFunctionMetaToString(NativeFunction* meta) {
 		size_t nameLen = strlen(meta->Name);
 		size_t bufferSize =
 			nameLen + argsSize
-			+ 32;  // "native function " + name + "(" + args + ") {...}" + null
+			+ 32;  // "native function " + name + "(" + args + ")
+				   // {...}" + null
 		String buffer = Allocate(bufferSize);
 		snprintf(buffer,
 				 bufferSize,

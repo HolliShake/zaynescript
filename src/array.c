@@ -154,7 +154,8 @@ String ArrayToString(Array* array) {
 
 cleanup:
 	for (size_t i = 0; i < array->Count; i++)
-		free(parts[i]);	 // NULL-safe, only hits on alloc failure path
+		free(parts[i]);	 // NULL-safe, only hits on alloc failure
+						 // path
 	free(parts);
 	free(lens);
 

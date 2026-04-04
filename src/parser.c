@@ -822,7 +822,8 @@ static Ast* _ParseSwitchExpression(Parser* parser) {
 				ThrowError(parser->Lexer->Path,
 						   parser->Lexer->Data,
 						   parser->Next.Position,
-						   "expected an expression for default case body");
+						   "expected an expression for default "
+						   "case body");
 			}
 		}
 	}
@@ -1523,7 +1524,8 @@ static Ast* _ParseSwitchStatement(Parser* parser) {
 				ThrowError(parser->Lexer->Path,
 						   parser->Lexer->Data,
 						   parser->Next.Position,
-						   "expected a statement block for default case body");
+						   "expected a statement block for "
+						   "default case body");
 			}
 		}
 	}
@@ -1700,6 +1702,46 @@ static Ast* _ParseBlockStatement(Parser* parser) {
 	return AstBlock(statements, MergePositions(start, ended));
 }
 
+static Ast* _ParseRaiseStatement(Parser* parser) {
+	Position start = parser->Next.Position, ended = start;
+	Ast*	 expression = NULL;
+	ACCEPTV_FREE(KEY_RAISE);
+	expression = _ParseExpression(parser);
+	if (expression == NULL) {
+		ThrowError(parser->Lexer->Path,
+				   parser->Lexer->Data,
+				   start,
+				   "expected an expression");
+	}
+	ended = parser->Next.Position;
+	ACCEPTV_FREE(";");
+	return AstRaise(expression, MergePositions(start, ended));
+}
+
+static Ast* _ParseAssertStatement(Parser* parser) {
+	Position start = parser->Next.Position, ended = start;
+	Ast *	 expression = NULL, *fallback = NULL;
+	ACCEPTV_FREE(KEY_ASSERT);
+	expression = _ParseExpression(parser);
+	if (expression == NULL) {
+		ThrowError(parser->Lexer->Path,
+				   parser->Lexer->Data,
+				   start,
+				   "expected an expression");
+	}
+	ACCEPTV_FREE(",");
+	fallback = _ParseExpression(parser);
+	if (fallback == NULL) {
+		ThrowError(parser->Lexer->Path,
+				   parser->Lexer->Data,
+				   start,
+				   "expected a fallback expression");
+	}
+	ended = parser->Next.Position;
+	ACCEPTV_FREE(";");
+	return AstAssert(expression, fallback, MergePositions(start, ended));
+}
+
 static Ast* _ParseContinueStatement(Parser* parser) {
 	Position start = parser->Next.Position, ended = start;
 	ACCEPTV_FREE(KEY_CONTINUE);
@@ -1771,6 +1813,10 @@ static Ast* _ParseStatement(Parser* parser) {
 		return _ParseDoWhileStatement(parser);
 	} else if (CHECKTV(KEY_TRY)) {
 		return _ParseTryCatchStatement(parser);
+	} else if (CHECKTV(KEY_RAISE)) {
+		return _ParseRaiseStatement(parser);
+	} else if (CHECKTV(KEY_ASSERT)) {
+		return _ParseAssertStatement(parser);
 	} else if (CHECKTV(KEY_CONTINUE)) {
 		return _ParseContinueStatement(parser);
 	} else if (CHECKTV(KEY_BREAK)) {
