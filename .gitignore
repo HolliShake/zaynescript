@@ -6,3 +6,4 @@
 .github/*
 *.sqlite
 *.so
+*.js
