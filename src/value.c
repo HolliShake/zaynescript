@@ -1,5 +1,7 @@
 #include "./value.h"
 
+#include "global.h"
+
 static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
 	Value* v  = Allocate(sizeof(Value));
 	v->Type	  = type;
@@ -126,6 +128,12 @@ Value* NewClassInstanceValue(Interpreter*	interpreter,
 	return v;
 }
 
+Value* NewOpquePtrValue(Interpreter* interpreter, void* ptr) {
+	Value* v		= _CreateValue(interpreter, VLT_OPAQUE);
+	v->Value.Opaque = ptr;
+	return v;
+}
+
 String ValueToString(Value* value) {
 	String buffer;
 	switch (value->Type) {
@@ -231,6 +239,10 @@ String ValueToString(Value* value) {
 						return AllocateString("<Promise.UNKNOWN />");
 				}
 			}
+		case VLT_OPAQUE:
+			{
+				return AllocateString("<Opaque Pointer>");
+			}
 		default:
 			return AllocateString("unknown");
 	}
@@ -274,6 +286,10 @@ String ValueTypeOf(Value* value) {
 		case VLT_PROMISE:
 			{
 				return "Promise";
+			}
+		case VLT_OPAQUE:
+			{
+				return "Opaque";
 			}
 		default:
 			return "Unknown";
@@ -347,6 +363,10 @@ bool ValueIsClassInstance(Value* value) {
 
 bool ValueIsPromise(Value* value) {
 	return value->Type == VLT_PROMISE;
+}
+
+bool ValueIsOpaquePtr(Value* value) {
+	return value->Type == VLT_OPAQUE;
 }
 
 bool ValueIsEqual(Value* a, Value* b) {

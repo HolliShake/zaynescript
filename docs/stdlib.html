@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Standard Library — ZayneScript</title>
     <meta name="description"
-        content="ZayneScript standard library reference: core:io, core:math, core:os, core:Array, core:Date, core:Promise." />
+        content="ZayneScript standard library reference: core:io, core:math, core:os, core:Array, core:Date, core:Promise, core:sqlite." />
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
@@ -61,6 +61,7 @@
                     <li><a href="#array">core:Array</a></li>
                     <li><a href="#date">core:Date</a></li>
                     <li><a href="#promise">core:Promise</a></li>
+                    <li><a href="#sqlite">core:sqlite</a></li>
                 </ul>
             </div>
             <div class="sidebar-group">
@@ -120,6 +121,30 @@
                     <li><a href="#promise-error">error</a></li>
                 </ul>
             </div>
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">core:sqlite</div>
+                <ul>
+                    <li><a href="#sqlite-overview">Overview</a></li>
+                    <li><a href="#sqlite-database">Database class</a></li>
+                    <li><a href="#sqlite-db-constructor">constructor</a></li>
+                    <li><a href="#sqlite-db-exec">exec</a></li>
+                    <li><a href="#sqlite-db-run">run</a></li>
+                    <li><a href="#sqlite-db-query">query</a></li>
+                    <li><a href="#sqlite-db-prepare">prepare</a></li>
+                    <li><a href="#sqlite-db-lastinsertrowid">lastInsertRowid</a></li>
+                    <li><a href="#sqlite-db-changes">changes</a></li>
+                    <li><a href="#sqlite-db-close">close</a></li>
+                    <li><a href="#sqlite-statement">Statement class</a></li>
+                    <li><a href="#sqlite-stmt-bind">bind</a></li>
+                    <li><a href="#sqlite-stmt-step">step</a></li>
+                    <li><a href="#sqlite-stmt-getrow">getRow</a></li>
+                    <li><a href="#sqlite-stmt-reset">reset</a></li>
+                    <li><a href="#sqlite-stmt-columncount">columnCount</a></li>
+                    <li><a href="#sqlite-stmt-columnname">columnName</a></li>
+                    <li><a href="#sqlite-stmt-finalize">finalize</a></li>
+                    <li><a href="#sqlite-patterns">Common patterns</a></li>
+                </ul>
+            </div>
         </aside>
 
         <!-- Main content -->
@@ -127,7 +152,7 @@
 
             <h1>Standard Library</h1>
             <p class="page-intro">
-                ZayneScript ships six built-in modules accessible via the
+                ZayneScript ships seven built-in modules accessible via the
                 <code>core:</code> import prefix. Each module provides functions or a
                 class that is loaded on demand — only import what you need.
             </p>
@@ -732,6 +757,413 @@ pipeline()
     .error(fn(e) {
         println("Failed:", e);
     });</code></pre>
+
+            <!-- ==============================================================
+         core:sqlite
+         ============================================================== -->
+            <h2 id="sqlite">core:sqlite — SQLite3 Database</h2>
+            <p>Import with:</p>
+            <pre><code class="language-javascript">import { Database } from "core:sqlite";
+// Or import both exported names:
+import { Database, Statement } from "core:sqlite";</code></pre>
+
+            <hr />
+
+            <h3 id="sqlite-overview">Overview</h3>
+            <p>
+                <code>core:sqlite</code> wraps the bundled
+                <a href="https://www.sqlite.org" target="_blank" rel="noopener">SQLite3</a>
+                amalgamation and exposes two classes:
+            </p>
+            <ul style="margin:0.75rem 0 0.75rem 1.5rem;">
+                <li><strong>Database</strong> — represents an open SQLite connection.</li>
+                <li><strong>Statement</strong> — a compiled prepared statement returned by
+                    <code>db.prepare()</code>. You do not construct it directly.</li>
+            </ul>
+            <p>
+                Every <code>new Database(...)</code> call opens an independent connection.
+                Multiple databases can be open simultaneously.
+            </p>
+            <div class="note">
+                <strong>Note:</strong> Always call <code>db.close()</code> when you are
+                finished. The garbage collector does <em>not</em> automatically close
+                SQLite handles — that is intentional so you have full control over
+                transaction lifetime.
+            </div>
+
+            <!-- ── Database ─────────────────────────────────────────────── -->
+            <h2 id="sqlite-database">Database</h2>
+
+            <h3 id="sqlite-db-constructor">Constructor</h3>
+            <div class="method">
+                <div class="method-sig">new Database(path?: string)</div>
+                <p class="method-desc">
+                    Opens (or creates) an SQLite database at <code>path</code>.<br />
+                    Pass <code>":memory:"</code> or omit the argument for a private
+                    in-memory database that is discarded when closed.
+                </p>
+            </div>
+            <pre><code class="language-javascript">const db  = new Database("app.sqlite");   // file-based
+const mem = new Database(":memory:");     // in-memory
+const def = new Database();               // also in-memory</code></pre>
+
+            <h3 id="sqlite-db-exec">exec</h3>
+            <div class="method">
+                <div class="method-sig">db.exec(sql: string)</div>
+                <p class="method-desc">
+                    Executes one or more semicolon-separated SQL statements with no
+                    parameter binding and no return value. Ideal for DDL (<code>CREATE</code>,
+                    <code>DROP</code>, <code>ALTER</code>) and multi-statement scripts.
+                    Returns <code>null</code> on success; an error string on failure.
+                </p>
+            </div>
+            <pre><code class="language-javascript">db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+        id   INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT    NOT NULL,
+        age  INTEGER
+    );
+    CREATE TABLE IF NOT EXISTS posts (
+        id      INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER REFERENCES users(id),
+        body    TEXT
+    );
+`);</code></pre>
+
+            <h3 id="sqlite-db-run">run</h3>
+            <div class="method">
+                <div class="method-sig">db.run(sql: string, ...params) → { lastInsertRowid: num, changes: int }</div>
+                <p class="method-desc">
+                    Prepares and executes a single DML statement
+                    (<code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>).
+                    Variadic <code>params</code> are bound to <code>?</code> placeholders
+                    <strong>in order</strong> (1-based internally).
+                    Returns an object with:
+                </p>
+                <ul style="margin:.4rem 0 .4rem 1.5rem;">
+                    <li><code>lastInsertRowid</code> — rowid of the last successful INSERT.</li>
+                    <li><code>changes</code> — number of rows affected.</li>
+                </ul>
+            </div>
+            <pre><code class="language-javascript">// Simple insert
+const r1 = db.run("INSERT INTO users (name, age) VALUES (?, ?)", "Alice", 30);
+println(r1.lastInsertRowid); // 1
+println(r1.changes);         // 1
+
+// Update
+const r2 = db.run("UPDATE users SET age = ? WHERE name = ?", 31, "Alice");
+println(r2.changes); // 1
+
+// Delete
+const r3 = db.run("DELETE FROM users WHERE age &lt; ?", 18);
+println(r3.changes); // number of deleted rows</code></pre>
+
+            <h3 id="sqlite-db-query">query</h3>
+            <div class="method">
+                <div class="method-sig">db.query(sql: string, ...params) → array</div>
+                <p class="method-desc">
+                    Prepares and fully executes a <code>SELECT</code> statement, collecting
+                    every row into an array. Each row is an object whose keys are the column
+                    names. Column types are mapped as:
+                </p>
+                <table>
+                    <thead><tr><th>SQLite type</th><th>ZayneScript type</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>INTEGER</code></td><td><code>int</code></td></tr>
+                        <tr><td><code>REAL</code></td><td><code>num</code></td></tr>
+                        <tr><td><code>TEXT</code></td><td><code>string</code></td></tr>
+                        <tr><td><code>NULL</code></td><td><code>null</code></td></tr>
+                        <tr><td><code>BLOB</code></td><td><code>null</code></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <pre><code class="language-javascript">db.run("INSERT INTO users (name, age) VALUES (?, ?)", "Bob",  25);
+db.run("INSERT INTO users (name, age) VALUES (?, ?)", "Carol", 35);
+
+// All rows
+const all = db.query("SELECT * FROM users");
+all.each(fn(i, row) {
+    println(row.id, row.name, row.age);
+});
+// 1  Alice  31
+// 2  Bob    25
+// 3  Carol  35
+
+// Filtered query
+const adults = db.query("SELECT name FROM users WHERE age &gt;= ?", 30);
+println(adults.length()); // 2</code></pre>
+
+            <h3 id="sqlite-db-prepare">prepare</h3>
+            <div class="method">
+                <div class="method-sig">db.prepare(sql: string) → Statement</div>
+                <p class="method-desc">
+                    Compiles <code>sql</code> into a reusable
+                    <a href="#sqlite-statement">Statement</a> object. Use this instead of
+                    <code>query</code> / <code>run</code> when you need to execute the same
+                    query many times with different parameters, or when you want to stream
+                    rows one-by-one without buffering the entire result set.
+                    Call <code>stmt.finalize()</code> when done.
+                </p>
+            </div>
+            <pre><code class="language-javascript">const stmt = db.prepare("SELECT * FROM users WHERE age &gt;= ?");
+stmt.bind(1, 18);
+while (stmt.step()) {
+    const row = stmt.getRow();
+    println(row.name, row.age);
+}
+stmt.finalize();</code></pre>
+
+            <h3 id="sqlite-db-lastinsertrowid">lastInsertRowid</h3>
+            <div class="method">
+                <div class="method-sig">db.lastInsertRowid() → num</div>
+                <p class="method-desc">
+                    Returns the rowid of the most recent successful <code>INSERT</code>
+                    on this connection. Equivalent to the <code>lastInsertRowid</code>
+                    field in the object returned by <code>run()</code>.
+                </p>
+            </div>
+            <pre><code class="language-javascript">db.run("INSERT INTO users (name) VALUES (?)", "Dana");
+println(db.lastInsertRowid()); // 4</code></pre>
+
+            <h3 id="sqlite-db-changes">changes</h3>
+            <div class="method">
+                <div class="method-sig">db.changes() → int</div>
+                <p class="method-desc">
+                    Returns the number of rows modified, inserted, or deleted by the most
+                    recent DML statement on this connection.
+                </p>
+            </div>
+            <pre><code class="language-javascript">db.run("UPDATE users SET age = age + 1");
+println(db.changes()); // number of updated rows</code></pre>
+
+            <h3 id="sqlite-db-close">close</h3>
+            <div class="method">
+                <div class="method-sig">db.close()</div>
+                <p class="method-desc">
+                    Closes the database connection and releases all associated resources.
+                    Any prepared statements that are still open should be
+                    <code>finalize()</code>d before closing the database.
+                    Calling <code>close()</code> on an already-closed database is a no-op.
+                </p>
+            </div>
+            <pre><code class="language-javascript">db.close();</code></pre>
+
+            <!-- ── Statement ────────────────────────────────────────────── -->
+            <h2 id="sqlite-statement">Statement</h2>
+            <p>
+                A <code>Statement</code> is obtained exclusively via
+                <code><a href="#sqlite-db-prepare">db.prepare(sql)</a></code>.
+                It represents a single compiled SQL statement and can be
+                re-executed many times by resetting and re-binding parameters.
+            </p>
+
+            <h3 id="sqlite-stmt-bind">bind</h3>
+            <div class="method">
+                <div class="method-sig">stmt.bind(index: int, value) → null</div>
+                <p class="method-desc">
+                    Binds <code>value</code> to the <code>?</code> placeholder at
+                    <strong>1-based</strong> position <code>index</code>.
+                    Supported value types:
+                </p>
+                <table>
+                    <thead><tr><th>ZayneScript type</th><th>SQLite binding</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>int</code></td><td><code>sqlite3_bind_int</code></td></tr>
+                        <tr><td><code>num</code></td><td><code>sqlite3_bind_double</code></td></tr>
+                        <tr><td><code>bool</code></td><td><code>sqlite3_bind_int</code> (0 or 1)</td></tr>
+                        <tr><td><code>string</code></td><td><code>sqlite3_bind_text</code></td></tr>
+                        <tr><td><code>null</code></td><td><code>sqlite3_bind_null</code></td></tr>
+                    </tbody>
+                </table>
+                <p style="margin-top:.5rem;">
+                    Returns an error if the index is out of range.
+                    Must be called before the first <code>step()</code>, or after
+                    <code>reset()</code>.
+                </p>
+            </div>
+            <pre><code class="language-javascript">const stmt = db.prepare("INSERT INTO users (name, age) VALUES (?, ?)");
+stmt.bind(1, "Eve");
+stmt.bind(2, 28);
+stmt.step();
+stmt.finalize();</code></pre>
+
+            <h3 id="sqlite-stmt-step">step</h3>
+            <div class="method">
+                <div class="method-sig">stmt.step() → bool</div>
+                <p class="method-desc">
+                    Advances the statement to the next row.
+                    Returns <code>true</code> if a row is available (call
+                    <code>getRow()</code> to read it), or <code>false</code> when
+                    execution is complete (<code>SQLITE_DONE</code>).
+                    Returns an error value if SQLite reports an error.
+                </p>
+            </div>
+            <pre><code class="language-javascript">const stmt = db.prepare("SELECT * FROM users");
+while (stmt.step()) {
+    const row = stmt.getRow();
+    println(row.id, row.name);
+}
+stmt.finalize();</code></pre>
+
+            <h3 id="sqlite-stmt-getrow">getRow</h3>
+            <div class="method">
+                <div class="method-sig">stmt.getRow() → object</div>
+                <p class="method-desc">
+                    Returns the current row as a plain object keyed by column name.
+                    Must only be called after <code>step()</code> returned
+                    <code>true</code>. Column values are type-mapped identically to
+                    <a href="#sqlite-db-query"><code>query()</code></a>.
+                </p>
+            </div>
+            <pre><code class="language-javascript">const stmt = db.prepare("SELECT id, name, age FROM users WHERE id = ?");
+stmt.bind(1, 1);
+if (stmt.step()) {
+    const row = stmt.getRow();
+    println(row.id);   // 1
+    println(row.name); // Alice
+    println(row.age);  // 31
+}
+stmt.finalize();</code></pre>
+
+            <h3 id="sqlite-stmt-reset">reset</h3>
+            <div class="method">
+                <div class="method-sig">stmt.reset()</div>
+                <p class="method-desc">
+                    Resets the statement back to its initial state so it can be
+                    re-executed. Bindings are <strong>preserved</strong> — call
+                    <code>bind()</code> again only if you need different values.
+                    Does not finalize the statement.
+                </p>
+            </div>
+            <pre><code class="language-javascript">const stmt = db.prepare("SELECT * FROM users WHERE age &gt;= ?");
+
+stmt.bind(1, 18);
+while (stmt.step()) { println(stmt.getRow().name); }
+
+stmt.reset();
+stmt.bind(1, 30);  // re-run with a new threshold
+while (stmt.step()) { println(stmt.getRow().name); }
+
+stmt.finalize();</code></pre>
+
+            <h3 id="sqlite-stmt-columncount">columnCount</h3>
+            <div class="method">
+                <div class="method-sig">stmt.columnCount() → int</div>
+                <p class="method-desc">
+                    Returns the number of columns in the result set.
+                </p>
+            </div>
+            <pre><code class="language-javascript">const stmt = db.prepare("SELECT id, name, age FROM users");
+println(stmt.columnCount()); // 3
+stmt.finalize();</code></pre>
+
+            <h3 id="sqlite-stmt-columnname">columnName</h3>
+            <div class="method">
+                <div class="method-sig">stmt.columnName(index: int) → string</div>
+                <p class="method-desc">
+                    Returns the name of the column at the given <strong>0-based</strong>
+                    <code>index</code>.
+                </p>
+            </div>
+            <pre><code class="language-javascript">const stmt = db.prepare("SELECT id, name, age FROM users");
+println(stmt.columnName(0)); // id
+println(stmt.columnName(1)); // name
+println(stmt.columnName(2)); // age
+stmt.finalize();</code></pre>
+
+            <h3 id="sqlite-stmt-finalize">finalize</h3>
+            <div class="method">
+                <div class="method-sig">stmt.finalize()</div>
+                <p class="method-desc">
+                    Destroys the prepared statement and frees its resources.
+                    After this call the statement must not be used.
+                    Calling <code>finalize()</code> on an already-finalized statement
+                    is a safe no-op.
+                </p>
+            </div>
+            <pre><code class="language-javascript">stmt.finalize();</code></pre>
+
+            <!-- ── Common patterns ──────────────────────────────────────── -->
+            <h2 id="sqlite-patterns">Common Patterns</h2>
+
+            <h3>In-memory scratch database</h3>
+            <pre><code class="language-javascript">import { Database } from "core:sqlite";
+import { println } from "core:io";
+
+const db = new Database(":memory:");
+db.exec("CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT)");
+db.run("INSERT INTO kv VALUES (?, ?)", "theme", "dark");
+
+const rows = db.query("SELECT value FROM kv WHERE key = ?", "theme");
+println(rows[0].value); // dark
+db.close();</code></pre>
+
+            <h3>Bulk insert with a reused prepared statement</h3>
+            <pre><code class="language-javascript">import { Database } from "core:sqlite";
+
+const db    = new Database("data.sqlite");
+const names = ["Alice", "Bob", "Carol", "Dave", "Eve"];
+
+db.exec("CREATE TABLE IF NOT EXISTS people (id INTEGER PRIMARY KEY, name TEXT)");
+db.exec("BEGIN"); // wrap in a transaction for speed
+
+const stmt = db.prepare("INSERT INTO people (name) VALUES (?)");
+names.each(fn(i, name) {
+    stmt.bind(1, name);
+    stmt.step();
+    stmt.reset();
+});
+stmt.finalize();
+
+db.exec("COMMIT");
+println("Inserted", db.changes(), "row(s)");
+db.close();</code></pre>
+
+            <h3>Streaming large result sets</h3>
+            <pre><code class="language-javascript">// Use prepare() + step() to avoid loading all rows into memory at once.
+const stmt = db.prepare("SELECT * FROM logs ORDER BY created_at");
+while (stmt.step()) {
+    const row = stmt.getRow();
+    // process row.id, row.message, row.created_at ...
+}
+stmt.finalize();</code></pre>
+
+            <h3>Multiple independent connections</h3>
+            <pre><code class="language-javascript">import { Database } from "core:sqlite";
+
+const users  = new Database("users.sqlite");
+const orders = new Database("orders.sqlite");
+const cache  = new Database(":memory:");
+
+// All three are fully independent SQLite connections.
+users.exec("CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY, email TEXT)");
+orders.exec("CREATE TABLE IF NOT EXISTS purchases (id INTEGER PRIMARY KEY, total NUM)");
+cache.exec("CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY)");
+
+users.close();
+orders.close();
+cache.close();</code></pre>
+
+            <h3>Error handling</h3>
+            <p>
+                When a database operation fails, the binding returns an error value
+                that the runtime treats as a thrown error. Use a
+                <code>try / catch</code> block to handle it gracefully:
+            </p>
+            <pre><code class="language-javascript">import { Database } from "core:sqlite";
+import { println } from "core:io";
+
+const db = new Database(":memory:");
+db.exec("CREATE TABLE t (id INTEGER PRIMARY KEY, val TEXT UNIQUE)");
+
+try {
+    db.run("INSERT INTO t VALUES (1, 'hello')");
+    db.run("INSERT INTO t VALUES (1, 'hello')"); // duplicate PK → error
+} catch (e) {
+    println("Caught:", e); // Caught: sqlite3_step: UNIQUE constraint failed: t.id
+}
+
+db.close();</code></pre>
 
         </main>
     </div>
