@@ -5,6 +5,7 @@ chcp 65001 >nul
 set "OUT_DIR=win32"
 set "EXE=%OUT_DIR%\zscript.exe"
 set "DLL=%OUT_DIR%\sqlite3.dll"
+set "MONGOOSE_DLL=%OUT_DIR%\mongoose.dll"
 set "LIB_DIR=%OUT_DIR%\lib"
 
 for /f "tokens=2 delims==." %%I in ('wmic os get localdatetime /value') do set "DT=%%I"
@@ -24,6 +25,16 @@ if not exist "%DLL%" (
     exit /b 1
 )
 
+:: ── Build mongoose.dll into win32\ if not already present ────────────────────
+if not exist "%MONGOOSE_DLL%" (
+    echo Building Mongoose DLL...
+    gcc -shared -O2 -o "%MONGOOSE_DLL%" mongoose\mongoose.c -Wl,--out-implib,mongoose\libmongoose.a
+)
+if not exist "%MONGOOSE_DLL%" (
+    echo Error: Failed to build mongoose.dll
+    exit /b 1
+)
+
 :: ── Kill any running copy ─────────────────────────────────────────────────────
 if exist "%EXE%" (
     taskkill /f /im zscript.exe 2>nul
@@ -36,12 +47,12 @@ if "%1"=="--release" (
     echo Building in release mode...
     gcc -O3 -DNDEBUG -DBUILD_DATE="\"%BUILD_DATE%\"" -Wno-pointer-sign ^
         main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c ^
-        -o "%EXE%" -lm -Lsqlite -lsqlite3
+        -o "%EXE%" -lm -Lsqlite -lsqlite3 -Lmongoose -lmongoose
 ) else (
     echo Building in debug mode...
     gcc -g -O0 -DBUILD_DATE="\"%BUILD_DATE%\"" -Wno-pointer-sign ^
         main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c ^
-        -o "%EXE%" -lm -Lsqlite -lsqlite3
+        -o "%EXE%" -lm -Lsqlite -lsqlite3 -Lmongoose -lmongoose
 )
 
 if not exist "%EXE%" (

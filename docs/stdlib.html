@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Standard Library — ZayneScript</title>
     <meta name="description"
-        content="ZayneScript standard library reference: core:io, core:math, core:os, core:Array, core:Date, core:Promise, core:sqlite." />
+        content="ZayneScript standard library reference: core:io, core:math, core:os, core:Array, core:Date, core:Promise, core:sqlite, core:mongoose." />
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
@@ -62,6 +62,7 @@
                     <li><a href="#date">core:Date</a></li>
                     <li><a href="#promise">core:Promise</a></li>
                     <li><a href="#sqlite">core:sqlite</a></li>
+                    <li><a href="#mongoose">core:mongoose</a></li>
                 </ul>
             </div>
             <div class="sidebar-group">
@@ -119,6 +120,18 @@
                 <ul>
                     <li><a href="#promise-then">then</a></li>
                     <li><a href="#promise-error">error</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">core:mongoose</div>
+                <ul>
+                    <li><a href="#mongoose-overview">Overview</a></li>
+                    <li><a href="#mongoose-server">Server class</a></li>
+                    <li><a href="#mongoose-routing">Routing</a></li>
+                    <li><a href="#mongoose-req">Request object</a></li>
+                    <li><a href="#mongoose-res">Response object</a></li>
+                    <li><a href="#mongoose-middleware">Middleware</a></li>
+                    <li><a href="#mongoose-patterns">Common patterns</a></li>
                 </ul>
             </div>
             <div class="sidebar-group">
@@ -1132,4 +1145,249 @@ try {
     db.prepare("INSERT INTO t VALUES (1, 'hello')").run();
     db.prepare("INSERT INTO t VALUES (1, 'hello')").run(); // duplicate PK
 } catch (e) {
+    println("Caught:", e);
+}
+db.close();</code></pre>
+
+            <!-- ==============================================================
+         core:mongoose
+         ============================================================== -->
+            <h2 id="mongoose">core:mongoose — HTTP Server</h2>
+            <p>Import with:</p>
+            <pre><code class="language-javascript">import { Server } from "core:mongoose";</code></pre>
+            <p class="page-intro">
+                <code>core:mongoose</code> wraps the
+                <a href="https://mongoose.ws" target="_blank" rel="noopener">Mongoose</a>
+                embedded networking library to give ZayneScript an
+                Express.js-style HTTP server. Create a <code>Server</code>,
+                register routes, and call <code>listen()</code> — the event loop
+                runs until <code>close()</code> is called.
+            </p>
+
+            <hr />
+
+            <h2 id="mongoose-server">Server class</h2>
+
+            <h3 id="mongoose-server-constructor">constructor</h3>
+            <div class="method">
+                <div class="method-sig">new Server()</div>
+                <p class="method-desc">
+                    Creates a new HTTP server instance. No arguments required.
+                </p>
+            </div>
+            <pre><code class="language-javascript">import { Server } from "core:mongoose";
+const app = new Server();</code></pre>
+
+            <h2 id="mongoose-routing">Routing</h2>
+            <p>
+                Route handlers receive <code>(req, res)</code> and are matched in
+                registration order. The path is matched with Mongoose's glob patterns
+                — use <code>*</code> as a wildcard segment.
+            </p>
+
+            <div class="method">
+                <div class="method-sig">app.get(path, handler)</div>
+            </div>
+            <div class="method">
+                <div class="method-sig">app.post(path, handler)</div>
+            </div>
+            <div class="method">
+                <div class="method-sig">app.put(path, handler)</div>
+            </div>
+            <div class="method">
+                <div class="method-sig">app.delete(path, handler)</div>
+            </div>
+            <div class="method">
+                <div class="method-sig">app.patch(path, handler)</div>
+            </div>
+            <div class="method">
+                <div class="method-sig">app.all(path, handler)</div>
+                <p class="method-desc">Matches any HTTP method.</p>
+            </div>
+
+            <pre><code class="language-javascript">app.get("/hello", fn(req, res) {
+    res.send("Hello World!");
+});
+
+app.post("/users", fn(req, res) {
+    res.status(201).json({ created: true });
+});</code></pre>
+
+            <h3>Wildcard captures</h3>
+            <p>
+                Wildcards in the path are captured and exposed on
+                <code>req.params</code> as numeric keys (<code>"0"</code>,
+                <code>"1"</code>, …).
+            </p>
+            <pre><code class="language-javascript">app.get("/users/*", fn(req, res) {
+    const id = req.params["0"];  // e.g. "42" for /users/42
+    res.json({ id: id });
+});</code></pre>
+
+            <h3 id="mongoose-listen">listen / close</h3>
+            <div class="method">
+                <div class="method-sig">app.listen(port: int, callback?: fn)</div>
+                <p class="method-desc">
+                    Binds to <code>0.0.0.0:port</code> and enters the event loop.
+                    This call <strong>blocks</strong> until <code>app.close()</code>
+                    is called. The optional <code>callback</code> is invoked once
+                    the server is ready, receiving a ready message string.
+                </p>
+            </div>
+            <div class="method">
+                <div class="method-sig">app.close()</div>
+                <p class="method-desc">Stops the event loop and frees the server resources.</p>
+            </div>
+            <pre><code class="language-javascript">import { println } from "core:io";
+
+app.listen(3000, fn(msg) {
+    println(msg); // Server listening on port 3000
+});</code></pre>
+
+            <h2 id="mongoose-req">Request object</h2>
+            <p>Available inside every route handler as the first argument.</p>
+            <table>
+                <thead>
+                    <tr><th>Property</th><th>Type</th><th>Description</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>req.method</code></td><td>string</td><td>HTTP verb in upper-case — <code>"GET"</code>, <code>"POST"</code>, etc.</td></tr>
+                    <tr><td><code>req.path</code></td><td>string</td><td>Request URI path (without query string).</td></tr>
+                    <tr><td><code>req.url</code></td><td>string</td><td>Same as <code>req.path</code> (full URI).</td></tr>
+                    <tr><td><code>req.query</code></td><td>string</td><td>Raw query string, e.g. <code>"name=Alice&amp;age=30"</code>.</td></tr>
+                    <tr><td><code>req.body</code></td><td>string</td><td>Raw request body as a string.</td></tr>
+                    <tr><td><code>req.headers</code></td><td>object</td><td>All request headers as a plain object with lower-cased keys.</td></tr>
+                    <tr><td><code>req.params</code></td><td>object</td><td>Wildcard captures from the route path, keyed <code>"0"</code> … <code>"3"</code>.</td></tr>
+                </tbody>
+            </table>
+
+            <h2 id="mongoose-res">Response object</h2>
+            <p>Available inside every route handler as the second argument.</p>
+
+            <h3>res.send(body)</h3>
+            <div class="method">
+                <div class="method-sig">res.send(body: string)</div>
+                <p class="method-desc">
+                    Sends a plain-text response with the current status code
+                    (default <code>200</code>) and any headers set via
+                    <code>res.setHeader()</code>.
+                </p>
+            </div>
+
+            <h3>res.json(value)</h3>
+            <div class="method">
+                <div class="method-sig">res.json(value)</div>
+                <p class="method-desc">
+                    Serialises <code>value</code> to a string and sends it with
+                    <code>Content-Type: application/json</code>.
+                </p>
+            </div>
+
+            <h3>res.status(code)</h3>
+            <div class="method">
+                <div class="method-sig">res.status(code: int) → res</div>
+                <p class="method-desc">
+                    Sets the response status code. Returns <code>res</code> for
+                    chaining: <code>res.status(404).send("Not found")</code>.
+                </p>
+            </div>
+
+            <h3>res.redirect(url)</h3>
+            <div class="method">
+                <div class="method-sig">res.redirect(url: string)</div>
+                <p class="method-desc">Sends a <code>302 Found</code> redirect to <code>url</code>.</p>
+            </div>
+
+            <h3>res.setHeader(name, value)</h3>
+            <div class="method">
+                <div class="method-sig">res.setHeader(name: string, value: string) → res</div>
+                <p class="method-desc">
+                    Appends a response header. Can be chained before
+                    <code>send()</code> or <code>json()</code>.
+                </p>
+            </div>
+
+            <h2 id="mongoose-middleware">Middleware</h2>
+            <div class="method">
+                <div class="method-sig">app.use(fn(req, res))</div>
+                <p class="method-desc">
+                    Registers a function that runs before every route handler.
+                    Useful for logging, auth checks, or attaching properties to
+                    <code>req</code>. Up to 32 middleware functions are supported.
+                </p>
+            </div>
+            <pre><code class="language-javascript">import { println } from "core:io";
+
+app.use(fn(req, res) {
+    println(req.method, req.path);
+});</code></pre>
+
+            <h2 id="mongoose-patterns">Common Patterns</h2>
+
+            <h3>Simple REST-like API</h3>
+            <pre><code class="language-javascript">import { Server } from "core:mongoose";
+import { println } from "core:io";
+
+const app = new Server();
+
+app.get("/", fn(req, res) {
+    res.send("Welcome!");
+});
+
+app.get("/greet/*", fn(req, res) {
+    const name = req.params["0"];
+    res.json({ message: "Hello, " + name + "!" });
+});
+
+app.post("/echo", fn(req, res) {
+    res.setHeader("X-Echo", "true").send(req.body);
+});
+
+app.listen(8080, fn(msg) { println(msg); });</code></pre>
+
+            <h3>Request logging middleware</h3>
+            <pre><code class="language-javascript">import { Server } from "core:mongoose";
+import { println } from "core:io";
+
+const app = new Server();
+
+app.use(fn(req, res) {
+    println("[" + req.method + "]", req.path);
+});
+
+app.get("/ping", fn(req, res) {
+    res.send("pong");
+});
+
+app.listen(3000, fn(msg) { println(msg); });</code></pre>
+
+            <h3>JSON API with status codes</h3>
+            <pre><code class="language-javascript">import { Server }  from "core:mongoose";
+import { Database } from "core:sqlite";
+
+const app = new Server();
+const db  = new Database("app.sqlite");
+db.exec("CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY, text TEXT)");
+
+app.get("/notes", fn(req, res) {
+    const rows = db.prepare("SELECT * FROM notes").all();
+    res.json(rows);
+});
+
+app.post("/notes", fn(req, res) {
+    const info = db.prepare("INSERT INTO notes (text) VALUES (?)").run(req.body);
+    res.status(201).json({ id: info.lastInsertRowid });
+});
+
+app.listen(4000, fn(msg) { println(msg); });</code></pre>
+
+        </main>
+    </div>
+
+    <footer class="site-footer-bottom">
+        <p>&copy; 2026 ZayneScript. Built with Mongoose v7.20 &amp; SQLite.</p>
+    </footer>
+
+</body>
+</html>
     println("Caught:", e); //

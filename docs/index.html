@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ZayneScript — A Scripting Language Written in C</title>
     <meta name="description"
-        content="ZayneScript is a dynamic, interpreted scripting language written in pure C with first-class functions, closures, async/await, classes, and a rich standard library." />
+        content="ZayneScript is a dynamic, interpreted scripting language written in pure C with first-class functions, closures, async/await, classes, and a rich standard library including an HTTP server." />
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
@@ -106,6 +106,12 @@
                 <h3>Standard Library</h3>
                 <p>Built-in modules for I/O, math, OS utilities, arrays, dates, and promises. Import only what you need.
                 </p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🌐</div>
+                <h3>HTTP Server</h3>
+                <p>Express.js-style HTTP server via <code>core:mongoose</code>. Register GET/POST/… routes, attach
+                    middleware, and serve JSON APIs — all from ZayneScript.</p>
             </div>
         </div>
 

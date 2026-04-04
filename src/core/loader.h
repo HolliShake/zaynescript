@@ -12,6 +12,7 @@
 #include "./date.h"
 #include "./io.h"
 #include "./math.h"
+#include "./mongoose.h"
 #include "./os.h"
 #include "./promise.h"
 #include "./sqlite.h"
