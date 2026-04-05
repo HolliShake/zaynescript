@@ -8,8 +8,7 @@ set "DLL=%OUT_DIR%\sqlite3.dll"
 set "MONGOOSE_DLL=%OUT_DIR%\mongoose.dll"
 set "LIB_DIR=%OUT_DIR%\lib"
 
-for /f "tokens=2 delims==." %%I in ('wmic os get localdatetime /value') do set "DT=%%I"
-set "BUILD_DATE=%DT:~0,4%-%DT:~4,2%-%DT:~6,2% %DT:~8,2%:%DT:~10,2%:%DT:~12,2%"
+:: Build timestamp comes from GCC __DATE__ / __TIME__ (see main.c); no wmic/PowerShell.
 
 :: ── Ensure output directory structure exists ─────────────────────────────────
 if not exist "%OUT_DIR%" mkdir "%OUT_DIR%"
@@ -28,7 +27,7 @@ if not exist "%DLL%" (
 :: ── Build mongoose.dll into win32\ if not already present ────────────────────
 if not exist "%MONGOOSE_DLL%" (
     echo Building Mongoose DLL...
-    gcc -shared -O2 -o "%MONGOOSE_DLL%" mongoose\mongoose.c -Wl,--out-implib,mongoose\libmongoose.a
+    gcc -shared -O2 -o "%MONGOOSE_DLL%" mongoose\mongoose.c -Wl,--out-implib,mongoose\libmongoose.a -lws2_32
 )
 if not exist "%MONGOOSE_DLL%" (
     echo Error: Failed to build mongoose.dll
@@ -45,12 +44,14 @@ if exist "%EXE%" (
 :: ── Compile ───────────────────────────────────────────────────────────────────
 if "%1"=="--release" (
     echo Building in release mode...
-    gcc -O3 -DNDEBUG -DBUILD_DATE="\"%BUILD_DATE%\"" -Wno-pointer-sign ^
+    rem LTO + --gc-sections: smaller/faster exe; -Wl,-s strips symbols (MinGW).
+    rem NUMBER_OF_PROCESSORS is a system env var (safe to expand inside this block).
+    gcc -O3 -DNDEBUG -flto=%NUMBER_OF_PROCESSORS% -fno-semantic-interposition -ffunction-sections -fdata-sections -fno-ident -Wno-pointer-sign ^
         main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c ^
-        -o "%EXE%" -lm -Lsqlite -lsqlite3 -Lmongoose -lmongoose
+        -o "%EXE%" -lm -Lsqlite -lsqlite3 -Lmongoose -lmongoose -Wl,--gc-sections -Wl,-s
 ) else (
     echo Building in debug mode...
-    gcc -g -O0 -DBUILD_DATE="\"%BUILD_DATE%\"" -Wno-pointer-sign ^
+    gcc -g -O0 -Wno-pointer-sign ^
         main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c ^
         -o "%EXE%" -lm -Lsqlite -lsqlite3 -Lmongoose -lmongoose
 )
