@@ -787,7 +787,8 @@ import { Database, Statement } from "core:sqlite";</code></pre>
             <ul style="margin:0.75rem 0 0.75rem 1.5rem;">
                 <li><strong>Database</strong> — represents an open SQLite connection.</li>
                 <li><strong>Statement</strong> — a compiled prepared statement returned by
-                    <code>db.prepare()</code>. You do not construct it directly.</li>
+                    <code>db.prepare()</code>. You do not construct it directly.
+                </li>
             </ul>
             <p>
                 Every <code>new Database(...)</code> call opens an independent connection.
@@ -967,13 +968,33 @@ stmt.finalize();</code></pre>
 
             <h3 id="sqlite-type-map">Type mapping</h3>
             <table>
-                <thead><tr><th>SQLite type</th><th>ZayneScript type</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>SQLite type</th>
+                        <th>ZayneScript type</th>
+                    </tr>
+                </thead>
                 <tbody>
-                    <tr><td><code>INTEGER</code></td><td><code>int</code></td></tr>
-                    <tr><td><code>REAL</code></td><td><code>num</code></td></tr>
-                    <tr><td><code>TEXT</code></td><td><code>string</code></td></tr>
-                    <tr><td><code>NULL</code></td><td><code>null</code></td></tr>
-                    <tr><td><code>BLOB</code></td><td><code>null</code></td></tr>
+                    <tr>
+                        <td><code>INTEGER</code></td>
+                        <td><code>int</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>REAL</code></td>
+                        <td><code>num</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>TEXT</code></td>
+                        <td><code>string</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>NULL</code></td>
+                        <td><code>null</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>BLOB</code></td>
+                        <td><code>null</code></td>
+                    </tr>
                 </tbody>
             </table>
 
@@ -1010,7 +1031,7 @@ byName.finalize();</code></pre>
                     Toggles <em>pluck mode</em>. When on (the default when called with
                     no argument or <code>true</code>), <code>get()</code> and
                     <code>all()</code> return the value of the <strong>first column
-                    only</strong> instead of the full row object. Pass <code>false</code>
+                        only</strong> instead of the full row object. Pass <code>false</code>
                     to turn pluck back off. Chainable.
                 </p>
             </div>
@@ -1031,16 +1052,37 @@ stmt.finalize();</code></pre>
                 <p class="method-desc">
                     Returns an array of column metadata objects for the result set,
                     matching the
-                    <a href="https://github.com/WiseLibs/better-sqlite3/blob/master/docs/api.md#columns---array-of-objects" target="_blank" rel="noopener">better-sqlite3 shape</a>:
+                    <a href="https://github.com/WiseLibs/better-sqlite3/blob/master/docs/api.md#columns---array-of-objects"
+                        target="_blank" rel="noopener">better-sqlite3 shape</a>:
                 </p>
                 <table>
-                    <thead><tr><th>Field</th><th>Description</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th>Field</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                        <tr><td><code>name</code></td><td>Column alias or name (always populated)</td></tr>
-                        <tr><td><code>column</code></td><td>Source column name (<code>null</code> for expressions)</td></tr>
-                        <tr><td><code>table</code></td><td>Source table name (<code>null</code> for expressions)</td></tr>
-                        <tr><td><code>database</code></td><td>Source database name (<code>null</code> for expressions)</td></tr>
-                        <tr><td><code>type</code></td><td>Declared type string, e.g. <code>"TEXT"</code> (<code>null</code> for expressions)</td></tr>
+                        <tr>
+                            <td><code>name</code></td>
+                            <td>Column alias or name (always populated)</td>
+                        </tr>
+                        <tr>
+                            <td><code>column</code></td>
+                            <td>Source column name (<code>null</code> for expressions)</td>
+                        </tr>
+                        <tr>
+                            <td><code>table</code></td>
+                            <td>Source table name (<code>null</code> for expressions)</td>
+                        </tr>
+                        <tr>
+                            <td><code>database</code></td>
+                            <td>Source database name (<code>null</code> for expressions)</td>
+                        </tr>
+                        <tr>
+                            <td><code>type</code></td>
+                            <td>Declared type string, e.g. <code>"TEXT"</code> (<code>null</code> for expressions)</td>
+                        </tr>
                     </tbody>
                 </table>
                 <div class="note">
@@ -1248,16 +1290,48 @@ app.listen(3000, fn(msg) {
             <p>Available inside every route handler as the first argument.</p>
             <table>
                 <thead>
-                    <tr><th>Property</th><th>Type</th><th>Description</th></tr>
+                    <tr>
+                        <th>Property</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                    </tr>
                 </thead>
                 <tbody>
-                    <tr><td><code>req.method</code></td><td>string</td><td>HTTP verb in upper-case — <code>"GET"</code>, <code>"POST"</code>, etc.</td></tr>
-                    <tr><td><code>req.path</code></td><td>string</td><td>Request URI path (without query string).</td></tr>
-                    <tr><td><code>req.url</code></td><td>string</td><td>Same as <code>req.path</code> (full URI).</td></tr>
-                    <tr><td><code>req.query</code></td><td>string</td><td>Raw query string, e.g. <code>"name=Alice&amp;age=30"</code>.</td></tr>
-                    <tr><td><code>req.body</code></td><td>string</td><td>Raw request body as a string.</td></tr>
-                    <tr><td><code>req.headers</code></td><td>object</td><td>All request headers as a plain object with lower-cased keys.</td></tr>
-                    <tr><td><code>req.params</code></td><td>object</td><td>Wildcard captures from the route path, keyed <code>"0"</code> … <code>"3"</code>.</td></tr>
+                    <tr>
+                        <td><code>req.method</code></td>
+                        <td>string</td>
+                        <td>HTTP verb in upper-case — <code>"GET"</code>, <code>"POST"</code>, etc.</td>
+                    </tr>
+                    <tr>
+                        <td><code>req.path</code></td>
+                        <td>string</td>
+                        <td>Request URI path (without query string).</td>
+                    </tr>
+                    <tr>
+                        <td><code>req.url</code></td>
+                        <td>string</td>
+                        <td>Same as <code>req.path</code> (full URI).</td>
+                    </tr>
+                    <tr>
+                        <td><code>req.query</code></td>
+                        <td>string</td>
+                        <td>Raw query string, e.g. <code>"name=Alice&amp;age=30"</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><code>req.body</code></td>
+                        <td>string</td>
+                        <td>Raw request body as a string.</td>
+                    </tr>
+                    <tr>
+                        <td><code>req.headers</code></td>
+                        <td>object</td>
+                        <td>All request headers as a plain object with lower-cased keys.</td>
+                    </tr>
+                    <tr>
+                        <td><code>req.params</code></td>
+                        <td>object</td>
+                        <td>Wildcard captures from the route path, keyed <code>"0"</code> … <code>"3"</code>.</td>
+                    </tr>
                 </tbody>
             </table>
 
@@ -1384,10 +1458,17 @@ app.listen(4000, fn(msg) { println(msg); });</code></pre>
         </main>
     </div>
 
-    <footer class="site-footer-bottom">
-        <p>&copy; 2026 ZayneScript. Built with Mongoose v7.20 &amp; SQLite.</p>
+    <!-- ================================================================
+     Footer
+     ================================================================ -->
+    <footer class="site-footer">
+        <p>ZayneScript &copy; 2025–Present Philipp Andrew Redondo. Released under the MIT License.</p>
+        <p style="margin-top:0.4rem;">
+            <a href="language.html">Language Guide</a> &nbsp;·&nbsp;
+            <a href="stdlib.html">Standard Library</a>
+        </p>
     </footer>
 
 </body>
+
 </html>
-    println("Caught:", e); //
