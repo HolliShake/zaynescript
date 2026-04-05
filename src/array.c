@@ -72,6 +72,13 @@ void ArrayExtend(Array* array, Array* other) {
 }
 
 /**
+ * @brief Checks if a Value is a string.
+ * @param value The value to check.
+ * @return true if the value is a string, false otherwise.
+ */
+extern Value* ValueIsStr(Value* value);
+
+/**
  * @brief Converts a Value to its string representation.
  * @param value The value to convert.
  * @return A newly allocated string (caller must free).
@@ -115,8 +122,13 @@ String ArrayToString(Array* array) {
 			parts[i] = NULL;  // NULL sentinel = self-reference
 			lens[i]	 = SELF_LEN;
 		} else {
-			parts[i] = ValueToString(array->Items[i]);
-			lens[i]	 = parts[i] ? strlen(parts[i]) : 0;
+			if (ValueIsStr(array->Items[i])) {
+				String org = ValueToString(array->Items[i]);
+				String fmt = FormatString("\"%s\"", org);
+				parts[i]   = fmt;
+				free(org);
+			}
+			lens[i] = parts[i] ? strlen(parts[i]) : 0;
 		}
 		total += lens[i];
 	}
