@@ -716,6 +716,10 @@ Value* DoCallMethod(Interpreter* interpreter,
 	return DoCall(interpreter, method, argc, withThis);
 }
 
+extern void PushTrace(Interpreter* interpreter, LineInfo line, Value* fn);
+
+extern void PopTrace(Interpreter* interpreter);
+
 Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 	Value* en = NULL;
 
@@ -754,6 +758,8 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 		sm->StckBot				= interpreter->StckC;
 		sm->EnvrBot				= interpreter->EnvrC;
 
+		PushTrace(interpreter, sm->Line, fn);
+
 		if (1) {
 			// 2. ANCHOR: Set the new bottom to the CURRENT top
 			// of the stack
@@ -787,6 +793,8 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 			interpreter->CallEnv = sm->CallEnv;
 			Run(interpreter, fn);
 		}
+
+		PopTrace(interpreter);
 
 		if (isfn)
 			RestoreEnv(interpreter);
@@ -857,8 +865,9 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 		return errVal;
 	}
 
-	// 1. Save
+	PushTrace(interpreter, uf->Lines[0], fn);
 
+	// 1. Save
 	Value* oldRoot = interpreter->RootEnv;
 	if (uf->Scope == NULL) {
 		interpreter->RootEnv = en;
@@ -866,6 +875,8 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 
 	// 2. Run the function
 	Run(interpreter, fn);
+
+	PopTrace(interpreter);
 
 	// 3. Restore
 	if (isfn)

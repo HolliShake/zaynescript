@@ -12,7 +12,7 @@ app.get("/hello", fn (req, res) {
 });
 
 app.post("/api/data", fn (req, res) {
-    println(req.body, "asdasda");
+    println(req.body + 2);
     res.status(201).json({ received: req.body });
 });
 

@@ -750,12 +750,10 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_CALL_CTOR:
 				{
-					PushTrace(interpreter, _GetLineFromPc(uf, ip), fnValue);
 					argc = _ReadInt32(uf->Codes, ip);
 					Forward(4);
 					cls = Popp(interpreter);
 					res = DoCallCtor(interpreter, cls, argc);
-					PopTrace(interpreter);
 					if (ValueIsError(res)) {
 						_RaiseError(interpreter, uf, &ip, res);
 						break;
@@ -764,12 +762,10 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_CALL:
 				{
-					PushTrace(interpreter, _GetLineFromPc(uf, ip), fnValue);
 					argc = _ReadInt32(uf->Codes, ip);
 					Forward(4);
 					obj = Popp(interpreter);
 					res = DoCall(interpreter, obj, argc, false);
-					PopTrace(interpreter);
 					if (ValueIsError(res)) {
 						_RaiseError(interpreter, uf, &ip, res);
 						break;
@@ -778,13 +774,11 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_CALL_METHOD:
 				{
-					PushTrace(interpreter, _GetLineFromPc(uf, ip), fnValue);
 					argc = _ReadInt32(uf->Codes, ip);
 					Forward(4);
 					key = Popp(interpreter);  // method name
 					obj = Popp(interpreter);  // 'this' object
 					res = DoCallMethod(interpreter, obj, key, argc);
-					PopTrace(interpreter);
 					if (ValueIsError(res)) {
 						_RaiseError(interpreter, uf, &ip, res);
 						break;
@@ -1388,10 +1382,8 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 	Value* task = NULL;
 	while ((task = DequeueTask(interpreter)) != NULL) {
 		// Awaited
-		StateMachine* sm = CoerceToStateMachine(task);
-
+		StateMachine* sm		= CoerceToStateMachine(task);
 		interpreter->ActiveTask = task;
-		PushTrace(interpreter, sm->Line, task);
 
 		if (!sm->IsCallback) {
 			DoCall(interpreter, task, 0, false);
