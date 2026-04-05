@@ -76,7 +76,7 @@ void ArrayExtend(Array* array, Array* other) {
  * @param value The value to check.
  * @return true if the value is a string, false otherwise.
  */
-extern Value* ValueIsStr(Value* value);
+extern bool ValueIsStr(Value* value);
 
 /**
  * @brief Converts a Value to its string representation.
