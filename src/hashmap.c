@@ -1,5 +1,6 @@
 #include "./hashmap.h"
 
+
 #define LOAD_FACTOR_THRESHOLD 0.75
 
 static size_t _Hash(String key, size_t size) {
@@ -242,6 +243,13 @@ int HashMapContains(HashMap* hashmap, String key) {
 }
 
 /**
+ * @brief Checks if a Value is a string.
+ * @param value The value to check.
+ * @return true if the value is a string, false otherwise.
+ */
+extern bool ValueIsStr(Value* value);
+
+/**
  * @brief Converts a Value to its string representation.
  * @param value The value to convert.
  * @return A newly allocated string (caller must free).
@@ -287,6 +295,12 @@ String HashMapToString(HashMap* hashmap) {
 			strcat(result, "\": ");
 			String valStr = ValueToString((Value*) node->Val);
 			if (valStr != NULL) {
+				if (ValueIsStr((Value*) node->Val)) {
+					// Add quotes around string values
+					String org = valStr;
+					valStr	   = FormatString("\"%s\"", valStr);
+					free(org);
+				}
 				strcat(result, valStr);
 				free(valStr);
 			}

@@ -253,6 +253,94 @@ static ModuleFunction _ReqClassMethods[] = {
 };
 
 /* -----------------------------------------------------------------------
+ * JSON body → Value* recursive converter using mongoose's JSON API
+ * ----------------------------------------------------------------------- */
+
+static Value* _JsonToValue(Interpreter* interp, struct mg_str tok) {
+	if (tok.len == 0)
+		return interp->Null;
+
+	char first = tok.buf[0];
+
+	/* object */
+	if (first == '{') {
+		Value*		  obj = NewObjectValue(interp);
+		HashMap*	  map = CoerceToHashMap(obj);
+		size_t		  ofs = 0;
+		struct mg_str key, val;
+		while ((ofs = mg_json_next(tok, ofs, &key, &val)) > 0) {
+			/* key arrives as a quoted JSON string — unescape it */
+			size_t kbuf_sz = key.len + 1;
+			char*  kbuf	   = (char*) Allocate(kbuf_sz);
+			if (key.len >= 2 && key.buf[0] == '"') {
+				mg_json_unescape(mg_str_n(key.buf + 1, key.len - 2),
+								 kbuf,
+								 kbuf_sz);
+			} else {
+				memcpy(kbuf, key.buf, key.len);
+				kbuf[key.len] = '\0';
+			}
+			HashMapSet(map, kbuf, _JsonToValue(interp, val));
+			free(kbuf);
+		}
+		return obj;
+	}
+
+	/* array */
+	if (first == '[') {
+		Value*		  arr = NewArrayValue(interp);
+		Array*		  a	  = CoerceToArray(arr);
+		size_t		  ofs = 0;
+		struct mg_str val;
+		while ((ofs = mg_json_next(tok, ofs, NULL, &val)) > 0)
+			ArrayPush(a, _JsonToValue(interp, val));
+		return arr;
+	}
+
+	/* string */
+	if (first == '"') {
+		size_t bsz = tok.len + 1;
+		char*  buf = (char*) Allocate(bsz);
+		mg_json_unescape(mg_str_n(tok.buf + 1, tok.len - 2), buf, bsz);
+		Value* sv = NewStrValue(interp, buf);
+		free(buf);
+		return sv;
+	}
+
+	/* null */
+	if (tok.len == 4 && memcmp(tok.buf, "null", 4) == 0)
+		return interp->Null;
+
+	/* boolean */
+	if (tok.len == 4 && memcmp(tok.buf, "true", 4) == 0)
+		return NewBoolValue(interp, 1);
+	if (tok.len == 5 && memcmp(tok.buf, "false", 5) == 0)
+		return NewBoolValue(interp, 0);
+
+	/* number */
+	double dv = 0.0;
+	mg_json_get_num(tok, "$", &dv);
+	if (dv == (int) dv)
+		return NewIntValue(interp, (int) dv);
+	return NewNumValue(interp, dv);
+}
+
+/* Detect "application/json" in the Content-Type header */
+static bool _IsJsonContentType(struct mg_http_message* hm) {
+	struct mg_str* ct = mg_http_get_header(hm, "Content-Type");
+	if (!ct)
+		return false;
+	/* search for "application/json" substring, case-insensitive */
+	const char* needle = "application/json";
+	size_t		nlen   = 16;
+	for (size_t j = 0; j + nlen <= ct->len; j++) {
+		if (strncasecmp(ct->buf + j, needle, nlen) == 0)
+			return true;
+	}
+	return false;
+}
+
+/* -----------------------------------------------------------------------
  * Build req / res class instances per-request
  * ----------------------------------------------------------------------- */
 
@@ -292,16 +380,21 @@ static Value* _BuildReqInstance(Interpreter*			interp,
 				 hm->query.buf);
 	HashMapSet(inst->Members, "query", NewStrValue(interp, query));
 
-	char* body;
-	if (hm->body.len > 0) {
-		body = (char*) Allocate(hm->body.len + 1);
+	/* body: parse as JSON object if Content-Type is application/json,
+	 * otherwise expose as a plain string */
+	Value* bodyVal;
+	if (hm->body.len > 0 && _IsJsonContentType(hm)) {
+		bodyVal = _JsonToValue(interp, mg_str_n(hm->body.buf, hm->body.len));
+	} else if (hm->body.len > 0) {
+		char* body = (char*) Allocate(hm->body.len + 1);
 		memcpy(body, hm->body.buf, hm->body.len);
 		body[hm->body.len] = '\0';
+		bodyVal			   = NewStrValue(interp, body);
+		free(body);
 	} else {
-		body = strdup("");
+		bodyVal = NewStrValue(interp, "");
 	}
-	HashMapSet(inst->Members, "body", NewStrValue(interp, body));
-	free(body);
+	HashMapSet(inst->Members, "body", bodyVal);
 
 	Value*	 hdrsObj = NewObjectValue(interp);
 	HashMap* hdrsMap = CoerceToHashMap(hdrsObj);
