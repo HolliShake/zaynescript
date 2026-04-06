@@ -44,10 +44,16 @@ if exist "%EXE%" (
 :: ── Compile ───────────────────────────────────────────────────────────────────
 if "%1"=="--release" (
     echo Building in release mode...
+    echo Compiling icon resource ^(docs\zs.ico^)...
+    windres -O coff -i zscript.rc -o "%OUT_DIR%\zscript-icon.o"
+    if errorlevel 1 (
+        echo Error: windres failed ^(is MinGW windres on PATH?^)
+        exit /b 1
+    )
     rem LTO + --gc-sections: smaller/faster exe; -Wl,-s strips symbols (MinGW).
     rem NUMBER_OF_PROCESSORS is a system env var (safe to expand inside this block).
     gcc -O3 -DNDEBUG -flto=%NUMBER_OF_PROCESSORS% -fno-semantic-interposition -ffunction-sections -fdata-sections -fno-ident -Wno-pointer-sign ^
-        main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c ^
+        main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c "%OUT_DIR%\zscript-icon.o" ^
         -o "%EXE%" -lm -Lsqlite -lsqlite3 -Lmongoose -lmongoose -Wl,--gc-sections -Wl,-s
 ) else (
     echo Building in debug mode...
