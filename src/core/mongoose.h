@@ -16,8 +16,12 @@
  *   app.listen(8000)
  */
 
+#include "../../mongoose/mongoose.h"
+#include "../function.h"
 #include "../global.h"
+#include "../hashmap.h"
 #include "../value.h"
+
 
 #ifndef CORE_MONGOOSE_H
 #	define CORE_MONGOOSE_H
