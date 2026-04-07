@@ -1,8 +1,15 @@
 #include "./mongoose.h"
 
-#include "../../mongoose/mongoose.h"
-#include "../function.h"
-#include "../hashmap.h"
+/* -----------------------------------------------------------------------
+ * Internal binding property keys
+ * ----------------------------------------------------------------------- */
+
+#define PROP_APP_PTR	"__ptr"
+#define PROP_RES_CTX	"__ctx"
+#define PROP_RES_STATUS "__status"
+#define PROP_RES_HDRSTR "__hdrstr"
+#define PROP_REQ_CLASS	"__ReqClass"
+#define PROP_RES_CLASS	"__ResClass"
 
 /* -----------------------------------------------------------------------
  * Forward declarations
@@ -48,7 +55,7 @@ typedef struct {
  * ----------------------------------------------------------------------- */
 
 static AppState* _GetApp(ClassInstance* cls) {
-	Value* v = (Value*) HashMapGet(cls->Members, "_ptr");
+	Value* v = (Value*) HashMapGet(cls->Members, PROP_APP_PTR);
 	if (v && ValueIsOpaquePtr(v))
 		return (AppState*) v->Value.Opaque;
 	return NULL;
@@ -82,7 +89,7 @@ static void _AppAddRoute(AppState*	 app,
  * ----------------------------------------------------------------------- */
 
 static ReqResCtx* _GetCtx(ClassInstance* cls) {
-	Value* v = (Value*) HashMapGet(cls->Members, "_ctx");
+	Value* v = (Value*) HashMapGet(cls->Members, PROP_RES_CTX);
 	if (v && ValueIsOpaquePtr(v))
 		return (ReqResCtx*) v->Value.Opaque;
 	return NULL;
@@ -107,9 +114,9 @@ static Value* _ResSend(Interpreter* interp, int argc, Value** args) {
 	if (ctx->responded)
 		return interp->Null;
 
-	Value* sv	   = (Value*) HashMapGet(cls->Members, "_status");
+	Value* sv	   = (Value*) HashMapGet(cls->Members, PROP_RES_STATUS);
 	int	   status  = (sv && ValueIsInt(sv)) ? sv->Value.I32 : 200;
-	Value* hv	   = (Value*) HashMapGet(cls->Members, "_hdrstr");
+	Value* hv	   = (Value*) HashMapGet(cls->Members, PROP_RES_HDRSTR);
 	String headers = (hv && ValueIsStr(hv)) ? ValueToString(hv) : strdup("");
 	String body	   = (argc >= 2) ? ValueToString(args[1]) : strdup("");
 
@@ -132,9 +139,9 @@ static Value* _ResJson(Interpreter* interp, int argc, Value** args) {
 	if (ctx->responded)
 		return interp->Null;
 
-	Value* sv	  = (Value*) HashMapGet(cls->Members, "_status");
+	Value* sv	  = (Value*) HashMapGet(cls->Members, PROP_RES_STATUS);
 	int	   status = (sv && ValueIsInt(sv)) ? sv->Value.I32 : 200;
-	Value* hv	  = (Value*) HashMapGet(cls->Members, "_hdrstr");
+	Value* hv	  = (Value*) HashMapGet(cls->Members, PROP_RES_HDRSTR);
 	String extra  = (hv && ValueIsStr(hv)) ? ValueToString(hv) : strdup("");
 
 	size_t hlen	   = strlen(extra) + 64;
@@ -157,7 +164,7 @@ static Value* _ResStatus(Interpreter* interp, int argc, Value** args) {
 							 "res.status() requires a numeric status code");
 	ClassInstance* cls = CoerceToClassInstance(args[0]);
 	HashMapSet(cls->Members,
-			   "_status",
+			   PROP_RES_STATUS,
 			   NewIntValue(interp, (int) CoerceToNum(args[1])));
 	return args[0];
 }
@@ -191,14 +198,14 @@ static Value* _ResSetHeader(Interpreter* interp, int argc, Value** args) {
 	ClassInstance* cls	= CoerceToClassInstance(args[0]);
 	String		   name = ValueToString(args[1]);
 	String		   val	= ValueToString(args[2]);
-	Value*		   curV = (Value*) HashMapGet(cls->Members, "_hdrstr");
+	Value*		   curV = (Value*) HashMapGet(cls->Members, PROP_RES_HDRSTR);
 	String cur = (curV && ValueIsStr(curV)) ? ValueToString(curV) : strdup("");
 	char   extra[512];
 	snprintf(extra, sizeof(extra), "%s: %s\r\n", name, val);
 	size_t newlen = strlen(cur) + strlen(extra) + 1;
 	String merged = (String) Allocate(newlen);
 	snprintf(merged, newlen, "%s%s", cur, extra);
-	HashMapSet(cls->Members, "_hdrstr", NewStrValue(interp, merged));
+	HashMapSet(cls->Members, PROP_RES_HDRSTR, NewStrValue(interp, merged));
 	free(name);
 	free(val);
 	free(cur);
@@ -347,9 +354,9 @@ static bool _IsJsonContentType(struct mg_http_message* hm) {
 static Value*
 _BuildResInstance(Interpreter* interp, Value* resClass, ReqResCtx* ctx) {
 	ClassInstance* inst = CreateClassInstance(resClass);
-	HashMapSet(inst->Members, "_ctx", NewOpquePtrValue(interp, ctx));
-	HashMapSet(inst->Members, "_status", NewIntValue(interp, 200));
-	HashMapSet(inst->Members, "_hdrstr", NewStrValue(interp, ""));
+	HashMapSet(inst->Members, PROP_RES_CTX, NewOpquePtrValue(interp, ctx));
+	HashMapSet(inst->Members, PROP_RES_STATUS, NewIntValue(interp, 200));
+	HashMapSet(inst->Members, PROP_RES_HDRSTR, NewStrValue(interp, ""));
 	return NewClassInstanceValue(interp, inst);
 }
 
@@ -512,8 +519,8 @@ static Value* _ServerInit(Interpreter* interp, int argc, Value** args) {
 	ClassInstance* cls		 = CoerceToClassInstance(args[0]);
 	Class*		   serverCls = CoerceToUserClass(cls->Proto);
 
-	Value* reqClass = ClassGetMember(serverCls, "_ReqClass", true);
-	Value* resClass = ClassGetMember(serverCls, "_ResClass", true);
+	Value* reqClass = ClassGetMember(serverCls, PROP_REQ_CLASS, true);
+	Value* resClass = ClassGetMember(serverCls, PROP_RES_CLASS, true);
 	if (!reqClass || !resClass)
 		return NewErrorValue(interp,
 							 "internal: Request/Response class not found");
@@ -524,7 +531,7 @@ static Value* _ServerInit(Interpreter* interp, int argc, Value** args) {
 	app->reqClass = reqClass;
 	app->resClass = resClass;
 
-	HashMapSet(cls->Members, "_ptr", NewOpquePtrValue(interp, app));
+	HashMapSet(cls->Members, PROP_APP_PTR, NewOpquePtrValue(interp, app));
 	return interp->Null;
 }
 
@@ -584,7 +591,7 @@ static Value* _AppListen(Interpreter* interp, int argc, Value** args) {
 	if (lc == NULL) {
 		mg_mgr_free(&app->mgr);
 		_AppStateFree(app);
-		HashMapSet(cls->Members, "_ptr", NewOpquePtrValue(interp, NULL));
+		HashMapSet(cls->Members, PROP_APP_PTR, NewOpquePtrValue(interp, NULL));
 		return NewErrorFValue(interp,
 							  "listen(): failed to bind on port %d",
 							  port);
@@ -606,7 +613,7 @@ static Value* _AppListen(Interpreter* interp, int argc, Value** args) {
 
 	mg_mgr_free(&app->mgr);
 	_AppStateFree(app);
-	HashMapSet(cls->Members, "_ptr", NewOpquePtrValue(interp, NULL));
+	HashMapSet(cls->Members, PROP_APP_PTR, NewOpquePtrValue(interp, NULL));
 	return interp->Null;
 }
 
@@ -720,11 +727,11 @@ Value* LoadCoreMongoose(Interpreter* interpreter) {
 	/* Root the sub-classes as static members of Server (same trick as
 	 * Database._StmtClass in sqlite.c) so the GC always traces them. */
 	ClassDefineMemberByString(CoerceToUserClass(serverClass),
-							  "_ReqClass",
+							  PROP_REQ_CLASS,
 							  reqClass,
 							  true);
 	ClassDefineMemberByString(CoerceToUserClass(serverClass),
-							  "_ResClass",
+							  PROP_RES_CLASS,
 							  resClass,
 							  true);
 

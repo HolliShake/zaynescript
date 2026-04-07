@@ -127,6 +127,8 @@ String ArrayToString(Array* array) {
 				String fmt = FormatString("\"%s\"", org);
 				parts[i]   = fmt;
 				free(org);
+			} else {
+				parts[i] = ValueToString(array->Items[i]);
 			}
 			lens[i] = parts[i] ? strlen(parts[i]) : 0;
 		}

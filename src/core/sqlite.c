@@ -1,5 +1,16 @@
 #include "./sqlite.h"
 
+// ─── Internal binding property keys ──────────────────────────────────────────
+
+#define PROP_DB_PTR		"__ptr"
+#define PROP_STMT_PTR	"__stmt"
+#define PROP_STMT_DB	"__db"
+#define PROP_STMT_HEAD	"__statementHead"
+#define PROP_STMT_NEXT	"__next"
+#define PROP_STMT_PLUCK "__pluck"
+#define PROP_STMT_BOUND "__bound"
+#define PROP_STMT_CLASS "__StatementClass"
+
 // ─── Opaque-pointer encode / decode ──────────────────────────────────────────
 
 static inline Value* _PtrToValue(Interpreter* interp, void* ptr) {
@@ -16,29 +27,29 @@ static inline void* _ValueToPtr(Value* val) {
 // ──────────────────────────────────────────────────
 
 static sqlite3* _GetDB(ClassInstance* instance) {
-	Value* val = (Value*) HashMapGet(instance->Members, "_ptr");
+	Value* val = (Value*) HashMapGet(instance->Members, PROP_DB_PTR);
 	return (sqlite3*) _ValueToPtr(val);
 }
 
 static void _SetDB(Interpreter* interp, ClassInstance* instance, sqlite3* db) {
-	HashMapSet(instance->Members, "_ptr", _PtrToValue(interp, db));
+	HashMapSet(instance->Members, PROP_DB_PTR, _PtrToValue(interp, db));
 }
 
 // ─── Statement handle helpers
 // ─────────────────────────────────────────────────
 
 static sqlite3_stmt* _GetStmt(ClassInstance* instance) {
-	Value* val = (Value*) HashMapGet(instance->Members, "_stmt");
+	Value* val = (Value*) HashMapGet(instance->Members, PROP_STMT_PTR);
 	return (sqlite3_stmt*) _ValueToPtr(val);
 }
 
 static void
 _SetStmt(Interpreter* interp, ClassInstance* instance, sqlite3_stmt* stmt) {
-	HashMapSet(instance->Members, "_stmt", _PtrToValue(interp, stmt));
+	HashMapSet(instance->Members, PROP_STMT_PTR, _PtrToValue(interp, stmt));
 }
 
 static sqlite3* _GetStmtDB(ClassInstance* instance) {
-	Value* val = (Value*) HashMapGet(instance->Members, "_db");
+	Value* val = (Value*) HashMapGet(instance->Members, PROP_STMT_DB);
 	return (sqlite3*) _ValueToPtr(val);
 }
 
@@ -59,37 +70,37 @@ static sqlite3* _GetStmtDB(ClassInstance* instance) {
 
 static void
 _TrackStatement(Interpreter* interp, ClassInstance* db_cls, Value* stmt_val) {
-	Value* head = (Value*) HashMapGet(db_cls->Members, "_stmt_head");
+	Value* head = (Value*) HashMapGet(db_cls->Members, PROP_STMT_HEAD);
 	// Link new node → old head, then advance the head pointer.
 	ClassInstance* si = CoerceToClassInstance(stmt_val);
-	HashMapSet(si->Members, "_next", head ? head : interp->Null);
-	HashMapSet(db_cls->Members, "_stmt_head", stmt_val);
+	HashMapSet(si->Members, PROP_STMT_NEXT, head ? head : interp->Null);
+	HashMapSet(db_cls->Members, PROP_STMT_HEAD, stmt_val);
 }
 
 static void _InvalidateStatements(Interpreter* interp, ClassInstance* db_cls) {
-	Value* cur = (Value*) HashMapGet(db_cls->Members, "_stmt_head");
+	Value* cur = (Value*) HashMapGet(db_cls->Members, PROP_STMT_HEAD);
 	while (cur && !ValueIsNull(cur)) {
 		ClassInstance* si	= CoerceToClassInstance(cur);
-		Value*		   next = (Value*) HashMapGet(si->Members, "_next");
+		Value*		   next = (Value*) HashMapGet(si->Members, PROP_STMT_NEXT);
 		// Null both handles so any further method call on this Statement
 		// immediately hits the "finalized or invalid" / "no database" guards.
-		HashMapSet(si->Members, "_stmt", _PtrToValue(interp, NULL));
-		HashMapSet(si->Members, "_db", _PtrToValue(interp, NULL));
+		HashMapSet(si->Members, PROP_STMT_PTR, _PtrToValue(interp, NULL));
+		HashMapSet(si->Members, PROP_STMT_DB, _PtrToValue(interp, NULL));
 		cur = next;
 	}
-	HashMapSet(db_cls->Members, "_stmt_head", interp->Null);
+	HashMapSet(db_cls->Members, PROP_STMT_HEAD, interp->Null);
 }
 
 // ─── Per-statement flag helpers
 // ───────────────────────────────────────────────
 
 static bool _GetPluck(ClassInstance* cls) {
-	Value* v = (Value*) HashMapGet(cls->Members, "_pluck");
+	Value* v = (Value*) HashMapGet(cls->Members, PROP_STMT_PLUCK);
 	return v && ValueIsBool(v) && v->Value.I32;
 }
 
 static bool _GetBound(ClassInstance* cls) {
-	Value* v = (Value*) HashMapGet(cls->Members, "_bound");
+	Value* v = (Value*) HashMapGet(cls->Members, PROP_STMT_BOUND);
 	return v && ValueIsBool(v) && v->Value.I32;
 }
 
@@ -422,7 +433,7 @@ static Value* _StmtBind(Interpreter* interp, int argc, Value** arguments) {
 		Value* err = _BindParamList(interp, stmt, db, argc - 1, &arguments[1]);
 		if (err)
 			return err;
-		HashMapSet(cls->Members, "_bound", interp->True);
+		HashMapSet(cls->Members, PROP_STMT_BOUND, interp->True);
 	}
 
 	return arguments[0];
@@ -437,7 +448,9 @@ static Value* _StmtPluck(Interpreter* interp, int argc, Value** arguments) {
 	bool		   on  = true;
 	if (argc > 1 && ValueIsBool(arguments[1]))
 		on = (arguments[1]->Value.I32 != 0);
-	HashMapSet(cls->Members, "_pluck", on ? interp->True : interp->False);
+	HashMapSet(cls->Members,
+			   PROP_STMT_PLUCK,
+			   on ? interp->True : interp->False);
 	return arguments[0];
 }
 
@@ -591,7 +604,7 @@ static Value* _DbInit(Interpreter* interp, int argc, Value** arguments) {
 
 	_SetDB(interp, cls, db);
 	// Initialise the GC-visible statement tracking list (see _TrackStatement).
-	HashMapSet(cls->Members, "_stmt_head", interp->Null);
+	HashMapSet(cls->Members, PROP_STMT_HEAD, interp->Null);
 	return interp->Null;
 }
 
@@ -682,7 +695,7 @@ static Value* _DbPrepare(Interpreter* interp, int argc, Value** arguments) {
 							  sqlite3_errmsg(db));
 
 	Class* dbCls		= CoerceToUserClass(cls->Proto);
-	Value* stmtClassVal = ClassGetMember(dbCls, "_StmtClass", true);
+	Value* stmtClassVal = ClassGetMember(dbCls, PROP_STMT_CLASS, true);
 	if (!stmtClassVal) {
 		sqlite3_finalize(stmt);
 		return NewErrorValue(interp, "internal: Statement class not found");
@@ -690,7 +703,7 @@ static Value* _DbPrepare(Interpreter* interp, int argc, Value** arguments) {
 
 	ClassInstance* stmtInst = CreateClassInstance(stmtClassVal);
 	_SetStmt(interp, stmtInst, stmt);
-	HashMapSet(stmtInst->Members, "_db", _PtrToValue(interp, db));
+	HashMapSet(stmtInst->Members, PROP_STMT_DB, _PtrToValue(interp, db));
 
 	Value* stmtVal = NewClassInstanceValue(interp, stmtInst);
 
@@ -758,7 +771,7 @@ Value* LoadCoreSqlite(Interpreter* interp) {
 	// the GC keeps it alive as long as the Database class is reachable, and
 	// so _DbPrepare can retrieve it without touching any C global.
 	ClassDefineMemberByString(CoerceToUserClass(dbClass),
-							  "_StmtClass",
+							  PROP_STMT_CLASS,
 							  stmtClass,
 							  true);
 
