@@ -24,7 +24,7 @@
 #	define INTERPRETER_H
 
 /**
- * Creates and initializes a new interpreter instance.
+ * @brief Creates and initializes a new interpreter instance.
  *
  * Allocates and initializes a new interpreter with default
  * settings. The interpreter manages execution state, call stack,
@@ -43,7 +43,7 @@
 Interpreter* CreateInterpreter(String execPath);
 
 /**
- * Executes the parsed program using the given interpreter.
+ * @brief Executes the parsed program using the given interpreter.
  *
  * Interprets and executes the user function contained in the
  * provided Value structure. This is the main entry point for
@@ -66,7 +66,7 @@ Interpreter* CreateInterpreter(String execPath);
 void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/);
 
 /**
- * Frees the interpreter and all associated memory.
+ * @brief Frees the interpreter and all associated memory.
  *
  * Deallocates the interpreter instance and releases all
  * associated resources including execution stack, environment,

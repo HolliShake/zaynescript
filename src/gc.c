@@ -6,7 +6,7 @@
  * @brief Converts a Value to its string representation.
  * @param value The value to convert.
  * @return A newly allocated string (caller must free).
- * @origin src/value.c:129
+ * @origin src/value.c:146
  */
 extern String ValueToString(Value* value);
 
@@ -118,9 +118,22 @@ static void _Free(Interpreter* interp, Value* value) {
 				value->Value.Opaque = NULL;
 				break;
 			}
+		case VLT_BLOB:
+			{
+				Blob* blob = CoerceToBlob(value);
+				if (blob != NULL) {
+					if (blob->Data != NULL) {
+						free(blob->Data);
+						blob->Data = NULL;
+					}
+					free(blob);
+					value->Value.Opaque = NULL;
+				}
+				break;
+			}
 		case VLT_OPAQUE:
 			{
-				//  Do not free sqlite  here!
+				//  Do not free!
 				value->Value.Opaque = NULL;
 				break;
 			}
@@ -322,9 +335,8 @@ static size_t _Sweep(Interpreter* interpreter) {
 }
 
 void GarbageCollect(Interpreter* interpreter) {
-	// printf("GC: Starting garbage collection... Allocated = %d
-	// bytes, Threshold = %d bytes\n", interpreter->Allocated,
-	// interpreter->GcThreshold);
+	// printf("GC: Starting garbage collection. Allocated bytes: %d\n",
+	// 	   interpreter->Allocated);
 	Mark(interpreter->GcRoot);
 	Mark(interpreter->Array);
 	Mark(interpreter->Date);

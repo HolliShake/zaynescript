@@ -1,6 +1,101 @@
 #include "./mongoose.h"
 
 /* -----------------------------------------------------------------------
+ * MIME type lookup table — sorted by extension for readability.
+ * _MimeFromExt() accepts the result of strrchr(fname, '.'), i.e. the
+ * dot is included (or NULL when there is no extension).
+ * ----------------------------------------------------------------------- */
+
+typedef struct {
+	const String ext;
+	const String mime;
+} MimeEntry;
+
+static const MimeEntry _MimeTable[] = {
+	/* Text */
+	{ "css", "text/css" },
+	{ "csv", "text/csv" },
+	{ "htm", "text/html" },
+	{ "html", "text/html" },
+	{ "ics", "text/calendar" },
+	{ "js", "text/javascript" },
+	{ "mjs", "text/javascript" },
+	{ "md", "text/markdown" },
+	{ "txt", "text/plain" },
+	{ "ts", "text/x-typescript" },
+	{ "vtt", "text/vtt" },
+	{ "xml", "text/xml" },
+	/* Images */
+	{ "avif", "image/avif" },
+	{ "bmp", "image/bmp" },
+	{ "gif", "image/gif" },
+	{ "ico", "image/x-icon" },
+	{ "jpeg", "image/jpeg" },
+	{ "jpg", "image/jpeg" },
+	{ "png", "image/png" },
+	{ "svg", "image/svg+xml" },
+	{ "tif", "image/tiff" },
+	{ "tiff", "image/tiff" },
+	{ "webp", "image/webp" },
+	/* Audio */
+	{ "aac", "audio/aac" },
+	{ "flac", "audio/flac" },
+	{ "m4a", "audio/mp4" },
+	{ "mp3", "audio/mpeg" },
+	{ "oga", "audio/ogg" },
+	{ "ogg", "audio/ogg" },
+	{ "opus", "audio/opus" },
+	{ "wav", "audio/wav" },
+	{ "weba", "audio/webm" },
+	/* Video */
+	{ "avi", "video/x-msvideo" },
+	{ "m4v", "video/mp4" },
+	{ "mkv", "video/x-matroska" },
+	{ "mov", "video/quicktime" },
+	{ "mp4", "video/mp4" },
+	{ "mpeg", "video/mpeg" },
+	{ "mpg", "video/mpeg" },
+	{ "ogv", "video/ogg" },
+	{ "ts", "video/mp2t" }, /* also text/x-typescript — audio wins per IANA */
+	{ "webm", "video/webm" },
+	/* Application */
+	{ "7z", "application/x-7z-compressed" },
+	{ "doc", "application/msword" },
+	{ "docx",
+	  "application/"
+	  "vnd.openxmlformats-officedocument.wordprocessingml.document" },
+	{ "epub", "application/epub+zip" },
+	{ "gz", "application/gzip" },
+	{ "json", "application/json" },
+	{ "jsonld", "application/ld+json" },
+	{ "mpkg", "application/vnd.apple.installer+xml" },
+	{ "pdf", "application/pdf" },
+	{ "ppt", "application/vnd.ms-powerpoint" },
+	{ "pptx",
+	  "application/"
+	  "vnd.openxmlformats-officedocument.presentationml.presentation" },
+	{ "rar", "application/vnd.rar" },
+	{ "rtf", "application/rtf" },
+	{ "sh", "application/x-sh" },
+	{ "tar", "application/x-tar" },
+	{ "wasm", "application/wasm" },
+	{ "xls", "application/vnd.ms-excel" },
+	{ "xlsx",
+	  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+	{ "xhtml", "application/xhtml+xml" },
+	{ "zip", "application/zip" },
+	/* Fonts */
+	{ "eot", "application/vnd.ms-fontobject" },
+	{ "otf", "font/otf" },
+	{ "ttf", "font/ttf" },
+	{ "woff", "font/woff" },
+	{ "woff2", "font/woff2" },
+};
+
+#define _MIME_TABLE_LEN (sizeof(_MimeTable) / sizeof(_MimeTable[0]))
+
+
+/* -----------------------------------------------------------------------
  * Internal binding property keys
  * ----------------------------------------------------------------------- */
 
@@ -14,15 +109,63 @@
 /* -----------------------------------------------------------------------
  * Forward declarations
  * --------------------------------------------------------------------- */
-extern void	  Push(Interpreter* interpreter, Value* value);
+
+/**
+ * @brief Pushes a value onto the interpreter's stack.
+ * @param interpreter The interpreter instance.
+ * @param value The value to push.
+ * @origin src/interpreter.c:115
+ */
+extern void Push(Interpreter* interpreter, Value* value);
+
+/**
+ * @brief Pops and returns the top value from the interpreter's stack.
+ * @param interpreter The interpreter instance.
+ * @return The popped value.
+ * @origin src/interpreter.c:119
+ */
 extern Value* Popp(Interpreter* interpreter);
+
+/**
+ * @brief Calls a function value with the given arguments.
+ * @param interp The interpreter instance.
+ * @param fn The function value to call.
+ * @param argc The number of arguments.
+ * @param withThis Whether the call includes a 'this' context.
+ * @return The return value of the function call.
+ * @origin src/operation.c:726
+ */
 extern Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
+
+/* -----------------------------------------------------------------------
+ * Lookup a MIME type string for a file extension, e.g. ".jpg" → "image/jpeg".
+ * --------------------------------------------------------------------- */
+static const String _MimeFromExt(const String dot) {
+	if (!dot || dot[1] == '\0')
+		return "application/octet-stream";
+
+	const String ext = dot + 1; /* skip the leading dot */
+
+	/* Lower-case the extension into a small stack buffer. */
+	char   low[16];
+	size_t i = 0;
+	for (; ext[i] && i < sizeof(low) - 1; i++)
+		low[i] = (char) tolower((unsigned char) ext[i]);
+	low[i] = '\0';
+
+	/* Linear scan — table is small enough that binary search buys nothing. */
+	for (size_t j = 0; j < _MIME_TABLE_LEN; j++)
+		if (strcmp(_MimeTable[j].ext, low) == 0)
+			return _MimeTable[j].mime;
+
+	return "application/octet-stream";
+}
 
 /* -----------------------------------------------------------------------
  * Status text helper
  * ----------------------------------------------------------------------- */
 
-static const char* _StatusText(int code) {
+static const String _StatusText(int code) {
 	switch (code) {
 		case 200:
 			return "ok";
@@ -64,9 +207,9 @@ static const char* _StatusText(int code) {
 }
 
 /* Escape a C string for safe embedding inside a JSON string literal. */
-static String _JsonEscape(const char* src) {
+static String _JsonEscape(const String src) {
 	size_t len = 0;
-	for (const char* p = src; *p; p++) {
+	for (String p = src; *p; p++) {
 		switch (*p) {
 			case '"':
 				len += 2;
@@ -88,9 +231,9 @@ static String _JsonEscape(const char* src) {
 				break;
 		}
 	}
-	char* out = (char*) Allocate(len + 1);
-	char* d	  = out;
-	for (const char* p = src; *p; p++) {
+	String out = (String) Allocate(len + 1);
+	String d   = out;
+	for (String p = src; *p; p++) {
 		switch (*p) {
 			case '"':
 				*d++ = '\\';
@@ -129,8 +272,8 @@ static String _JsonEscape(const char* src) {
 #define ROUTE_GROW	   16
 
 typedef struct {
-	char*  method;	/* "GET", "POST", … or NULL = wildcard */
-	char*  path;	/* mg_match() pattern                  */
+	String method;	/* "GET", "POST", … or NULL = wildcard */
+	String path;	/* mg_match() pattern                  */
 	Value* handler; /* callable Value*                    */
 } Route;
 
@@ -173,10 +316,10 @@ static void _AppStateFree(AppState* app) {
 	free(app);
 }
 
-static void _AppAddRoute(AppState*	 app,
-						 const char* method,
-						 const char* path,
-						 Value*		 handler) {
+static void _AppAddRoute(AppState*	  app,
+						 const String method,
+						 const String path,
+						 Value*		  handler) {
 	if (app->count >= app->capacity) {
 		app->capacity += ROUTE_GROW;
 		app->routes	   = realloc(app->routes, sizeof(Route) * app->capacity);
@@ -223,10 +366,10 @@ static Value* _ResSend(Interpreter* interp, int argc, Value** args) {
 	String extra  = (hv && ValueIsStr(hv)) ? ValueToString(hv) : strdup("");
 	String body	  = (argc >= 2) ? ValueToString(args[1]) : strdup("");
 
-	String		escaped = _JsonEscape(body);
-	const char* stxt	= _StatusText(status);
-	size_t		wrapLen = strlen(escaped) + strlen(stxt) + 128;
-	String		wrapped = (String) Allocate(wrapLen);
+	String		 escaped = _JsonEscape(body);
+	const String stxt	 = _StatusText(status);
+	size_t		 wrapLen = strlen(escaped) + strlen(stxt) + 128;
+	String		 wrapped = (String) Allocate(wrapLen);
 	snprintf(wrapped,
 			 wrapLen,
 			 "{\"status\":%d,\"statusText\":\"%s\",\"data\":\"%s\"}",
@@ -270,10 +413,10 @@ static Value* _ResJson(Interpreter* interp, int argc, Value** args) {
 	snprintf(headers, hlen, "Content-Type: application/json\r\n%s", extra);
 	free(extra);
 
-	String		body	= ValueToString(args[1]);
-	const char* stxt	= _StatusText(status);
-	size_t		wrapLen = strlen(body) + strlen(stxt) + 128;
-	String		wrapped = (String) Allocate(wrapLen);
+	String		 body	 = ValueToString(args[1]);
+	const String stxt	 = _StatusText(status);
+	size_t		 wrapLen = strlen(body) + strlen(stxt) + 128;
+	String		 wrapped = (String) Allocate(wrapLen);
 	snprintf(wrapped,
 			 wrapLen,
 			 "{\"status\":%d,\"statusText\":\"%s\",\"data\":%s}",
@@ -420,7 +563,7 @@ static Value* _JsonToValue(Interpreter* interp, struct mg_str tok) {
 		while ((ofs = mg_json_next(tok, ofs, &key, &val)) > 0) {
 			/* key arrives as a quoted JSON string — unescape it */
 			size_t kbuf_sz = key.len + 1;
-			char*  kbuf	   = (char*) Allocate(kbuf_sz);
+			String kbuf	   = (String) Allocate(kbuf_sz);
 			if (key.len >= 2 && key.buf[0] == '"') {
 				mg_json_unescape(mg_str_n(key.buf + 1, key.len - 2),
 								 kbuf,
@@ -449,7 +592,7 @@ static Value* _JsonToValue(Interpreter* interp, struct mg_str tok) {
 	/* string */
 	if (first == '"') {
 		size_t bsz = tok.len + 1;
-		char*  buf = (char*) Allocate(bsz);
+		String buf = (String) Allocate(bsz);
 		mg_json_unescape(mg_str_n(tok.buf + 1, tok.len - 2), buf, bsz);
 		Value* sv = NewStrValue(interp, buf);
 		free(buf);
@@ -476,8 +619,8 @@ static Value* _JsonToValue(Interpreter* interp, struct mg_str tok) {
 
 /* Case-insensitive substring match inside an mg_str header value */
 static bool _HeaderContains(struct mg_http_message* hm,
-							const char*				hdr,
-							const char*				needle) {
+							const String			hdr,
+							const String			needle) {
 	struct mg_str* ct = mg_http_get_header(hm, hdr);
 	if (!ct)
 		return false;
@@ -508,17 +651,17 @@ static Value* _FormToObject(Interpreter* interp, struct mg_str body) {
 	Value*	 obj = NewObjectValue(interp);
 	HashMap* map = CoerceToHashMap(obj);
 
-	const char* p	= body.buf;
-	const char* end = body.buf + body.len;
+	String p   = body.buf;
+	String end = body.buf + body.len;
 
 	while (p < end) {
 		/* find end of this key=value pair */
-		const char* amp = memchr(p, '&', (size_t) (end - p));
+		String amp = memchr(p, '&', (size_t) (end - p));
 		if (!amp)
 			amp = end;
 
 		/* find '=' separator */
-		const char* eq = memchr(p, '=', (size_t) (amp - p));
+		const String eq = memchr(p, '=', (size_t) (amp - p));
 
 		char keyBuf[512], valBuf[2048];
 
@@ -574,46 +717,7 @@ static Value* _MultipartToObject(Interpreter*			 interp,
 			HashMapSet(fileMap, "filename", NewStrValue(interp, fname));
 
 			/* Guess MIME type from file extension */
-			const char* mime = "application/octet-stream";
-			const char* dot	 = strrchr(fname, '.');
-			if (dot) {
-				dot++;
-				if (strcasecmp(dot, "jpg") == 0 || strcasecmp(dot, "jpeg") == 0)
-					mime = "image/jpeg";
-				else if (strcasecmp(dot, "png") == 0)
-					mime = "image/png";
-				else if (strcasecmp(dot, "gif") == 0)
-					mime = "image/gif";
-				else if (strcasecmp(dot, "webp") == 0)
-					mime = "image/webp";
-				else if (strcasecmp(dot, "svg") == 0)
-					mime = "image/svg+xml";
-				else if (strcasecmp(dot, "pdf") == 0)
-					mime = "application/pdf";
-				else if (strcasecmp(dot, "json") == 0)
-					mime = "application/json";
-				else if (strcasecmp(dot, "xml") == 0)
-					mime = "application/xml";
-				else if (strcasecmp(dot, "zip") == 0)
-					mime = "application/zip";
-				else if (strcasecmp(dot, "txt") == 0)
-					mime = "text/plain";
-				else if (strcasecmp(dot, "html") == 0
-						 || strcasecmp(dot, "htm") == 0)
-					mime = "text/html";
-				else if (strcasecmp(dot, "css") == 0)
-					mime = "text/css";
-				else if (strcasecmp(dot, "js") == 0)
-					mime = "application/javascript";
-				else if (strcasecmp(dot, "csv") == 0)
-					mime = "text/csv";
-				else if (strcasecmp(dot, "mp3") == 0)
-					mime = "audio/mpeg";
-				else if (strcasecmp(dot, "mp4") == 0)
-					mime = "video/mp4";
-				else if (strcasecmp(dot, "wav") == 0)
-					mime = "audio/wav";
-			}
+			const String mime = _MimeFromExt(strrchr(fname, '.'));
 
 			HashMapSet(fileMap,
 					   "data",
@@ -628,7 +732,7 @@ static Value* _MultipartToObject(Interpreter*			 interp,
 			HashMapSet(map, key, fileObj);
 		} else {
 			/* Regular text field */
-			char* val = (char*) Allocate(part.body.len + 1);
+			String val = (String) Allocate(part.body.len + 1);
 			memcpy(val, part.body.buf, part.body.len);
 			val[part.body.len] = '\0';
 
@@ -690,7 +794,7 @@ static Value* _BuildReqInstance(Interpreter*			interp,
 	} else if (hm->body.len > 0 && _IsMultipartContentType(hm)) {
 		bodyVal = _MultipartToObject(interp, hm);
 	} else if (hm->body.len > 0) {
-		char* body = (char*) Allocate(hm->body.len + 1);
+		String body = (String) Allocate(hm->body.len + 1);
 		memcpy(body, hm->body.buf, hm->body.len);
 		body[hm->body.len] = '\0';
 		bodyVal			   = NewStrValue(interp, body);
@@ -716,7 +820,7 @@ static Value* _BuildReqInstance(Interpreter*			interp,
 				 "%.*s",
 				 (int) hm->headers[i].value.len,
 				 hm->headers[i].value.buf);
-		for (char* p = hname; *p; p++)
+		for (String p = hname; *p; p++)
 			*p = (char) tolower((unsigned char) *p);
 		HashMapSet(hdrsMap, hname, NewStrValue(interp, hval));
 	}
@@ -999,7 +1103,7 @@ static ModuleFunction _ServerClassMethods[] = {
  * ----------------------------------------------------------------------- */
 
 static Value*
-_BuildClass(Interpreter* interp, const char* name, ModuleFunction methods[]) {
+_BuildClass(Interpreter* interp, const String name, ModuleFunction methods[]) {
 	Value* classVal =
 		NewClassValue(interp, CreateUserClass((String) name, NULL));
 	Class* cls = CoerceToUserClass(classVal);

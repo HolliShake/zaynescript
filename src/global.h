@@ -49,7 +49,7 @@
  * @brief The allocation threshold for triggering garbage
  * collection.
  */
-#define GC_THRESHOLD 4096
+#define GC_THRESHOLD 2048
 
 /**
  * @def VARARG
@@ -151,9 +151,9 @@ typedef struct array_struct {
  * handling in the interpreter.
  */
 typedef struct blob_struct {
-	uint8_t* data;		/** < Pointer to the binary data */
-	size_t	 size;		/** < The size of the data */
-	String	 mime_type; /** < The MIME type of the data */
+	uint8_t* Data;	   /**< Pointer to the binary data */
+	size_t	 Size;	   /**< The size of the data */
+	String	 MimeType; /**< The MIME type of the data */
 } Blob;
 
 /**

@@ -1,8 +1,3 @@
-#include "./global.h"
-
-#ifndef BLOB_H
-#	define BLOB_H
-
 /**
  * @file blob.h
  * @brief Definition of the Blob structure and related functions for
@@ -12,6 +7,19 @@
  * data along with its MIME type, and declares functions for creating
  * Blob values within the interpreter.
  */
-Blob* CreateBlob(uint8_t* data, size_t size, String mime_type);
+
+#include "./global.h"
+
+#ifndef BLOB_H
+#	define BLOB_H
+
+/**
+ * @brief Creates a new Blob from raw binary data.
+ * @param data Pointer to the binary data.
+ * @param size The size of the data in bytes.
+ * @param mimeType The MIME type of the data.
+ * @return A new Blob instance (caller must free).
+ */
+Blob* CreateBlob(uint8_t* data, size_t size, String mimeType);
 
 #endif

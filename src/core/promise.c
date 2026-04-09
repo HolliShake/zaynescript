@@ -1,5 +1,11 @@
 #include "./promise.h"
 
+/**
+ * @brief Enqueues a task (callback) into the interpreter's task queue.
+ * @param interpreter The interpreter instance.
+ * @param task The task value to enqueue.
+ * @origin src/interpreter.c:147
+ */
 extern void EnqueueTask(Interpreter* interpreter, Value* task);
 
 Value* _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {

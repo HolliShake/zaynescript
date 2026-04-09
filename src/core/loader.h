@@ -32,8 +32,8 @@ typedef Value* (*LoadCoreCallback)(Interpreter* interpreter);
  * @brief Mapping of core module names to their loader functions
  */
 typedef struct core_module_mapping_struct {
-	String			 Name;
-	LoadCoreCallback Loader;
+	String			 Name;	 /**< The module name used for lookup */
+	LoadCoreCallback Loader; /**< The loader function for the module */
 } CoreMapper;
 
 /**

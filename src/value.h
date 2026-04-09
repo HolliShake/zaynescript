@@ -202,14 +202,14 @@ Value* NewClassInstanceValue(Interpreter* interpreter, ClassInstance* instance);
  * @param interpreter Pointer to the interpreter instance
  * @param data Pointer to the blob data to store
  * @param size Size of the blob data in bytes
- * @param mime_type MIME type string describing the blob data
+ * @param mimeType MIME type string describing the blob data
  * @return Pointer to newly allocated Value structure containing
  * the blob
  */
 Value* NewBlobValue(Interpreter* interpreter,
 					uint8_t*	 data,
 					size_t		 size,
-					String		 mime_type);
+					String		 mimeType);
 
 /**
  * @brief Creates a new opaque pointer value

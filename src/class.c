@@ -17,9 +17,9 @@ void ClassExtend(Class* cls, Value* base) {
  * @brief Converts a Value to its string representation.
  * @param value The value to convert.
  * @return A newly allocated string (caller must free).
- * @origin src/value.c:129
+ * @origin src/value.c:146
  */
-extern String ValueToString(Value*);
+extern String ValueToString(Value* value);
 
 void ClassDefineMember(Class* cls, Value* key, Value* value, bool isStatic) {
 	String keyStr = ValueToString(key);
@@ -46,9 +46,9 @@ void ClassDefineMemberByString(Class* cls,
  * @brief Checks whether a Value is callable (i.e., a function).
  * @param value The value to check.
  * @return true if the value is callable, false otherwise.
- * @origin src/value.c:325
+ * @origin src/value.c:362
  */
-extern bool ValueIsCallable(Value*);
+extern bool ValueIsCallable(Value* value);
 
 bool ClassHasMember(Class* cls, String key, bool isStatic, bool callable) {
 	// if callable is -1, ignore callable check
