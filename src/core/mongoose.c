@@ -540,7 +540,10 @@ static Value* _FormToObject(Interpreter* interp, struct mg_str body) {
 	return obj;
 }
 
-/* Parse a multipart/form-data body into an object Value */
+/* Parse a multipart/form-data body into an object Value.
+ * Regular text fields become string values.
+ * File fields become objects: { filename, data, size }
+ * where data is a Blob holding the raw binary content. */
 static Value* _MultipartToObject(Interpreter*			 interp,
 								 struct mg_http_message* hm) {
 	Value*				obj = NewObjectValue(interp);
@@ -557,12 +560,81 @@ static Value* _MultipartToObject(Interpreter*			 interp,
 		memcpy(key, part.name.buf, klen);
 		key[klen] = '\0';
 
-		char* val = (char*) Allocate(part.body.len + 1);
-		memcpy(val, part.body.buf, part.body.len);
-		val[part.body.len] = '\0';
+		if (part.filename.len > 0) {
+			/* File upload — wrap in an object with Blob data */
+			Value*	 fileObj = NewObjectValue(interp);
+			HashMap* fileMap = CoerceToHashMap(fileObj);
 
-		HashMapSet(map, key, NewStrValue(interp, val));
-		free(val);
+			char   fname[512];
+			size_t flen = part.filename.len < sizeof(fname) - 1
+							  ? part.filename.len
+							  : sizeof(fname) - 1;
+			memcpy(fname, part.filename.buf, flen);
+			fname[flen] = '\0';
+			HashMapSet(fileMap, "filename", NewStrValue(interp, fname));
+
+			/* Guess MIME type from file extension */
+			const char* mime = "application/octet-stream";
+			const char* dot	 = strrchr(fname, '.');
+			if (dot) {
+				dot++;
+				if (strcasecmp(dot, "jpg") == 0 || strcasecmp(dot, "jpeg") == 0)
+					mime = "image/jpeg";
+				else if (strcasecmp(dot, "png") == 0)
+					mime = "image/png";
+				else if (strcasecmp(dot, "gif") == 0)
+					mime = "image/gif";
+				else if (strcasecmp(dot, "webp") == 0)
+					mime = "image/webp";
+				else if (strcasecmp(dot, "svg") == 0)
+					mime = "image/svg+xml";
+				else if (strcasecmp(dot, "pdf") == 0)
+					mime = "application/pdf";
+				else if (strcasecmp(dot, "json") == 0)
+					mime = "application/json";
+				else if (strcasecmp(dot, "xml") == 0)
+					mime = "application/xml";
+				else if (strcasecmp(dot, "zip") == 0)
+					mime = "application/zip";
+				else if (strcasecmp(dot, "txt") == 0)
+					mime = "text/plain";
+				else if (strcasecmp(dot, "html") == 0
+						 || strcasecmp(dot, "htm") == 0)
+					mime = "text/html";
+				else if (strcasecmp(dot, "css") == 0)
+					mime = "text/css";
+				else if (strcasecmp(dot, "js") == 0)
+					mime = "application/javascript";
+				else if (strcasecmp(dot, "csv") == 0)
+					mime = "text/csv";
+				else if (strcasecmp(dot, "mp3") == 0)
+					mime = "audio/mpeg";
+				else if (strcasecmp(dot, "mp4") == 0)
+					mime = "video/mp4";
+				else if (strcasecmp(dot, "wav") == 0)
+					mime = "audio/wav";
+			}
+
+			HashMapSet(fileMap,
+					   "data",
+					   NewBlobValue(interp,
+									(uint8_t*) part.body.buf,
+									part.body.len,
+									(String) mime));
+			HashMapSet(fileMap,
+					   "size",
+					   NewIntValue(interp, (int) part.body.len));
+
+			HashMapSet(map, key, fileObj);
+		} else {
+			/* Regular text field */
+			char* val = (char*) Allocate(part.body.len + 1);
+			memcpy(val, part.body.buf, part.body.len);
+			val[part.body.len] = '\0';
+
+			HashMapSet(map, key, NewStrValue(interp, val));
+			free(val);
+		}
 	}
 	return obj;
 }

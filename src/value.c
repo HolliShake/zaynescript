@@ -128,6 +128,15 @@ Value* NewClassInstanceValue(Interpreter*	interpreter,
 	return v;
 }
 
+Value* NewBlobValue(Interpreter* interpreter,
+					uint8_t*	 data,
+					size_t		 size,
+					String		 mime_type) {
+	Value* v		= _CreateValue(interpreter, VLT_BLOB);
+	v->Value.Opaque = CreateBlob(data, size, mime_type);
+	return v;
+}
+
 Value* NewOpquePtrValue(Interpreter* interpreter, void* ptr) {
 	Value* v		= _CreateValue(interpreter, VLT_OPAQUE);
 	v->Value.Opaque = ptr;
@@ -239,6 +248,11 @@ String ValueToString(Value* value) {
 						return AllocateString("<Promise.UNKNOWN />");
 				}
 			}
+		case VLT_BLOB:
+			{
+				Blob* blob = CoerceToBlob(value);
+				return FormatString("<Blob size=%zu>", blob->size);
+			}
 		case VLT_OPAQUE:
 			{
 				return AllocateString("<Opaque Pointer>");
@@ -286,6 +300,10 @@ String ValueTypeOf(Value* value) {
 		case VLT_PROMISE:
 			{
 				return "Promise";
+			}
+		case VLT_BLOB:
+			{
+				return "Blob";
 			}
 		case VLT_OPAQUE:
 			{
@@ -363,6 +381,10 @@ bool ValueIsClassInstance(Value* value) {
 
 bool ValueIsPromise(Value* value) {
 	return value->Type == VLT_PROMISE;
+}
+
+bool ValueIsBlob(Value* value) {
+	return value->Type == VLT_BLOB;
 }
 
 bool ValueIsOpaquePtr(Value* value) {
