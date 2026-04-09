@@ -20,6 +20,7 @@
 #include "../function.h"
 #include "../global.h"
 #include "../hashmap.h"
+#include "../statemachine.h"
 #include "../value.h"
 
 

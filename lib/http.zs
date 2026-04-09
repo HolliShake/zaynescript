@@ -1,7 +1,7 @@
-
+import { request } from "core:mongoose";
 
 // ── HTTP Status Codes ─────────────────────────────────────────────────────────
-const StatusCodes = {
+const StatusCode = {
     // 1xx Informational
     Continue:                      100,
     SwitchingProtocols:            101,
@@ -67,4 +67,17 @@ const StatusCodes = {
     InsufficientStorage:           507,
     LoopDetected:                  508,
     NetworkAuthRequired:           511
+};
+
+// ── Request Methods ───────────────────────────────────────────────────────────
+const Method = {
+    GET:     "GET",
+    POST:    "POST",
+    PUT:     "PUT",
+    PATCH:   "PATCH",
+    DELETE:  "DELETE",
+    HEAD:    "HEAD",
+    OPTIONS: "OPTIONS",
+    CONNECT: "CONNECT",
+    TRACE:   "TRACE"
 };

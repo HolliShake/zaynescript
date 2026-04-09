@@ -28,6 +28,7 @@
 // Order patterns
 #include "../libbf/cutils.h"
 #include "../libbf/libbf.h"
+#include "../mongoose/mongoose.h"
 #include "../utf/utf.h"
 
 // Platform-specific includes for aligned allocation
@@ -877,11 +878,13 @@ typedef struct exception_handler_struct {
  * exception handler stack for try-catch blocks.
  */
 struct interpreter_struct {
-	bf_context_t BfContext;		/**< Context for the libbf library
-								   (memory management, etc.) */
-	String ExecPath;			/**< Directory path of the executable */
-	String ModulePath;			/**< Directory path of the main module
-								   (for resolving imports) */
+	bf_context_t BfContext; /**< Context for the libbf library
+							   (memory management, etc.) */
+	String ExecPath;		/**< Directory path of the executable */
+	String ModulePath;		/**< Directory path of the main module
+							   (for resolving imports) */
+	struct mg_mgr MgMgr; /**< Mongoose manager for handling HTTP requests (used
+						  * in native modules) */
 	ImportNode* ImportHead;		/**< Head of the linked list of
 								   imported modules */
 	HashMap* Imports;			/**< Imports map */

@@ -1,5 +1,7 @@
 #include "./function.h"
 
+#include "global.h"
+
 UserFunction* CreateUserFunction(String name, int argc, bool async) {
 	UserFunction* userFunction = Allocate(sizeof(UserFunction));
 	userFunction->Scope		   = NULL;
@@ -95,6 +97,22 @@ int UserFunctionAddCapture(UserFunction* userFunction,
 		Reallocate(userFunction->Captures,
 				   sizeof(EnvCell*) * (userFunction->CaptureC + 1));
 	return offset;
+}
+
+Value* UserFunctionGetCapture(UserFunction* userFunction, int captureIndex) {
+	if (captureIndex < 0 || captureIndex >= userFunction->CaptureC) {
+		return NULL;
+	}
+	return userFunction->Captures[captureIndex]->Value;
+}
+
+void UserFunctionSetCapture(UserFunction* userFunction,
+							int			  captureIndex,
+							Value*		  value) {
+	if (captureIndex < 0 || captureIndex >= userFunction->CaptureC) {
+		return;
+	}
+	userFunction->Captures[captureIndex]->Value = value;
 }
 
 String UserFunctionToString(UserFunction* userFunction) {

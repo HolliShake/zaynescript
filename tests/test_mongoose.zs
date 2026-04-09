@@ -75,3 +75,67 @@ app.delete("/todos/:id", fn (req, res) {
 app.listen(3001, fn (msg) {
     println(msg);
 });
+
+
+
+const app2 = new Server();
+
+app2.use(fn (req, res) {
+    /* middleware – runs before every route */
+});
+
+// GET /todos – list all todos
+app2.get("/todos", fn (req, res) {
+    const rows = stmtGetAll.all();
+    res.status(200).json(rows);
+});
+
+// GET /todos/:id – get a single todo
+app2.get("/todos/:id", fn (req, res) {
+    const todo = stmtGetOne.get(req.params.id);
+    if (todo == null) {
+        res.status(404).json({ error: "Todo not found" });
+    } else {
+        res.status(200).json(todo);
+    }
+});
+
+// POST /todos – create a new todo
+app2.post("/todos", fn (req, res) async {
+    const body  = req.body;
+    const info  = stmtInsert.run({ title: body.title, completed: body.completed });
+    const todo  = stmtGetOne.get(info.lastInsertRowid);
+    res.status(201).json(todo);
+});
+
+// PUT /todos/:id – update a todo (title and/or completed)
+app2.put("/todos/:id", fn (req, res) {
+    const existing = stmtGetOne.get(req.params.id);
+    if (existing == null) {
+        res.status(404).json({ error: "Todo not found" });
+    } else {
+        const body = req.body;
+        stmtUpdate.run({
+            id:        req.params.id,
+            title:     body.title,
+            completed: body.completed
+        });
+        const updated = stmtGetOne.get(req.params.id);
+        res.status(200).json(updated);
+    }
+});
+
+// DELETE /todos/:id – remove a todo
+app2.delete("/todos/:id", fn (req, res) {
+    const existing = stmtGetOne.get(req.params.id);
+    if (existing == null) {
+        res.status(404).json({ error: "Todo not found" });
+    } else {
+        stmtDelete.run(req.params.id);
+        res.status(200).json({ message: "Todo deleted" });
+    }
+});
+
+app2.listen(3002, fn (msg) {
+    println(msg);
+});
