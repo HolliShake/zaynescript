@@ -19,6 +19,109 @@ extern Value* Popp(Interpreter* interpreter);
 extern Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
 
 /* -----------------------------------------------------------------------
+ * Status text helper
+ * ----------------------------------------------------------------------- */
+
+static const char* _StatusText(int code) {
+	switch (code) {
+		case 200:
+			return "ok";
+		case 201:
+			return "created";
+		case 204:
+			return "no content";
+		case 301:
+			return "moved permanently";
+		case 302:
+			return "found";
+		case 304:
+			return "not modified";
+		case 400:
+			return "bad request";
+		case 401:
+			return "unauthorized";
+		case 403:
+			return "forbidden";
+		case 404:
+			return "not found";
+		case 405:
+			return "method not allowed";
+		case 409:
+			return "conflict";
+		case 422:
+			return "unprocessable entity";
+		case 429:
+			return "too many requests";
+		case 500:
+			return "internal server error";
+		case 502:
+			return "bad gateway";
+		case 503:
+			return "service unavailable";
+		default:
+			return "unknown";
+	}
+}
+
+/* Escape a C string for safe embedding inside a JSON string literal. */
+static String _JsonEscape(const char* src) {
+	size_t len = 0;
+	for (const char* p = src; *p; p++) {
+		switch (*p) {
+			case '"':
+				len += 2;
+				break;
+			case '\\':
+				len += 2;
+				break;
+			case '\n':
+				len += 2;
+				break;
+			case '\r':
+				len += 2;
+				break;
+			case '\t':
+				len += 2;
+				break;
+			default:
+				len += 1;
+				break;
+		}
+	}
+	char* out = (char*) Allocate(len + 1);
+	char* d	  = out;
+	for (const char* p = src; *p; p++) {
+		switch (*p) {
+			case '"':
+				*d++ = '\\';
+				*d++ = '"';
+				break;
+			case '\\':
+				*d++ = '\\';
+				*d++ = '\\';
+				break;
+			case '\n':
+				*d++ = '\\';
+				*d++ = 'n';
+				break;
+			case '\r':
+				*d++ = '\\';
+				*d++ = 'r';
+				break;
+			case '\t':
+				*d++ = '\\';
+				*d++ = 't';
+				break;
+			default:
+				*d++ = *p;
+				break;
+		}
+	}
+	*d = '\0';
+	return out;
+}
+
+/* -----------------------------------------------------------------------
  * Internal C structures
  * ----------------------------------------------------------------------- */
 
@@ -114,15 +217,33 @@ static Value* _ResSend(Interpreter* interp, int argc, Value** args) {
 	if (ctx->responded)
 		return interp->Null;
 
-	Value* sv	   = (Value*) HashMapGet(cls->Members, PROP_RES_STATUS);
-	int	   status  = (sv && ValueIsInt(sv)) ? sv->Value.I32 : 200;
-	Value* hv	   = (Value*) HashMapGet(cls->Members, PROP_RES_HDRSTR);
-	String headers = (hv && ValueIsStr(hv)) ? ValueToString(hv) : strdup("");
-	String body	   = (argc >= 2) ? ValueToString(args[1]) : strdup("");
+	Value* sv	  = (Value*) HashMapGet(cls->Members, PROP_RES_STATUS);
+	int	   status = (sv && ValueIsInt(sv)) ? sv->Value.I32 : 200;
+	Value* hv	  = (Value*) HashMapGet(cls->Members, PROP_RES_HDRSTR);
+	String extra  = (hv && ValueIsStr(hv)) ? ValueToString(hv) : strdup("");
+	String body	  = (argc >= 2) ? ValueToString(args[1]) : strdup("");
 
-	mg_http_reply(ctx->conn, status, headers, "%s", body);
+	String		escaped = _JsonEscape(body);
+	const char* stxt	= _StatusText(status);
+	size_t		wrapLen = strlen(escaped) + strlen(stxt) + 128;
+	String		wrapped = (String) Allocate(wrapLen);
+	snprintf(wrapped,
+			 wrapLen,
+			 "{\"status\":%d,\"statusText\":\"%s\",\"data\":\"%s\"}",
+			 status,
+			 stxt,
+			 escaped);
+
+	size_t hlen	   = strlen(extra) + 64;
+	String headers = (String) Allocate(hlen);
+	snprintf(headers, hlen, "Content-Type: application/json\r\n%s", extra);
+
+	mg_http_reply(ctx->conn, status, headers, "%s", wrapped);
 	ctx->responded = true;
 	free(body);
+	free(escaped);
+	free(wrapped);
+	free(extra);
 	free(headers);
 	return interp->Null;
 }
@@ -149,10 +270,21 @@ static Value* _ResJson(Interpreter* interp, int argc, Value** args) {
 	snprintf(headers, hlen, "Content-Type: application/json\r\n%s", extra);
 	free(extra);
 
-	String body = ValueToString(args[1]);
-	mg_http_reply(ctx->conn, status, headers, "%s", body);
+	String		body	= ValueToString(args[1]);
+	const char* stxt	= _StatusText(status);
+	size_t		wrapLen = strlen(body) + strlen(stxt) + 128;
+	String		wrapped = (String) Allocate(wrapLen);
+	snprintf(wrapped,
+			 wrapLen,
+			 "{\"status\":%d,\"statusText\":\"%s\",\"data\":%s}",
+			 status,
+			 stxt,
+			 body);
+
+	mg_http_reply(ctx->conn, status, headers, "%s", wrapped);
 	ctx->responded = true;
 	free(body);
+	free(wrapped);
 	free(headers);
 	return interp->Null;
 }
@@ -182,11 +314,21 @@ static Value* _ResRedirect(Interpreter* interp, int argc, Value** args) {
 		return interp->Null;
 
 	String location = ValueToString(args[1]);
+	String escaped	= _JsonEscape(location);
 	char   header[512];
-	snprintf(header, sizeof(header), "Location: %s\r\n", location);
-	mg_http_reply(ctx->conn, 302, header, "");
+	snprintf(header,
+			 sizeof(header),
+			 "Location: %s\r\nContent-Type: application/json\r\n",
+			 location);
+	char wrapped[1024];
+	snprintf(wrapped,
+			 sizeof(wrapped),
+			 "{\"status\":302,\"statusText\":\"found\",\"data\":\"%s\"}",
+			 escaped);
+	mg_http_reply(ctx->conn, 302, header, "%s", wrapped);
 	ctx->responded = true;
 	free(location);
+	free(escaped);
 	return interp->Null;
 }
 
@@ -332,19 +474,97 @@ static Value* _JsonToValue(Interpreter* interp, struct mg_str tok) {
 	return NewNumValue(interp, dv);
 }
 
-/* Detect "application/json" in the Content-Type header */
-static bool _IsJsonContentType(struct mg_http_message* hm) {
-	struct mg_str* ct = mg_http_get_header(hm, "Content-Type");
+/* Case-insensitive substring match inside an mg_str header value */
+static bool _HeaderContains(struct mg_http_message* hm,
+							const char*				hdr,
+							const char*				needle) {
+	struct mg_str* ct = mg_http_get_header(hm, hdr);
 	if (!ct)
 		return false;
-	/* search for "application/json" substring, case-insensitive */
-	const char* needle = "application/json";
-	size_t		nlen   = 16;
+	size_t nlen = strlen(needle);
 	for (size_t j = 0; j + nlen <= ct->len; j++) {
 		if (strncasecmp(ct->buf + j, needle, nlen) == 0)
 			return true;
 	}
 	return false;
+}
+
+static bool _IsJsonContentType(struct mg_http_message* hm) {
+	return _HeaderContains(hm, "Content-Type", "application/json");
+}
+
+static bool _IsFormContentType(struct mg_http_message* hm) {
+	return _HeaderContains(hm,
+						   "Content-Type",
+						   "application/x-www-form-urlencoded");
+}
+
+static bool _IsMultipartContentType(struct mg_http_message* hm) {
+	return _HeaderContains(hm, "Content-Type", "multipart/form-data");
+}
+
+/* Parse an application/x-www-form-urlencoded body into an object Value */
+static Value* _FormToObject(Interpreter* interp, struct mg_str body) {
+	Value*	 obj = NewObjectValue(interp);
+	HashMap* map = CoerceToHashMap(obj);
+
+	const char* p	= body.buf;
+	const char* end = body.buf + body.len;
+
+	while (p < end) {
+		/* find end of this key=value pair */
+		const char* amp = memchr(p, '&', (size_t) (end - p));
+		if (!amp)
+			amp = end;
+
+		/* find '=' separator */
+		const char* eq = memchr(p, '=', (size_t) (amp - p));
+
+		char keyBuf[512], valBuf[2048];
+
+		if (eq) {
+			mg_url_decode(p, (size_t) (eq - p), keyBuf, sizeof(keyBuf), 1);
+			mg_url_decode(eq + 1,
+						  (size_t) (amp - eq - 1),
+						  valBuf,
+						  sizeof(valBuf),
+						  1);
+		} else {
+			mg_url_decode(p, (size_t) (amp - p), keyBuf, sizeof(keyBuf), 1);
+			valBuf[0] = '\0';
+		}
+
+		HashMapSet(map, keyBuf, NewStrValue(interp, valBuf));
+		p = amp < end ? amp + 1 : end;
+	}
+	return obj;
+}
+
+/* Parse a multipart/form-data body into an object Value */
+static Value* _MultipartToObject(Interpreter*			 interp,
+								 struct mg_http_message* hm) {
+	Value*				obj = NewObjectValue(interp);
+	HashMap*			map = CoerceToHashMap(obj);
+	struct mg_http_part part;
+	size_t				ofs = 0;
+
+	while ((ofs = mg_http_next_multipart(hm->body, ofs, &part)) > 0) {
+		if (part.name.len == 0)
+			continue;
+		char   key[512];
+		size_t klen =
+			part.name.len < sizeof(key) - 1 ? part.name.len : sizeof(key) - 1;
+		memcpy(key, part.name.buf, klen);
+		key[klen] = '\0';
+
+		char* val = (char*) Allocate(part.body.len + 1);
+		memcpy(val, part.body.buf, part.body.len);
+		val[part.body.len] = '\0';
+
+		HashMapSet(map, key, NewStrValue(interp, val));
+		free(val);
+	}
+	return obj;
 }
 
 /* -----------------------------------------------------------------------
@@ -387,11 +607,16 @@ static Value* _BuildReqInstance(Interpreter*			interp,
 				 hm->query.buf);
 	HashMapSet(inst->Members, "query", NewStrValue(interp, query));
 
-	/* body: parse as JSON object if Content-Type is application/json,
-	 * otherwise expose as a plain string */
+	/* body: parse as JSON if application/json, as object if
+	 * application/x-www-form-urlencoded or multipart/form-data,
+	 * otherwise plain string */
 	Value* bodyVal;
 	if (hm->body.len > 0 && _IsJsonContentType(hm)) {
 		bodyVal = _JsonToValue(interp, mg_str_n(hm->body.buf, hm->body.len));
+	} else if (hm->body.len > 0 && _IsFormContentType(hm)) {
+		bodyVal = _FormToObject(interp, mg_str_n(hm->body.buf, hm->body.len));
+	} else if (hm->body.len > 0 && _IsMultipartContentType(hm)) {
+		bodyVal = _MultipartToObject(interp, hm);
 	} else if (hm->body.len > 0) {
 		char* body = (char*) Allocate(hm->body.len + 1);
 		memcpy(body, hm->body.buf, hm->body.len);
@@ -503,11 +728,38 @@ static void _EvHandler(struct mg_connection* c, int ev, void* ev_data) {
 		Push(interp, resVal);
 		Push(interp, reqVal);
 		DoCall(interp, r->handler, 2, false);
-		Popp(interp);
+		Value* result = Popp(interp);
+
+		if ((ValueIsPromise(result)
+			 && CoerceToStateMachine(result)->State == REJECTED)) {
+			StateMachine* sm	  = CoerceToStateMachine(result);
+			String		  errMsg  = ValueToString(sm->Value);
+			String		  escaped = _JsonEscape(errMsg);
+			size_t		  wlen	  = strlen(escaped) + 128;
+			String		  wrapped = (String) Allocate(wlen);
+			snprintf(wrapped,
+					 wlen,
+					 "{\"status\":500,\"statusText\":\"internal server error\","
+					 "\"data\":\"%s\"}",
+					 escaped);
+			mg_http_reply(c,
+						  500,
+						  "Content-Type: application/json\r\n",
+						  "%s",
+						  wrapped);
+			ctx.responded = true;
+			free(errMsg);
+			free(escaped);
+			free(wrapped);
+		}
 	}
 
 	if (!matched && !ctx.responded)
-		mg_http_reply(c, 404, "", "Not Found");
+		mg_http_reply(
+			c,
+			404,
+			"Content-Type: application/json\r\n",
+			"{\"status\":404,\"statusText\":\"not found\",\"data\":\"\"}");
 }
 
 /* -----------------------------------------------------------------------

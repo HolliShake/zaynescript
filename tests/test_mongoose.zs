@@ -37,7 +37,7 @@ app.get("/todos/:id", fn (req, res) {
 });
 
 // POST /todos – create a new todo
-app.post("/todos", fn (req, res) {
+app.post("/todos", fn (req, res) async {
     const body  = req.body;
     const info  = stmtInsert.run({ title: body.title, completed: 0 });
     const todo  = stmtGetOne.get(info.lastInsertRowid);
