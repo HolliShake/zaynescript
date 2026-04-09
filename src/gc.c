@@ -133,7 +133,7 @@ static void _Free(Interpreter* interp, Value* value) {
 			}
 		case VLT_OPAQUE:
 			{
-				//  Do not free sqlite  here!
+				//  Do not free!
 				value->Value.Opaque = NULL;
 				break;
 			}
@@ -335,9 +335,8 @@ static size_t _Sweep(Interpreter* interpreter) {
 }
 
 void GarbageCollect(Interpreter* interpreter) {
-	// printf("GC: Starting garbage collection... Allocated = %d
-	// bytes, Threshold = %d bytes\n", interpreter->Allocated,
-	// interpreter->GcThreshold);
+	// printf("GC: Starting garbage collection. Allocated bytes: %d\n",
+	// 	   interpreter->Allocated);
 	Mark(interpreter->GcRoot);
 	Mark(interpreter->Array);
 	Mark(interpreter->Date);
