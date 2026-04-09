@@ -143,6 +143,20 @@ typedef struct array_struct {
 } Array;
 
 /**
+ * @struct blob_struct
+ * @brief Represents binary data with an associated MIME type.
+ *
+ * This structure is used to store raw binary data (e.g., file
+ * contents, images) along with its size and MIME type for proper
+ * handling in the interpreter.
+ */
+typedef struct blob_struct {
+	uint8_t* data;		/** < Pointer to the binary data */
+	size_t	 size;		/** < The size of the data */
+	String	 mime_type; /** < The MIME type of the data */
+} Blob;
+
+/**
  * @struct hashnode_struct
  * @brief Node structure for hash map entries.
  *
@@ -410,6 +424,7 @@ typedef enum value_type_enum {
 	VLT_USER_FUNCTION,	/**< User-defined function value */
 	VLT_NATV_FUNCTION,	/**< Native function value */
 	VLT_ENVIRONMENT,	/**< Environment value */
+	VLT_BLOB,			/**< Blob value */
 	VLT_OPAQUE			/**< Opaque pointer value */
 } ValueType;
 
@@ -1297,6 +1312,17 @@ ClassInstance* CoerceToClassInstance(Value* value);
  * @return Pointer to the StateMachine.
  */
 StateMachine* CoerceToStateMachine(Value* value);
+
+/**
+ * @brief Coerces a value to a Blob.
+ *
+ * Extracts the Blob pointer from a value. The value must be of
+ * type VLT_BLOB.
+ *
+ * @param value The value to coerce.
+ * @return Pointer to the Blob.
+ */
+Blob* CoerceToBlob(Value* value);
 
 // Error Handling
 

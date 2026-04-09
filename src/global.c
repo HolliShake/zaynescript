@@ -311,6 +311,15 @@ StateMachine* CoerceToStateMachine(Value* value) {
 	Panic("Value is not a Promise/StateMachine");
 }
 
+Blob* CoerceToBlob(Value* value) {
+	if (value == NULL)
+		return NULL;
+	if (value->Type == VLT_BLOB) {
+		return (Blob*) value->Value.Opaque;
+	}
+	Panic("Value is not a Blob");
+}
+
 String
 GetErrorLine(String path, Rune* runes, Position position, String message) {
 	if (runes == NULL) {

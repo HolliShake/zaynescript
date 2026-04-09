@@ -10,10 +10,13 @@
  */
 
 #include "./array.h"
+#include "./blob.h"
 #include "./class.h"
 #include "./function.h"
 #include "./global.h"
 #include "./hashmap.h"
+
+#include <stdint.h>
 
 #ifndef VALUE_H
 #	define VALUE_H
@@ -194,6 +197,21 @@ Value* NewClassValue(Interpreter* interpreter, Class* cls);
 Value* NewClassInstanceValue(Interpreter* interpreter, ClassInstance* instance);
 
 /**
+ * @brief Creates a new blob value
+ *
+ * @param interpreter Pointer to the interpreter instance
+ * @param data Pointer to the blob data to store
+ * @param size Size of the blob data in bytes
+ * @param mime_type MIME type string describing the blob data
+ * @return Pointer to newly allocated Value structure containing
+ * the blob
+ */
+Value* NewBlobValue(Interpreter* interpreter,
+					uint8_t*	 data,
+					size_t		 size,
+					String		 mime_type);
+
+/**
  * @brief Creates a new opaque pointer value
  *
  * @param interpreter Pointer to the interpreter instance
@@ -348,6 +366,14 @@ bool ValueIsClass(Value* value);
  * @return true if the value is a class instance, false otherwise
  */
 bool ValueIsClassInstance(Value* value);
+
+/**
+ * @brief Checks if a value is a blob
+ *
+ * @param value Pointer to the Value to check
+ * @return true if the value is a blob, false otherwise
+ */
+bool ValueIsBlob(Value* value);
 
 /**
  * @brief Checks if a value is an opaque pointer
