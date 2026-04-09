@@ -109,8 +109,32 @@ static const MimeEntry _MimeTable[] = {
 /* -----------------------------------------------------------------------
  * Forward declarations
  * --------------------------------------------------------------------- */
-extern void	  Push(Interpreter* interpreter, Value* value);
+
+/**
+ * @brief Pushes a value onto the interpreter's stack.
+ * @param interpreter The interpreter instance.
+ * @param value The value to push.
+ * @origin src/interpreter.c:115
+ */
+extern void Push(Interpreter* interpreter, Value* value);
+
+/**
+ * @brief Pops and returns the top value from the interpreter's stack.
+ * @param interpreter The interpreter instance.
+ * @return The popped value.
+ * @origin src/interpreter.c:119
+ */
 extern Value* Popp(Interpreter* interpreter);
+
+/**
+ * @brief Calls a function value with the given arguments.
+ * @param interp The interpreter instance.
+ * @param fn The function value to call.
+ * @param argc The number of arguments.
+ * @param withThis Whether the call includes a 'this' context.
+ * @return The return value of the function call.
+ * @origin src/operation.c:726
+ */
 extern Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
 
 /* -----------------------------------------------------------------------
