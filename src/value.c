@@ -131,9 +131,9 @@ Value* NewClassInstanceValue(Interpreter*	interpreter,
 Value* NewBlobValue(Interpreter* interpreter,
 					uint8_t*	 data,
 					size_t		 size,
-					String		 mime_type) {
+					String		 mimeType) {
 	Value* v		= _CreateValue(interpreter, VLT_BLOB);
-	v->Value.Opaque = CreateBlob(data, size, mime_type);
+	v->Value.Opaque = CreateBlob(data, size, mimeType);
 	return v;
 }
 
@@ -251,7 +251,9 @@ String ValueToString(Value* value) {
 		case VLT_BLOB:
 			{
 				Blob* blob = CoerceToBlob(value);
-				return FormatString("<Blob size=%zu>", blob->size);
+				return FormatString("<Blob mime=%s,size=%zu>",
+									blob->MimeType,
+									blob->Size);
 			}
 		case VLT_OPAQUE:
 			{

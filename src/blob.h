@@ -12,6 +12,6 @@
  * data along with its MIME type, and declares functions for creating
  * Blob values within the interpreter.
  */
-Blob* CreateBlob(uint8_t* data, size_t size, String mime_type);
+Blob* CreateBlob(uint8_t* data, size_t size, String mimeType);
 
 #endif

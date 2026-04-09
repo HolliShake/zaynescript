@@ -118,6 +118,19 @@ static void _Free(Interpreter* interp, Value* value) {
 				value->Value.Opaque = NULL;
 				break;
 			}
+		case VLT_BLOB:
+			{
+				Blob* blob = CoerceToBlob(value);
+				if (blob != NULL) {
+					if (blob->Data != NULL) {
+						free(blob->Data);
+						blob->Data = NULL;
+					}
+					free(blob);
+					value->Value.Opaque = NULL;
+				}
+				break;
+			}
 		case VLT_OPAQUE:
 			{
 				//  Do not free sqlite  here!
