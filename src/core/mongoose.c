@@ -476,8 +476,8 @@ static Value* _JsonToValue(Interpreter* interp, struct mg_str tok) {
 
 /* Case-insensitive substring match inside an mg_str header value */
 static bool _HeaderContains(struct mg_http_message* hm,
-							const char* hdr,
-							const char* needle) {
+							const char*				hdr,
+							const char*				needle) {
 	struct mg_str* ct = mg_http_get_header(hm, hdr);
 	if (!ct)
 		return false;
@@ -494,7 +494,8 @@ static bool _IsJsonContentType(struct mg_http_message* hm) {
 }
 
 static bool _IsFormContentType(struct mg_http_message* hm) {
-	return _HeaderContains(hm, "Content-Type",
+	return _HeaderContains(hm,
+						   "Content-Type",
 						   "application/x-www-form-urlencoded");
 }
 
@@ -507,26 +508,29 @@ static Value* _FormToObject(Interpreter* interp, struct mg_str body) {
 	Value*	 obj = NewObjectValue(interp);
 	HashMap* map = CoerceToHashMap(obj);
 
-	const char* p   = body.buf;
+	const char* p	= body.buf;
 	const char* end = body.buf + body.len;
 
 	while (p < end) {
 		/* find end of this key=value pair */
-		const char* amp = memchr(p, '&', (size_t)(end - p));
+		const char* amp = memchr(p, '&', (size_t) (end - p));
 		if (!amp)
 			amp = end;
 
 		/* find '=' separator */
-		const char* eq = memchr(p, '=', (size_t)(amp - p));
+		const char* eq = memchr(p, '=', (size_t) (amp - p));
 
 		char keyBuf[512], valBuf[2048];
 
 		if (eq) {
-			mg_url_decode(p, (size_t)(eq - p), keyBuf, sizeof(keyBuf), 1);
-			mg_url_decode(eq + 1, (size_t)(amp - eq - 1), valBuf,
-						  sizeof(valBuf), 1);
+			mg_url_decode(p, (size_t) (eq - p), keyBuf, sizeof(keyBuf), 1);
+			mg_url_decode(eq + 1,
+						  (size_t) (amp - eq - 1),
+						  valBuf,
+						  sizeof(valBuf),
+						  1);
 		} else {
-			mg_url_decode(p, (size_t)(amp - p), keyBuf, sizeof(keyBuf), 1);
+			mg_url_decode(p, (size_t) (amp - p), keyBuf, sizeof(keyBuf), 1);
 			valBuf[0] = '\0';
 		}
 
@@ -537,20 +541,19 @@ static Value* _FormToObject(Interpreter* interp, struct mg_str body) {
 }
 
 /* Parse a multipart/form-data body into an object Value */
-static Value* _MultipartToObject(Interpreter*		   interp,
+static Value* _MultipartToObject(Interpreter*			 interp,
 								 struct mg_http_message* hm) {
-	Value*			  obj = NewObjectValue(interp);
-	HashMap*		  map = CoerceToHashMap(obj);
+	Value*				obj = NewObjectValue(interp);
+	HashMap*			map = CoerceToHashMap(obj);
 	struct mg_http_part part;
-	size_t			  ofs = 0;
+	size_t				ofs = 0;
 
 	while ((ofs = mg_http_next_multipart(hm->body, ofs, &part)) > 0) {
 		if (part.name.len == 0)
 			continue;
-		char key[512];
-		size_t klen = part.name.len < sizeof(key) - 1
-						  ? part.name.len
-						  : sizeof(key) - 1;
+		char   key[512];
+		size_t klen =
+			part.name.len < sizeof(key) - 1 ? part.name.len : sizeof(key) - 1;
 		memcpy(key, part.name.buf, klen);
 		key[klen] = '\0';
 
@@ -611,8 +614,7 @@ static Value* _BuildReqInstance(Interpreter*			interp,
 	if (hm->body.len > 0 && _IsJsonContentType(hm)) {
 		bodyVal = _JsonToValue(interp, mg_str_n(hm->body.buf, hm->body.len));
 	} else if (hm->body.len > 0 && _IsFormContentType(hm)) {
-		bodyVal = _FormToObject(interp,
-								mg_str_n(hm->body.buf, hm->body.len));
+		bodyVal = _FormToObject(interp, mg_str_n(hm->body.buf, hm->body.len));
 	} else if (hm->body.len > 0 && _IsMultipartContentType(hm)) {
 		bodyVal = _MultipartToObject(interp, hm);
 	} else if (hm->body.len > 0) {
