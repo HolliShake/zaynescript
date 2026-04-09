@@ -337,11 +337,14 @@ Value* GenericGetAttribute(Interpreter* interpreter,
 		free(st);
 		if (!ValueIsAnyNum(index)) {
 			free(key);
+			String idxStr = ValueToString(index);
 			String errMsg =
-				FormatString("%s: string indices must be integers, not %s",
+				FormatString("%s: string indices must be integers, not %s (%s)",
 							 TYPE_ERROR,
-							 ValueTypeOf(index));
+							 ValueTypeOf(index),
+							 idxStr);
 			Value* errVal = NewErrorValue(interpreter, errMsg);
+			free(idxStr);
 			free(errMsg);
 			return errVal;
 		}
