@@ -180,9 +180,10 @@ struct hashnode_struct {
  * resolution. Keys are strings and values are generic pointers.
  */
 typedef struct hashmap_struct {
-	size_t	  Size;	   /**< Total number of buckets in the hash map */
-	size_t	  Count;   /**< Current number of entries in the hash map */
-	HashNode* Buckets; /**< Array of hash node buckets */
+	size_t	  Size;		/**< Total number of buckets in the hash map */
+	size_t	  Count;	/**< Current number of entries in the hash map */
+	HashNode* Buckets;	/**< Array of hash node buckets */
+	bool	  ReadOnly; /**< Flag indicating if the hash map is read-only */
 } HashMap;
 
 // -----------------------------------------------------------------------------

@@ -167,40 +167,118 @@ static const String _MimeFromExt(const String dot) {
 
 static const String _StatusText(int code) {
 	switch (code) {
+		case 100:
+			return "continue";
+		case 101:
+			return "switching protocols";
+		case 102:
+			return "processing";
+		case 103:
+			return "early hints";
 		case 200:
 			return "ok";
 		case 201:
 			return "created";
+		case 202:
+			return "accepted";
+		case 203:
+			return "non-authoritative information";
 		case 204:
 			return "no content";
+		case 205:
+			return "reset content";
+		case 206:
+			return "partial content";
+		case 300:
+			return "multiple choices";
 		case 301:
 			return "moved permanently";
 		case 302:
 			return "found";
+		case 303:
+			return "see other";
 		case 304:
 			return "not modified";
+		case 307:
+			return "temporary redirect";
+		case 308:
+			return "permanent redirect";
 		case 400:
 			return "bad request";
 		case 401:
 			return "unauthorized";
+		case 402:
+			return "payment required";
 		case 403:
 			return "forbidden";
 		case 404:
 			return "not found";
 		case 405:
 			return "method not allowed";
+		case 406:
+			return "not acceptable";
+		case 407:
+			return "proxy authentication required";
+		case 408:
+			return "request timeout";
 		case 409:
 			return "conflict";
+		case 410:
+			return "gone";
+		case 411:
+			return "length required";
+		case 412:
+			return "precondition failed";
+		case 413:
+			return "payload too large";
+		case 414:
+			return "uri too long";
+		case 415:
+			return "unsupported media type";
+		case 416:
+			return "range not satisfiable";
+		case 417:
+			return "expectation failed";
+		case 418:
+			return "i'm a teapot";
+		case 421:
+			return "misdirected request";
 		case 422:
 			return "unprocessable entity";
+		case 423:
+			return "locked";
+		case 424:
+			return "failed dependency";
+		case 425:
+			return "too early";
+		case 426:
+			return "upgrade required";
+		case 428:
+			return "precondition required";
 		case 429:
 			return "too many requests";
+		case 431:
+			return "request header fields too large";
+		case 451:
+			return "unavailable for legal reasons";
 		case 500:
 			return "internal server error";
+		case 501:
+			return "not implemented";
 		case 502:
 			return "bad gateway";
 		case 503:
 			return "service unavailable";
+		case 504:
+			return "gateway timeout";
+		case 505:
+			return "http version not supported";
+		case 507:
+			return "insufficient storage";
+		case 508:
+			return "loop detected";
+		case 511:
+			return "network authentication required";
 		default:
 			return "unknown";
 	}
