@@ -1,5 +1,7 @@
 #include "./interpreter.h"
 
+#include <stdlib.h>
+
 static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
 	// libbf uses size == 0 to signal a free() operation
 	if (size == 0) {
@@ -456,6 +458,26 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 	if (uf == NULL)
 		InterpreterPanic("Attempted to run a non-function value of type %s",
 						 ValueTypeOf(fnValue));
+
+	{
+		uint8_t* _jit_fn = ZJitCompile(interpreter, uf);
+		if (_jit_fn != NULL) {
+			ZJittedFn _jf = (ZJittedFn) (void*) _jit_fn;
+			Value*	  _je = (Value*) _jf(interpreter,
+										 (void**) interpreter->Constants,
+										 interpreter->CallEnv,
+										 interpreter->RootEnv,
+										 uf);
+			if (_je != NULL && ValueIsError(_je)) {
+				/* The JIT function encountered a runtime error.  Raise it
+				   through the normal interpreter error path so try/catch in
+				   the calling frame (if any) is honoured. */
+				size_t _ip_err = 0;
+				_RaiseError(interpreter, uf, &_ip_err, _je);
+			}
+			return;
+		}
+	}
 
 #define Forward(size)		   (ip += size)
 #define JmpFrwd(addr)		   (ip = addr)

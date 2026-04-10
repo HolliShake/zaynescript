@@ -640,6 +640,7 @@ typedef struct user_function_struct {
 	int			 CaptureC;	   /**< Count of captured variables */
 	struct envcell_struct**
 		Captures;			   /**< Array of captured environment cells */
+	void* JitFn; /**< Compiled JIT function pointer, or NULL if not yet compiled */
 } UserFunction;
 
 /**

@@ -21,6 +21,7 @@ ALL_SRCS   := main.c \
               $(wildcard utf/*.c) \
               $(wildcard utf/utf8proc/*.c) \
               $(wildcard libbf/*.c) \
+			  $(wildcard jit/*.c) \
               $(wildcard mongoose/*.c)\
               $(wildcard sqlite/*.c)
 
@@ -48,7 +49,7 @@ BUILD_DATE := $(shell date '+%Y-%m-%d %H:%M:%S')
 
 # ── Base Flags (Applied to all targets) ─────────────────────
 CFLAGS_BASE := -Wno-pointer-sign -DBUILD_DATE='"$(BUILD_DATE)"'
-LDFLAGS     := -lm -ldl -lpthread
+LDFLAGS     := -lm -ldl -lpthread -ltcc
 
 # Default RPATH points to the directory containing the executable ($ORIGIN)
 RPATH_FLAG  := -Wl,-rpath,'$$ORIGIN'

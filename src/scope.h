@@ -32,6 +32,7 @@
  * (immutable)
  * @param offset The offset of the symbol in the function's
  * local variables array
+ * @param referenceCount Initial reference count for the symbol
  * @return Pointer to the newly created Symbol structure, or
  * NULL on allocation failure
  */

@@ -17,6 +17,7 @@ UserFunction* CreateUserFunction(String name, int argc, bool async) {
 	userFunction->CaptureMetas = Allocate(sizeof(CaptureMeta) * 1);
 	userFunction->CaptureC	   = 0;
 	userFunction->Captures	   = Allocate(sizeof(EnvCell*) * 1);
+	userFunction->JitFn		   = NULL;
 	return userFunction;
 }
 
@@ -35,6 +36,7 @@ UserFunction* CreateMainUserFunction(String name, int argc) {
 	userFunction->CaptureMetas = Allocate(sizeof(CaptureMeta) * 1);
 	userFunction->CaptureC	   = 0;
 	userFunction->Captures	   = Allocate(sizeof(EnvCell*) * 1);
+	userFunction->JitFn		   = NULL;
 	return userFunction;
 }
 

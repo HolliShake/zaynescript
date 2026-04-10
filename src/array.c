@@ -75,7 +75,7 @@ void ArrayExtend(Array* array, Array* other) {
  * @brief Checks if a Value is a string.
  * @param value The value to check.
  * @return true if the value is a string, false otherwise.
- * @origin src/value.c:338
+ * @origin src/value.c:340
  */
 extern bool ValueIsStr(Value* value);
 

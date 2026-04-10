@@ -22,7 +22,7 @@
  * @brief Pushes a value onto the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @param value The value to push.
- * @origin src/interpreter.c:115
+ * @origin src/interpreter.c:118
  */
 extern void Push(Interpreter* interpreter, Value* value);
 
@@ -31,7 +31,7 @@ extern void Push(Interpreter* interpreter, Value* value);
  * stack.
  * @param interpreter The interpreter instance.
  * @return The popped value.
- * @origin src/interpreter.c:119
+ * @origin src/interpreter.c:122
  */
 extern Value* Popp(Interpreter* interpreter);
 
@@ -39,7 +39,7 @@ extern Value* Popp(Interpreter* interpreter);
  * @brief Pops N values from the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @param n The number of values to pop.
- * @origin src/interpreter.c:123
+ * @origin src/interpreter.c:126
  */
 extern void PopN(Interpreter* interpreter, int n);
 
@@ -48,7 +48,7 @@ extern void PopN(Interpreter* interpreter, int n);
  * without removing it.
  * @param interpreter The interpreter instance.
  * @return The top value on the stack.
- * @origin src/interpreter.c:127
+ * @origin src/interpreter.c:130
  */
 extern Value* Peek(Interpreter* interpreter);
 
@@ -84,7 +84,7 @@ static void _DupTop(Interpreter* interpreter) {
  * function value.
  * @param interpreter The interpreter instance.
  * @param fnValue The compiled function value to execute.
- * @origin src/interpreter.c:416
+ * @origin src/interpreter.c:423
  */
 extern void Run(Interpreter* interpreter, Value* fnValue);
 
@@ -730,14 +730,14 @@ Value* DoCallMethod(Interpreter* interpreter,
  * @param interpreter The interpreter instance.
  * @param line The source line information for the call.
  * @param fn The function value being called.
- * @origin src/interpreter.c:135
+ * @origin src/interpreter.c:138
  */
 extern void PushTrace(Interpreter* interpreter, LineInfo line, Value* fn);
 
 /**
  * @brief Pops the top stack trace entry after a function call returns.
  * @param interpreter The interpreter instance.
- * @origin src/interpreter.c:142
+ * @origin src/interpreter.c:145
  */
 extern void PopTrace(Interpreter* interpreter);
 
