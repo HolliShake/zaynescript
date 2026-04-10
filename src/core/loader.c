@@ -1,14 +1,20 @@
+
 #include "./loader.h"
 
 CoreMapper _CoreModuleMappers[] = {
 	{ .Name = "io", .Loader = LoadCoreIo },
 	{ .Name = "os", .Loader = LoadCoreOs },
 	{ .Name = "math", .Loader = LoadCoreMath },
-	{ .Name = "Date", .Loader = LoadCoreDate },
-	{ .Name = "Array", .Loader = LoadCoreArray },
-	{ .Name = "Promise", .Loader = LoadCorePromise },
-	{ .Name = "sqlite", .Loader = LoadCoreSqlite },
+	{ .Name = "date", .Loader = LoadCoreDate },
+	{ .Name = "object", .Loader = LoadCoreObject },
+	{ .Name = "array", .Loader = LoadCoreArray },
+	{ .Name = "promise", .Loader = LoadCorePromise },
 	{ .Name = "mongoose", .Loader = LoadCoreMongoose },
+// Do not map these library on minimal builds to save space, and because they
+// are not commonly
+#ifndef ZSMINIMAL
+	{ .Name = "sqlite", .Loader = LoadCoreSqlite },
+#endif
 	// End marker
 	{ .Name = NULL, .Loader = NULL }
 };

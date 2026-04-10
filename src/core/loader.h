@@ -13,10 +13,10 @@
 #include "./io.h"
 #include "./math.h"
 #include "./mongoose.h"
+#include "./object.h"
 #include "./os.h"
 #include "./promise.h"
 #include "./sqlite.h"
-
 
 #ifndef CORE_LOADER_H
 #	define CORE_LOADER_H

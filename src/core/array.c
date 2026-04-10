@@ -248,8 +248,9 @@ Value* CreateArrayClass(Interpreter* interpreter) {
 }
 
 Value* LoadCoreArray(Interpreter* interpreter) {
-	Value* val = (interpreter->Array != NULL) ? interpreter->Array
-											  : CreateArrayClass(interpreter);
+	Value* val = (interpreter->Array != NULL)
+					 ? interpreter->Array
+					 : (interpreter->Array = CreateArrayClass(interpreter));
 
 	Value*	 module = NewObjectValue(interpreter);
 	HashMap* map	= CoerceToHashMap(module);

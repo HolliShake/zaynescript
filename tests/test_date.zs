@@ -1,5 +1,5 @@
 import { println } from "core:io";
-import { Date } from "core:Date";
+import { Date } from "core:date";
 
 
 println("Testing Date module...");

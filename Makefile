@@ -2,99 +2,143 @@
 #  Makefile for zscript
 # ============================================================
 
-TARGET   := zscript.exe
+DIST_DIR   := dist
+TARGET     := $(DIST_DIR)/zscript.exe
+SQLITE_LIB := $(DIST_DIR)/libsqlite3.so
 
-CC       := clang
-CFLAGS   := -Wno-pointer-sign -fsanitize=address,leak -g3 -fno-omit-frame-pointer -fno-optimize-sibling-calls
-CFLAGSR  := -Wno-pointer-sign
+# Forced to clang to prevent GCC cc1 errors with -flto=thin
+CC         := clang
 
-# ── Super-optimized release flags ──────────────────────────
-CFLAGS_OPT := -O3 -march=native -mtune=native \
-              -flto=thin -fomit-frame-pointer -funroll-loops -fno-plt \
-              -ffunction-sections -fdata-sections \
-              -fmerge-all-constants -fno-semantic-interposition \
-              -fno-math-errno -fno-trapping-math \
-              -fstrict-aliasing -fvectorize -fslp-vectorize \
-              -pipe -DNDEBUG
+# ── Directories ─────────────────────────────────────────────
+PREFIX     ?= /usr/local
+BINDIR     ?= $(PREFIX)/bin
+LIBDIR     ?= $(PREFIX)/lib/zscript
 
-LDFLAGS_OPT := -flto=thin -fuse-ld=lld -Wl,--gc-sections -Wl,-O2 -Wl,--strip-all
+# ── Source Files ────────────────────────────────────────────
+ALL_SRCS   := main.c \
+              $(wildcard src/*.c) \
+              $(wildcard src/core/*.c) \
+              $(wildcard utf/*.c) \
+              $(wildcard utf/utf8proc/*.c) \
+              $(wildcard libbf/*.c) \
+              $(wildcard mongoose/*.c)\
+              $(wildcard sqlite/*.c)
 
-# Build date stamp
+# Exclude SQLite for dynamic builds
+DYN_EXCLUDES := sqlite/%
+
+# Helper macro to build exclude patterns for each feature
+MIN_EXCLUDES := $(foreach f,$(MINIMAL_DISABLE_FEATURES),$f/% )
+
+# Helper: Is a feature enabled? Usage: $(call feature_enabled,sqlite)
+feature_enabled = $(if $(findstring $(1),$(MINIMAL_DISABLE_FEATURES)),0,1)
+
+# Filter sources based on target
+ifeq ($(MAKECMDGOALS),minimal)
+    SRCS := $(filter-out $(MIN_EXCLUDES),$(ALL_SRCS))
+else ifeq ($(MAKECMDGOALS),release)
+    SRCS := $(filter-out $(DYN_EXCLUDES),$(ALL_SRCS))
+else ifeq ($(MAKECMDGOALS),debug)
+    SRCS := $(filter-out $(DYN_EXCLUDES),$(ALL_SRCS))
+else
+    SRCS := $(ALL_SRCS)
+endif
+
 BUILD_DATE := $(shell date '+%Y-%m-%d %H:%M:%S')
 
-# Source files
-SRCS     := main.c \
-            $(wildcard src/*.c) \
-            $(wildcard src/core/*.c) \
-            $(wildcard utf/*.c) \
-            $(wildcard utf/utf8proc/*.c) \
-            $(wildcard libbf/*.c)
+# ── Base Flags (Applied to all targets) ─────────────────────
+CFLAGS_BASE := -Wno-pointer-sign -DBUILD_DATE='"$(BUILD_DATE)"'
+LDFLAGS     := -lm -ldl -lpthread
 
-SQLITE_SO   := sqlite/libsqlite3.so
-MONGOOSE_SO := mongoose/libmongoose.so
+# Default RPATH points to the directory containing the executable ($ORIGIN)
+RPATH_FLAG  := -Wl,-rpath,'$$ORIGIN'
 
-LDFLAGS       := -lm -ldl -lpthread -Lsqlite -lsqlite3 -Lmongoose -lmongoose -Wl,-rpath,'$$ORIGIN/sqlite' -Wl,-rpath,'$$ORIGIN/mongoose'
-LDFLAGS_INST  := -lm -ldl -lpthread -Lsqlite -lsqlite3 -Lmongoose -lmongoose -Wl,-rpath,'$$ORIGIN/../lib/zscript' -Wl,-rpath,'$$ORIGIN/../lib/zscript'
+# ── Debug Flags ─────────────────────────────────────────────
+CFLAGS_DBG  := -g3 -O0 -fsanitize=address,leak -fno-omit-frame-pointer -fno-optimize-sibling-calls
 
-# ----------------------------------------------------------------
+# ── Release Flags (Super-optimized for speed) ───────────────
+CFLAGS_REL  := -O3 -march=native -mtune=native \
+               -flto=thin -fomit-frame-pointer -funroll-loops -fno-plt \
+               -ffunction-sections -fdata-sections \
+               -fmerge-all-constants -fno-semantic-interposition \
+               -fno-math-errno -fno-trapping-math \
+               -fstrict-aliasing -fvectorize -fslp-vectorize \
+               -pipe -DNDEBUG
+LDFLAGS_REL := -flto=thin -fuse-ld=lld -Wl,--gc-sections -Wl,-O2 -Wl,--strip-all
 
-PREFIX   ?= /usr/local
-BINDIR   ?= $(PREFIX)/bin
-LIBDIR   ?= $(PREFIX)/lib/zscript
+# ── Minimal Flags (Super-optimized for speed + ZSMINIMAL) ───
+CFLAGS_MIN  := -O3 -march=native -mtune=native \
+               -flto=thin -fomit-frame-pointer -funroll-loops -fno-plt \
+               -ffunction-sections -fdata-sections \
+               -fmerge-all-constants -fno-semantic-interposition \
+               -fno-math-errno -fno-trapping-math \
+               -fstrict-aliasing -fvectorize -fslp-vectorize \
+               -pipe -DNDEBUG -DZSMINIMAL
+LDFLAGS_MIN := -flto=thin -fuse-ld=lld -Wl,--gc-sections -Wl,-O2 -Wl,--strip-all
 
-.PHONY: all release release-install debug clean run install uninstall amalgamate
+# Features to disable in minimal mode (space-separated)
+MINIMAL_DISABLE_FEATURES := sqlite
+
+# ============================================================
+#  Targets
+# ============================================================
+
+.PHONY: all release release-install minimal debug clean run install uninstall amalgamate copy_assets
 
 all: debug
 
-release: $(SQLITE_SO) $(MONGOOSE_SO)
-	@echo "Building in release mode (clang, super-optimized)..."
-	$(CC) $(CFLAGSR) $(CFLAGS_OPT) -DBUILD_DATE='"$(BUILD_DATE)"' $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_OPT)
-	@echo "Build successful → $(TARGET)"
+$(DIST_DIR):
+	mkdir -p $(DIST_DIR)
 
-release-install: $(SQLITE_SO) $(MONGOOSE_SO)
-	@echo "Building in release mode (install RPATH)..."
-	$(CC) $(CFLAGSR) $(CFLAGS_OPT) -DBUILD_DATE='"$(BUILD_DATE)"' $(SRCS) -o $(TARGET) $(LDFLAGS_INST) $(LDFLAGS_OPT)
-	@echo "Build successful → $(TARGET)"
+copy_assets: | $(DIST_DIR)
+	@cp -rn lib $(DIST_DIR)/ 2>/dev/null || true
+	@cp -rn tests $(DIST_DIR)/ 2>/dev/null || true
 
-debug: $(SQLITE_SO) $(MONGOOSE_SO)
-	@echo "Building in debug mode..."
-	$(CC) $(CFLAGS) -O0 -DBUILD_DATE='"$(BUILD_DATE)"' $(SRCS) -o $(TARGET) $(LDFLAGS)
-	@echo "Build successful → $(TARGET)"
-
-$(SQLITE_SO): sqlite/sqlite3.c
+# SQLite shared library build rule
+$(SQLITE_LIB): sqlite/sqlite3.c | $(DIST_DIR)
 	@echo "Building SQLite shared library..."
 	$(CC) -fPIC -shared -O2 -o $@ $<
 
-$(MONGOOSE_SO): mongoose/mongoose.c
-	@echo "Building Mongoose shared library..."
-	$(CC) -fPIC -shared -O2 -o $@ $<
+release: $(SQLITE_LIB) copy_assets | $(DIST_DIR)
+	@echo "Building in release mode (clang, super-optimized, sqlite dynamic)..."
+	$(CC) $(CFLAGS_BASE) $(CFLAGS_REL) $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_REL) -L$(DIST_DIR) -lsqlite3 $(RPATH_FLAG)
+	@echo "Build successful → $(TARGET)"
+
+# Override RPATH for installation so the binary knows to look in $(LIBDIR) at runtime
+release-install: RPATH_FLAG := -Wl,-rpath,'$(LIBDIR)'
+release-install: $(SQLITE_LIB) copy_assets | $(DIST_DIR)
+	@echo "Building in release mode (install RPATH, sqlite dynamic)..."
+	$(CC) $(CFLAGS_BASE) $(CFLAGS_REL) $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_REL) -L$(DIST_DIR) -lsqlite3 $(RPATH_FLAG)
+	@echo "Build successful → $(TARGET)"
+
+minimal: copy_assets | $(DIST_DIR)
+	@echo "Building in minimal mode (super-optimized speed, sqlite completely disabled, ZSMINIMAL defined)..."
+	$(CC) $(CFLAGS_BASE) $(CFLAGS_MIN) $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_MIN)
+	@echo "Build successful → $(TARGET)"
+
+debug: $(SQLITE_LIB) copy_assets | $(DIST_DIR)
+	@echo "Building in debug mode (sqlite dynamic)..."
+	$(CC) $(CFLAGS_BASE) $(CFLAGS_DBG) $(SRCS) -o $(TARGET) $(LDFLAGS) -L$(DIST_DIR) -lsqlite3 $(RPATH_FLAG)
+	@echo "Build successful → $(TARGET)"
 
 clean:
-	rm -f $(TARGET) $(SQLITE_SO) $(MONGOOSE_SO)
+	rm -rf $(DIST_DIR)
 
 install: release-install
 	@echo "Installing $(TARGET) → $(BINDIR)/zscript"
 	install -d $(BINDIR)
 	install -m 755 $(TARGET) $(BINDIR)/zscript
 	install -d $(LIBDIR)
-	@if [ ! -f $(LIBDIR)/libsqlite3.so ]; then \
-		echo "Installing $(SQLITE_SO) → $(LIBDIR)/libsqlite3.so"; \
-		install -m 755 $(SQLITE_SO) $(LIBDIR)/libsqlite3.so; \
-	else \
-		echo "Skipping $(LIBDIR)/libsqlite3.so (already exists)"; \
-	fi
-	@if [ ! -f $(LIBDIR)/libmongoose.so ]; then \
-		echo "Installing $(MONGOOSE_SO) → $(LIBDIR)/libmongoose.so"; \
-		install -m 755 $(MONGOOSE_SO) $(LIBDIR)/libmongoose.so; \
-	else \
-		echo "Skipping $(LIBDIR)/libmongoose.so (already exists)"; \
-	fi
 	@echo "Installing lib → $(LIBDIR)/lib/"
 	cd lib && find . -type d -exec install -d $(LIBDIR)/lib/{} \; \
-	       && find . -type f -exec install -m 644 {} $(LIBDIR)/lib/{} \;
+           && find . -type f -exec install -m 644 {} $(LIBDIR)/lib/{} \;
 	@echo "Installing tests → $(LIBDIR)/tests/"
 	cd tests && find . -type d -exec install -d $(LIBDIR)/tests/{} \; \
-	         && find . -type f -exec install -m 644 {} $(LIBDIR)/tests/{} \;
+             && find . -type f -exec install -m 644 {} $(LIBDIR)/tests/{} \;
+	@if [ "$(call feature_enabled,sqlite)" != "0" ]; then \
+		echo "Installing sqlite/libsqlite3.so → $(LIBDIR)/libsqlite3.so"; \
+		install -m 755 $(SQLITE_LIB) $(LIBDIR)/libsqlite3.so; \
+	fi
 
 uninstall:
 	@echo "Removing $(BINDIR)/zscript"

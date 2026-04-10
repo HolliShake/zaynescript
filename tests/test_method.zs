@@ -1,6 +1,6 @@
 import { println, format } from "core:io";
 import { abs, ceil, cos, floor, hypot, max, min, pow, round, sin, sqrt, pi, e } from "core:math";
-import { Date } from "core:Date";
+import { Date } from "core:date";
 
 const arr = [1,2];
 

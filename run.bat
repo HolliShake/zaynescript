@@ -2,47 +2,44 @@
 cls
 chcp 65001 >nul
 
-set "OUT_DIR=win32"
+set "OUT_DIR=dist"
 set "EXE=%OUT_DIR%\zscript.exe"
-set "DLL=%OUT_DIR%\sqlite3.dll"
-set "MONGOOSE_DLL=%OUT_DIR%\mongoose.dll"
-set "LIB_DIR=%OUT_DIR%\lib"
+set "SQLITE_DLL=%OUT_DIR%\sqlite3.dll"
 
 :: Build timestamp comes from GCC __DATE__ / __TIME__ (see main.c); no wmic/PowerShell.
 
 :: ── Ensure output directory structure exists ─────────────────────────────────
 if not exist "%OUT_DIR%" mkdir "%OUT_DIR%"
-if not exist "%LIB_DIR%" mkdir "%LIB_DIR%"
 
-:: ── Build sqlite3.dll into win32\ if not already present ─────────────────────
-if not exist "%DLL%" (
-    echo Building SQLite DLL...
-    gcc -shared -O2 -o "%DLL%" sqlite\sqlite3.c -Wl,--out-implib,sqlite\libsqlite3.a
-)
-if not exist "%DLL%" (
-    echo Error: Failed to build sqlite3.dll
-    exit /b 1
-)
+:: ── Sync assets directly into dist\ ──────────────────────────────────────────
+xcopy /e /i /y lib "%OUT_DIR%\lib" >nul
+xcopy /e /i /y tests "%OUT_DIR%\tests" >nul
 
-:: ── Build mongoose.dll into win32\ if not already present ────────────────────
-if not exist "%MONGOOSE_DLL%" (
-    echo Building Mongoose DLL...
-    gcc -shared -O2 -o "%MONGOOSE_DLL%" mongoose\mongoose.c -Wl,--out-implib,mongoose\libmongoose.a -lws2_32
-)
-if not exist "%MONGOOSE_DLL%" (
-    echo Error: Failed to build mongoose.dll
-    exit /b 1
-)
-
-:: ── Kill any running copy ─────────────────────────────────────────────────────
+:: ── Kill any running copy ────────────────────────────────────────────────────
 if exist "%EXE%" (
     taskkill /f /im zscript.exe 2>nul
     timeout /t 1 >nul
     del /f /q "%EXE%" 2>nul
 )
 
-:: ── Compile ───────────────────────────────────────────────────────────────────
-if "%1"=="--release" (
+:: ── Build SQLite Shared Library (Dynamic) ────────────────────────────────────
+if not "%1"=="--minimal" (
+    echo Building SQLite shared library...
+    gcc -O2 -shared sqlite\sqlite3.c -o "%SQLITE_DLL%"
+    if errorlevel 1 (
+        echo Error: Failed to build sqlite3.dll
+        pause
+        exit /b 1
+    )
+)
+
+:: ── Compile EXEs ─────────────────────────────────────────────────────────────
+if "%1"=="--minimal" (
+    echo Building in minimal mode (sqlite completely disabled, ZSMINIMAL defined)...
+    gcc -O3 -DNDEBUG -DZSMINIMAL -Wno-pointer-sign ^
+        main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c mongoose\*.c ^
+        -o "%EXE%" -lm
+) else if "%1"=="--release" (
     echo Building in release mode...
     echo Compiling icon resource ^(docs\zs.ico^)...
     windres -O coff -i zscript.rc -o "%OUT_DIR%\zscript-icon.o"
@@ -53,13 +50,13 @@ if "%1"=="--release" (
     rem LTO + --gc-sections: smaller/faster exe; -Wl,-s strips symbols (MinGW).
     rem NUMBER_OF_PROCESSORS is a system env var (safe to expand inside this block).
     gcc -O3 -DNDEBUG -flto=%NUMBER_OF_PROCESSORS% -fno-semantic-interposition -ffunction-sections -fdata-sections -fno-ident -Wno-pointer-sign ^
-        main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c "%OUT_DIR%\zscript-icon.o" ^
-        -o "%EXE%" -lm -Lsqlite -lsqlite3 -Lmongoose -lmongoose -Wl,--gc-sections -Wl,-s
+        main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c mongoose\*.c "%OUT_DIR%\zscript-icon.o" ^
+        -o "%EXE%" "%SQLITE_DLL%" -lm -Wl,--gc-sections -Wl,-s
 ) else (
     echo Building in debug mode...
     gcc -g -O0 -Wno-pointer-sign ^
-        main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c ^
-        -o "%EXE%" -lm -Lsqlite -lsqlite3 -Lmongoose -lmongoose
+        main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c mongoose\*.c ^
+        -o "%EXE%" "%SQLITE_DLL%" -lm
 )
 
 if not exist "%EXE%" (
@@ -68,10 +65,7 @@ if not exist "%EXE%" (
     exit /b 1
 )
 
-:: ── Sync lib\ folder into win32\lib\ ─────────────────────────────────────────
-xcopy /e /i /y lib "%LIB_DIR%" >nul
-
-echo Build successful ^> %EXE%
+echo Build successful -^> %EXE%
 
 :: ── Dispatch on flag ─────────────────────────────────────────────────────────
 if "%1"=="--compile" (

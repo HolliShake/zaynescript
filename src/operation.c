@@ -618,6 +618,12 @@ DoSetIndex(Interpreter* interpreter, Value* obj, Value* index, Value* val) {
 		array->Items[idx] = val;
 	} else if (ValueIsObject(obj)) {
 		HashMap* map = CoerceToHashMap(obj);
+		if (map->ReadOnly) {
+			free(hashKey);
+			return NewErrorFValue(interpreter,
+								  "%s: cannot set index on read-only object",
+								  TYPE_ERROR);
+		}
 		HashMapSet(map, hashKey, val);
 		free(hashKey);
 	} else if (ValueIsClassInstance(obj)) {

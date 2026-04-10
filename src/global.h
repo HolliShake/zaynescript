@@ -888,6 +888,7 @@ struct interpreter_struct {
 	ImportNode* ImportHead;		/**< Head of the linked list of
 								   imported modules */
 	HashMap* Imports;			/**< Imports map */
+	Value*	 Object;			/**< Built-in Object class */
 	Value*	 Array;				/**< Built-in Array class */
 	Value*	 Date;				/**< Built-in Date class */
 	Value*	 Promise;			/**< Built-in Promise class */

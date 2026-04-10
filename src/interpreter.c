@@ -21,6 +21,7 @@ Interpreter* CreateInterpreter(String execPath) {
 	interpreter->GcRoot		  = NULL;
 	interpreter->RootEnv	  = NULL;
 	interpreter->CallEnv	  = NULL;
+	interpreter->Object		  = CreateObjectClass(interpreter);
 	interpreter->Array		  = CreateArrayClass(interpreter);
 	interpreter->Date		  = CreateDateClass(interpreter);
 	interpreter->Promise	  = CreatePromiseClass(interpreter);
