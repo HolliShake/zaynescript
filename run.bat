@@ -36,7 +36,7 @@ if not "%1"=="--minimal" (
 :: ── Compile EXEs ─────────────────────────────────────────────────────────────
 if "%1"=="--minimal" (
     echo Building in minimal mode (sqlite completely disabled, ZSMINIMAL defined)...
-    gcc -O3 -DNDEBUG -DZSMINIMAL -Wno-pointer-sign ^
+    gcc -O3 -DNDEBUG -DZSMINIMAL -DMG_ENABLE_LOG=0 -Wno-pointer-sign ^
         main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c mongoose\*.c ^
         -o "%EXE%" -lm
 ) else if "%1"=="--release" (
@@ -49,7 +49,7 @@ if "%1"=="--minimal" (
     )
     rem LTO + --gc-sections: smaller/faster exe; -Wl,-s strips symbols (MinGW).
     rem NUMBER_OF_PROCESSORS is a system env var (safe to expand inside this block).
-    gcc -O3 -DNDEBUG -flto=%NUMBER_OF_PROCESSORS% -fno-semantic-interposition -ffunction-sections -fdata-sections -fno-ident -Wno-pointer-sign ^
+    gcc -O3 -DNDEBUG -DMG_ENABLE_LOG=0 -flto=%NUMBER_OF_PROCESSORS% -fno-semantic-interposition -ffunction-sections -fdata-sections -fno-ident -Wno-pointer-sign ^
         main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c mongoose\*.c "%OUT_DIR%\zscript-icon.o" ^
         -o "%EXE%" "%SQLITE_DLL%" -lm -Wl,--gc-sections -Wl,-s
 ) else (

@@ -46,9 +46,6 @@ Interpreter* CreateInterpreter(String execPath) {
 	interpreter->TaskQueueC	   = 0;
 	interpreter->ActiveTask	   = NULL;
 	mg_mgr_init(&interpreter->MgMgr);
-#ifdef NDEBUG
-	mg_log_set(MG_LL_NONE);
-#endif
 	return interpreter;
 }
 

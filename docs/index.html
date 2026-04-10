@@ -1,136 +1,173 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ZayneScript — A Scripting Language Written in C</title>
-    <meta name="description"
-        content="ZayneScript is a dynamic, interpreted scripting language written in pure C with first-class functions, closures, async/await, classes, and a rich standard library including an HTTP server." />
+    <meta
+      name="description"
+      content="ZayneScript is a dynamic, interpreted scripting language written in pure C with first-class functions, closures, async/await, classes, and a rich standard library including an HTTP server."
+    />
     <link rel="stylesheet" href="style.css" />
-    <link rel="icon" type="image/x-icon" href="zs.ico">
-    <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+    <link rel="icon" type="image/x-icon" href="zs.ico" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css"
+    />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script>document.addEventListener('DOMContentLoaded', () => hljs.highlightAll());</script>
-</head>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => hljs.highlightAll());
+    </script>
+  </head>
 
-<body>
-
+  <body>
     <!-- ================================================================
      Header
      ================================================================ -->
     <header class="site-header">
-        <a class="logo" href="index.html">Zayne<span>Script</span></a>
-        <nav>
-            <a href="index.html" class="active">Home</a>
-            <a href="language.html">Language Guide</a>
-            <a href="stdlib.html">Standard Library</a>
-            <a href="https://github.com/HolliShake/zaynescript" target="_blank" rel="noopener">GitHub</a>
-        </nav>
+      <a class="logo" href="index.html">Zayne<span>Script</span></a>
+      <nav>
+        <a href="index.html" class="active">Home</a>
+        <a href="language.html">Language Guide</a>
+        <a href="stdlib.html">Standard Library</a>
+        <a
+          href="https://github.com/HolliShake/zaynescript"
+          target="_blank"
+          rel="noopener"
+          >GitHub</a
+        >
+      </nav>
     </header>
 
     <!-- ================================================================
      Hero
      ================================================================ -->
     <section class="hero">
-        <div class="hero-badge">v1.0 · Written in Pure C</div>
-        <h1>ZayneScript</h1>
-        <p>
-            A dynamic, interpreted scripting language written in pure C.
-            First-class functions, closures, async/await, BigInt, OOP, and a
-            rich built-in standard library — all in a single executable.
-        </p>
-        <div class="btn-group">
-            <a class="btn btn-primary" href="language.html">Language Guide</a>
-            <a class="btn btn-secondary" href="stdlib.html">Standard Library</a>
-            <a class="btn btn-secondary" href="#quick-start">Quick Start</a>
-        </div>
+      <div class="hero-badge">v1.0 · Written in Pure C</div>
+      <h1>ZayneScript</h1>
+      <p>
+        A dynamic, interpreted scripting language written in pure C. First-class
+        functions, closures, async/await, BigInt, OOP, and a rich built-in
+        standard library — all in a single executable.
+      </p>
+      <div class="btn-group">
+        <a class="btn btn-primary" href="language.html">Language Guide</a>
+        <a class="btn btn-secondary" href="stdlib.html">Standard Library</a>
+        <a class="btn btn-secondary" href="#quick-start">Quick Start</a>
+      </div>
     </section>
 
     <!-- ================================================================
      Features
      ================================================================ -->
-    <div class="page-content" style="padding-top: 0;">
-
-        <div class="features-grid">
-            <div class="feature-card">
-                <div class="feature-icon">⚡</div>
-                <h3>Dynamic Typing</h3>
-                <p>Variables hold any type at runtime. No annotations required — write expressive code without ceremony.
-                </p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">🔒</div>
-                <h3>First-Class Functions</h3>
-                <p>Functions are values. Pass them around, return them from other functions, and capture variables in
-                    closures.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">🔄</div>
-                <h3>Async / Await</h3>
-                <p>Declare <code>async</code> functions and use <code>await</code> to suspend execution. Includes
-                    Promise chaining with <code>.then()</code> and <code>.error()</code>.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">🔢</div>
-                <h3>BigInt Support</h3>
-                <p>Arbitrary-precision integers using the <code>n</code> suffix — <code>100n + 2n</code>. No overflow
-                    surprises with large numbers.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">🏗️</div>
-                <h3>Object-Oriented</h3>
-                <p>Class-based inheritance, constructors, static methods/properties, and <code>this</code> binding.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">📦</div>
-                <h3>Module System</h3>
-                <p>Named and wildcard imports, <code>core:</code> built-ins, <code>lib:</code> user libraries, and
-                    relative path imports.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">🗃️</div>
-                <h3>Rich Data Structures</h3>
-                <p>Dynamic arrays with methods (<code>push</code>, <code>pop</code>, <code>each</code>,
-                    <code>keep</code>), and flexible key-value objects with spread syntax.
-                </p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">🎛️</div>
-                <h3>Expressive Control Flow</h3>
-                <p><code>if</code>/<code>for</code>/<code>while</code>/<code>do-while</code>, <code>switch</code>
-                    expressions, <code>try</code>/<code>catch</code>, and ternary forms.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">📚</div>
-                <h3>Standard Library</h3>
-                <p>Built-in modules for I/O, math, OS utilities, arrays, dates, and promises. Import only what you need.
-                </p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">🌐</div>
-                <h3>HTTP Server</h3>
-                <p>Express.js-style HTTP server via <code>core:mongoose</code>. Register GET/POST/… routes, attach
-                    middleware, and serve JSON APIs — all from ZayneScript.</p>
-            </div>
+    <div class="page-content" style="padding-top: 0">
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Dynamic Typing</h3>
+          <p>
+            Variables hold any type at runtime. No annotations required — write
+            expressive code without ceremony.
+          </p>
         </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔒</div>
+          <h3>First-Class Functions</h3>
+          <p>
+            Functions are values. Pass them around, return them from other
+            functions, and capture variables in closures.
+          </p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔄</div>
+          <h3>Async / Await</h3>
+          <p>
+            Declare <code>async</code> functions and use <code>await</code> to
+            suspend execution. Includes Promise chaining with
+            <code>.then()</code> and <code>.error()</code>.
+          </p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔢</div>
+          <h3>BigInt Support</h3>
+          <p>
+            Arbitrary-precision integers using the <code>n</code> suffix —
+            <code>100n + 2n</code>. No overflow surprises with large numbers.
+          </p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🏗️</div>
+          <h3>Object-Oriented</h3>
+          <p>
+            Class-based inheritance, constructors, static methods/properties,
+            and <code>this</code> binding.
+          </p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📦</div>
+          <h3>Module System</h3>
+          <p>
+            Named and wildcard imports, <code>core:</code> built-ins,
+            <code>lib:</code> user libraries, and relative path imports.
+          </p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🗃️</div>
+          <h3>Rich Data Structures</h3>
+          <p>
+            Dynamic arrays with methods (<code>push</code>, <code>pop</code>,
+            <code>each</code>, <code>keep</code>), and flexible key-value
+            objects with spread syntax.
+          </p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🎛️</div>
+          <h3>Expressive Control Flow</h3>
+          <p>
+            <code>if</code
+            >/<code>for</code>/<code>while</code>/<code>do-while</code>,
+            <code>switch</code> expressions,
+            <code>try</code>/<code>catch</code>, <code>raise</code>,
+            <code>assert</code>, and ternary forms.
+          </p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📚</div>
+          <h3>Standard Library</h3>
+          <p>
+            Nine <code>core:</code> modules (I/O, math, OS, objects, arrays,
+            dates, promises, HTTP, SQLite) — plus optional
+            <code>make minimal</code> builds without SQLite.
+          </p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🌐</div>
+          <h3>HTTP Server</h3>
+          <p>
+            Express.js-style HTTP server via <code>core:mongoose</code>.
+            Register GET/POST/… routes, attach middleware, and serve JSON APIs —
+            all from ZayneScript.
+          </p>
+        </div>
+      </div>
 
-        <!-- ================================================================
+      <!-- ================================================================
        Quick Start
        ================================================================ -->
-        <section id="quick-start" class="quick-start">
-            <h2>Quick Start</h2>
+      <section id="quick-start" class="quick-start">
+        <h2>Quick Start</h2>
 
-            <div class="steps">
-                <div class="step">
-                    <div>
-                        <strong>Build</strong> — requires GCC. Choose the method that matches your platform.
+        <div class="steps">
+          <div class="step">
+            <div>
+              <strong>Build</strong> — requires GCC. Choose the method that
+              matches your platform.
 
-                        <p style="margin:0.75rem 0 0.25rem"><strong>Makefile</strong> — Linux / macOS (recommended, uses
-                            <code>clang</code>):
-                        </p>
-                        <pre><code class="language-bash"># Debug build with AddressSanitizer (default)
+              <p style="margin: 0.75rem 0 0.25rem">
+                <strong>Makefile</strong> — Linux / macOS (recommended, uses
+                <code>clang</code>):
+              </p>
+              <pre><code class="language-bash"># Debug build with AddressSanitizer (default)
 make
 
 # Super-optimised release build (clang + LTO)
@@ -145,10 +182,11 @@ make install
 # Remove the binary
 make clean</code></pre>
 
-                        <p style="margin:0.75rem 0 0.25rem"><strong>run.sh</strong> — Linux / macOS shell script (uses
-                            <code>gcc</code>):
-                        </p>
-                        <pre><code class="language-bash"># Debug build + run
+              <p style="margin: 0.75rem 0 0.25rem">
+                <strong>run.sh</strong> — Linux / macOS shell script (uses
+                <code>gcc</code>):
+              </p>
+              <pre><code class="language-bash"># Debug build + run
 ./run.sh
 
 # Optimised release build + run
@@ -163,8 +201,10 @@ make clean</code></pre>
 # Debug a script with GDB
 ./run.sh --dbg tests/test_async.zs</code></pre>
 
-                        <p style="margin:0.75rem 0 0.25rem"><strong>run.bat</strong> — Windows (MinGW / GCC):</p>
-                        <pre><code class="language-batch"># Debug build + run
+              <p style="margin: 0.75rem 0 0.25rem">
+                <strong>run.bat</strong> — Windows (MinGW / GCC):
+              </p>
+              <pre><code class="language-batch"># Debug build + run
 .\run.bat
 
 # Optimised release build + run
@@ -176,37 +216,43 @@ make clean</code></pre>
 # Debug a script with GDB
 .\run.bat --dbg tests\test_async.zs</code></pre>
 
-                        <p style="margin:0.75rem 0 0.25rem"><strong>Manual</strong> — any platform with GCC:</p>
-                        <pre><code class="language-bash">gcc -O3 -DNDEBUG -Wno-pointer-sign \
+              <p style="margin: 0.75rem 0 0.25rem">
+                <strong>Manual</strong> — any platform with GCC:
+              </p>
+              <pre><code class="language-bash">mkdir -p dist &amp;&amp; gcc -O3 -DNDEBUG -Wno-pointer-sign \
     main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c ./libbf/*.c \
-    -o zscript.exe -lm -ldl -lpthread</code></pre>
-                    </div>
-                </div>
-                <div class="step">
-                    <div>
-                        <strong>Write a script</strong> — create <code>hello.zs</code>:
-                        <pre><code class="language-javascript">import { println } from "core:io";
+    -o dist/zscript.exe -lm -ldl -lpthread</code></pre>
+            </div>
+          </div>
+          <div class="step">
+            <div>
+              <strong>Write a script</strong> — create <code>hello.zs</code>:
+              <pre><code class="language-javascript">import { println } from "core:io";
 
 println("Hello, ZayneScript!");</code></pre>
-                    </div>
-                </div>
-                <div class="step">
-                    <div>
-                        <strong>Run it</strong>:
-                        <pre><code class="language-bash">./zscript.exe --run hello.zs</code></pre>
-                    </div>
-                </div>
             </div>
-        </section>
+          </div>
+          <div class="step">
+            <div>
+              <strong>Run it</strong> (the Makefile writes the binary to
+              <code>dist/</code>):
+              <pre><code class="language-bash">./dist/zscript.exe --run hello.zs</code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
 
-        <!-- ================================================================
+      <!-- ================================================================
        Taste of the Language
        ================================================================ -->
-        <h2>A Taste of ZayneScript</h2>
+      <h2>A Taste of ZayneScript</h2>
 
-        <p>The following snippet demonstrates variables, closures, classes, async/await, and the standard library:</p>
+      <p>
+        The following snippet demonstrates variables, closures, classes,
+        async/await, error handling, and the standard library:
+      </p>
 
-        <pre><code class="language-javascript">import { println, format } from "core:io";
+      <pre><code class="language-javascript">import { println, format } from "core:io";
 import { sqrt, pi }        from "core:math";
 
 // ----- Closures -----
@@ -227,12 +273,28 @@ class Shape {
 }
 
 class Circle (Shape) {
-    fn init(r) { this.r = r; }
-    fn area()  { return pi * this.r * this.r; }
+    fn init(r) {
+        assert r > 0, "radius must be positive";
+        this.r = r;
+    }
+    fn area() { return pi * this.r * this.r; }
 }
 
 const c = new Circle(5);
 println(format("Area: {}", c.area())); // Area: 78.539816...
+
+// ----- Error handling: raise & try/catch -----
+fn safeSqrt(x) {
+    if (x &lt; 0) { raise "cannot take sqrt of negative number"; }
+    return sqrt(x);
+}
+
+try {
+    println(safeSqrt(9));   // 3
+    println(safeSqrt(-1));  // throws
+} catch (e) {
+    println("Error:", e);   // Error: cannot take sqrt of negative number
+}
 
 // ----- Async / Await -----
 fn fetchData() async { return "payload"; }
@@ -247,196 +309,236 @@ main();
 // ----- BigInt -----
 println(2n ** 64n); // 18446744073709551616n</code></pre>
 
-        <!-- ================================================================
+      <!-- ================================================================
        Building
        ================================================================ -->
-        <h2>Building</h2>
-        <h3>Makefile targets</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Target</th>
-                    <th>Description</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><code>make</code> / <code>make debug</code></td>
-                    <td>Debug build with AddressSanitizer &amp; leak detection
-                        (<code>clang -g3 -fsanitize=address,leak</code>)</td>
-                </tr>
-                <tr>
-                    <td><code>make release</code></td>
-                    <td>Super-optimised build (<code>-O3 -march=native -flto=thin</code>, stripped binary)</td>
-                </tr>
-                <tr>
-                    <td><code>make run</code></td>
-                    <td>Debug build then launch the interpreter</td>
-                </tr>
-                <tr>
-                    <td><code>make clean</code></td>
-                    <td>Remove <code>zscript.exe</code></td>
-                </tr>
-                <tr>
-                    <td><code>make install</code></td>
-                    <td>Install binary to <code>/usr/local/bin/zscript</code> and libs to
-                        <code>/usr/local/lib/zscript/</code>
-                    </td>
-                </tr>
-                <tr>
-                    <td><code>make uninstall</code></td>
-                    <td>Remove installed binary and library directory</td>
-                </tr>
-                <tr>
-                    <td><code>make amalgamate</code></td>
-                    <td>Bundle everything into a single source file via <code>amalgamate.py</code></td>
-                </tr>
-            </tbody>
-        </table>
+      <h2>Building</h2>
+      <h3>Makefile targets</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Target</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>make</code> / <code>make debug</code></td>
+            <td>
+              Debug build with AddressSanitizer &amp; leak detection (<code
+                >clang -g3 -fsanitize=address,leak</code
+              >)
+            </td>
+          </tr>
+          <tr>
+            <td><code>make release</code></td>
+            <td>
+              Super-optimised build (<code>-O3 -march=native -flto=thin</code>,
+              stripped binary)
+            </td>
+          </tr>
+          <tr>
+            <td><code>make run</code></td>
+            <td>Debug build then launch the interpreter</td>
+          </tr>
+          <tr>
+            <td><code>make clean</code></td>
+            <td>
+              Remove the <code>dist/</code> build directory (including
+              <code>zscript.exe</code>)
+            </td>
+          </tr>
+          <tr>
+            <td><code>make install</code></td>
+            <td>
+              Install binary to <code>/usr/local/bin/zscript</code> and libs to
+              <code>/usr/local/lib/zscript/</code>
+            </td>
+          </tr>
+          <tr>
+            <td><code>make uninstall</code></td>
+            <td>Remove installed binary and library directory</td>
+          </tr>
+          <tr>
+            <td><code>make amalgamate</code></td>
+            <td>
+              Bundle everything into a single source file via
+              <code>amalgamate.py</code>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-        <h3>run.sh flags (Linux / macOS)</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Flag</th>
-                    <th>Description</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><em>(none)</em></td>
-                    <td>Debug build then run the interpreter</td>
-                </tr>
-                <tr>
-                    <td><code>--release</code></td>
-                    <td>Release build then run</td>
-                </tr>
-                <tr>
-                    <td><code>--compile</code></td>
-                    <td>Compile only, no run</td>
-                </tr>
-                <tr>
-                    <td><code>--format</code></td>
-                    <td>Run <code>clang-format</code> over all <code>src/</code> files</td>
-                </tr>
-                <tr>
-                    <td><code>--dbg &lt;file.zs&gt;</code></td>
-                    <td>Launch <code>gdb</code> with auto <code>run</code> and <code>bt</code> on the given script</td>
-                </tr>
-            </tbody>
-        </table>
+      <h3>run.sh flags (Linux / macOS)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Flag</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><em>(none)</em></td>
+            <td>Debug build then run the interpreter</td>
+          </tr>
+          <tr>
+            <td><code>--release</code></td>
+            <td>Release build then run</td>
+          </tr>
+          <tr>
+            <td><code>--compile</code></td>
+            <td>Compile only, no run</td>
+          </tr>
+          <tr>
+            <td><code>--format</code></td>
+            <td>
+              Run <code>clang-format</code> over all <code>src/</code> files
+            </td>
+          </tr>
+          <tr>
+            <td><code>--dbg &lt;file.zs&gt;</code></td>
+            <td>
+              Launch <code>gdb</code> with auto <code>run</code> and
+              <code>bt</code> on the given script
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-        <h3>run.bat flags (Windows)</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Flag</th>
-                    <th>Description</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><em>(none)</em></td>
-                    <td>Debug build then run the interpreter</td>
-                </tr>
-                <tr>
-                    <td><code>--release</code></td>
-                    <td>Release build then run</td>
-                </tr>
-                <tr>
-                    <td><code>--compile</code></td>
-                    <td>Compile only, no run</td>
-                </tr>
-                <tr>
-                    <td><code>--dbg &lt;file.zs&gt;</code></td>
-                    <td>Launch <code>gdb</code> with auto <code>run</code> and <code>bt</code> on the given script</td>
-                </tr>
-            </tbody>
-        </table>
+      <h3>run.bat flags (Windows)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Flag</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><em>(none)</em></td>
+            <td>Debug build then run the interpreter</td>
+          </tr>
+          <tr>
+            <td><code>--release</code></td>
+            <td>Release build then run</td>
+          </tr>
+          <tr>
+            <td><code>--compile</code></td>
+            <td>Compile only, no run</td>
+          </tr>
+          <tr>
+            <td><code>--dbg &lt;file.zs&gt;</code></td>
+            <td>
+              Launch <code>gdb</code> with auto <code>run</code> and
+              <code>bt</code> on the given script
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-        <!-- ================================================================
+      <!-- ================================================================
        Usage
        ================================================================ -->
-        <h2>Usage</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Command</th>
-                    <th>Description</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><code>./zscript.exe --run &lt;file.zs&gt;</code></td>
-                    <td>Execute a script file</td>
-                </tr>
-                <tr>
-                    <td><code>./zscript.exe --tests</code></td>
-                    <td>Run all scripts in the <code>tests/</code> directory</td>
-                </tr>
-                <tr>
-                    <td><code>./zscript.exe --help</code></td>
-                    <td>Print help text</td>
-                </tr>
-            </tbody>
-        </table>
+      <h2>Usage</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Command</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>./dist/zscript.exe --run &lt;file.zs&gt;</code></td>
+            <td>Execute a script file</td>
+          </tr>
+          <tr>
+            <td><code>./dist/zscript.exe --tests</code></td>
+            <td>
+              Run all scripts in the bundled <code>tests/</code> directory
+            </td>
+          </tr>
+          <tr>
+            <td><code>./dist/zscript.exe --help</code></td>
+            <td>Print help text</td>
+          </tr>
+        </tbody>
+      </table>
 
-        <!-- ================================================================
+      <!-- ================================================================
        Project Layout
        ================================================================ -->
-        <h2>Project Structure</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Path</th>
-                    <th>Contents</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><code>src/</code></td>
-                    <td>Interpreter core: lexer, parser, compiler, bytecode evaluator</td>
-                </tr>
-                <tr>
-                    <td><code>src/core/</code></td>
-                    <td>Standard library modules (io, math, os, array, date, promise)</td>
-                </tr>
-                <tr>
-                    <td><code>tests/</code></td>
-                    <td>Example <code>.zs</code> scripts demonstrating every feature</td>
-                </tr>
-                <tr>
-                    <td><code>lib/</code></td>
-                    <td>User-level library files importable via <code>lib:</code></td>
-                </tr>
-                <tr>
-                    <td><code>utf/</code></td>
-                    <td>UTF-8 processing helpers (utf8proc)</td>
-                </tr>
-                <tr>
-                    <td><code>libbf/</code></td>
-                    <td>BigInt backend (libbf)</td>
-                </tr>
-                <tr>
-                    <td><code>main.c</code></td>
-                    <td>Interpreter entry point</td>
-                </tr>
-            </tbody>
-        </table>
-
+      <h2>Project Structure</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Path</th>
+            <th>Contents</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>src/</code></td>
+            <td>
+              Interpreter core: lexer, parser, compiler, bytecode evaluator
+            </td>
+          </tr>
+          <tr>
+            <td><code>src/core/</code></td>
+            <td>
+              Builtin <code>core:</code> modules: <code>io</code>,
+              <code>math</code>, <code>os</code>, <code>date</code>,
+              <code>object</code>, <code>array</code>, <code>promise</code>,
+              <code>mongoose</code>, <code>sqlite</code> (omitted in minimal /
+              <code>ZSMINIMAL</code> builds)
+            </td>
+          </tr>
+          <tr>
+            <td><code>dist/</code></td>
+            <td>
+              Compiler output: <code>zscript.exe</code>, copied
+              <code>lib/</code> and <code>tests/</code> for running
+            </td>
+          </tr>
+          <tr>
+            <td><code>tests/</code></td>
+            <td>
+              Example <code>.zs</code> scripts demonstrating every feature
+            </td>
+          </tr>
+          <tr>
+            <td><code>lib/</code></td>
+            <td>User-level library files importable via <code>lib:</code></td>
+          </tr>
+          <tr>
+            <td><code>utf/</code></td>
+            <td>UTF-8 processing helpers (utf8proc)</td>
+          </tr>
+          <tr>
+            <td><code>libbf/</code></td>
+            <td>BigInt backend (libbf)</td>
+          </tr>
+          <tr>
+            <td><code>main.c</code></td>
+            <td>Interpreter entry point</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- ================================================================
      Footer
      ================================================================ -->
     <footer class="site-footer">
-        <p>ZayneScript &copy; 2025–Present Philipp Andrew Redondo. Released under the MIT License.</p>
-        <p style="margin-top:0.4rem;">
-            <a href="language.html">Language Guide</a> &nbsp;·&nbsp;
-            <a href="stdlib.html">Standard Library</a>
-        </p>
+      <p>
+        ZayneScript &copy; 2025–Present Philipp Andrew Redondo. Released under
+        the MIT License.
+      </p>
+      <p style="margin-top: 0.4rem">
+        <a href="language.html">Language Guide</a> &nbsp;·&nbsp;
+        <a href="stdlib.html">Standard Library</a>
+      </p>
     </footer>
-
-</body>
-
+  </body>
 </html>

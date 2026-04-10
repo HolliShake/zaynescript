@@ -63,7 +63,7 @@ CFLAGS_REL  := -O3 -march=native -mtune=native \
                -fmerge-all-constants -fno-semantic-interposition \
                -fno-math-errno -fno-trapping-math \
                -fstrict-aliasing -fvectorize -fslp-vectorize \
-               -pipe -DNDEBUG
+               -pipe -DNDEBUG -DMG_ENABLE_LOG=0
 LDFLAGS_REL := -flto=thin -fuse-ld=lld -Wl,--gc-sections -Wl,-O2 -Wl,--strip-all
 
 # ── Minimal Flags (Super-optimized for speed + ZSMINIMAL) ───
@@ -73,7 +73,7 @@ CFLAGS_MIN  := -O3 -march=native -mtune=native \
                -fmerge-all-constants -fno-semantic-interposition \
                -fno-math-errno -fno-trapping-math \
                -fstrict-aliasing -fvectorize -fslp-vectorize \
-               -pipe -DNDEBUG -DZSMINIMAL
+               -pipe -DNDEBUG -DZSMINIMAL -DMG_ENABLE_LOG=0
 LDFLAGS_MIN := -flto=thin -fuse-ld=lld -Wl,--gc-sections -Wl,-O2 -Wl,--strip-all
 
 # Features to disable in minimal mode (space-separated)

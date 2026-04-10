@@ -46,10 +46,10 @@ RPATH_FLAG='-Wl,-rpath,$ORIGIN'
 if [[ "$1" == "--minimal" ]]; then
     echo "Building in minimal mode (sqlite completely disabled, ZSMINIMAL defined)..."
     SRC_FILES=(main.c $(find src/core -name '*.c' | grep -vE 'sqlite') $(find src -maxdepth 1 -name '*.c') $(find utf -name '*.c') $(find utf/utf8proc -name '*.c') $(find libbf -name '*.c') $(find mongoose -name '*.c'))
-    gcc -O3 -DNDEBUG -DZSMINIMAL -DBUILD_DATE="\"$BUILD_DATE\"" -Wno-pointer-sign "${SRC_FILES[@]}" -o "$EXE" -lm -ldl -lpthread
+    gcc -O3 -DNDEBUG -DZSMINIMAL -DMG_ENABLE_LOG=0 -DBUILD_DATE="\"$BUILD_DATE\"" -Wno-pointer-sign "${SRC_FILES[@]}" -o "$EXE" -lm -ldl -lpthread
 elif [[ "$1" == "--release" ]]; then
     echo "Building in release mode..."
-    gcc -O3 -DNDEBUG -DBUILD_DATE="\"$BUILD_DATE\"" -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c ./libbf/*.c mongoose/mongoose.c -o "$EXE" -L"$DIST_DIR" -lsqlite3 "$RPATH_FLAG" -lm -ldl -lpthread
+    gcc -O3 -DNDEBUG -DMG_ENABLE_LOG=0 -DBUILD_DATE="\"$BUILD_DATE\"" -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c ./libbf/*.c mongoose/mongoose.c -o "$EXE" -L"$DIST_DIR" -lsqlite3 "$RPATH_FLAG" -lm -ldl -lpthread
 else
     echo "Building in debug mode..."
     gcc -g -O3 -DBUILD_DATE="\"$BUILD_DATE\"" -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c ./libbf/*.c mongoose/mongoose.c -o "$EXE" -L"$DIST_DIR" -lsqlite3 "$RPATH_FLAG" -lm -ldl -lpthread

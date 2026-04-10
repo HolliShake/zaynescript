@@ -98,6 +98,14 @@
           </ul>
         </div>
         <div class="sidebar-group">
+          <div class="sidebar-group-title">Error Handling</div>
+          <ul>
+            <li><a href="#trycatch">try / catch</a></li>
+            <li><a href="#raise">raise</a></li>
+            <li><a href="#assert">assert</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-group">
           <div class="sidebar-group-title">Control Flow</div>
           <ul>
             <li><a href="#if">if / else</a></li>
@@ -105,7 +113,6 @@
             <li><a href="#while">while Loop</a></li>
             <li><a href="#dowhile">do-while Loop</a></li>
             <li><a href="#switch">switch</a></li>
-            <li><a href="#trycatch">try / catch</a></li>
             <li><a href="#break">break &amp; continue</a></li>
           </ul>
         </div>
@@ -120,6 +127,7 @@
           <div class="sidebar-group-title">Data Structures</div>
           <ul>
             <li><a href="#arrays">Arrays</a></li>
+            <li><a href="#destructuring">Destructuring</a></li>
             <li><a href="#objects">Objects</a></li>
           </ul>
         </div>
@@ -380,22 +388,46 @@ local obj2 = { ...obj1, y: 2 }; // { x: 1, y: 2 }</code></pre>
         <!-- ============================================================
          BigInt
          ============================================================ -->
-        <h2 id="bigint">BigInt Literals</h2>
+        <h2 id="bigint">BigInt &amp; BigNum Literals</h2>
         <p>
           Append <code>n</code> to any numeric literal to create an
-          arbitrary-precision BigInt:
+          arbitrary-precision integer (<strong>BigInt</strong>) or an
+          arbitrary-precision decimal (<strong>BigNum</strong> — when the
+          literal contains a decimal point or exponent):
         </p>
-        <pre><code class="language-javascript">println(100n + 2n);   // 102n
-println(5n * 5n);     // 25n
-println(5n / 2n);     // 2n  (integer division)
-println(1 &lt;&lt; 2n);    // 4
-println(10.56n);      // BigInt from float literal
-println(2.2e2n);      // BigInt from scientific notation
-println(2n ** 64n);   // 18446744073709551616n</code></pre>
+        <pre><code class="language-javascript">// BigInt — integer literals with n suffix
+println(100n + 2n);    // 102n
+println(5n * 5n);      // 25n
+println(5n / 2n);      // 2n  (integer division truncates)
+println(2n ** 64n);    // 18446744073709551616n
+
+// BigNum — float/scientific literals with n suffix (arbitrary-precision decimal)
+println(10.56n);       // 10.56n
+println(2.2e2n);       // 220n
+
+// Mixed: shift operators accept one BigInt and one plain int
+println(1 &lt;&lt; 2n);     // 4
+
+// All four arithmetic operators work between BigInts
+const huge = 2n ** 128n;
+println(huge);         // 340282366920938463463374607431768211456n</code></pre>
+
+        <table>
+          <thead>
+            <tr><th>Form</th><th>Type</th><th>Example</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Integer with <code>n</code></td><td>BigInt</td><td><code>42n</code>, <code>2n ** 64n</code></td></tr>
+            <tr><td>Float with <code>n</code></td><td>BigNum</td><td><code>3.14n</code>, <code>2.2e2n</code></td></tr>
+          </tbody>
+        </table>
 
         <div class="note">
-          <strong>Note:</strong> Mixed BigInt/non-BigInt arithmetic is supported
-          in shift operators; other mixed operations follow coercion rules.
+          <strong>Note:</strong> BigInt and BigNum are backed by the
+          <a href="https://bellard.org/libbf/" target="_blank" rel="noopener">libbf</a>
+          arbitrary-precision library. Mixing BigInt with regular
+          <code>int</code>/<code>num</code> is supported in shift operators;
+          other mixed operations follow coercion rules defined by the runtime.
         </div>
 
         <!-- ============================================================
@@ -450,6 +482,25 @@ inc(); inc();
 println(get()); // 2
 dec();
 println(get()); // 1</code></pre>
+
+        <h3>Immediately Invoked Function Expressions (IIFE)</h3>
+        <p>
+          Wrap an anonymous function in parentheses and call it immediately.
+          Useful for creating a one-time private scope:
+        </p>
+        <pre><code class="language-javascript">// No-argument IIFE
+const x = (fn() { return 42; })();
+println(x); // 42
+
+// IIFE with arguments
+const sum = (fn(a, b) { return a + b; })(10, 32);
+println(sum); // 42
+
+// IIFE for a private scope — result discarded
+(fn() {
+    local secret = "hidden";
+    println("inside:", secret);
+})();</code></pre>
 
         <!-- ============================================================
          Async / Await
@@ -650,6 +701,83 @@ println(label); // A Hundred</code></pre>
         </div>
 
         <!-- ============================================================
+         raise
+         ============================================================ -->
+        <h2 id="raise">raise</h2>
+        <p>
+          The <code>raise</code> statement throws a runtime error that can be
+          caught by an enclosing <code>try/catch</code> block. Any value can be
+          raised — it becomes the error value bound to the catch parameter.
+        </p>
+        <pre><code class="language-javascript">// Raise a string error
+raise "Something went wrong";
+
+// Raise inside a function
+fn divide(a, b) {
+    if (b == 0) {
+        raise "Division by zero";
+    }
+    return a / b;
+}
+
+try {
+    println(divide(10, 0));
+} catch (e) {
+    println("Caught:", e); // Caught: Division by zero
+}
+
+// Raise an object for structured errors
+try {
+    raise { code: 404, message: "Not found" };
+} catch (e) {
+    println(e.code, e.message); // 404 Not found
+}</code></pre>
+
+        <div class="tip">
+          <strong>Tip:</strong> Use <code>raise</code> to signal unrecoverable
+          conditions inside library functions; callers can catch them with
+          <code>try/catch</code>.
+        </div>
+
+        <!-- ============================================================
+         assert
+         ============================================================ -->
+        <h2 id="assert">assert</h2>
+        <p>
+          The <code>assert</code> statement evaluates a condition and throws a
+          runtime error when it is falsy. An optional message string follows the
+          condition after a comma. Assertions are always evaluated (there is no
+          debug-only mode) and can be caught by <code>try/catch</code>.
+        </p>
+        <pre><code class="language-javascript">// Basic assertion — throws if condition is false
+assert 2 + 2 == 4;
+
+// With a descriptive message (shown when the assertion fails)
+assert x > 0, "x must be positive";
+
+// Assertions in functions work like built-in contracts
+fn factorial(n) {
+    assert n >= 0, "factorial requires a non-negative integer";
+    if (n <= 1) { return 1; }
+    return n * factorial(n - 1);
+}
+
+println(factorial(5)); // 120
+
+// Failed assertions can be caught
+try {
+    assert false, "always fails";
+} catch (e) {
+    println("Caught:", e); // Caught: always fails
+}</code></pre>
+
+        <div class="note">
+          <strong>Note:</strong> <code>assert</code> is the standard way to
+          write self-documenting invariants and is used throughout the test
+          suite to verify correct behaviour.
+        </div>
+
+        <!-- ============================================================
          break & continue
          ============================================================ -->
         <h2 id="break">break &amp; continue</h2>
@@ -738,27 +866,72 @@ local more = [...list, 10, 20];</code></pre>
         <h3>Iteration with <code>each</code></h3>
         <p>
           <code>each(callback)</code> calls
-          <code>callback(index, element)</code>
+          <code>callback(value, index)</code>
           for every item and returns a new array of the return values:
         </p>
         <pre><code class="language-javascript">const nums = [1, 2, 3, 4, 5];
 
-const doubled = nums.each(fn(i, e) { return e * 2; });
+const doubled = nums.each(fn(v, i) { return v * 2; });
 println(doubled); // [2, 4, 6, 8, 10]
 
-// println accepts varargs — index then value
+// println receives each argument pair: element, then index
 nums.each(println);
-// 0 1
-// 1 2
-// 2 3 ...</code></pre>
+// 1 0
+// 2 1
+// 3 2 ...</code></pre>
 
         <h3>Filtering with <code>keep</code></h3>
         <p>
           <code>keep(callback)</code> returns only the elements for which
-          <code>callback</code> returns truthy:
+          <code>callback(value, index)</code> returns truthy:
         </p>
-        <pre><code class="language-javascript">const odds = nums.keep(fn(i, e) { return e % 2 != 0; });
+        <pre><code class="language-javascript">const odds = nums.keep(fn(v, i) { return v % 2 != 0; });
 println(odds); // [1, 3, 5]</code></pre>
+
+        <!-- ============================================================
+         Destructuring
+         ============================================================ -->
+        <h2 id="destructuring">Destructuring</h2>
+        <p>
+          Array values returned from functions can be unpacked in a single
+          declaration using bracket syntax on the left-hand side. Each variable
+          is bound to the element at the corresponding index:
+        </p>
+        <pre><code class="language-javascript">// Unpack a returned array
+fn rgb() { return [255, 128, 0]; }
+var [r, g, b] = rgb();
+println(r, g, b); // 255 128 0
+
+// Works with var, const, and local
+const [first, second, third] = [10, 20, 30];
+println(first);   // 10
+println(second);  // 20
+
+// Closures returning multiple functions
+fn makeCounters() {
+    local shared = 0;
+    local inc = fn() { shared += 1; };
+    local dec = fn() { shared -= 1; };
+    local get = fn() { return shared; };
+    return [inc, dec, get];
+}
+
+var [inc, dec, get] = makeCounters();
+inc(); inc();
+println(get()); // 2
+dec();
+println(get()); // 1
+
+// Pair from array literal
+var [head, tail] = [1, [2, 3, 4]];
+println(head);    // 1
+println(tail[0]); // 2</code></pre>
+
+        <div class="note">
+          <strong>Note:</strong> Destructuring binds variables positionally;
+          extra elements in the array are silently ignored, and missing elements
+          produce <code>null</code>.
+        </div>
 
         <!-- ============================================================
          Objects
@@ -793,9 +966,10 @@ local extended = { ...person, city: "NYC" };</code></pre>
         <pre><code class="language-javascript">import { println, scan, parseNum } from "core:io";
 import { sqrt, pi, pow }           from "core:math";
 import { getUser, getCwd }         from "core:os";
-import { Array }                   from "core:Array";
-import { Date }                    from "core:Date";
-import { Promise }                 from "core:Promise";</code></pre>
+import { Array }                   from "core:array";
+import { Date }                    from "core:date";
+import { Promise }                 from "core:promise";
+import { Object }                  from "core:object";</code></pre>
 
         <h3>Wildcard import (module bound to its name)</h3>
         <pre><code class="language-javascript">import "core:math";  // accessible as `math`
@@ -807,9 +981,11 @@ println(math.pi);       // 3.141592...</code></pre>
 import { helper } from "./helpers/math"; // named import from file</code></pre>
 
         <div class="note">
-          <strong>Note:</strong> The <code>.zs</code> extension is appended
-          automatically. Each module is executed once and cached; circular
-          imports are detected and produce a runtime error.
+          <strong>Note:</strong> Core module names after <code>core:</code> are
+          <strong>case-sensitive</strong> and match the loader (<code>core:date</code>,
+          <code>core:array</code>, …). The <code>.zs</code> extension is appended
+          automatically for file imports. Each module is executed once and cached;
+          circular imports are detected and produce a runtime error.
         </div>
 
         <!-- ============================================================
@@ -820,10 +996,14 @@ import { helper } from "./helpers/math"; // named import from file</code></pre>
           User-authored <code>.zs</code> files placed in the
           <code>lib/</code> directory are importable via the
           <code>lib:</code> prefix. Subdirectories are supported using
-          <code>/</code>:
+          <code>/</code>. The repository ships <code>lib/http.zs</code>, which
+          re-exports <code>request</code> from <code>core:mongoose</code> plus
+          frozen <code>StatusCode</code> and <code>Method</code> lookup objects
+          built with <code>Object.freeze</code> from <code>core:object</code>:
         </p>
-        <pre><code class="language-javascript">import { greet }  from "lib:request";    // lib/request.zs
-import "lib:nested/mod";                 // lib/nested/mod.zs → bound as `mod`</code></pre>
+        <pre><code class="language-javascript">import { request, Method, StatusCode } from "lib:http";
+
+import "lib:nested/mod"; // lib/nested/mod.zs → bound as `mod`</code></pre>
       </main>
     </div>
 

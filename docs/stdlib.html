@@ -6,7 +6,7 @@
     <title>Standard Library — ZayneScript</title>
     <meta
       name="description"
-      content="ZayneScript standard library reference: core:io, core:math, core:os, core:Array, core:Date, core:Promise, core:sqlite, core:mongoose."
+      content="ZayneScript standard library reference: core:io, core:math, core:os, core:object, core:array, core:date, core:promise, core:sqlite, core:mongoose (HTTP server and client)."
     />
     <link rel="stylesheet" href="style.css" />
     <link rel="icon" type="image/x-icon" href="zs.ico" />
@@ -72,9 +72,10 @@
             <li><a href="#io">core:io</a></li>
             <li><a href="#math">core:math</a></li>
             <li><a href="#os">core:os</a></li>
-            <li><a href="#array">core:Array</a></li>
-            <li><a href="#date">core:Date</a></li>
-            <li><a href="#promise">core:Promise</a></li>
+            <li><a href="#object">core:object</a></li>
+            <li><a href="#array">core:array</a></li>
+            <li><a href="#date">core:date</a></li>
+            <li><a href="#promise">core:promise</a></li>
             <li><a href="#sqlite">core:sqlite</a></li>
             <li><a href="#mongoose">core:mongoose</a></li>
           </ul>
@@ -111,7 +112,16 @@
           </ul>
         </div>
         <div class="sidebar-group">
-          <div class="sidebar-group-title">core:Array</div>
+          <div class="sidebar-group-title">core:object</div>
+          <ul>
+            <li><a href="#obj-overview">Overview</a></li>
+            <li><a href="#obj-keys">keys</a></li>
+            <li><a href="#obj-values">values</a></li>
+            <li><a href="#obj-freeze">freeze</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-group">
+          <div class="sidebar-group-title">core:array</div>
           <ul>
             <li><a href="#arr-push">push</a></li>
             <li><a href="#arr-pop">pop</a></li>
@@ -121,7 +131,7 @@
           </ul>
         </div>
         <div class="sidebar-group">
-          <div class="sidebar-group-title">core:Date</div>
+          <div class="sidebar-group-title">core:date</div>
           <ul>
             <li><a href="#date-constructor">constructor</a></li>
             <li><a href="#date-getters">Getters</a></li>
@@ -130,7 +140,7 @@
           </ul>
         </div>
         <div class="sidebar-group">
-          <div class="sidebar-group-title">core:Promise</div>
+          <div class="sidebar-group-title">core:promise</div>
           <ul>
             <li><a href="#promise-then">then</a></li>
             <li><a href="#promise-error">error</a></li>
@@ -140,12 +150,21 @@
           <div class="sidebar-group-title">core:mongoose</div>
           <ul>
             <li><a href="#mongoose-overview">Overview</a></li>
+            <li><a href="#mongoose-request">request (HTTP client)</a></li>
             <li><a href="#mongoose-server">Server class</a></li>
             <li><a href="#mongoose-routing">Routing</a></li>
             <li><a href="#mongoose-req">Request object</a></li>
             <li><a href="#mongoose-res">Response object</a></li>
             <li><a href="#mongoose-middleware">Middleware</a></li>
             <li><a href="#mongoose-patterns">Common patterns</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-group">
+          <div class="sidebar-group-title">lib:http</div>
+          <ul>
+            <li><a href="#lib-http">Overview</a></li>
+            <li><a href="#lib-http-statuscode">StatusCode</a></li>
+            <li><a href="#lib-http-method">Method</a></li>
           </ul>
         </div>
         <div class="sidebar-group">
@@ -174,9 +193,14 @@
       <main class="docs-main">
         <h1>Standard Library</h1>
         <p class="page-intro">
-          ZayneScript ships seven built-in modules accessible via the
-          <code>core:</code> import prefix. Each module provides functions or a
-          class that is loaded on demand — only import what you need.
+          ZayneScript registers nine built-in modules under the
+          <code>core:</code> import prefix (names are case-sensitive:
+          <code>core:date</code>, <code>core:array</code>, …). They load on
+          demand — import only what you need. The
+          <code>core:sqlite</code> module is omitted from
+          <code>make minimal</code> / <code>ZSMINIMAL</code> builds. The repo
+          also includes <code>lib/http.zs</code>, a thin wrapper re-exporting the
+          HTTP client and common constants for use via <code>lib:http</code>.
         </p>
 
         <!-- ==============================================================
@@ -505,15 +529,59 @@ println(e);             // 2.718281828459045</code></pre>
 println("exit:", code);</code></pre>
 
         <!-- ==============================================================
-         core:Array
+         core:object
          ============================================================== -->
-        <h2 id="array">core:Array — Array Class</h2>
+        <h2 id="object">core:object — Object utilities</h2>
         <p>Import with:</p>
-        <pre><code class="language-javascript">import { Array } from "core:Array";</code></pre>
+        <pre><code class="language-javascript">import { Object } from "core:object";</code></pre>
+        <p id="obj-overview">
+          Exposes the <code>Object</code> class used for plain maps. Static
+          helpers mirror common JavaScript-style utilities. The constructor
+          <code>new Object()</code> produces a new empty object instance.
+        </p>
+
+        <hr />
+
+        <h3 id="obj-keys">Object.keys</h3>
+        <div class="method">
+          <div class="method-sig">Object.keys(obj: object) → array</div>
+          <p class="method-desc">
+            Returns an array of the object’s enumerable string keys.
+          </p>
+        </div>
+        <pre><code class="language-javascript">const o = { a: 1, b: 2 };
+println(Object.keys(o)); // [a, b]</code></pre>
+
+        <h3 id="obj-values">Object.values</h3>
+        <div class="method">
+          <div class="method-sig">Object.values(obj: object) → array</div>
+          <p class="method-desc">
+            Returns an array of the object’s values in key iteration order.
+          </p>
+        </div>
+
+        <h3 id="obj-freeze">Object.freeze</h3>
+        <div class="method">
+          <div class="method-sig">Object.freeze(obj: object) → object</div>
+          <p class="method-desc">
+            Returns a <strong>new</strong> object with a shallow copy of
+            <code>obj</code>’s map, marked frozen in the runtime (mutations on
+            the copy are rejected). Use for immutable snapshots or constant
+            lookup tables (see <code>lib/http.zs</code> for
+            <code>StatusCode</code> / <code>Method</code> objects).
+          </p>
+        </div>
+
+        <!-- ==============================================================
+         core:array
+         ============================================================== -->
+        <h2 id="array">core:array — Array class</h2>
+        <p>Import with:</p>
+        <pre><code class="language-javascript">import { Array } from "core:array";</code></pre>
         <p>
           Array methods are available directly on every array literal via the
           prototype. You do <em>not</em> need to explicitly import
-          <code>core:Array</code> to use the built-in methods — they are always
+          <code>core:array</code> to use the built-in methods — they are always
           present. Import it only when you need the <code>Array</code> class
           itself (e.g. to add static helpers at runtime).
         </p>
@@ -556,28 +624,28 @@ println(arr);  // [1, 2]</code></pre>
         <h3 id="arr-each">each</h3>
         <div class="method">
           <div class="method-sig">
-            array.each(callback(index, element)) → array
+            array.each(callback(value, index)) → array
           </div>
           <p class="method-desc">
-            Calls <code>callback(index, element)</code> for every element and
+            Calls <code>callback(value, index)</code> for every element and
             returns a new array containing each return value. Analogous to
             <code>Array.prototype.map</code> in JavaScript.
           </p>
         </div>
         <pre><code class="language-javascript">const nums    = [1, 2, 3, 4, 5];
-const doubled = nums.each(fn(i, e) { return e * 2; });
+const doubled = nums.each(fn(v, i) { return v * 2; });
 println(doubled); // [2, 4, 6, 8, 10]
 
-// Using a vararg function (index first, then element)
+// println prints each argument: element, then index
 nums.each(println);
-// 0 1
-// 1 2
-// 2 3 ...</code></pre>
+// 1 0
+// 2 1
+// 3 2 ...</code></pre>
 
         <h3 id="arr-keep">keep</h3>
         <div class="method">
           <div class="method-sig">
-            array.keep(callback(index, element)) → array
+            array.keep(callback(value, index)) → array
           </div>
           <p class="method-desc">
             Returns a new array containing only the elements for which
@@ -585,7 +653,7 @@ nums.each(println);
             <code>Array.prototype.filter</code>.
           </p>
         </div>
-        <pre><code class="language-javascript">const evens = nums.keep(fn(i, e) { return e % 2 == 0; });
+        <pre><code class="language-javascript">const evens = nums.keep(fn(v, i) { return v % 2 == 0; });
 println(evens); // [2, 4]</code></pre>
 
         <h3>Adding static helpers at runtime</h3>
@@ -593,7 +661,7 @@ println(evens); // [2, 4]</code></pre>
           Because <code>Array</code> is a first-class class value you can attach
           arbitrary static functions to it:
         </p>
-        <pre><code class="language-javascript">import { Array } from "core:Array";
+        <pre><code class="language-javascript">import { Array } from "core:array";
 
 Array.sum = fn(arr) {
     local total = 0;
@@ -604,13 +672,13 @@ Array.sum = fn(arr) {
 println(Array.sum([1, 2, 3, 4, 5])); // 15</code></pre>
 
         <!-- ==============================================================
-         core:Date
+         core:date
          ============================================================== -->
-        <h2 id="date">core:Date — Date and Time</h2>
+        <h2 id="date">core:date — Date and Time</h2>
         <p>Import with:</p>
-        <pre><code class="language-javascript">import { Date } from "core:Date";
+        <pre><code class="language-javascript">import { Date } from "core:date";
 // Or wildcard:
-import "core:Date";</code></pre>
+import "core:date";</code></pre>
 
         <hr />
 
@@ -724,11 +792,11 @@ println(d.getSeconds());  // 0</code></pre>
         <pre><code class="language-javascript">println(new Date().toString());</code></pre>
 
         <!-- ==============================================================
-         core:Promise
+         core:promise
          ============================================================== -->
-        <h2 id="promise">core:Promise — Promises</h2>
+        <h2 id="promise">core:promise — Promises</h2>
         <p>Import with:</p>
-        <pre><code class="language-javascript">import { Promise } from "core:Promise";</code></pre>
+        <pre><code class="language-javascript">import { Promise } from "core:promise";</code></pre>
         <p>
           Promises are created <strong>implicitly</strong> by calling any
           <code>async</code> function. You rarely construct them manually. The
@@ -1254,19 +1322,67 @@ db.close();</code></pre>
          ============================================================== -->
         <h2 id="mongoose">core:mongoose — HTTP Server</h2>
         <p>Import with:</p>
-        <pre><code class="language-javascript">import { Server } from "core:mongoose";</code></pre>
+        <pre><code class="language-javascript">import { Server, request } from "core:mongoose";</code></pre>
         <p class="page-intro">
           <code>core:mongoose</code> wraps the
           <a href="https://mongoose.ws" target="_blank" rel="noopener"
             >Mongoose</a
           >
           embedded networking library to give ZayneScript an Express.js-style
-          HTTP server. Create a <code>Server</code>, register routes, and call
+          HTTP server and a small async HTTP <strong>client</strong>. Create a
+          <code>Server</code>, register routes, and call
           <code>listen()</code> — the event loop runs until
-          <code>close()</code> is called.
+          <code>close()</code> is called. Outbound requests use
+          <code>request()</code> and return a <code>Promise</code>.
         </p>
 
         <hr />
+
+        <h2 id="mongoose-request">request — HTTP client</h2>
+        <div class="method">
+          <div class="method-sig">request(url: string [, options: object]) → Promise</div>
+          <p class="method-desc">
+            Performs a non-blocking HTTP request using the interpreter’s shared
+            Mongoose manager. Resolves with an object
+            <code>{ status, statusText, headers, body }</code> — on failure the
+            promise is rejected with an error string.
+          </p>
+        </div>
+        <p>Optional <code>options</code> fields:</p>
+        <ul style="margin: 0.75rem 0 0.75rem 1.5rem">
+          <li>
+            <code>method</code> — verb string (default <code>"GET"</code>);
+            upper-cased internally.
+          </li>
+          <li>
+            <code>headers</code> — plain object of header names to values (merged
+            into the request).
+          </li>
+          <li>
+            <code>body</code> — string for raw text; an object value is
+            stringified and sent as JSON with
+            <code>Content-Type: application/json</code> if not already set.
+          </li>
+        </ul>
+        <p>
+          If the response has <code>Content-Type: application/json</code>,
+          <code>body</code> is parsed into objects/arrays/values; otherwise it
+          remains a string.
+        </p>
+        <pre><code class="language-javascript">import { println } from "core:io";
+import { request } from "core:mongoose";
+
+request("http://127.0.0.1:8080/api/ping", {
+    method: "GET"
+}).then(fn(res) {
+    println(res.status, res.body);
+}).error(fn(e) {
+    println("failed:", e);
+});</code></pre>
+        <p>
+          For named constants and a re-export of <code>request</code>, see
+          <a href="#lib-http">lib:http</a> below.
+        </p>
 
         <h2 id="mongoose-server">Server class</h2>
 
@@ -1530,6 +1646,149 @@ app.post("/notes", fn(req, res) {
 });
 
 app.listen(4000, fn(msg) { println(msg); });</code></pre>
+
+        <!-- ==============================================================
+         lib:http (user library)
+         ============================================================== -->
+        <h2 id="lib-http">lib:http — bundled HTTP helpers</h2>
+        <p>
+          The repository includes <code>lib/http.zs</code>, copied next to the
+          interpreter at build time. It imports <code>request</code> from
+          <code>core:mongoose</code> and builds two frozen lookup tables with
+          <code>Object.freeze</code> from <code>core:object</code>:
+          <code>StatusCode</code> and <code>Method</code>.
+        </p>
+        <pre><code class="language-javascript">import { request, Method, StatusCode } from "lib:http";
+
+request("http://localhost:3000/missing", {
+    method: Method.GET
+}).then(fn(res) {
+    if (res.status == StatusCode.NotFound) {
+        println("not found");
+    } else {
+        println(res.status, res.body);
+    }
+});</code></pre>
+
+        <hr />
+
+        <h3 id="lib-http-statuscode">StatusCode</h3>
+        <p>
+          A frozen object mapping symbolic names to their numeric HTTP status
+          codes. Access any code with <code>StatusCode.Ok</code>,
+          <code>StatusCode.NotFound</code>, etc.
+        </p>
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Code</th><th>Category</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>Continue</code></td><td>100</td><td>1xx Informational</td></tr>
+            <tr><td><code>SwitchingProtocols</code></td><td>101</td><td>1xx Informational</td></tr>
+            <tr><td><code>Processing</code></td><td>102</td><td>1xx Informational</td></tr>
+            <tr><td><code>EarlyHints</code></td><td>103</td><td>1xx Informational</td></tr>
+            <tr><td><code>Ok</code></td><td>200</td><td>2xx Success</td></tr>
+            <tr><td><code>Created</code></td><td>201</td><td>2xx Success</td></tr>
+            <tr><td><code>Accepted</code></td><td>202</td><td>2xx Success</td></tr>
+            <tr><td><code>NonAuthoritativeInformation</code></td><td>203</td><td>2xx Success</td></tr>
+            <tr><td><code>NoContent</code></td><td>204</td><td>2xx Success</td></tr>
+            <tr><td><code>ResetContent</code></td><td>205</td><td>2xx Success</td></tr>
+            <tr><td><code>PartialContent</code></td><td>206</td><td>2xx Success</td></tr>
+            <tr><td><code>MultipleChoices</code></td><td>300</td><td>3xx Redirection</td></tr>
+            <tr><td><code>MovedPermanently</code></td><td>301</td><td>3xx Redirection</td></tr>
+            <tr><td><code>Found</code></td><td>302</td><td>3xx Redirection</td></tr>
+            <tr><td><code>SeeOther</code></td><td>303</td><td>3xx Redirection</td></tr>
+            <tr><td><code>NotModified</code></td><td>304</td><td>3xx Redirection</td></tr>
+            <tr><td><code>TemporaryRedirect</code></td><td>307</td><td>3xx Redirection</td></tr>
+            <tr><td><code>PermanentRedirect</code></td><td>308</td><td>3xx Redirection</td></tr>
+            <tr><td><code>BadRequest</code></td><td>400</td><td>4xx Client Error</td></tr>
+            <tr><td><code>Unauthorized</code></td><td>401</td><td>4xx Client Error</td></tr>
+            <tr><td><code>PaymentRequired</code></td><td>402</td><td>4xx Client Error</td></tr>
+            <tr><td><code>Forbidden</code></td><td>403</td><td>4xx Client Error</td></tr>
+            <tr><td><code>NotFound</code></td><td>404</td><td>4xx Client Error</td></tr>
+            <tr><td><code>MethodNotAllowed</code></td><td>405</td><td>4xx Client Error</td></tr>
+            <tr><td><code>NotAcceptable</code></td><td>406</td><td>4xx Client Error</td></tr>
+            <tr><td><code>ProxyAuthRequired</code></td><td>407</td><td>4xx Client Error</td></tr>
+            <tr><td><code>RequestTimeout</code></td><td>408</td><td>4xx Client Error</td></tr>
+            <tr><td><code>Conflict</code></td><td>409</td><td>4xx Client Error</td></tr>
+            <tr><td><code>Gone</code></td><td>410</td><td>4xx Client Error</td></tr>
+            <tr><td><code>LengthRequired</code></td><td>411</td><td>4xx Client Error</td></tr>
+            <tr><td><code>PreconditionFailed</code></td><td>412</td><td>4xx Client Error</td></tr>
+            <tr><td><code>PayloadTooLarge</code></td><td>413</td><td>4xx Client Error</td></tr>
+            <tr><td><code>UriTooLong</code></td><td>414</td><td>4xx Client Error</td></tr>
+            <tr><td><code>UnsupportedMediaType</code></td><td>415</td><td>4xx Client Error</td></tr>
+            <tr><td><code>RangeNotSatisfiable</code></td><td>416</td><td>4xx Client Error</td></tr>
+            <tr><td><code>ExpectationFailed</code></td><td>417</td><td>4xx Client Error</td></tr>
+            <tr><td><code>ImATeapot</code></td><td>418</td><td>4xx Client Error</td></tr>
+            <tr><td><code>MisdirectedRequest</code></td><td>421</td><td>4xx Client Error</td></tr>
+            <tr><td><code>UnprocessableEntity</code></td><td>422</td><td>4xx Client Error</td></tr>
+            <tr><td><code>Locked</code></td><td>423</td><td>4xx Client Error</td></tr>
+            <tr><td><code>FailedDependency</code></td><td>424</td><td>4xx Client Error</td></tr>
+            <tr><td><code>TooEarly</code></td><td>425</td><td>4xx Client Error</td></tr>
+            <tr><td><code>UpgradeRequired</code></td><td>426</td><td>4xx Client Error</td></tr>
+            <tr><td><code>PreconditionRequired</code></td><td>428</td><td>4xx Client Error</td></tr>
+            <tr><td><code>TooManyRequests</code></td><td>429</td><td>4xx Client Error</td></tr>
+            <tr><td><code>RequestHeaderFieldsTooLarge</code></td><td>431</td><td>4xx Client Error</td></tr>
+            <tr><td><code>UnavailableForLegalReasons</code></td><td>451</td><td>4xx Client Error</td></tr>
+            <tr><td><code>InternalServerError</code></td><td>500</td><td>5xx Server Error</td></tr>
+            <tr><td><code>NotImplemented</code></td><td>501</td><td>5xx Server Error</td></tr>
+            <tr><td><code>BadGateway</code></td><td>502</td><td>5xx Server Error</td></tr>
+            <tr><td><code>ServiceUnavailable</code></td><td>503</td><td>5xx Server Error</td></tr>
+            <tr><td><code>GatewayTimeout</code></td><td>504</td><td>5xx Server Error</td></tr>
+            <tr><td><code>HttpVersionNotSupported</code></td><td>505</td><td>5xx Server Error</td></tr>
+            <tr><td><code>InsufficientStorage</code></td><td>507</td><td>5xx Server Error</td></tr>
+            <tr><td><code>LoopDetected</code></td><td>508</td><td>5xx Server Error</td></tr>
+            <tr><td><code>NetworkAuthRequired</code></td><td>511</td><td>5xx Server Error</td></tr>
+          </tbody>
+        </table>
+
+        <h3 id="lib-http-method">Method</h3>
+        <p>
+          A frozen object mapping HTTP verb names to their string values.
+          Use <code>Method.GET</code>, <code>Method.POST</code>, etc. to avoid
+          typos in request code:
+        </p>
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Value</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>Method.GET</code></td><td><code>"GET"</code></td></tr>
+            <tr><td><code>Method.POST</code></td><td><code>"POST"</code></td></tr>
+            <tr><td><code>Method.PUT</code></td><td><code>"PUT"</code></td></tr>
+            <tr><td><code>Method.PATCH</code></td><td><code>"PATCH"</code></td></tr>
+            <tr><td><code>Method.DELETE</code></td><td><code>"DELETE"</code></td></tr>
+            <tr><td><code>Method.HEAD</code></td><td><code>"HEAD"</code></td></tr>
+            <tr><td><code>Method.OPTIONS</code></td><td><code>"OPTIONS"</code></td></tr>
+            <tr><td><code>Method.CONNECT</code></td><td><code>"CONNECT"</code></td></tr>
+            <tr><td><code>Method.TRACE</code></td><td><code>"TRACE"</code></td></tr>
+          </tbody>
+        </table>
+
+        <pre><code class="language-javascript">import { request, Method, StatusCode } from "lib:http";
+import { println } from "core:io";
+
+// POST with JSON body using Method and StatusCode constants
+request("http://api.example.com/users", {
+    method: Method.POST,
+    headers: { "Content-Type": "application/json" },
+    body: { name: "Alice", age: 30 }
+}).then(fn(res) {
+    if (res.status == StatusCode.Created) {
+        println("User created:", res.body);
+    } else if (res.status == StatusCode.BadRequest) {
+        println("Bad request:", res.body);
+    } else {
+        println("Unexpected status:", res.status);
+    }
+}).error(fn(e) {
+    println("Request failed:", e);
+});</code></pre>
+
+        <p>
+          See <code>tests/test_request.zs</code> for a minimal client example
+          using <code>lib:http</code>.
+        </p>
       </main>
     </div>
 
