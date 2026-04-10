@@ -4,7 +4,7 @@
 [![Language: C](https://img.shields.io/badge/Language-C-informational.svg)](https://en.wikipedia.org/wiki/C_(programming_language))
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)](#building)
 [![Docs](https://img.shields.io/badge/Docs-online-green.svg)](https://hollishake.github.io/zaynescript)
-[![GitHub](https://img.shields.io/badge/GitHub-HolliShake%2FLanguageX-181717.svg?logo=github)](https://github.com/HolliShake/LanguageX)
+[![GitHub](https://img.shields.io/badge/GitHub-HolliShake%2Fzaynescript-181717.svg?logo=github)](https://github.com/HolliShake/zaynescript)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════╗
