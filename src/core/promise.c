@@ -155,7 +155,7 @@ Value* CreatePromiseClass(Interpreter* interpreter) {
 Value* LoadCorePromise(Interpreter* interpreter) {
 	Value* val = (interpreter->Promise != NULL)
 					 ? interpreter->Promise
-					 : CreatePromiseClass(interpreter);
+					 : (interpreter->Promise = CreatePromiseClass(interpreter));
 
 	Value*	 module = NewObjectValue(interpreter);
 	HashMap* map	= CoerceToHashMap(module);

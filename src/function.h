@@ -70,6 +70,30 @@ int UserFunctionAddCapture(UserFunction* userFunction,
 						   int			 sourceOffset);
 
 /**
+ * @brief Retrieves the value of a captured variable from the
+ * user function.
+ * @param userFunction Pointer to the user function to retrieve
+ * the captured variable from.
+ * @param captureIndex The index of the captured variable to
+ * retrieve.
+ * @return The value of the captured variable, or NULL if the
+ * index is out of bounds.
+ */
+Value* UserFunctionGetCapture(UserFunction* userFunction, int captureIndex);
+
+/**
+ * @brief Sets the value of a captured variable in the user
+ * function.
+ * @param userFunction Pointer to the user function to set the
+ * captured variable in.
+ * @param captureIndex The index of the captured variable to set.
+ * @param value The value to set the captured variable to.
+ */
+void UserFunctionSetCapture(UserFunction* userFunction,
+							int			  captureIndex,
+							Value*		  value);
+
+/**
  * @brief Converts a user function structure to its string
  * representation.
  *

@@ -73,9 +73,10 @@ HashMap* CreateHashMap(size_t size) {
 		return NULL;
 	}
 
-	hashmap->Size	 = size;
-	hashmap->Count	 = 0;
-	hashmap->Buckets = Allocate(sizeof(HashNode) * size);
+	hashmap->Size	  = size;
+	hashmap->Count	  = 0;
+	hashmap->Buckets  = Allocate(sizeof(HashNode) * size);
+	hashmap->ReadOnly = false;
 
 	if (hashmap->Buckets == NULL) {
 		free(hashmap);
@@ -89,6 +90,29 @@ HashMap* CreateHashMap(size_t size) {
 	}
 
 	return hashmap;
+}
+
+HashMap* HashMapClone(HashMap* original, bool readOnly) {
+	if (original == NULL || original->Size == 0) {
+		return NULL;
+	}
+
+	HashMap* clone	= CreateHashMap(original->Size);
+	clone->ReadOnly = readOnly;
+
+	if (clone == NULL) {
+		return NULL;
+	}
+
+	for (size_t i = 0; i < original->Size; i++) {
+		HashNode* node = &original->Buckets[i];
+		while (node != NULL && node->Key != NULL) {
+			HashMapSet(clone, node->Key, node->Val);
+			node = node->Next;
+		}
+	}
+
+	return clone;
 }
 
 void HashMapSet(HashMap* hashmap, String key, void* value) {

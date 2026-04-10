@@ -27,6 +27,21 @@
 HashMap* CreateHashMap(size_t size);
 
 /**
+ * @brief Creates a shallow copy of a hash map.
+ *
+ * Allocates a new hash map and copies all entries from the
+ * original. The keys and values are not duplicated; the new
+ * hash map will point to the same keys and values as the
+ * original.
+ *
+ * @param original Pointer to the hash map to clone
+ * @param readOnly If true, the cloned hash map will be marked as
+ * @return Pointer to the cloned HashMap structure, or NULL on
+ * failure
+ */
+HashMap* HashMapClone(HashMap* original, bool readOnly);
+
+/**
  * @brief Sets a key-value pair in the hash map.
  *
  * If the key already exists, its value will be updated.

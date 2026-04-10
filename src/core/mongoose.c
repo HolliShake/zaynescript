@@ -137,6 +137,15 @@ extern Value* Popp(Interpreter* interpreter);
  */
 extern Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
 
+/**
+ * @brief Enqueues a task (promise) to be processed by the interpreter event
+ * loop.
+ * @param interpreter The interpreter instance.
+ * @param task The promise value to enqueue.
+ * @origin src/interpreter.c:148
+ */
+extern void EnqueueTask(Interpreter* interpreter, Value* task);
+
 /* -----------------------------------------------------------------------
  * Lookup a MIME type string for a file extension, e.g. ".jpg" → "image/jpeg".
  * --------------------------------------------------------------------- */
@@ -167,40 +176,118 @@ static const String _MimeFromExt(const String dot) {
 
 static const String _StatusText(int code) {
 	switch (code) {
+		case 100:
+			return "continue";
+		case 101:
+			return "switching protocols";
+		case 102:
+			return "processing";
+		case 103:
+			return "early hints";
 		case 200:
 			return "ok";
 		case 201:
 			return "created";
+		case 202:
+			return "accepted";
+		case 203:
+			return "non-authoritative information";
 		case 204:
 			return "no content";
+		case 205:
+			return "reset content";
+		case 206:
+			return "partial content";
+		case 300:
+			return "multiple choices";
 		case 301:
 			return "moved permanently";
 		case 302:
 			return "found";
+		case 303:
+			return "see other";
 		case 304:
 			return "not modified";
+		case 307:
+			return "temporary redirect";
+		case 308:
+			return "permanent redirect";
 		case 400:
 			return "bad request";
 		case 401:
 			return "unauthorized";
+		case 402:
+			return "payment required";
 		case 403:
 			return "forbidden";
 		case 404:
 			return "not found";
 		case 405:
 			return "method not allowed";
+		case 406:
+			return "not acceptable";
+		case 407:
+			return "proxy authentication required";
+		case 408:
+			return "request timeout";
 		case 409:
 			return "conflict";
+		case 410:
+			return "gone";
+		case 411:
+			return "length required";
+		case 412:
+			return "precondition failed";
+		case 413:
+			return "payload too large";
+		case 414:
+			return "uri too long";
+		case 415:
+			return "unsupported media type";
+		case 416:
+			return "range not satisfiable";
+		case 417:
+			return "expectation failed";
+		case 418:
+			return "i'm a teapot";
+		case 421:
+			return "misdirected request";
 		case 422:
 			return "unprocessable entity";
+		case 423:
+			return "locked";
+		case 424:
+			return "failed dependency";
+		case 425:
+			return "too early";
+		case 426:
+			return "upgrade required";
+		case 428:
+			return "precondition required";
 		case 429:
 			return "too many requests";
+		case 431:
+			return "request header fields too large";
+		case 451:
+			return "unavailable for legal reasons";
 		case 500:
 			return "internal server error";
+		case 501:
+			return "not implemented";
 		case 502:
 			return "bad gateway";
 		case 503:
 			return "service unavailable";
+		case 504:
+			return "gateway timeout";
+		case 505:
+			return "http version not supported";
+		case 507:
+			return "insufficient storage";
+		case 508:
+			return "loop detected";
+		case 511:
+			return "network authentication required";
 		default:
 			return "unknown";
 	}
@@ -272,28 +359,28 @@ static String _JsonEscape(const String src) {
 #define ROUTE_GROW	   16
 
 typedef struct {
-	String method;	/* "GET", "POST", … or NULL = wildcard */
-	String path;	/* mg_match() pattern                  */
-	Value* handler; /* callable Value*                    */
+	String Method;	/* "GET", "POST", … or NULL = wildcard */
+	String Path;	/* mg_match() pattern                  */
+	Value* Handler; /* callable Value*                    */
 } Route;
 
 typedef struct {
-	Route*		  routes;
-	size_t		  count;
-	size_t		  capacity;
-	Value*		  middleware[MAX_MIDDLEWARE];
-	size_t		  mw_count;
-	Interpreter*  interp;
-	struct mg_mgr mgr;
-	bool		  running;
-	Value*		  reqClass; /* GC-rooted via Server._ReqClass static member */
-	Value*		  resClass; /* GC-rooted via Server._ResClass static member */
+	Route*				  Routes;
+	size_t				  Count;
+	size_t				  Capacity;
+	Value*				  Middleware[MAX_MIDDLEWARE];
+	size_t				  MwCount;
+	Interpreter*		  Interp;
+	struct mg_connection* Listener; /* listening conn on interp->MgMgr */
+	bool				  Running;
+	Value*				  ReqClass;
+	Value*				  ResClass;
 } AppState;
 
 typedef struct {
-	struct mg_connection*	conn;
-	struct mg_http_message* msg;
-	bool					responded;
+	struct mg_connection*	Conn;
+	struct mg_http_message* Msg;
+	bool					Responded;
 } ReqResCtx;
 
 /* -----------------------------------------------------------------------
@@ -308,11 +395,11 @@ static AppState* _GetApp(ClassInstance* cls) {
 }
 
 static void _AppStateFree(AppState* app) {
-	for (size_t i = 0; i < app->count; i++) {
-		free(app->routes[i].method); /* strdup'd, or NULL for wildcard */
-		free(app->routes[i].path);
+	for (size_t i = 0; i < app->Count; i++) {
+		free(app->Routes[i].Method); /* strdup'd, or NULL for wildcard */
+		free(app->Routes[i].Path);
 	}
-	free(app->routes);
+	free(app->Routes);
 	free(app);
 }
 
@@ -320,14 +407,14 @@ static void _AppAddRoute(AppState*	  app,
 						 const String method,
 						 const String path,
 						 Value*		  handler) {
-	if (app->count >= app->capacity) {
-		app->capacity += ROUTE_GROW;
-		app->routes	   = realloc(app->routes, sizeof(Route) * app->capacity);
+	if (app->Count >= app->Capacity) {
+		app->Capacity += ROUTE_GROW;
+		app->Routes	   = realloc(app->Routes, sizeof(Route) * app->Capacity);
 	}
-	app->routes[app->count].method	= method ? strdup(method) : NULL;
-	app->routes[app->count].path	= strdup(path);
-	app->routes[app->count].handler = handler;
-	app->count++;
+	app->Routes[app->Count].Method	= method ? strdup(method) : NULL;
+	app->Routes[app->Count].Path	= strdup(path);
+	app->Routes[app->Count].Handler = handler;
+	app->Count++;
 }
 
 /* -----------------------------------------------------------------------
@@ -357,7 +444,7 @@ static Value* _ResSend(Interpreter* interp, int argc, Value** args) {
 	ReqResCtx*	   ctx = _GetCtx(cls);
 	if (!ctx)
 		return NewErrorValue(interp, "res.send(): invalid context");
-	if (ctx->responded)
+	if (ctx->Responded)
 		return interp->Null;
 
 	Value* sv	  = (Value*) HashMapGet(cls->Members, PROP_RES_STATUS);
@@ -381,8 +468,8 @@ static Value* _ResSend(Interpreter* interp, int argc, Value** args) {
 	String headers = (String) Allocate(hlen);
 	snprintf(headers, hlen, "Content-Type: application/json\r\n%s", extra);
 
-	mg_http_reply(ctx->conn, status, headers, "%s", wrapped);
-	ctx->responded = true;
+	mg_http_reply(ctx->Conn, status, headers, "%s", wrapped);
+	ctx->Responded = true;
 	free(body);
 	free(escaped);
 	free(wrapped);
@@ -400,7 +487,7 @@ static Value* _ResJson(Interpreter* interp, int argc, Value** args) {
 	ReqResCtx*	   ctx = _GetCtx(cls);
 	if (!ctx)
 		return NewErrorValue(interp, "res.json(): invalid context");
-	if (ctx->responded)
+	if (ctx->Responded)
 		return interp->Null;
 
 	Value* sv	  = (Value*) HashMapGet(cls->Members, PROP_RES_STATUS);
@@ -424,8 +511,8 @@ static Value* _ResJson(Interpreter* interp, int argc, Value** args) {
 			 stxt,
 			 body);
 
-	mg_http_reply(ctx->conn, status, headers, "%s", wrapped);
-	ctx->responded = true;
+	mg_http_reply(ctx->Conn, status, headers, "%s", wrapped);
+	ctx->Responded = true;
 	free(body);
 	free(wrapped);
 	free(headers);
@@ -453,7 +540,7 @@ static Value* _ResRedirect(Interpreter* interp, int argc, Value** args) {
 	ReqResCtx*	   ctx = _GetCtx(cls);
 	if (!ctx)
 		return NewErrorValue(interp, "res.redirect(): invalid context");
-	if (ctx->responded)
+	if (ctx->Responded)
 		return interp->Null;
 
 	String location = ValueToString(args[1]);
@@ -468,8 +555,8 @@ static Value* _ResRedirect(Interpreter* interp, int argc, Value** args) {
 			 sizeof(wrapped),
 			 "{\"status\":302,\"statusText\":\"found\",\"data\":\"%s\"}",
 			 escaped);
-	mg_http_reply(ctx->conn, 302, header, "%s", wrapped);
-	ctx->responded = true;
+	mg_http_reply(ctx->Conn, 302, header, "%s", wrapped);
+	ctx->Responded = true;
 	free(location);
 	free(escaped);
 	return interp->Null;
@@ -841,16 +928,16 @@ static void _EvHandler(struct mg_connection* c, int ev, void* ev_data) {
 		return;
 
 	struct mg_http_message* hm	   = (struct mg_http_message*) ev_data;
-	Interpreter*			interp = app->interp;
+	Interpreter*			interp = app->Interp;
 
-	ReqResCtx ctx = { .conn = c, .msg = hm, .responded = false };
+	ReqResCtx ctx = { .Conn = c, .Msg = hm, .Responded = false };
 
-	Value* reqVal = _BuildReqInstance(interp, app->reqClass, hm);
-	Value* resVal = _BuildResInstance(interp, app->resClass, &ctx);
+	Value* reqVal = _BuildReqInstance(interp, app->ReqClass, hm);
+	Value* resVal = _BuildResInstance(interp, app->ResClass, &ctx);
 
 	/* Middleware */
-	for (size_t i = 0; i < app->mw_count && !ctx.responded; i++) {
-		Value* mw = app->middleware[i];
+	for (size_t i = 0; i < app->MwCount && !ctx.Responded; i++) {
+		Value* mw = app->Middleware[i];
 		if (!ValueIsCallable(mw))
 			continue;
 		Push(interp, resVal);
@@ -859,7 +946,7 @@ static void _EvHandler(struct mg_connection* c, int ev, void* ev_data) {
 		Popp(interp);
 	}
 
-	if (ctx.responded)
+	if (ctx.Responded)
 		return;
 
 	/* Route matching */
@@ -870,15 +957,15 @@ static void _EvHandler(struct mg_connection* c, int ev, void* ev_data) {
 	snprintf(meth, sizeof(meth), "%.*s", (int) hm->method.len, hm->method.buf);
 
 	bool matched = false;
-	for (size_t i = 0; i < app->count && !matched; i++) {
-		Route* r = &app->routes[i];
+	for (size_t i = 0; i < app->Count && !matched; i++) {
+		Route* r = &app->Routes[i];
 
-		if (r->method && strcasecmp(r->method, meth) != 0)
+		if (r->Method && strcasecmp(r->Method, meth) != 0)
 			continue;
 
 		struct mg_str caps[4];
 		memset(caps, 0, sizeof(caps));
-		if (!mg_match(mg_str_n(uri, strlen(uri)), mg_str(r->path), caps))
+		if (!mg_match(mg_str_n(uri, strlen(uri)), mg_str(r->Path), caps))
 			continue;
 
 		matched = true;
@@ -903,7 +990,7 @@ static void _EvHandler(struct mg_connection* c, int ev, void* ev_data) {
 
 		Push(interp, resVal);
 		Push(interp, reqVal);
-		DoCall(interp, r->handler, 2, false);
+		DoCall(interp, r->Handler, 2, false);
 		Value* result = Popp(interp);
 
 		if ((ValueIsPromise(result)
@@ -923,14 +1010,14 @@ static void _EvHandler(struct mg_connection* c, int ev, void* ev_data) {
 						  "Content-Type: application/json\r\n",
 						  "%s",
 						  wrapped);
-			ctx.responded = true;
+			ctx.Responded = true;
 			free(errMsg);
 			free(escaped);
 			free(wrapped);
 		}
 	}
 
-	if (!matched && !ctx.responded)
+	if (!matched && !ctx.Responded)
 		mg_http_reply(
 			c,
 			404,
@@ -954,10 +1041,10 @@ static Value* _ServerInit(Interpreter* interp, int argc, Value** args) {
 							 "internal: Request/Response class not found");
 
 	AppState* app = (AppState*) Callocate(1, sizeof(AppState));
-	app->interp	  = interp;
-	app->running  = false;
-	app->reqClass = reqClass;
-	app->resClass = resClass;
+	app->Interp	  = interp;
+	app->Running  = false;
+	app->ReqClass = reqClass;
+	app->ResClass = resClass;
 
 	HashMapSet(cls->Members, PROP_APP_PTR, NewOpquePtrValue(interp, app));
 	return interp->Null;
@@ -993,9 +1080,9 @@ static Value* _AppUse(Interpreter* interp, int argc, Value** args) {
 	AppState*	   app = _GetApp(cls);
 	if (!app)
 		return NewErrorValue(interp, "use(): server not initialised");
-	if (app->mw_count >= MAX_MIDDLEWARE)
+	if (app->MwCount >= MAX_MIDDLEWARE)
 		return NewErrorValue(interp, "use(): maximum middleware count reached");
-	app->middleware[app->mw_count++] = args[1];
+	app->Middleware[app->MwCount++] = args[1];
 	return args[0];
 }
 
@@ -1014,10 +1101,11 @@ static Value* _AppListen(Interpreter* interp, int argc, Value** args) {
 	char url[64];
 	snprintf(url, sizeof(url), "http://0.0.0.0:%d", port);
 
-	mg_mgr_init(&app->mgr);
-	struct mg_connection* lc = mg_http_listen(&app->mgr, url, _EvHandler, app);
+	// Register the listener on the interpreter's shared mongoose
+	// manager. The interpreter event loop drives mg_mgr_poll().
+	struct mg_connection* lc =
+		mg_http_listen(&interp->MgMgr, url, _EvHandler, app);
 	if (lc == NULL) {
-		mg_mgr_free(&app->mgr);
 		_AppStateFree(app);
 		HashMapSet(cls->Members, PROP_APP_PTR, NewOpquePtrValue(interp, NULL));
 		return NewErrorFValue(interp,
@@ -1025,7 +1113,8 @@ static Value* _AppListen(Interpreter* interp, int argc, Value** args) {
 							  port);
 	}
 
-	app->running = true;
+	app->Listener = lc;
+	app->Running  = true;
 
 	if (cb) {
 		String msg	  = FormatString("Server listening on port %d", port);
@@ -1036,12 +1125,6 @@ static Value* _AppListen(Interpreter* interp, int argc, Value** args) {
 		Popp(interp);
 	}
 
-	while (app->running)
-		mg_mgr_poll(&app->mgr, 100);
-
-	mg_mgr_free(&app->mgr);
-	_AppStateFree(app);
-	HashMapSet(cls->Members, PROP_APP_PTR, NewOpquePtrValue(interp, NULL));
 	return interp->Null;
 }
 
@@ -1049,8 +1132,15 @@ static Value* _AppClose(Interpreter* interp, int argc, Value** args) {
 	(void) argc;
 	ClassInstance* cls = CoerceToClassInstance(args[0]);
 	AppState*	   app = _GetApp(cls);
-	if (app)
-		app->running = false;
+	if (app && app->Running) {
+		app->Running = false;
+		if (app->Listener) {
+			app->Listener->is_closing = 1;
+			app->Listener			  = NULL;
+		}
+		_AppStateFree(app);
+		HashMapSet(cls->Members, PROP_APP_PTR, NewOpquePtrValue(interp, NULL));
+	}
 	return interp->Null;
 }
 
@@ -1129,14 +1219,275 @@ _BuildClass(Interpreter* interp, const String name, ModuleFunction methods[]) {
  * Internal structures
  *
  * AppState  – held as an opaque pointer inside the JS "app" object.
- *             It owns the mg_mgr, the route table, and the global
- *             middleware list.
+ *             It owns the route table and the global middleware list.
  *
  * Route     – one registered route (method + path pattern + handler).
  * RouteList – a simple growable array of routes.
  * ----------------------------------------------------------------------- */
 
 #define MAX_MIDDLEWARE 32
+
+/* -----------------------------------------------------------------------
+ * request(url [, options]) → Promise
+ *
+ * Non-blocking HTTP client using the interpreter's shared mg_mgr.
+ * Returns a promise that resolves with a response object:
+ *   { status, statusText, headers, body }
+ *
+ * options (optional object):
+ *   method  – "GET" (default), "POST", "PUT", "DELETE", etc.
+ *   headers – object of header key/value pairs
+ *   body    – string body for POST/PUT
+ * ----------------------------------------------------------------------- */
+
+typedef struct {
+	Interpreter* interp;
+	Value*		 promise;
+	char*		 host;	   /* for the Host header */
+	char*		 uri;	   /* request URI path */
+	char*		 method;
+	char*		 extraHdr; /* additional headers string */
+	char*		 bodyStr;  /* request body (or NULL) */
+	bool		 sent;	   /* true once request line has been sent */
+} FetchCtx;
+
+static void _FetchEvHandler(struct mg_connection* c, int ev, void* ev_data) {
+	FetchCtx* ctx = (FetchCtx*) c->fn_data;
+	if (ctx == NULL)
+		return; /* already handled / closing */
+
+	if (ev == MG_EV_CONNECT) {
+		/* Connection established — send the HTTP request */
+		if (!ctx->sent) {
+			ctx->sent	   = true;
+			size_t bodyLen = ctx->bodyStr ? strlen(ctx->bodyStr) : 0;
+			mg_printf(c,
+					  "%s %s HTTP/1.1\r\n"
+					  "Host: %s\r\n"
+					  "Content-Length: %lu\r\n"
+					  "%s"
+					  "\r\n",
+					  ctx->method,
+					  ctx->uri,
+					  ctx->host,
+					  (unsigned long) bodyLen,
+					  ctx->extraHdr ? ctx->extraHdr : "");
+			if (bodyLen > 0)
+				mg_send(c, ctx->bodyStr, bodyLen);
+		}
+		return;
+	}
+
+	if (ev == MG_EV_HTTP_MSG) {
+		struct mg_http_message* hm	   = (struct mg_http_message*) ev_data;
+		Interpreter*			interp = ctx->interp;
+
+		/* Build response object: { status, statusText, headers, body } */
+		Value*	 obj = NewObjectValue(interp);
+		HashMap* map = CoerceToHashMap(obj);
+
+		/* status (int) */
+		int code = mg_http_status(hm);
+		HashMapSet(map, "status", NewIntValue(interp, code));
+		HashMapSet(map,
+				   "statusText",
+				   NewStrValue(interp, (String) _StatusText(code)));
+
+		/* headers (object) */
+		Value*	 hdrObj = NewObjectValue(interp);
+		HashMap* hdrMap = CoerceToHashMap(hdrObj);
+		for (int i = 0; i < MG_MAX_HTTP_HEADERS; i++) {
+			if (hm->headers[i].name.len == 0)
+				break;
+			char hname[256], hval[2048];
+			snprintf(hname,
+					 sizeof(hname),
+					 "%.*s",
+					 (int) hm->headers[i].name.len,
+					 hm->headers[i].name.buf);
+			snprintf(hval,
+					 sizeof(hval),
+					 "%.*s",
+					 (int) hm->headers[i].value.len,
+					 hm->headers[i].value.buf);
+			for (char* p = hname; *p; p++)
+				*p = (char) tolower((unsigned char) *p);
+			HashMapSet(hdrMap, hname, NewStrValue(interp, hval));
+		}
+		HashMapSet(map, "headers", hdrObj);
+
+		/* body — try to parse as JSON, fall back to string */
+		if (hm->body.len > 0
+			&& _HeaderContains(hm, "Content-Type", "application/json")) {
+			HashMapSet(
+				map,
+				"body",
+				_JsonToValue(interp, mg_str_n(hm->body.buf, hm->body.len)));
+		} else {
+			char* body = (char*) Allocate(hm->body.len + 1);
+			memcpy(body, hm->body.buf, hm->body.len);
+			body[hm->body.len] = '\0';
+			HashMapSet(map, "body", NewStrValue(interp, body));
+			free(body);
+		}
+
+		/* Fulfill the promise */
+		StateMachine* sm = CoerceToStateMachine(ctx->promise);
+		StateMachineFulfill(sm, obj);
+		for (size_t i = 0; i < sm->WaitListC; i++)
+			EnqueueTask(interp, sm->WaitList[i]);
+
+		c->is_closing = 1;
+		free(ctx->host);
+		free(ctx->uri);
+		free(ctx->method);
+		free(ctx->extraHdr);
+		free(ctx->bodyStr);
+		free(ctx);
+		c->fn_data = NULL;
+		return;
+	}
+
+	if (ev == MG_EV_ERROR) {
+		Interpreter* interp = ctx->interp;
+		String		 msg	= (String) ev_data;
+		Value*		 err = NewErrorValue(interp, msg ? msg : "request failed");
+
+		StateMachine* sm = CoerceToStateMachine(ctx->promise);
+		StateMachineReject(sm, err);
+		for (size_t i = 0; i < sm->WaitListC; i++)
+			EnqueueTask(interp, sm->WaitList[i]);
+
+		c->is_closing = 1;
+		free(ctx->host);
+		free(ctx->uri);
+		free(ctx->method);
+		free(ctx->extraHdr);
+		free(ctx->bodyStr);
+		free(ctx);
+		c->fn_data = NULL;
+		return;
+	}
+}
+
+static Value* _Request(Interpreter* interp, int argc, Value** args) {
+	if (argc < 1 || !ValueIsStr(args[0]))
+		return NewErrorValue(interp, "request() requires a URL string");
+
+	String url = ValueToString(args[0]);
+
+	/* Parse optional options object */
+	char* method   = strdup("GET");
+	char* extraHdr = NULL;
+	char* bodyStr  = NULL;
+
+	if (argc >= 2 && ValueIsObject(args[1])) {
+		HashMap* opts = CoerceToHashMap(args[1]);
+
+		Value* mVal = (Value*) HashMapGet(opts, "method");
+		if (mVal && ValueIsStr(mVal)) {
+			free(method);
+			method = ValueToString(mVal);
+			/* Upper-case the method */
+			for (char* p = method; *p; p++)
+				*p = (char) toupper((unsigned char) *p);
+		}
+
+		Value* hVal = (Value*) HashMapGet(opts, "headers");
+		if (hVal && ValueIsObject(hVal)) {
+			HashMap* hdrMap = CoerceToHashMap(hVal);
+			/* Build header string from key/value pairs */
+			size_t cap	= 1024;
+			extraHdr	= (char*) Allocate(cap);
+			extraHdr[0] = '\0';
+			size_t len	= 0;
+			for (size_t i = 0; i < hdrMap->Size; i++) {
+				HashNode* node = &hdrMap->Buckets[i];
+				if (node->Key == NULL)
+					continue;
+				while (node) {
+					if (node->Key) {
+						String vStr	  = ValueToString((Value*) node->Val);
+						size_t needed = strlen(node->Key) + strlen(vStr) + 5;
+						while (len + needed >= cap) {
+							cap		 *= 2;
+							extraHdr  = realloc(extraHdr, cap);
+						}
+						len += (size_t) snprintf(extraHdr + len,
+												 cap - len,
+												 "%s: %s\r\n",
+												 node->Key,
+												 vStr);
+						free(vStr);
+					}
+					node = node->Next;
+				}
+			}
+		}
+
+		Value* bVal = (Value*) HashMapGet(opts, "body");
+		if (bVal && ValueIsStr(bVal)) {
+			bodyStr = ValueToString(bVal);
+		} else if (bVal && ValueIsObject(bVal)) {
+			bodyStr = ValueToString(bVal);
+			/* Auto-add Content-Type if not set */
+			if (!extraHdr || !strstr(extraHdr, "Content-Type")) {
+				const char* ct	  = "Content-Type: application/json\r\n";
+				size_t		ctLen = strlen(ct);
+				if (!extraHdr) {
+					extraHdr = (char*) Allocate(ctLen + 1);
+					memcpy(extraHdr, ct, ctLen + 1);
+				} else {
+					size_t oldLen = strlen(extraHdr);
+					extraHdr	  = realloc(extraHdr, oldLen + ctLen + 1);
+					memcpy(extraHdr + oldLen, ct, ctLen + 1);
+				}
+			}
+		}
+	}
+
+	/* Extract host and URI from URL */
+	struct mg_str hostStr = mg_url_host(url);
+	char*		  host	  = (char*) Allocate(hostStr.len + 1);
+	memcpy(host, hostStr.buf, hostStr.len);
+	host[hostStr.len] = '\0';
+	char* uri		  = strdup(mg_url_uri(url));
+
+	/* Create a pending promise */
+	StateMachine* sm =
+		CreateStateMachine(PENDING, false, 0, interp->CallEnv, NULL, NULL);
+	Value* promise = NewPromiseValue(interp, sm);
+
+	/* Allocate context for the event handler callback */
+	FetchCtx* ctx = (FetchCtx*) Allocate(sizeof(FetchCtx));
+	ctx->interp	  = interp;
+	ctx->promise  = promise;
+	ctx->host	  = host;
+	ctx->uri	  = uri;
+	ctx->method	  = method;
+	ctx->extraHdr = extraHdr;
+	ctx->bodyStr  = bodyStr;
+	ctx->sent	  = false;
+
+	struct mg_connection* c =
+		mg_http_connect(&interp->MgMgr, url, _FetchEvHandler, ctx);
+
+	free(url);
+
+	if (c == NULL) {
+		StateMachineReject(
+			sm,
+			NewErrorValue(interp, "request(): failed to connect"));
+		free(ctx->host);
+		free(ctx->uri);
+		free(ctx->method);
+		free(ctx->extraHdr);
+		free(ctx->bodyStr);
+		free(ctx);
+	}
+
+	return promise;
+}
 
 /* -----------------------------------------------------------------------
  * Module entry point — mirrors LoadCoreSqlite pattern
@@ -1168,5 +1519,12 @@ Value* LoadCoreMongoose(Interpreter* interpreter) {
 	HashMapSet(map, "Server", serverClass);
 	HashMapSet(map, "Request", reqClass);
 	HashMapSet(map, "Response", resClass);
+	HashMapSet(map,
+			   "request",
+			   NewNativeFunctionValue(interpreter,
+									  CreateNativeFunctionMeta(
+										  "request",
+										  VARARG,
+										  (NativeFunctionCallback) _Request)));
 	return module;
 }

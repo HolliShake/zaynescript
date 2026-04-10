@@ -8,6 +8,7 @@
 *.so
 *.js
 win32
+dist
 **/*.a
 **/*.dll
 **/*.lib

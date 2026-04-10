@@ -21,6 +21,7 @@ Interpreter* CreateInterpreter(String execPath) {
 	interpreter->GcRoot		  = NULL;
 	interpreter->RootEnv	  = NULL;
 	interpreter->CallEnv	  = NULL;
+	interpreter->Object		  = CreateObjectClass(interpreter);
 	interpreter->Array		  = CreateArrayClass(interpreter);
 	interpreter->Date		  = CreateDateClass(interpreter);
 	interpreter->Promise	  = CreatePromiseClass(interpreter);
@@ -44,6 +45,7 @@ Interpreter* CreateInterpreter(String execPath) {
 	interpreter->TaskQueueHead = 0;
 	interpreter->TaskQueueC	   = 0;
 	interpreter->ActiveTask	   = NULL;
+	mg_mgr_init(&interpreter->MgMgr);
 	return interpreter;
 }
 
@@ -53,9 +55,10 @@ Interpreter* CreateInterpreter(String execPath) {
 #define GetVar(envObj, offset)                                                 \
 	EnvironmentGetLocal(CoerceToEnvironment(envObj), offset)->Value
 
-#define GetCap(uFunct, offset) (uFunct->Captures[offset]->Value)
+#define GetCap(uFunct, offset) UserFunctionGetCapture(uFunct, offset)
 
-#define SetCap(uFunct, offset, value) (uFunct->Captures[offset]->Value = value)
+#define SetCap(uFunct, offset, value)                                          \
+	UserFunctionSetCapture(uFunct, offset, value)
 
 #define LockVar(envObj, offset)                                                \
 	{                                                                          \
@@ -144,6 +147,10 @@ void PopTrace(Interpreter* interpreter) {
 }
 
 /******* Task Queue Management */
+bool HasPendingTasks(Interpreter* interpreter) {
+	return interpreter->TaskQueueC > 0;
+}
+
 void EnqueueTask(Interpreter* interpreter, Value* task) {
 	if (interpreter->TaskQueueC >= STACK_SIZE) {
 		InterpreterPanic("Task queue overflow");
@@ -1377,10 +1384,27 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 
 	int old = interpreter->StckC;
 
-	// Consume all remaining tasks in the task queue (e.g.
-	// pending promises) before exiting the program
-	Value* task = NULL;
-	while ((task = DequeueTask(interpreter)) != NULL) {
+	// Event loop: process pending tasks and mongoose I/O
+	// together. Keep spinning while there are queued tasks OR
+	// active mongoose connections (which may produce new tasks).
+	for (;;) {
+		// Poll mongoose for I/O events (non-blocking with a
+		// short timeout). This may trigger callbacks that
+		// resolve promises and enqueue new tasks.
+		int timeoutMs = HasPendingTasks(interpreter)
+							? 0
+							: 50;  // Adjust as needed for responsiveness
+		mg_mgr_poll(&interpreter->MgMgr, timeoutMs);
+
+		Value* task = DequeueTask(interpreter);
+		if (task == NULL) {
+			// No tasks right now.  If mongoose still has active
+			// connections keep polling; otherwise we are done.
+			if (interpreter->MgMgr.conns == NULL)
+				break;
+			continue;
+		}
+
 		// Awaited
 		StateMachine* sm		= CoerceToStateMachine(task);
 		interpreter->ActiveTask = task;
@@ -1393,46 +1417,24 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 			bool isParentRejected =
 				ValueIsError(parentSM->Value) || parentSM->State == REJECTED;
 
-			// You also need to know if THIS task is a `.then`
-			// (success) or
-			// `.error` handler. Assuming you have a flag like
-			// `sm->IsErrorHandler`:
-
 			if (isParentRejected && !sm->IsCatched) {
-				// 1. FALL-THROUGH FOR ERRORS:
-				// Parent failed, but this is a .then() block.
-				// Skip the execution and propagate the rejection
-				// down the chain.
 				StateMachineReject(sm, parentSM->Value);
 				goto ENQUEUE_TASKS;
 			} else if (!isParentRejected && sm->IsCatched) {
-				// 2. FALL-THROUGH FOR SUCCESS:
-				// Parent succeeded, but this is an .error()
-				// block. Skip the execution and propagate the
-				// success down the chain.
 				StateMachineFulfill(sm, parentSM->Value);
 				goto ENQUEUE_TASKS;
 			}
 
-			// 1. Push the resolved/rejected value from the
-			// parent promise
 			Push(interpreter, parentSM->Value);
 
-			// 2. Call the callback function directly (not
-			// through the promise wrapper)
 			Value* result = DoCall(interpreter, sm->Function, 1, false);
 			if (ValueIsError(result)) {
-				// If an error is thrown during the callback,
-				// reject this state machine with that error and
-				// skip straight to step 3
 				StateMachineReject(sm, result);
 				goto ENQUEUE_TASKS;
 			}
 
 			result = Popp(interpreter);
 
-			// 3. Fulfill or reject this state machine based on
-			// callback result
 			if (ValueIsError(result)) {
 				StateMachineReject(sm, result);
 			} else {
@@ -1440,13 +1442,10 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 			}
 
 		ENQUEUE_TASKS:;
-			// 4. Enqueue all tasks waiting on this state machine
 			for (size_t i = 0; i < sm->WaitListC; i++) {
 				EnqueueTask(interpreter, sm->WaitList[i]);
 			}
 		}
-
-		PopTrace(interpreter);
 
 		interpreter->ActiveTask = NULL;
 	}
@@ -1463,6 +1462,7 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 						 uf->Name != NULL ? uf->Name : "<anonymous>",
 						 interpreter->StckC);
 	}
+
 	ForceGarbageCollect(interpreter);
 }
 
@@ -1471,6 +1471,7 @@ void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/) {
 }
 
 void FreeInterpreter(Interpreter* interpreter) {
+	mg_mgr_free(&interpreter->MgMgr);
 	bf_context_end(&interpreter->BfContext);
 	FreeHashMap(interpreter->Imports);
 	FreeImportNode(interpreter->ImportHead);

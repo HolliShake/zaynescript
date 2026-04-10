@@ -28,6 +28,7 @@
 // Order patterns
 #include "../libbf/cutils.h"
 #include "../libbf/libbf.h"
+#include "../mongoose/mongoose.h"
 #include "../utf/utf.h"
 
 // Platform-specific includes for aligned allocation
@@ -180,9 +181,10 @@ struct hashnode_struct {
  * resolution. Keys are strings and values are generic pointers.
  */
 typedef struct hashmap_struct {
-	size_t	  Size;	   /**< Total number of buckets in the hash map */
-	size_t	  Count;   /**< Current number of entries in the hash map */
-	HashNode* Buckets; /**< Array of hash node buckets */
+	size_t	  Size;		/**< Total number of buckets in the hash map */
+	size_t	  Count;	/**< Current number of entries in the hash map */
+	HashNode* Buckets;	/**< Array of hash node buckets */
+	bool	  ReadOnly; /**< Flag indicating if the hash map is read-only */
 } HashMap;
 
 // -----------------------------------------------------------------------------
@@ -876,14 +878,17 @@ typedef struct exception_handler_struct {
  * exception handler stack for try-catch blocks.
  */
 struct interpreter_struct {
-	bf_context_t BfContext;		/**< Context for the libbf library
-								   (memory management, etc.) */
-	String ExecPath;			/**< Directory path of the executable */
-	String ModulePath;			/**< Directory path of the main module
-								   (for resolving imports) */
+	bf_context_t BfContext; /**< Context for the libbf library
+							   (memory management, etc.) */
+	String ExecPath;		/**< Directory path of the executable */
+	String ModulePath;		/**< Directory path of the main module
+							   (for resolving imports) */
+	struct mg_mgr MgMgr; /**< Mongoose manager for handling HTTP requests (used
+						  * in native modules) */
 	ImportNode* ImportHead;		/**< Head of the linked list of
 								   imported modules */
 	HashMap* Imports;			/**< Imports map */
+	Value*	 Object;			/**< Built-in Object class */
 	Value*	 Array;				/**< Built-in Array class */
 	Value*	 Date;				/**< Built-in Date class */
 	Value*	 Promise;			/**< Built-in Promise class */
