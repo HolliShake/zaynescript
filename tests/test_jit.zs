@@ -24,3 +24,14 @@ loop(300);
 
 const arr = [1,2,3,4];
 println(arr);
+
+try {
+    try {
+        2 + add;
+    } catch(e) {
+        println("inner>>",e);
+    }
+    2 + add;
+} catch (e) {
+    println("outer>>",e);
+}

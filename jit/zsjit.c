@@ -88,43 +88,43 @@ static void StrAppendf(StrBuilder* sb, String fmt, ...) {
 	sb->len += (size_t) n;
 }
 
-Value* _zsjit_popp(Interpreter* _i) {
+static Value* _zsjit_popp(Interpreter* _i) {
 	return _i->Stacks[--_i->StckC];
 }
 
-Value* _zsjit_peek(Interpreter* _i) {
+static Value* _zsjit_peek(Interpreter* _i) {
 	return _i->Stacks[_i->StckC - 1];
 }
 
-void _zsjit_push(Interpreter* _i, Value* v) {
+static void _zsjit_push(Interpreter* _i, Value* v) {
 	_i->Stacks[_i->StckC++] = v;
 }
 
-Value* _zsjit_getconst(Interpreter* _i, int off) {
+static Value* _zsjit_getconst(Interpreter* _i, int off) {
 	return _i->Constants[off];
 }
 
-Value* _zsjit_gettrue(Interpreter* _i) {
+static Value* _zsjit_gettrue(Interpreter* _i) {
 	return _i->True;
 }
 
-Value* _zsjit_getfalse(Interpreter* _i) {
+static Value* _zsjit_getfalse(Interpreter* _i) {
 	return _i->False;
 }
 
-Value* _zsjit_getnull(Interpreter* _i) {
+static Value* _zsjit_getnull(Interpreter* _i) {
 	return _i->Null;
 }
 
-Value* _zsjit_getcellvalue(EnvCell* _c) {
+static Value* _zsjit_getcellvalue(EnvCell* _c) {
 	return _c->Value;
 }
 
-Value* _zsjit_getcap(UserFunction* _uf, int off) {
+static Value* _zsjit_getcap(UserFunction* _uf, int off) {
 	return UserFunctionGetCapture(_uf, off);
 }
 
-void _zsjit_pushtry(Interpreter* _i, int jmp, size_t pausedAddress) {
+static void _zsjit_pushtry(Interpreter* _i, int jmp, size_t pausedAddress) {
 	_i->ExceptionHandlerStacks[_i->ExceptionHandlerStackC++] =
 		(ExceptionHandler){
 			.JumpAddress	  = jmp,
@@ -132,31 +132,31 @@ void _zsjit_pushtry(Interpreter* _i, int jmp, size_t pausedAddress) {
 		};
 }
 
-void _zsjit_popptry(Interpreter* _i) {
+static void _zsjit_popptry(Interpreter* _i) {
 	--_i->ExceptionHandlerStackC;
 }
 
-void _zsjit_seterror(Interpreter* _i, Value* err) {
+static void _zsjit_seterror(Interpreter* _i, Value* err) {
 	_i->Error = err;
 }
 
-Value* _zsjit_geterror(Interpreter* _i) {
+static Value* _zsjit_geterror(Interpreter* _i) {
 	return _i->Error;
 }
 
-size_t _zsjit_getstackpntr(Interpreter* _i) {
+static size_t _zsjit_getstackpntr(Interpreter* _i) {
 	return _i->StckC;
 }
 
-Value* _zsjit_getstack(Interpreter* _i, int i) {
+static Value* _zsjit_getstack(Interpreter* _i, int i) {
 	return _i->Stacks[i];
 }
 
-void _zsjit_setstack(Interpreter* _i, int i, Value* val) {
+static void _zsjit_setstack(Interpreter* _i, int i, Value* val) {
 	_i->Stacks[i] = val;
 }
 
-void _zsjit_lockvar(Interpreter* _i, Value* envObj, int off) {
+static void _zsjit_lockvar(Interpreter* _i, Value* envObj, int off) {
 	Environment* env  = CoerceToEnvironment(envObj);
 	EnvCell*	 cell = EnvironmentGetLocal(env, off);
 	if (cell->RefCount > 0 && cell->IsCaptured) {
@@ -165,12 +165,70 @@ void _zsjit_lockvar(Interpreter* _i, Value* envObj, int off) {
 	}
 }
 
+static LineInfo _zsjit_getlinefrompc(UserFunction* uf, size_t pc) {
+	if (uf->LineC == 0) {
+		goto BAD;
+	}
+
+	int low	 = 0;
+	int high = uf->LineC - 1;
+
+	while (low <= high) {
+		int mid = low + (high - low) / 2;
+		if (uf->Lines[mid].Pc == pc) {
+			return uf->Lines[mid];
+		} else if (uf->Lines[mid].Pc < pc) {
+			low = mid + 1;
+		} else {
+			high = mid - 1;
+		}
+	}
+
+	// If exact match not found, return the line for the closest
+	// lower PC
+	if (high >= 0) {
+		return uf->Lines[high];
+	}
+BAD:;
+	return (LineInfo){};
+}
+
+extern void FreeInterpreter(Interpreter* interpreter);
+
+static void
+_zsjit_raiseerror(Interpreter* _i, Value* fn, Value* error, size_t* ip) {
+	/* Uncaught: format for display only, no new error Value is
+	 * created */
+	UserFunction* uf	 = CoerceToUserFunction(fn);
+	LineInfo	  line	 = _zsjit_getlinefrompc(uf, *ip);
+	String		  errStr = ValueToString(error);
+	String buf = FormatString("[%s:%d]::%s\n", line.Path, line.Line, errStr);
+	free(errStr);
+
+	for (int i = _i->CallStackC - 1; i >= 0; i--) {
+		StackTrace trace = _i->CallStack[i];
+		String	   frame =
+			FormatString("  |> [%s:%d]\n", trace.line.Path, trace.line.Line);
+		String tmp = FormatString("%s%s", buf, frame);
+		free(frame);
+		free(buf);
+		buf = tmp;
+	}
+
+	fprintf(stderr, "%s", buf);
+	free(buf);
+	ForceGarbageCollect(_i);
+	FreeInterpreter(_i);
+	fprintf(stderr, "Program exited with panic.\n");
+	exit(EXIT_FAILURE);
+}
+
 struct JumpTargets {
 	int* Target;
 	int	 Size;
 };
 
-String fncode =
+static String fncode =
 	"#ifndef NULL\n#define NULL ((void*)0)\n#endif\n"
 	"#ifndef _SIZE_T_DEFINED\n"
 	"#define _SIZE_T_DEFINED\n"
@@ -191,11 +249,31 @@ String fncode =
 	"typedef struct environment_struct  Environment;\n"
 	"typedef struct envcell_struct      EnvCell;\n"
 	"typedef struct array_struct        Array;\n"
+	"typedef struct user_class_struct   Class;\n"
 	"typedef char* String;\n"
+	/* libc */
+	"extern void  free(void* ptr);\n"
 	/*Array*/
-	"extern void ArrayPush(Array* array, Value* value);\n"
+	"extern void  ArrayExtend(Array* array, Array* other);\n"
+	"extern void  ArrayPush(Array* array, Value* value);\n"
 	/*Hashmap*/
 	"extern void* HashMapGet(HashMap* hashmap, String key);\n"
+	"extern void  HashMapSet(HashMap* hashmap, String key, void* value);\n"
+	"extern void  HashMapExtend(HashMap* dest, HashMap* src);\n"
+	/* value creation */
+	"extern Value* NewObjectValue(Interpreter* interpreter);\n"
+	"extern Value* NewClassValue(Interpreter* interpreter, Class* cls);\n"
+	/* class helpers */
+	"extern Class* CreateUserClass(String name, Value* base);\n"
+	"extern Class* CoerceToUserClass(Value* value);\n"
+	"extern void   ClassExtend(Class* cls, Value* base);\n"
+	"extern void   ClassDefineMember(Class* cls, Value* key, Value* value, "
+	"bool isStatic);\n"
+	/* function helpers */
+	"extern void   UserFunctionSetCapture(UserFunction* fn, int offset, "
+	"Value* val);\n"
+	/* string conversion (caller must free result) */
+	"extern String ValueToString(Value* value);\n"
 	/* stack / constant helpers */
 	"extern Value* _zsjit_getcap(UserFunction* _uf, int off);\n"
 	"extern Value* _zsjit_getcellvalue(EnvCell* c);\n"
@@ -286,6 +364,7 @@ String fncode =
 	"\tValue* res = NULL, *a = NULL, *b = NULL, *c = NULL;\n"
 	"\tbool hasLocalErrorHandler = false;\n"
 	"\tint handlerc = 0;\n"
+	"\tint ip = 0;\n"
 	"\t%s\n"
 	"}\n";
 
@@ -468,7 +547,9 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					   "if(_zsjit_geterror(_i)!=NULL&&hasLocalErrorHandler){"  \
 					   "_zsjit_seterror(_i, NULL);goto _L%d;}",                \
 					   _catch_ip);                                             \
-			StrAppend(&sb, "else{}");                                          \
+			StrAppend(&sb,                                                     \
+					  "else{_zsjit_raiseerror(_i, _fn, _zsjit_geterror(_i), "  \
+					  "&ip);}");                                               \
 		}                                                                      \
 	}
 
@@ -481,6 +562,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 			}
 		}
 
+
+		StrAppendf(&sb, "ip=%d;", ip);
 		op = uf->Codes[ip++];
 
 		switch (op) {
@@ -523,68 +606,6 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					free(str);
 					break;
 				}
-			case OP_OBJECT_PLUCK_ATTRIBUTE:
-				{
-					str = _rdstr(bytecode, ip);
-					StrAppendf(
-						&sb,
-						"{a=_zsjit_peek(_i);res=HashMapGet("
-						"CoerceToHashMap(a), "
-						"\"%s\");}_zsjit_push(_i, res==NULL?_zsjit_getnull(_"
-						"i):res);",
-						str);
-					forward(strlen(str) + 1);
-					free(str);
-					break;
-				}
-			case OP_LOAD_CONST:
-				{
-					off = _rdint(bytecode, ip);
-					StrAppendf(&sb,
-							   "{_zsjit_push(_i,_zsjit_getconst(_i,%d));}",
-							   off);
-					forward(4);
-					break;
-				}
-			case OP_LOAD_BOOL:
-				{
-					off = _rdint(bytecode, ip);
-					StrAppendf(&sb,
-							   "{_zsjit_push(_i,%d?_zsjit_gettrue(_i):_zsjit_"
-							   "getfalse(_i));}",
-							   off);
-					forward(4);
-					break;
-				}
-			case OP_LOAD_STRING:
-				{
-					str = _rdstr(bytecode, ip);
-					StrAppendf(&sb,
-							   "{_zsjit_push(_i,CreateString(\"%s\"));}",
-							   str);
-					forward(strlen(str) + 1);
-					free(str);
-					break;
-				}
-			case OP_LOAD_NULL:
-				{
-					StrAppend(&sb, "{_zsjit_push(_i,_zsjit_getnull(_i));}");
-					break;
-				}
-			case OP_ARRAY_MAKE:
-				{
-					arg = _rdint(bytecode, ip);
-					StrAppendf(&sb,
-							   "{res=NewArrayValue(_i);Array*arr=CoerceToArray("
-							   "res);for(int "
-							   "i=0;i<%d;i++){Value*val=_zsjit_getstack(_i,(_"
-							   "zsjit_getstackpntr(_i)-%d)-i);"
-							   "ArrayPush(arr,val);}_zsjit_push(_i,res);}",
-							   arg,
-							   arg);
-					forward(4);
-					break;
-				}
 			case OP_LOAD_CAPTURE:
 				{
 					off = _rdint(bytecode, ip);
@@ -616,16 +637,150 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					forward(4);
 					break;
 				}
-			case OP_LOAD_FUNCTION_CLOSURE:
-			case OP_LOAD_FUNCTION:
+			case OP_LOAD_CONST:
 				{
 					off = _rdint(bytecode, ip);
+					StrAppendf(&sb,
+							   "{_zsjit_push(_i,_zsjit_getconst(_i,%d));}",
+							   off);
+					forward(4);
+					break;
+				}
+			case OP_LOAD_BOOL:
+				{
+					off = _rdint(bytecode, ip);
+					StrAppendf(&sb,
+							   "{_zsjit_push(_i,%d?_zsjit_gettrue(_i):_zsjit_"
+							   "getfalse(_i));}",
+							   off);
+					forward(4);
+					break;
+				}
+			case OP_LOAD_NULL:
+				{
+					StrAppend(&sb, "{_zsjit_push(_i,_zsjit_getnull(_i));}");
+					break;
+				}
+			case OP_LOAD_STRING:
+				{
+					str = _rdstr(bytecode, ip);
+					StrAppendf(&sb,
+							   "{_zsjit_push(_i,CreateString(\"%s\"));}",
+							   str);
+					forward(strlen(str) + 1);
+					free(str);
+					break;
+				}
+			case OP_ARRAY_EXTEND:
+				{
+					StrAppend(&sb,
+							  "{a=_zsjit_popp(_i);"
+							  "ArrayExtend(CoerceToArray(_zsjit_peek(_i)),"
+							  "CoerceToArray(a));}");
+					break;
+				}
+			/* ── object literals ──────────────────────────────────── */
+			case OP_ARRAY_PUSH:
+				{
+					StrAppend(&sb,
+							  "{a=_zsjit_popp(_i);"
+							  "ArrayPush(CoerceToArray(_zsjit_peek(_i)),a);}");
+					break;
+				}
+			case OP_ARRAY_MAKE:
+				{
+					arg = _rdint(bytecode, ip);
+					StrAppendf(&sb,
+							   "{res=NewArrayValue(_i);Array*arr=CoerceToArray("
+							   "res);for(int "
+							   "i=0;i<%d;i++){Value*val=_zsjit_getstack(_i,(_"
+							   "zsjit_getstackpntr(_i)-%d)-i);"
+							   "ArrayPush(arr,val);}_zsjit_push(_i,res);}",
+							   arg,
+							   arg);
+					forward(4);
+					break;
+				}
+			case OP_OBJECT_EXTEND:
+				{
+					StrAppend(&sb,
+							  "{a=_zsjit_popp(_i);"
+							  "HashMapExtend(CoerceToHashMap(_zsjit_peek(_i)),"
+							  "CoerceToHashMap(a));}");
+					break;
+				}
+			case OP_OBJECT_MAKE:
+				{
+					/* Stack (bottom→top): val0,key0, val1,key1, … valN-1,keyN-1
+					 * key is on top for each pair. */
+					off = _rdint(bytecode, ip);
+					StrAppendf(&sb,
+							   "{res=NewObjectValue(_i);"
+							   "HashMap*_hm=CoerceToHashMap(res);"
+							   "for(int _oi=0;_oi<%d;_oi++){"
+							   "Value*_k=_zsjit_popp(_i);"
+							   "Value*_v=_zsjit_popp(_i);"
+							   "String _ks=ValueToString(_k);"
+							   "HashMapSet(_hm,_ks,_v);"
+							   "free(_ks);}"
+							   "_zsjit_push(_i,res);}",
+							   off);
+					forward(4);
+					break;
+				}
+			/* ── class literals ───────────────────────────────────── */
+			case OP_OBJECT_PLUCK_ATTRIBUTE:
+				{
+					str = _rdstr(bytecode, ip);
 					StrAppendf(
 						&sb,
-						"{res=DoLoadFunction(_i,%d,%d);}_zsjit_push(_i,res);",
-						off,
-						op == OP_LOAD_FUNCTION_CLOSURE);
-					forward(4);
+						"{a=_zsjit_peek(_i);res=HashMapGet("
+						"CoerceToHashMap(a), "
+						"\"%s\");}_zsjit_push(_i, res==NULL?_zsjit_getnull(_"
+						"i):res);",
+						str);
+					forward(strlen(str) + 1);
+					free(str);
+					break;
+				}
+			case OP_CLASS_EXTEND:
+				{
+					/* a = superclass (popped); top of stack = the class */
+					StrAppend(&sb,
+							  "{a=_zsjit_popp(_i);"
+							  "ClassExtend(CoerceToUserClass("
+							  "_zsjit_peek(_i)),a);}");
+					break;
+				}
+			case OP_CLASS_MAKE:
+				{
+					str = _rdstr(bytecode, ip);
+					StrAppendf(&sb,
+							   "{res=NewClassValue(_i,"
+							   "CreateUserClass(\"%s\",NULL));"
+							   "_zsjit_push(_i,res);}",
+							   str);
+					forward(strlen(str) + 1);
+					free(str);
+					break;
+				}
+			case OP_CLASS_DEFINE_STATIC_MEMBER:
+				{
+					/* Stack: val, key, cls (cls stays on stack) */
+					StrAppend(
+						&sb,
+						"{a=_zsjit_popp(_i);b=_zsjit_popp(_i);"
+						"c=_zsjit_peek(_i);"
+						"ClassDefineMember(CoerceToUserClass(c),a,b,1);}");
+					break;
+				}
+			case OP_CLASS_DEFINE_INSTANCE_MEMBER:
+				{
+					StrAppend(
+						&sb,
+						"{a=_zsjit_popp(_i);b=_zsjit_popp(_i);"
+						"c=_zsjit_peek(_i);"
+						"ClassDefineMember(CoerceToUserClass(c),a,b,0);}");
 					break;
 				}
 			case OP_SET_INDEX:
@@ -647,6 +802,32 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					handleError();
 					break;
 				}
+			case OP_LOAD_FUNCTION_CLOSURE:
+			case OP_LOAD_FUNCTION:
+				{
+					off = _rdint(bytecode, ip);
+					StrAppendf(
+						&sb,
+						"{res=DoLoadFunction(_i,%d,%d);}_zsjit_push(_i,res);",
+						off,
+						op == OP_LOAD_FUNCTION_CLOSURE);
+					forward(4);
+					break;
+				}
+			case OP_CALL_CTOR:
+				{
+					arg = _rdint(bytecode, ip);
+					StrAppendf(&sb,
+							   "{a=_zsjit_popp(_i);"
+							   "res=DoCallCtor(_i,a,%d);}"
+							   "if(ValueIsError(res))"
+							   "{_zsjit_seterror(_i,res);}",
+							   arg);
+					handleError();
+					forward(4);
+					break;
+				}
+			/* ── array literals ───────────────────────────────────── */
 			case OP_CALL:
 				{
 					arg = _rdint(bytecode, ip);
@@ -672,31 +853,12 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					forward(4);
 					break;
 				}
-			case OP_MUL:
+			case OP_NOT:
 				{
 					StrAppend(&sb,
-							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoMul(_"
-							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
-							  "){_zsjit_seterror(_i,res);}");
-					handleError();
-					break;
-				}
-			case OP_DIV:
-				{
-					StrAppend(&sb,
-							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoDiv(_"
-							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
-							  "){_zsjit_seterror(_i,res);}");
-					handleError();
-					break;
-				}
-			case OP_POSTINC:
-				{
-					StrAppend(&sb,
-							  "{a=_zsjit_popp(_i);res=DoInc(_i,a);_zsjit_push("
-							  "_i,res);_zsjit_push(_i,a);}if(ValueIsError(res))"
-							  "{_zsjit_seterror(_"
-							  "i,res);}");
+							  "{a=_zsjit_popp(_i);res=DoNot(_i,a);"
+							  "_zsjit_push(_i,res);}if(ValueIsError(res))"
+							  "{_zsjit_seterror(_i,res);}");
 					handleError();
 					break;
 				}
@@ -720,6 +882,53 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					handleError();
 					break;
 				}
+			case OP_MUL:
+				{
+					StrAppend(&sb,
+							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoMul(_"
+							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
+							  "){_zsjit_seterror(_i,res);}");
+					handleError();
+					break;
+				}
+			case OP_DIV:
+				{
+					StrAppend(&sb,
+							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoDiv(_"
+							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
+							  "){_zsjit_seterror(_i,res);}");
+					handleError();
+					break;
+				}
+			case OP_MOD:
+				{
+					StrAppend(
+						&sb,
+						"{b=_zsjit_popp(_i);a=_zsjit_popp(_i);"
+						"res=DoMod(_i,a,b);_zsjit_push(_i,res);}"
+						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}");
+					handleError();
+					break;
+				}
+			case OP_POSTINC:
+				{
+					StrAppend(&sb,
+							  "{a=_zsjit_popp(_i);res=DoInc(_i,a);_zsjit_push("
+							  "_i,res);_zsjit_push(_i,a);}if(ValueIsError(res))"
+							  "{_zsjit_seterror(_"
+							  "i,res);}");
+					handleError();
+					break;
+				}
+			case OP_INC:
+				{
+					StrAppend(&sb,
+							  "{a=_zsjit_popp(_i);res=DoInc(_i,a);"
+							  "_zsjit_push(_i,res);}if(ValueIsError(res))"
+							  "{_zsjit_seterror(_i,res);}");
+					handleError();
+					break;
+				}
 			case OP_ADD:
 				{
 					StrAppend(&sb,
@@ -727,6 +936,25 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
 							  "){_zsjit_seterror(_i,res);}");
 
+					handleError();
+					break;
+				}
+			case OP_POSTDEC:
+				{
+					StrAppend(
+						&sb,
+						"{a=_zsjit_popp(_i);res=DoDec(_i,a);"
+						"_zsjit_push(_i,res);_zsjit_push(_i,a);}"
+						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}");
+					handleError();
+					break;
+				}
+			case OP_DEC:
+				{
+					StrAppend(&sb,
+							  "{a=_zsjit_popp(_i);res=DoDec(_i,a);"
+							  "_zsjit_push(_i,res);}if(ValueIsError(res))"
+							  "{_zsjit_seterror(_i,res);}");
 					handleError();
 					break;
 				}
@@ -739,10 +967,31 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					handleError();
 					break;
 				}
+			case OP_LSHFT:
+				{
+					StrAppend(
+						&sb,
+						"{b=_zsjit_popp(_i);a=_zsjit_popp(_i);"
+						"res=DoLShift(_i,a,b);_zsjit_push(_i,res);}"
+						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}");
+					handleError();
+					break;
+				}
+			case OP_RSHFT:
+				{
+					StrAppend(
+						&sb,
+						"{b=_zsjit_popp(_i);a=_zsjit_popp(_i);"
+						"res=DoRShift(_i,a,b);_zsjit_push(_i,res);}"
+						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}");
+					handleError();
+					break;
+				}
+			/* ── comparison ───────────────────────────────────────── */
 			case OP_LT:
 				{
 					StrAppend(&sb,
-							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoLTE(_"
+							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoLT(_"
 							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
 							  "){_zsjit_seterror(_i,res);}");
 					handleError();
@@ -784,11 +1033,58 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					handleError();
 					break;
 				}
-			case OP_RETURN:
+			case OP_NE:
 				{
-					StrAppend(&sb, "return NULL;");
+					StrAppend(
+						&sb,
+						"{b=_zsjit_popp(_i);a=_zsjit_popp(_i);"
+						"res=DoNE(_i,a,b);_zsjit_push(_i,res);}"
+						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}");
+					handleError();
 					break;
 				}
+			case OP_AND:
+				{
+					StrAppend(
+						&sb,
+						"{b=_zsjit_popp(_i);a=_zsjit_popp(_i);"
+						"res=DoAnd(_i,a,b);_zsjit_push(_i,res);}"
+						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}");
+					handleError();
+					break;
+				}
+			case OP_OR:
+				{
+					StrAppend(
+						&sb,
+						"{b=_zsjit_popp(_i);a=_zsjit_popp(_i);"
+						"res=DoOr(_i,a,b);_zsjit_push(_i,res);}"
+						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}");
+					handleError();
+					break;
+				}
+			case OP_XOR:
+				{
+					StrAppend(
+						&sb,
+						"{b=_zsjit_popp(_i);a=_zsjit_popp(_i);"
+						"res=DoXor(_i,a,b);_zsjit_push(_i,res);}"
+						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}");
+					handleError();
+					break;
+				}
+			/* ── stack manipulation ───────────────────────────────── */
+			case OP_STORE_CAPTURE:
+				{
+					off = _rdint(bytecode, ip);
+					StrAppendf(&sb,
+							   "{UserFunctionSetCapture(_uf,%d,"
+							   "_zsjit_popp(_i));}",
+							   off);
+					forward(4);
+					break;
+				}
+			/* ── control flow ─────────────────────────────────────── */
 			case OP_STORE_NAME:
 				{
 					off = _rdint(bytecode, ip);
@@ -809,71 +1105,34 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					forward(4);
 					break;
 				}
-			case OP_POPTOP:
+			case OP_LOCK_VAR:
 				{
-					StrAppend(&sb, "_zsjit_popp(_i);");
+					off = _rdint(bytecode, ip);
+					StrAppendf(&sb, "{_zsjit_lockvar(_i,_ce,%d);}", off);
+					forward(4);
 					break;
 				}
+			/* ── unary / arithmetic ───────────────────────────────── */
 			case OP_DUPTOP:
 				{
 					StrAppend(&sb, "{_zsjit_push(_i,_zsjit_peek(_i));}");
 					break;
 				}
-			case OP_POP_JUMP_IF_FALSE:
+			case OP_DUP2:
 				{
-					off = _rdint(bytecode, ip);
-					StrAppendf(&sb,
-							   "{res=_zsjit_popp(_i);if(CoerceToBool(res)==0){"
-							   "goto _L%d;}}",
-							   off);
-					forward(4);
-					break;
-				}
-			case OP_JUMP_IF_FALSE_OR_POP:
-				{
-					off = _rdint(bytecode, ip);
-					StrAppendf(&sb,
-							   "{res=_zsjit_peek(_i);if(CoerceToBool(res)==0){"
-							   "goto _L%d;}else{_zsjit_popp(_i);}}",
-							   off);
-					forward(4);
-					break;
-				}
-			case OP_ABSOLUTE_JUMP:
-				{
-					off = _rdint(bytecode, ip);
-					StrAppendf(&sb, "goto _L%d;", off);
-					forward(4);
-					break;
-				}
-			case OP_JUMP:
-				{
-					off = _rdint(bytecode, ip);
-					StrAppendf(&sb, "goto _L%d;", off);
-					forward(4);
-					break;
-				}
-			case OP_SETUP_TRY:
-				{
-					off = _rdint(bytecode, ip);
-					pushtmphandler(off);
-					StrAppendf(&sb,
-							   "_TRY_%d_to_%d:;{hasLocalErrorHandler=true;++"
-							   "handlerc;_zsjit_"
-							   "pushtry(_i,%d,%zu);}",
-							   ip,
-							   off,
-							   off,
-							   ip);
-					forward(4);
-					break;
-				}
-			case OP_POP_TRY:
-				{
-					popptmphandler();
+					/* A B → A B A B  (push copies of the top two) */
 					StrAppend(&sb,
-							  "{hasLocalErrorHandler=(--handlerc)>0;_zsjit_"
-							  "popptry(_i);}");
+							  "{size_t _sp=_zsjit_getstackpntr(_i);"
+							  "Value*_ra=_zsjit_getstack(_i,_sp-1);"
+							  "Value*_rb=_zsjit_getstack(_i,_sp-2);"
+							  "_zsjit_push(_i,_rb);"
+							  "_zsjit_push(_i,_ra);}");
+					break;
+				}
+			/* ── variables ────────────────────────────────────────── */
+			case OP_POPTOP:
+				{
+					StrAppend(&sb, "_zsjit_popp(_i);");
 					break;
 				}
 			case OP_ROT2:
@@ -915,11 +1174,111 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 							  "_zsjit_setstack(_i,_sp-4,_ra);}");
 					break;
 				}
-			case OP_LOCK_VAR:
+			case OP_SETUP_TRY:
 				{
 					off = _rdint(bytecode, ip);
-					StrAppendf(&sb, "{_zsjit_lockvar(_i,_ce,%d);}", off);
+					pushtmphandler(off);
+					StrAppendf(&sb,
+							   "_TRY_%d_to_%d:;{hasLocalErrorHandler=true;++"
+							   "handlerc;_zsjit_"
+							   "pushtry(_i,%d,%zu);}",
+							   ip,
+							   off,
+							   off,
+							   ip);
 					forward(4);
+					break;
+				}
+			case OP_POP_TRY:
+				{
+					popptmphandler();
+					StrAppend(&sb,
+							  "{hasLocalErrorHandler=(--handlerc)>0;_zsjit_"
+							  "popptry(_i);}");
+					break;
+				}
+			case OP_POPN_TRY:
+				{
+					off = _rdint(bytecode, ip);
+					StrAppendf(&sb,
+							   "{int _pn=%d;"
+							   "for(int _pi=0;_pi<_pn;_pi++)"
+							   "{_zsjit_popptry(_i);}"
+							   "handlerc-=_pn;"
+							   "hasLocalErrorHandler=handlerc>0;}",
+							   off);
+					forward(4);
+					break;
+				}
+			/* ── call ─────────────────────────────────────────────── */
+			case OP_JUMP_IF_FALSE_OR_POP:
+				{
+					off = _rdint(bytecode, ip);
+					StrAppendf(&sb,
+							   "{res=_zsjit_peek(_i);if(CoerceToBool(res)==0){"
+							   "goto _L%d;}else{_zsjit_popp(_i);}}",
+							   off);
+					forward(4);
+					break;
+				}
+			case OP_JUMP_IF_TRUE_OR_POP:
+				{
+					off = _rdint(bytecode, ip);
+					StrAppendf(&sb,
+							   "{res=_zsjit_peek(_i);"
+							   "if(CoerceToBool(res)!=0){goto _L%d;}"
+							   "else{_zsjit_popp(_i);}}",
+							   off);
+					forward(4);
+					break;
+				}
+			case OP_POP_JUMP_IF_FALSE:
+				{
+					off = _rdint(bytecode, ip);
+					StrAppendf(&sb,
+							   "{res=_zsjit_popp(_i);if(CoerceToBool(res)==0){"
+							   "goto _L%d;}}",
+							   off);
+					forward(4);
+					break;
+				}
+			case OP_POP_JUMP_IF_TRUE:
+				{
+					off = _rdint(bytecode, ip);
+					StrAppendf(&sb,
+							   "{res=_zsjit_popp(_i);"
+							   "if(CoerceToBool(res)!=0){goto _L%d;}}",
+							   off);
+					forward(4);
+					break;
+				}
+			case OP_JUMP:
+				{
+					off = _rdint(bytecode, ip);
+					StrAppendf(&sb, "goto _L%d;", off);
+					forward(4);
+					break;
+				}
+			case OP_ABSOLUTE_JUMP:
+				{
+					off = _rdint(bytecode, ip);
+					StrAppendf(&sb, "goto _L%d;", off);
+					forward(4);
+					break;
+				}
+			case OP_RAISE:
+				{
+					/* Explicit throw: set error, jump to local catch if one
+					 * exists, otherwise return the error to the JIT caller. */
+					StrAppend(&sb,
+							  "{res=_zsjit_popp(_i);"
+							  "_zsjit_seterror(_i,res);}");
+					handleError();
+					break;
+				}
+			case OP_RETURN:
+				{
+					StrAppend(&sb, "return NULL;");
 					break;
 				}
 			default:
@@ -1022,9 +1381,26 @@ ZJittedFn* ZJitCompile(Interpreter* interpreter, Value* fn) {
 	tcc_add_symbol(s, "_zsjit_getstackpntr", (void*) _zsjit_getstackpntr);
 	tcc_add_symbol(s, "_zsjit_getstack", (void*) _zsjit_getstack);
 	tcc_add_symbol(s, "_zsjit_setstack", (void*) _zsjit_setstack);
+	/* libc */
+	tcc_add_symbol(s, "free", (void*) free);
 	/* array / hashmap */
+	tcc_add_symbol(s, "ArrayExtend", (void*) ArrayExtend);
 	tcc_add_symbol(s, "ArrayPush", (void*) ArrayPush);
 	tcc_add_symbol(s, "HashMapGet", (void*) HashMapGet);
+	tcc_add_symbol(s, "HashMapSet", (void*) HashMapSet);
+	tcc_add_symbol(s, "HashMapExtend", (void*) HashMapExtend);
+	/* value creation */
+	tcc_add_symbol(s, "NewObjectValue", (void*) NewObjectValue);
+	tcc_add_symbol(s, "NewClassValue", (void*) NewClassValue);
+	/* class helpers */
+	tcc_add_symbol(s, "CreateUserClass", (void*) CreateUserClass);
+	tcc_add_symbol(s, "CoerceToUserClass", (void*) CoerceToUserClass);
+	tcc_add_symbol(s, "ClassExtend", (void*) ClassExtend);
+	tcc_add_symbol(s, "ClassDefineMember", (void*) ClassDefineMember);
+	/* function helpers */
+	tcc_add_symbol(s, "UserFunctionSetCapture", (void*) UserFunctionSetCapture);
+	/* string conversion */
+	tcc_add_symbol(s, "ValueToString", (void*) ValueToString);
 	/* coercion helpers */
 	tcc_add_symbol(s, "CoerceToBool", (void*) CoerceToBool);
 	tcc_add_symbol(s, "CoerceToArray", (void*) CoerceToArray);
