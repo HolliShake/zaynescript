@@ -64,7 +64,7 @@ typedef pthread_t Thread;
  * it will be compiled to native code if it's too large (to avoid
  * interpreter overhead) or too small (to avoid frequent interpretation).
  */
-#define JIT_TRIGGER_MAX_CODE 1500
+#define JIT_TRIGGER_MAX_CODE 2500
 
 /**
  * @def JIT_TRIGGER_MIN_CODE
@@ -72,7 +72,7 @@ typedef pthread_t Thread;
  * Functions below this threshold may also be compiled to native code,
  * to avoid frequent interpretation overhead.
  */
-#define JIT_TRIGGER_MIN_CODE 100
+#define JIT_TRIGGER_MIN_CODE 20
 
 /**
  * @def JIT_CALL_TRIGGER

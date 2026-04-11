@@ -354,13 +354,22 @@ static void _Error(Interpreter*	 interpreter,
 
 	/* Uncaught: no need to allocate a tracked Value, just report
 	 * and abort */
-	fprintf(stderr, "[%s:%d]::%s: %s\n", line.Path, line.Line, type, message);
+	String buf =
+		FormatString("[%s:%d]::%s: %s\n", line.Path, line.Line, type, message);
 	free(message);
-	// Stack trace for debugging
+
 	for (int i = interpreter->CallStackC - 1; i >= 0; i--) {
 		StackTrace trace = interpreter->CallStack[i];
-		fprintf(stderr, "  |> [%s:%d]\n", trace.line.Path, trace.line.Line);
+		String	   frame =
+			FormatString("  |> [%s:%d]\n", trace.line.Path, trace.line.Line);
+		String tmp = FormatString("%s%s", buf, frame);
+		free(frame);
+		free(buf);
+		buf = tmp;
 	}
+
+	fprintf(stderr, "%s", buf);
+	free(buf);
 	ForceGarbageCollect(interpreter);
 	FreeInterpreter(interpreter);
 	fprintf(stderr, "Program exited with panic.\n");
@@ -396,15 +405,21 @@ static void _RaiseError(Interpreter*  interpreter,
 	 * created */
 	LineInfo line	= _GetLineFromPc(uf, *ip);
 	String	 errStr = ValueToString(error);
-	String	 msg	= FormatString("[%s:%d]::%s", line.Path, line.Line, errStr);
+	String	 buf = FormatString("[%s:%d]::%s\n", line.Path, line.Line, errStr);
 	free(errStr);
-	fprintf(stderr, "%s\n", msg);
-	free(msg);
-	// Stack trace for debugging
+
 	for (int i = interpreter->CallStackC - 1; i >= 0; i--) {
 		StackTrace trace = interpreter->CallStack[i];
-		fprintf(stderr, "  |> [%s:%d]\n", trace.line.Path, trace.line.Line);
+		String	   frame =
+			FormatString("  |> [%s:%d]\n", trace.line.Path, trace.line.Line);
+		String tmp = FormatString("%s%s", buf, frame);
+		free(frame);
+		free(buf);
+		buf = tmp;
 	}
+
+	fprintf(stderr, "%s", buf);
+	free(buf);
 	ForceGarbageCollect(interpreter);
 	FreeInterpreter(interpreter);
 	fprintf(stderr, "Program exited with panic.\n");
@@ -465,9 +480,9 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 		InterpreterPanic("Attempted to run a non-function value of type %s",
 						 ValueTypeOf(fnValue));
 
-	if (uf->JitFn != NULL && uf->CodeC <= JIT_TRIGGER_MIN_CODE
-		|| uf->CodeC >= JIT_TRIGGER_MAX_CODE) {
-		printf("Running through JIT!\n");
+	if ((uf->JitFn != NULL)
+		&& (uf->CodeC <= JIT_TRIGGER_MIN_CODE
+			|| uf->CodeC >= JIT_TRIGGER_MAX_CODE)) {
 		// compile the actual fn if was wrap by state machine
 		ZJittedFn* _jit_fn = ZJitCompile(interpreter, fn);
 		if (_jit_fn != NULL) {

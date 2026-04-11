@@ -1,9 +1,5 @@
 #include "./zsjit.h"
 
-#include <libtcc.h>
-#include <stdio.h>
-#include <stdlib.h>
-
 static int _rdint(uint8_t* bytecode, size_t start) {
 	int offset	= 0;
 	offset	   |= bytecode[start + 0] << 24;
@@ -137,7 +133,7 @@ void _zsjit_pushtry(Interpreter* _i, int jmp, size_t pausedAddress) {
 }
 
 void _zsjit_popptry(Interpreter* _i) {
-	_i->ExceptionHandlerStacks[--_i->ExceptionHandlerStackC];
+	--_i->ExceptionHandlerStackC;
 }
 
 void _zsjit_seterror(Interpreter* _i, Value* err) {
@@ -158,6 +154,15 @@ Value* _zsjit_getstack(Interpreter* _i, int i) {
 
 void _zsjit_setstack(Interpreter* _i, int i, Value* val) {
 	_i->Stacks[i] = val;
+}
+
+void _zsjit_lockvar(Interpreter* _i, Value* envObj, int off) {
+	Environment* env  = CoerceToEnvironment(envObj);
+	EnvCell*	 cell = EnvironmentGetLocal(env, off);
+	if (cell->RefCount > 0 && cell->IsCaptured) {
+		cell->RefCount--;
+		env->Locals[off] = CreateEnvCell(cell->Value);
+	}
 }
 
 struct JumpTargets {
@@ -185,7 +190,10 @@ String fncode =
 	"typedef struct userfn_struct       UserFunction;\n"
 	"typedef struct environment_struct  Environment;\n"
 	"typedef struct envcell_struct      EnvCell;\n"
+	"typedef struct array_struct        Array;\n"
 	"typedef char* String;\n"
+	/*Array*/
+	"extern void ArrayPush(Array* array, Value* value);\n"
 	/*Hashmap*/
 	"extern void* HashMapGet(HashMap* hashmap, String key);\n"
 	/* stack / constant helpers */
@@ -206,34 +214,79 @@ String fncode =
 	"pausedAddress);\n"
 	"extern void   _zsjit_seterror(Interpreter* _i, Value* err);\n"
 	"extern void   _zsjit_setstack(Interpreter* _i, int i, Value* val);\n"
-	/* runtime function externs */
-	"extern bool CoerceToBool(Value* value);\n"
+	"extern void   _zsjit_lockvar(Interpreter* _i, Value* envObj, int off);\n"
+	/* coercion helpers */
+	"extern bool          CoerceToBool(Value* value);\n"
+	"extern Array*        CoerceToArray(Value* value);\n"
 	"extern Environment*  CoerceToEnvironment(Value* value);\n"
-	"extern HashMap* CoerceToHashMap(Value* value);\n"
+	"extern HashMap*      CoerceToHashMap(Value* value);\n"
 	"extern UserFunction* CoerceToUserFunction(Value* value);\n"
-	"extern Value* DoAdd(Interpreter* _i, Value* a, Value* b);\n"
-	"extern Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool "
-	"withThis);\n"
-	"extern Value* DoImportCore(Interpreter* interpreter, String moduleName);\n"
-	"extern Value* DoImportLib(Interpreter* interpreter, String moduleName);\n"
-	"extern Value* DoInc(Interpreter* interpreter, Value* val);\n"
-	"extern Value* DoLoadFunction(Interpreter* interpreter, int offset, bool "
-	"closure);\n"
-	"extern Value* DoLTE(Interpreter* interpreter, Value* lhs, Value* rhs);\n"
-	"extern Value* DoMul(Interpreter* _i, Value* a, Value* b);\n"
-	"extern Value* DoSub(Interpreter* _i, Value* a, Value* b);\n"
+	/* environment management */
+	"extern void RestoreEnv(Interpreter* interpreter);\n"
+	"extern void RestoreNthEnvAndSync(Interpreter* interpreter, int n);\n"
+	"extern void SaveEnv(Interpreter* interpreter, Value* env);\n"
+	"extern void SaveRootEnv(Interpreter* interpreter, Value* env);\n"
+	/* environment slot access */
 	"extern EnvCell* EnvironmentGetLocal(Environment* e, int off);\n"
-	"extern void   EnvironmentSetLocal(Environment* e, int off, Value* v);\n"
+	"extern void     EnvironmentSetLocal(Environment* e, int off, Value* v);\n"
+	/* object / attribute helpers */
+	"extern Value* GenericGetAttribute(Interpreter* interpreter, Value* obj, "
+	"Value* index, bool forMethodCall);\n"
+	"extern bool   IsMethodOfObject(Interpreter* interpreter, Value* obj, "
+	"Value* method);\n"
+	/* arithmetic & unary */
+	"extern Value* DoAdd(Interpreter* interpreter, Value* lhs, Value* rhs);\n"
+	"extern Value* DoAnd(Interpreter* interpreter, Value* lhs, Value* rhs);\n"
+	"extern Value* DoDec(Interpreter* interpreter, Value* val);\n"
+	"extern Value* DoDiv(Interpreter* interpreter, Value* lhs, Value* rhs);\n"
+	"extern Value* DoInc(Interpreter* interpreter, Value* val);\n"
+	"extern Value* DoLShift(Interpreter* interpreter, Value* lhs, Value* "
+	"rhs);\n"
+	"extern Value* DoMod(Interpreter* interpreter, Value* lhs, Value* rhs);\n"
+	"extern Value* DoMul(Interpreter* interpreter, Value* lhs, Value* rhs);\n"
+	"extern Value* DoNeg(Interpreter* interpreter, Value* val);\n"
+	"extern Value* DoNot(Interpreter* interpreter, Value* val);\n"
+	"extern Value* DoOr(Interpreter* interpreter, Value* lhs, Value* rhs);\n"
+	"extern Value* DoPos(Interpreter* interpreter, Value* val);\n"
+	"extern Value* DoRShift(Interpreter* interpreter, Value* lhs, Value* "
+	"rhs);\n"
+	"extern Value* DoSub(Interpreter* interpreter, Value* lhs, Value* rhs);\n"
+	"extern Value* DoXor(Interpreter* interpreter, Value* lhs, Value* rhs);\n"
+	/* comparison */
+	"extern Value* DoEQ(Interpreter* interpreter, Value* lhs, Value* rhs);\n"
+	"extern Value* DoGT(Interpreter* interpreter, Value* lhs, Value* rhs);\n"
+	"extern Value* DoGTE(Interpreter* interpreter, Value* lhs, Value* rhs);\n"
+	"extern Value* DoLT(Interpreter* interpreter, Value* lhs, Value* rhs);\n"
+	"extern Value* DoLTE(Interpreter* interpreter, Value* lhs, Value* rhs);\n"
+	"extern Value* DoNE(Interpreter* interpreter, Value* lhs, Value* rhs);\n"
+	/* call / index / import */
+	"extern Value* DoCall(Interpreter* interpreter, Value* fn, int argc, "
+	"bool withThis);\n"
+	"extern Value* DoCallCtor(Interpreter* interpreter, Value* clsValue, "
+	"int argc);\n"
+	"extern Value* DoCallMethod(Interpreter* interpreter, Value* obj, "
+	"Value* methodName, int argc);\n"
+	"extern Value* DoGetIndex(Interpreter* interpreter, Value* obj, "
+	"Value* index);\n"
+	"extern Value* DoSetIndex(Interpreter* interpreter, Value* obj, "
+	"Value* index, Value* val);\n"
+	"extern Value* DoImportCore(Interpreter* interpreter, String moduleName);\n"
+	"extern Value* DoImportFile(Interpreter* interpreter, String filePath);\n"
+	"extern Value* DoImportLib(Interpreter* interpreter, String moduleName);\n"
+	"extern Value* DoLoadFunction(Interpreter* interpreter, int offset, "
+	"bool closure);\n"
+	/* value utilities */
+	"extern Value* NewArrayValue(Interpreter* interpreter);\n"
 	"extern bool   ValueIsError(Value* v);\n"
 	/* JIT entry point */
 	"Value* __jit_fn(Interpreter* _i, Value* _re, Value* _ce, Value* _fn)\n"
 	"{\n"
-	"(void)_fn;\n"
-	"UserFunction* _uf = CoerceToUserFunction(_fn);\n"
-	"Value* res = NULL, *a = NULL, *b = NULL;\n"
-	"bool hasLocalErrorHandler = false;\n"
-	"int handlerc = 0;\n"
-	"%s\n"
+	"\t(void)_fn;\n"
+	"\tUserFunction* _uf = CoerceToUserFunction(_fn);\n"
+	"\tValue* res = NULL, *a = NULL, *b = NULL, *c = NULL;\n"
+	"\tbool hasLocalErrorHandler = false;\n"
+	"\tint handlerc = 0;\n"
+	"\t%s\n"
 	"}\n";
 
 static struct JumpTargets Compute(UserFunction* _uf) {
@@ -366,7 +419,6 @@ static struct JumpTargets Compute(UserFunction* _uf) {
 
 static String Codegen(Interpreter* interpreter, Value* fn) {
 	UserFunction* uf	   = CoerceToUserFunction(fn);
-	StateMachine* sm	   = NULL;
 	uint8_t*	  bytecode = uf->Codes;
 	String		  str	   = NULL;
 	size_t		  ip	   = 0;
@@ -458,7 +510,19 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					free(str);
 					break;
 				}
-
+			case OP_IMPORT_RELATIVE:
+				{
+					str = _rdstr(bytecode, ip);
+					StrAppendf(&sb,
+							   "{res=DoImportFile(_i, "
+							   "\"%s\");_zsjit_push(_i,res);}if(ValueIsError("
+							   "res)){_zsjit_seterror(_i,res);}",
+							   str);
+					handleError();
+					forward(strlen(str) + 1);
+					free(str);
+					break;
+				}
 			case OP_OBJECT_PLUCK_ATTRIBUTE:
 				{
 					str = _rdstr(bytecode, ip);
@@ -492,9 +556,33 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					forward(4);
 					break;
 				}
+			case OP_LOAD_STRING:
+				{
+					str = _rdstr(bytecode, ip);
+					StrAppendf(&sb,
+							   "{_zsjit_push(_i,CreateString(\"%s\"));}",
+							   str);
+					forward(strlen(str) + 1);
+					free(str);
+					break;
+				}
 			case OP_LOAD_NULL:
 				{
 					StrAppend(&sb, "{_zsjit_push(_i,_zsjit_getnull(_i));}");
+					break;
+				}
+			case OP_ARRAY_MAKE:
+				{
+					arg = _rdint(bytecode, ip);
+					StrAppendf(&sb,
+							   "{res=NewArrayValue(_i);Array*arr=CoerceToArray("
+							   "res);for(int "
+							   "i=0;i<%d;i++){Value*val=_zsjit_getstack(_i,(_"
+							   "zsjit_getstackpntr(_i)-%d)-i);"
+							   "ArrayPush(arr,val);}_zsjit_push(_i,res);}",
+							   arg,
+							   arg);
+					forward(4);
 					break;
 				}
 			case OP_LOAD_CAPTURE:
@@ -540,12 +628,44 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					forward(4);
 					break;
 				}
+			case OP_SET_INDEX:
+				{
+					StrAppend(
+						&sb,
+						"{c=_zsjit_popp(_i);b=_zsjit_popp(_i);a=_zsjit_peek(_i)"
+						";res=DoSetIndex(_i,a,b,c);_zsjit_push(_i,res);}if("
+						"ValueIsError(res)){_zsjit_seterror(_i,res);}");
+					handleError();
+					break;
+				}
+			case OP_GET_INDEX:
+				{
+					StrAppend(&sb,
+							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res="
+							  "DoGetIndex(_i,a,b);_zsjit_push(_i,res);}if("
+							  "ValueIsError(res)){_zsjit_seterror(_i,res);}");
+					handleError();
+					break;
+				}
 			case OP_CALL:
 				{
 					arg = _rdint(bytecode, ip);
 					StrAppendf(
 						&sb,
 						"{a=_zsjit_popp(_i);res=DoCall(_i,a,%d,0);}"
+						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}",
+						arg);
+					handleError();
+					forward(4);
+					break;
+				}
+			case OP_CALL_METHOD:
+				{
+					arg = _rdint(bytecode, ip);
+					StrAppendf(
+						&sb,
+						"{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoCallMethod("
+						"_i,a,b,%d);}"
 						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}",
 						arg);
 					handleError();
@@ -561,11 +681,40 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					handleError();
 					break;
 				}
+			case OP_DIV:
+				{
+					StrAppend(&sb,
+							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoDiv(_"
+							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
+							  "){_zsjit_seterror(_i,res);}");
+					handleError();
+					break;
+				}
 			case OP_POSTINC:
 				{
 					StrAppend(&sb,
 							  "{a=_zsjit_popp(_i);res=DoInc(_i,a);_zsjit_push("
 							  "_i,res);_zsjit_push(_i,a);}if(ValueIsError(res))"
+							  "{_zsjit_seterror(_"
+							  "i,res);}");
+					handleError();
+					break;
+				}
+			case OP_POS:
+				{
+					StrAppend(&sb,
+							  "{a=_zsjit_popp(_i);res=DoPos(_i,a);_zsjit_push(_"
+							  "i,res);}if(ValueIsError(res))"
+							  "{_zsjit_seterror(_"
+							  "i,res);}");
+					handleError();
+					break;
+				}
+			case OP_NEG:
+				{
+					StrAppend(&sb,
+							  "{a=_zsjit_popp(_i);res=DoNeg(_i,a);_zsjit_push(_"
+							  "i,res);}if(ValueIsError(res))"
 							  "{_zsjit_seterror(_"
 							  "i,res);}");
 					handleError();
@@ -608,6 +757,33 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					handleError();
 					break;
 				}
+			case OP_GT:
+				{
+					StrAppend(&sb,
+							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoGT(_"
+							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
+							  "){_zsjit_seterror(_i,res);}");
+					handleError();
+					break;
+				}
+			case OP_GTE:
+				{
+					StrAppend(&sb,
+							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoGTE(_"
+							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
+							  "){_zsjit_seterror(_i,res);}");
+					handleError();
+					break;
+				}
+			case OP_EQ:
+				{
+					StrAppend(&sb,
+							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoEQ(_"
+							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
+							  "){_zsjit_seterror(_i,res);}");
+					handleError();
+					break;
+				}
 			case OP_RETURN:
 				{
 					StrAppend(&sb, "return NULL;");
@@ -638,12 +814,27 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					StrAppend(&sb, "_zsjit_popp(_i);");
 					break;
 				}
+			case OP_DUPTOP:
+				{
+					StrAppend(&sb, "{_zsjit_push(_i,_zsjit_peek(_i));}");
+					break;
+				}
 			case OP_POP_JUMP_IF_FALSE:
 				{
 					off = _rdint(bytecode, ip);
 					StrAppendf(&sb,
 							   "{res=_zsjit_popp(_i);if(CoerceToBool(res)==0){"
 							   "goto _L%d;}}",
+							   off);
+					forward(4);
+					break;
+				}
+			case OP_JUMP_IF_FALSE_OR_POP:
+				{
+					off = _rdint(bytecode, ip);
+					StrAppendf(&sb,
+							   "{res=_zsjit_peek(_i);if(CoerceToBool(res)==0){"
+							   "goto _L%d;}else{_zsjit_popp(_i);}}",
 							   off);
 					forward(4);
 					break;
@@ -724,6 +915,13 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 							  "_zsjit_setstack(_i,_sp-4,_ra);}");
 					break;
 				}
+			case OP_LOCK_VAR:
+				{
+					off = _rdint(bytecode, ip);
+					StrAppendf(&sb, "{_zsjit_lockvar(_i,_ce,%d);}", off);
+					forward(4);
+					break;
+				}
 			default:
 				{
 					Panic("unknown code %d\n", op);
@@ -756,6 +954,14 @@ static TCCState** _tcc_states	  = NULL;
 static size_t	  _tcc_states_len = 0;
 static size_t	  _tcc_states_cap = 0;
 
+/* Suppress TCC diagnostic output in production builds; compilation failures
+ * are handled by ZJitCompile returning NULL and falling back to the
+ * interpreter — leaking TCC messages to stderr would confuse end users. */
+static void _tcc_silent_error(void* opaque, const char* msg) {
+	(void) opaque;
+	(void) msg;
+}
+
 static void _tcc_register(TCCState* s) {
 	if (_tcc_states_len == _tcc_states_cap) {
 		_tcc_states_cap = _tcc_states_cap ? _tcc_states_cap * 2 : 8;
@@ -783,6 +989,13 @@ ZJittedFn* ZJitCompile(Interpreter* interpreter, Value* fn) {
 		return NULL;
 	}
 
+	tcc_set_error_func(s, NULL, _tcc_silent_error);
+	/* -O2        : enable TCC's optimisation passes
+	 * -s         : strip symbol table from the in-memory image
+	 * -DNDEBUG   : disable assert() in any inlined runtime headers
+	 * -fno-common: emit each symbol once (avoids tentative-definition merging)
+	 */
+	tcc_set_options(s, "-O2 -s -DNDEBUG -fno-common");
 	tcc_set_output_type(s, TCC_OUTPUT_MEMORY);
 
 	if (tcc_compile_string(s, code) == -1) {
@@ -808,24 +1021,64 @@ ZJittedFn* ZJitCompile(Interpreter* interpreter, Value* fn) {
 	tcc_add_symbol(s, "_zsjit_getstackpntr", (void*) _zsjit_getstackpntr);
 	tcc_add_symbol(s, "_zsjit_getstack", (void*) _zsjit_getstack);
 	tcc_add_symbol(s, "_zsjit_setstack", (void*) _zsjit_setstack);
+	/* array / hashmap */
+	tcc_add_symbol(s, "ArrayPush", (void*) ArrayPush);
 	tcc_add_symbol(s, "HashMapGet", (void*) HashMapGet);
+	/* coercion helpers */
 	tcc_add_symbol(s, "CoerceToBool", (void*) CoerceToBool);
+	tcc_add_symbol(s, "CoerceToArray", (void*) CoerceToArray);
+	tcc_add_symbol(s, "CoerceToEnvironment", (void*) CoerceToEnvironment);
 	tcc_add_symbol(s, "CoerceToHashMap", (void*) CoerceToHashMap);
 	tcc_add_symbol(s, "CoerceToUserFunction", (void*) CoerceToUserFunction);
-	tcc_add_symbol(s, "CoerceToEnvironment", (void*) CoerceToEnvironment);
-	tcc_add_symbol(s, "EnvironmentSetLocal", (void*) EnvironmentSetLocal);
+	/* environment management */
+	tcc_add_symbol(s, "RestoreEnv", (void*) RestoreEnv);
+	tcc_add_symbol(s, "RestoreNthEnvAndSync", (void*) RestoreNthEnvAndSync);
+	tcc_add_symbol(s, "SaveEnv", (void*) SaveEnv);
+	tcc_add_symbol(s, "SaveRootEnv", (void*) SaveRootEnv);
+	/* environment slot access */
 	tcc_add_symbol(s, "EnvironmentGetLocal", (void*) EnvironmentGetLocal);
+	tcc_add_symbol(s, "EnvironmentSetLocal", (void*) EnvironmentSetLocal);
+	/* object / attribute helpers */
+	tcc_add_symbol(s, "GenericGetAttribute", (void*) GenericGetAttribute);
+	tcc_add_symbol(s, "IsMethodOfObject", (void*) IsMethodOfObject);
+	/* arithmetic & unary */
+	tcc_add_symbol(s, "DoAdd", (void*) DoAdd);
+	tcc_add_symbol(s, "DoAnd", (void*) DoAnd);
+	tcc_add_symbol(s, "DoDec", (void*) DoDec);
+	tcc_add_symbol(s, "DoDiv", (void*) DoDiv);
+	tcc_add_symbol(s, "DoInc", (void*) DoInc);
+	tcc_add_symbol(s, "DoLShift", (void*) DoLShift);
+	tcc_add_symbol(s, "DoMod", (void*) DoMod);
+	tcc_add_symbol(s, "DoMul", (void*) DoMul);
+	tcc_add_symbol(s, "DoNeg", (void*) DoNeg);
+	tcc_add_symbol(s, "DoNot", (void*) DoNot);
+	tcc_add_symbol(s, "DoOr", (void*) DoOr);
+	tcc_add_symbol(s, "DoPos", (void*) DoPos);
+	tcc_add_symbol(s, "DoRShift", (void*) DoRShift);
+	tcc_add_symbol(s, "DoSub", (void*) DoSub);
+	tcc_add_symbol(s, "DoXor", (void*) DoXor);
+	/* comparison */
+	tcc_add_symbol(s, "DoEQ", (void*) DoEQ);
+	tcc_add_symbol(s, "DoGT", (void*) DoGT);
+	tcc_add_symbol(s, "DoGTE", (void*) DoGTE);
+	tcc_add_symbol(s, "DoLT", (void*) DoLT);
+	tcc_add_symbol(s, "DoLTE", (void*) DoLTE);
+	tcc_add_symbol(s, "DoNE", (void*) DoNE);
+	/* call / index / import */
+	tcc_add_symbol(s, "DoCall", (void*) DoCall);
+	tcc_add_symbol(s, "DoCallCtor", (void*) DoCallCtor);
+	tcc_add_symbol(s, "DoCallMethod", (void*) DoCallMethod);
+	tcc_add_symbol(s, "DoGetIndex", (void*) DoGetIndex);
+	tcc_add_symbol(s, "DoSetIndex", (void*) DoSetIndex);
 	tcc_add_symbol(s, "DoImportCore", (void*) DoImportCore);
+	tcc_add_symbol(s, "DoImportFile", (void*) DoImportFile);
 	tcc_add_symbol(s, "DoImportLib", (void*) DoImportLib);
 	tcc_add_symbol(s, "DoLoadFunction", (void*) DoLoadFunction);
-	tcc_add_symbol(s, "DoCall", (void*) DoCall);
-	tcc_add_symbol(s, "DoInc", (void*) DoInc);
-	tcc_add_symbol(s, "DoMul", (void*) DoMul);
-	tcc_add_symbol(s, "DoAdd", (void*) DoAdd);
-	tcc_add_symbol(s, "DoSub", (void*) DoSub);
-	tcc_add_symbol(s, "DoLTE", (void*) DoLTE);
+	/* value utilities */
+	tcc_add_symbol(s, "NewArrayValue", (void*) NewArrayValue);
 	tcc_add_symbol(s, "ValueIsError", (void*) ValueIsError);
-
+	/* jit ABI */
+	tcc_add_symbol(s, "_zsjit_lockvar", (void*) _zsjit_lockvar);
 	if (tcc_relocate(s) == -1) {
 		tcc_delete(s);
 		return NULL;
