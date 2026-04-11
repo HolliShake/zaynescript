@@ -46,6 +46,23 @@
 #define GC_GROWTH_FACTOR 2
 
 /**
+ * @def JIT_TRIGGER_MAX_CODEC
+ * @brief Maximum bytecode instruction count to trigger JIT compilation.
+ * If a function's bytecode length is above or below this threshold,
+ * it will be compiled to native code if it's too large (to avoid
+ * interpreter overhead) or too small (to avoid frequent interpretation).
+ */
+#define JIT_TRIGGER_MAX_CODE 1500
+
+/**
+ * @def JIT_TRIGGER_MIN_CODE
+ * @brief Minimum bytecode instruction count to trigger JIT compilation.
+ * Functions below this threshold may also be compiled to native code,
+ * to avoid frequent interpretation overhead.
+ */
+#define JIT_TRIGGER_MIN_CODE 20
+
+/**
  * @def GC_THRESHOLD
  * @brief The allocation threshold for triggering garbage
  * collection.
@@ -639,8 +656,9 @@ typedef struct user_function_struct {
 	CaptureMeta* CaptureMetas; /**< Array of capture metadata */
 	int			 CaptureC;	   /**< Count of captured variables */
 	struct envcell_struct**
-		Captures;			   /**< Array of captured environment cells */
-	void* JitFn; /**< Compiled JIT function pointer, or NULL if not yet compiled */
+		  Captures;			   /**< Array of captured environment cells */
+	void* JitFn; /**< Compiled JIT function pointer, or NULL if not yet compiled
+				  */
 } UserFunction;
 
 /**

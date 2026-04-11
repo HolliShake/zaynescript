@@ -84,4 +84,5 @@ void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/);
  */
 void FreeInterpreter(Interpreter* interpreter);
 
+
 #endif /* INTERPRETER_H */

@@ -1,5 +1,6 @@
 #include "./interpreter.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 
 static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
@@ -460,14 +461,15 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 						 ValueTypeOf(fnValue));
 
 	{
-		uint8_t* _jit_fn = ZJitCompile(interpreter, uf);
+		ZJittedFn* _jit_fn = ZJitCompile(interpreter, fnValue);
 		if (_jit_fn != NULL) {
 			ZJittedFn _jf = (ZJittedFn) (void*) _jit_fn;
-			Value*	  _je = (Value*) _jf(interpreter,
-										 (void**) interpreter->Constants,
-										 interpreter->CallEnv,
-										 interpreter->RootEnv,
-										 uf);
+			// printf("[%s]:Runs through JIT!\n", uf->Name ? uf->Name :
+			// "<anon>");
+			Value* _je = (Value*) _jf(interpreter,
+									  interpreter->RootEnv,
+									  interpreter->CallEnv,
+									  fnValue);
 			if (_je != NULL && ValueIsError(_je)) {
 				/* The JIT function encountered a runtime error.  Raise it
 				   through the normal interpreter error path so try/catch in

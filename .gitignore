@@ -23,4 +23,3 @@ dist
 **/*.exp
 **/*.pdb
 **/*.o
-jit
