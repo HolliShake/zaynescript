@@ -3,13 +3,13 @@
 extern void GarbageCollect(Interpreter* interpreter);
 
 static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
-	Value* v  = Allocate(sizeof(Value));
-	v->Type	  = type;
-	v->Marked = 0;
-	v->Next	  = NULL;
-	interpreter->Allocated++;
-	v->Next				= interpreter->GcRoot;
+	Value* v	  = Allocate(sizeof(Value));
+	v->Type		  = type;
+	v->Marked	  = 0;
+	v->Generation = 0;
+	v->Next		  = interpreter->GcRoot;
 	interpreter->GcRoot = v;
+	interpreter->Allocated++;
 
 	if (interpreter->Allocated >= interpreter->GcThreshold) {
 		GarbageCollect(interpreter);

@@ -1,10 +1,5 @@
 #include "./interpreter.h"
 
-#include "global.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-
 static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
 	// libbf uses size == 0 to signal a free() operation
 	if (size == 0) {
@@ -23,8 +18,11 @@ Interpreter* CreateInterpreter(String execPath) {
 	interpreter->ImportHead	  = NULL;
 	interpreter->Imports	  = CreateHashMap(16);
 	interpreter->Allocated	  = 0;
-	interpreter->GcThreshold  = GC_THRESHOLD;
+	interpreter->OldCount	  = 0;
+	interpreter->GcThreshold  = GC_YOUNG_THRESHOLD;
+	interpreter->OldThreshold = GC_THRESHOLD;
 	interpreter->GcRoot		  = NULL;
+	interpreter->OldRoot	  = NULL;
 	interpreter->RootEnv	  = NULL;
 	interpreter->CallEnv	  = NULL;
 	interpreter->Object		  = CreateObjectClass(interpreter);
@@ -46,7 +44,7 @@ Interpreter* CreateInterpreter(String execPath) {
 	interpreter->EnvrC = 0;
 	// interpreter->ExceptionHandlerStacks[STACK_SIZE];
 	interpreter->ExceptionHandlerStackC = 0;
-	/* GcThreshold already set above, before first allocation */
+	/* GcThreshold / OldThreshold already set above, before first allocation */
 	// interpreter->TaskQueue[STACK_SIZE];
 	interpreter->TaskQueueHead	= 0;
 	interpreter->TaskQueueC		= 0;
@@ -467,18 +465,18 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 		InterpreterPanic("Attempted to run a non-function value of type %s",
 						 ValueTypeOf(fnValue));
 
-	if (uf->JitFn != NULL || uf->CodeC <= JIT_TRIGGER_MIN_CODE) {
+	if (uf->JitFn != NULL && uf->CodeC <= JIT_TRIGGER_MIN_CODE
+		|| uf->CodeC >= JIT_TRIGGER_MAX_CODE) {
+		printf("Running through JIT!\n");
 		// compile the actual fn if was wrap by state machine
 		ZJittedFn* _jit_fn = ZJitCompile(interpreter, fn);
 		if (_jit_fn != NULL) {
 			ZJittedFn _jf = (ZJittedFn) (void*) _jit_fn;
-			// printf("[%s]:Runs through JIT!\n", uf->Name ? uf->Name :
-			// "<anon>");
-			Value* _je =
-				(Value*) _jf(interpreter,
-							 interpreter->RootEnv,
-							 interpreter->CallEnv,
-							 fnValue);	// allow running state machine inside
+			Value*	  _je = (Value*) _jf(interpreter,
+										 interpreter->RootEnv,
+										 interpreter->CallEnv,
+										 // allow running state machine inside
+										 fnValue);
 			if (_je != NULL && ValueIsError(_je)) {
 				size_t _ip_err = 0;
 				_RaiseError(interpreter, uf, &_ip_err, _je);
@@ -494,6 +492,9 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 	while (ip != uf->CodeC) {
 		if (interpreter->Allocated >= interpreter->GcThreshold) {
 			GarbageCollect(interpreter);
+		}
+		if (interpreter->OldCount >= interpreter->OldThreshold) {
+			MajorGarbageCollect(interpreter);
 		}
 
 		opcode	= uf->Codes[ip++];
@@ -1374,12 +1375,6 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_RETURN:
 				{
-					if (++uf->CallCount >= JIT_CALL_TRIGGER) {
-						// Compile to NATIVE via tcc
-						uf->CallCount = JIT_CALL_TRIGGER;
-						ZJitCompile(interpreter, fn);
-					}
-
 					if (uf->Async) {
 						val = Popp(interpreter);
 
@@ -1508,6 +1503,7 @@ void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/) {
 
 void FreeInterpreter(Interpreter* interpreter) {
 	mg_mgr_free(&interpreter->MgMgr);
+	ZJitFree();
 	bf_context_end(&interpreter->BfContext);
 	FreeHashMap(interpreter->Imports);
 	FreeImportNode(interpreter->ImportHead);

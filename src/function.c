@@ -73,6 +73,8 @@ UserFunction* UserFunctionClone(UserFunction* userFunction) {
 	for (int i = 0; i < userFunction->CaptureC; i++) {
 		clone->Captures[i] = NULL;
 	}
+	clone->JitFn	 = userFunction->JitFn;
+	clone->CallCount = 0;
 	return clone;
 }
 

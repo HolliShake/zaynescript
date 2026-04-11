@@ -8,6 +8,7 @@
  * executable bytecode instructions for the interpreter.
  */
 
+#include "../jit/zsjit.h"
 #include "./global.h"
 #include "./import.h"
 #include "./keyword.h"

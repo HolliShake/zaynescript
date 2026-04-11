@@ -1,5 +1,7 @@
 #include "./compiler.h"
 
+#include "global.h"
+
 
 #define PushArray(type, array, count, val, defaultValue)                       \
 	do {                                                                       \
@@ -50,6 +52,36 @@ static bool _IsAstConstant(Compiler* compiler, Ast* node) {
 		default:
 			return 0;
 	}
+}
+
+typedef struct jit_compile_job_struct {
+	Compiler* compiler;
+	Value*	  fn;
+} JitCompileJob;
+
+int ThreadCompileStart(Thread* thread, void* (*fn)(void*), Value* arg) {
+#if defined(_WIN32)
+	*thread = CreateThread(NULL, 0, fn, arg, 0, NULL);
+	return (*thread != NULL) ? 0 : 1;
+#else
+	return pthread_create(thread, NULL, fn, arg);
+#endif
+}
+
+// 2. Waiting for a thread to finish
+void ThreadCompileJoin(Thread thread) {
+#if defined(_WIN32)
+	WaitForSingleObject(thread, INFINITE);
+	CloseHandle(thread);  // Windows requires you to close the handle!
+#else
+	pthread_join(thread, NULL);
+#endif
+}
+
+static void* CompileJob(void* arg) {
+	JitCompileJob* job = (JitCompileJob*) arg;
+	ZJitCompile(job->compiler->Interpreter, (Value*) job->fn);
+	return NULL;
 }
 
 static int _SaveFunction(Compiler* compiler, Value* fn) {
@@ -644,6 +676,16 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 				_EmitLine(compiler, uf, lastLine);
 				_EmitArg(compiler, uf, OP_LOAD_FUNCTION_CLOSURE, funcOffset);
 				FreeScope(fnScope);
+
+				Thread		  thread;
+				JitCompileJob job = { .compiler = compiler, .fn = fnValue };
+
+				if (ThreadCompileStart(&thread, CompileJob, (void*) &job)
+					!= 0) {
+					Panic("Failed to start JIT compilation thread!\n");
+				}
+
+				ThreadCompileJoin(thread);
 				break;
 			}
 		case AST_ALLOCATION:
@@ -2195,6 +2237,16 @@ static void _CompileClassDeclaration(Compiler*	   compiler,
 								   false,
 								   -1);
 					FreeScope(fnScope);
+
+					Thread		  thread;
+					JitCompileJob job = { .compiler = compiler, .fn = fnValue };
+
+					if (ThreadCompileStart(&thread, CompileJob, (void*) &job)
+						!= 0) {
+						Panic("Failed to start JIT compilation thread!\n");
+					}
+
+					ThreadCompileJoin(thread);
 					break;
 				}
 			default:
@@ -2294,6 +2346,15 @@ static void _CompileFunctionDeclaration(Compiler*	  compiler,
 	_EmitLine(compiler, uf, lastLine);
 	_EmitArg(compiler, uf, OP_STORE_NAME, nameOffset);
 	FreeScope(fnScope);
+
+	Thread		  thread;
+	JitCompileJob job = { .compiler = compiler, .fn = fnValue };
+
+	if (ThreadCompileStart(&thread, CompileJob, (void*) &job) != 0) {
+		Panic("Failed to start JIT compilation thread!\n");
+	}
+
+	ThreadCompileJoin(thread);
 }
 
 static void _CompileImportStatement(Compiler*	  compiler,
@@ -3327,6 +3388,15 @@ static Value* _Program(Compiler* compiler, Ast* node, bool isModule) {
 	_Emit(compiler, uf, OP_RETURN);
 
 	FreeScope(scope);
+
+	Thread		  thread;
+	JitCompileJob job = { .compiler = compiler, .fn = value };
+
+	if (ThreadCompileStart(&thread, CompileJob, (void*) &job) != 0) {
+		Panic("Failed to start JIT compilation thread!\n");
+	}
+
+	ThreadCompileJoin(thread);
 
 	return value;
 }

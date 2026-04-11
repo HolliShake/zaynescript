@@ -1,6 +1,8 @@
 #include "./zsjit.h"
 
+#include <libtcc.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static int _rdint(uint8_t* bytecode, size_t start) {
 	int offset	= 0;
@@ -12,14 +14,17 @@ static int _rdint(uint8_t* bytecode, size_t start) {
 }
 
 static String _rdstr(uint8_t* bytecode, size_t start) {
-	char   chr;
-	String str = Allocate(1);
 	size_t len = 0;
-	while ((chr = bytecode[start++]) != '\0') {
-		str[len++] = chr;
-		str		   = Reallocate(str, sizeof(char) * (len + 1));
-		str[len]   = '\0';
+	size_t cap = 16;
+	String str = Allocate(cap);
+	while (bytecode[start] != '\0') {
+		if (len + 1 >= cap) {
+			cap *= 2;
+			str	 = Reallocate(str, cap);
+		}
+		str[len++] = bytecode[start++];
 	}
+	str[len] = '\0';
 	return str;
 }
 
@@ -143,6 +148,18 @@ Value* _zsjit_geterror(Interpreter* _i) {
 	return _i->Error;
 }
 
+size_t _zsjit_getstackpntr(Interpreter* _i) {
+	return _i->StckC;
+}
+
+Value* _zsjit_getstack(Interpreter* _i, int i) {
+	return _i->Stacks[i];
+}
+
+void _zsjit_setstack(Interpreter* _i, int i, Value* val) {
+	_i->Stacks[i] = val;
+}
+
 struct JumpTargets {
 	int* Target;
 	int	 Size;
@@ -172,38 +189,42 @@ String fncode =
 	/*Hashmap*/
 	"extern void* HashMapGet(HashMap* hashmap, String key);\n"
 	/* stack / constant helpers */
-	"extern Value* _zsjit_popp(Interpreter* i);\n"
-	"extern Value* _zsjit_peek(Interpreter* i);\n"
-	"extern void   _zsjit_push(Interpreter* i, Value* v);\n"
+	"extern Value* _zsjit_getcap(UserFunction* _uf, int off);\n"
+	"extern Value* _zsjit_getcellvalue(EnvCell* c);\n"
 	"extern Value* _zsjit_getconst(Interpreter* i, int off);\n"
-	"extern Value* _zsjit_gettrue(Interpreter* i);\n"
+	"extern Value* _zsjit_geterror(Interpreter* _i);\n"
 	"extern Value* _zsjit_getfalse(Interpreter* i);\n"
 	"extern Value* _zsjit_getnull(Interpreter* i);\n"
-	"extern Value* _zsjit_getcellvalue(EnvCell* c);\n"
-	"extern Value* _zsjit_getcap(UserFunction* _uf, int off);\n"
-	"extern void _zsjit_pushtry(Interpreter* _i, int jmp, size_t "
+	"extern Value* _zsjit_getstack(Interpreter* _i, int i);\n"
+	"extern size_t _zsjit_getstackpntr(Interpreter* _i);\n"
+	"extern Value* _zsjit_gettrue(Interpreter* i);\n"
+	"extern Value* _zsjit_peek(Interpreter* i);\n"
+	"extern Value* _zsjit_popp(Interpreter* i);\n"
+	"extern void   _zsjit_popptry(Interpreter* _i);\n"
+	"extern void   _zsjit_push(Interpreter* i, Value* v);\n"
+	"extern void   _zsjit_pushtry(Interpreter* _i, int jmp, size_t "
 	"pausedAddress);\n"
-	"extern void _zsjit_popptry(Interpreter* _i);\n"
-	"extern void _zsjit_seterror(Interpreter* _i, Value* err);\n"
-	"extern Value* _zsjit_geterror(Interpreter* _i);\n"
+	"extern void   _zsjit_seterror(Interpreter* _i, Value* err);\n"
+	"extern void   _zsjit_setstack(Interpreter* _i, int i, Value* val);\n"
 	/* runtime function externs */
 	"extern bool CoerceToBool(Value* value);\n"
+	"extern Environment*  CoerceToEnvironment(Value* value);\n"
 	"extern HashMap* CoerceToHashMap(Value* value);\n"
 	"extern UserFunction* CoerceToUserFunction(Value* value);\n"
-	"extern Environment*  CoerceToEnvironment(Value* value);\n"
-	"extern void   EnvironmentSetLocal(Environment* e, int off, Value* v);\n"
-	"extern EnvCell* EnvironmentGetLocal(Environment* e, int off);\n"
-	"extern Value* DoImportCore(Interpreter* interpreter, String moduleName);\n"
-	"extern Value* DoImportLib(Interpreter* interpreter, String moduleName);\n"
-	"extern Value* DoLoadFunction(Interpreter* interpreter, int offset, bool "
-	"closure);\n"
+	"extern Value* DoAdd(Interpreter* _i, Value* a, Value* b);\n"
 	"extern Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool "
 	"withThis);\n"
-	"extern Value* DoMul(Interpreter* _i, Value* a, Value* b);\n"
-	"extern Value* DoAdd(Interpreter* _i, Value* a, Value* b);\n"
-	"extern Value* DoSub(Interpreter* _i, Value* a, Value* b);\n"
+	"extern Value* DoImportCore(Interpreter* interpreter, String moduleName);\n"
+	"extern Value* DoImportLib(Interpreter* interpreter, String moduleName);\n"
+	"extern Value* DoInc(Interpreter* interpreter, Value* val);\n"
+	"extern Value* DoLoadFunction(Interpreter* interpreter, int offset, bool "
+	"closure);\n"
 	"extern Value* DoLTE(Interpreter* interpreter, Value* lhs, Value* rhs);\n"
-	"extern bool    ValueIsError(Value* v);\n"
+	"extern Value* DoMul(Interpreter* _i, Value* a, Value* b);\n"
+	"extern Value* DoSub(Interpreter* _i, Value* a, Value* b);\n"
+	"extern EnvCell* EnvironmentGetLocal(Environment* e, int off);\n"
+	"extern void   EnvironmentSetLocal(Environment* e, int off, Value* v);\n"
+	"extern bool   ValueIsError(Value* v);\n"
 	/* JIT entry point */
 	"Value* __jit_fn(Interpreter* _i, Value* _re, Value* _ce, Value* _fn)\n"
 	"{\n"
@@ -211,7 +232,7 @@ String fncode =
 	"UserFunction* _uf = CoerceToUserFunction(_fn);\n"
 	"Value* res = NULL, *a = NULL, *b = NULL;\n"
 	"bool hasLocalErrorHandler = false;\n"
-	"int handlerc  =  0;\n"
+	"int handlerc = 0;\n"
 	"%s\n"
 	"}\n";
 
@@ -395,6 +416,7 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					   "if(_zsjit_geterror(_i)!=NULL&&hasLocalErrorHandler){"  \
 					   "_zsjit_seterror(_i, NULL);goto _L%d;}",                \
 					   _catch_ip);                                             \
+			StrAppend(&sb, "else{}");                                          \
 		}                                                                      \
 	}
 
@@ -415,9 +437,10 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					str = _rdstr(bytecode, ip);
 					StrAppendf(&sb,
 							   "{res=DoImportCore(_i, "
-							   "\"%s\");}if(ValueIsError(res)){return "
-							   "res;}else{_zsjit_push(_i,res);}",
+							   "\"%s\");_zsjit_push(_i,res);}if(ValueIsError("
+							   "res)){_zsjit_seterror(_i,res);}",
 							   str);
+					handleError();
 					forward(strlen(str) + 1);
 					free(str);
 					break;
@@ -427,13 +450,15 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					str = _rdstr(bytecode, ip);
 					StrAppendf(&sb,
 							   "{res=DoImportLib(_i, "
-							   "\"%s\");}if(ValueIsError(res)){return "
-							   "res;}else{_zsjit_push(_i,res);}",
+							   "\"%s\");_zsjit_push(_i,res);}if(ValueIsError("
+							   "res)){_zsjit_seterror(_i,res);}",
 							   str);
+					handleError();
 					forward(strlen(str) + 1);
 					free(str);
 					break;
 				}
+
 			case OP_OBJECT_PLUCK_ATTRIBUTE:
 				{
 					str = _rdstr(bytecode, ip);
@@ -536,6 +561,16 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					handleError();
 					break;
 				}
+			case OP_POSTINC:
+				{
+					StrAppend(&sb,
+							  "{a=_zsjit_popp(_i);res=DoInc(_i,a);_zsjit_push("
+							  "_i,res);_zsjit_push(_i,a);}if(ValueIsError(res))"
+							  "{_zsjit_seterror(_"
+							  "i,res);}");
+					handleError();
+					break;
+				}
 			case OP_ADD:
 				{
 					StrAppend(&sb,
@@ -550,6 +585,15 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 				{
 					StrAppend(&sb,
 							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoSub(_"
+							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
+							  "){_zsjit_seterror(_i,res);}");
+					handleError();
+					break;
+				}
+			case OP_LT:
+				{
+					StrAppend(&sb,
+							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoLTE(_"
 							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
 							  "){_zsjit_seterror(_i,res);}");
 					handleError();
@@ -604,6 +648,13 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					forward(4);
 					break;
 				}
+			case OP_ABSOLUTE_JUMP:
+				{
+					off = _rdint(bytecode, ip);
+					StrAppendf(&sb, "goto _L%d;", off);
+					forward(4);
+					break;
+				}
 			case OP_JUMP:
 				{
 					off = _rdint(bytecode, ip);
@@ -634,14 +685,67 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 							  "popptry(_i);}");
 					break;
 				}
+			case OP_ROT2:
+				{
+					/* A B -> B A */
+					StrAppend(&sb,
+							  "{size_t _sp=_zsjit_getstackpntr(_i);"
+							  "Value*_ra=_zsjit_getstack(_i,_sp-1);"
+							  "Value*_rb=_zsjit_getstack(_i,_sp-2);"
+							  "_zsjit_setstack(_i,_sp-1,_rb);"
+							  "_zsjit_setstack(_i,_sp-2,_ra);}");
+					break;
+				}
+			case OP_ROT3:
+				{
+					/* A B C -> C A B */
+					StrAppend(&sb,
+							  "{size_t _sp=_zsjit_getstackpntr(_i);"
+							  "Value*_ra=_zsjit_getstack(_i,_sp-1);"
+							  "Value*_rb=_zsjit_getstack(_i,_sp-2);"
+							  "Value*_rc=_zsjit_getstack(_i,_sp-3);"
+							  "_zsjit_setstack(_i,_sp-1,_ra);"
+							  "_zsjit_setstack(_i,_sp-2,_rc);"
+							  "_zsjit_setstack(_i,_sp-3,_rb);}");
+					break;
+				}
+			case OP_ROT4:
+				{
+					/* A B C D -> D A B C */
+					StrAppend(&sb,
+							  "{size_t _sp=_zsjit_getstackpntr(_i);"
+							  "Value*_ra=_zsjit_getstack(_i,_sp-1);"
+							  "Value*_rb=_zsjit_getstack(_i,_sp-2);"
+							  "Value*_rc=_zsjit_getstack(_i,_sp-3);"
+							  "Value*_rd=_zsjit_getstack(_i,_sp-4);"
+							  "_zsjit_setstack(_i,_sp-1,_rc);"
+							  "_zsjit_setstack(_i,_sp-2,_rb);"
+							  "_zsjit_setstack(_i,_sp-3,_rd);"
+							  "_zsjit_setstack(_i,_sp-4,_ra);}");
+					break;
+				}
 			default:
 				{
-					printf("unknown code %d\n", op);
+					Panic("unknown code %d\n", op);
 					return NULL;
 				}
 		}
 	}
+
+
+	while (ti < t.Size) {
+		int lv = t.Target[ti++];
+		if (!EMITTED[lv]) {
+			StrAppendf(&sb, "_L%d:;", lv);
+			EMITTED[lv] = 1;
+		}
+	}
+
+	StrAppend(&sb, "return NULL;");
+
 	String code = FormatString(fncode, sb.buffer);
+	free(t.Target);
+	free(EMITTED);
 	StrBuilderFree(&sb);
 	free(handler_targets);
 	return code;
@@ -701,6 +805,9 @@ ZJittedFn* ZJitCompile(Interpreter* interpreter, Value* fn) {
 	tcc_add_symbol(s, "_zsjit_popptry", (void*) _zsjit_popptry);
 	tcc_add_symbol(s, "_zsjit_seterror", (void*) _zsjit_seterror);
 	tcc_add_symbol(s, "_zsjit_geterror", (void*) _zsjit_geterror);
+	tcc_add_symbol(s, "_zsjit_getstackpntr", (void*) _zsjit_getstackpntr);
+	tcc_add_symbol(s, "_zsjit_getstack", (void*) _zsjit_getstack);
+	tcc_add_symbol(s, "_zsjit_setstack", (void*) _zsjit_setstack);
 	tcc_add_symbol(s, "HashMapGet", (void*) HashMapGet);
 	tcc_add_symbol(s, "CoerceToBool", (void*) CoerceToBool);
 	tcc_add_symbol(s, "CoerceToHashMap", (void*) CoerceToHashMap);
@@ -712,6 +819,7 @@ ZJittedFn* ZJitCompile(Interpreter* interpreter, Value* fn) {
 	tcc_add_symbol(s, "DoImportLib", (void*) DoImportLib);
 	tcc_add_symbol(s, "DoLoadFunction", (void*) DoLoadFunction);
 	tcc_add_symbol(s, "DoCall", (void*) DoCall);
+	tcc_add_symbol(s, "DoInc", (void*) DoInc);
 	tcc_add_symbol(s, "DoMul", (void*) DoMul);
 	tcc_add_symbol(s, "DoAdd", (void*) DoAdd);
 	tcc_add_symbol(s, "DoSub", (void*) DoSub);

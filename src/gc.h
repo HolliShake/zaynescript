@@ -43,8 +43,22 @@ void Mark(Value* value);
 void GarbageCollect(Interpreter* interpreter);
 
 /**
- * @brief Forces an immediate garbage collection cycle regardless
- * of threshold.
+ * @brief Performs a major (full) garbage collection cycle.
+ *
+ * Runs a complete mark-and-sweep over both the young and old
+ * generations.  Young survivors are promoted to the old
+ * generation; old survivors remain and the old threshold is
+ * updated with GC_GROWTH_FACTOR.  Triggered automatically when
+ * OldCount reaches OldThreshold.
+ *
+ * @param interpreter Pointer to the Interpreter instance. Must
+ * not be NULL.
+ */
+void MajorGarbageCollect(Interpreter* interpreter);
+
+/**
+ * @brief Forces an immediate major garbage collection cycle
+ * regardless of threshold.
  *
  * Triggers a full mark-and-sweep cycle unconditionally,
  * bypassing the allocation threshold check. Useful for testing,

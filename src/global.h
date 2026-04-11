@@ -36,6 +36,18 @@
 #	include <malloc.h>
 #endif
 
+// --- OS DETECTION & INCLUDES ---
+#if defined(_WIN32)
+#	include <windows.h>
+typedef HANDLE Thread;
+#	define THREAD_RETURN DWORD WINAPI
+#else
+#	include <pthread.h>
+#	include <unistd.h>
+typedef pthread_t Thread;
+#	define THREAD_RETURN void*
+#endif
+
 // Constants & Macros
 
 /**
@@ -60,7 +72,7 @@
  * Functions below this threshold may also be compiled to native code,
  * to avoid frequent interpretation overhead.
  */
-#define JIT_TRIGGER_MIN_CODE 150
+#define JIT_TRIGGER_MIN_CODE 100
 
 /**
  * @def JIT_CALL_TRIGGER
@@ -73,9 +85,17 @@
 /**
  * @def GC_THRESHOLD
  * @brief The allocation threshold for triggering garbage
- * collection.
+ * collection on the old generation (major GC).
  */
 #define GC_THRESHOLD 4096
+
+/**
+ * @def GC_YOUNG_THRESHOLD
+ * @brief Allocation threshold for the young (nursery) generation.
+ * When the young generation reaches this size a minor GC is
+ * triggered; survivors are promoted to the old generation.
+ */
+#define GC_YOUNG_THRESHOLD 512
 
 /**
  * @def VARARG
@@ -477,8 +497,9 @@ struct value_struct {
 	} Value;
 
 	// GC
-	Value* Next;   /**< Next value in the GC tracking list */
-	int	   Marked; /**< GC mark flag (0 = unmarked, 1 = marked) */
+	Value*	Next;		/**< Next value in the GC tracking list */
+	int		Marked;		/**< GC mark flag (0 = unmarked, 1 = marked) */
+	uint8_t Generation; /**< GC generation: 0 = young (nursery), 1 = old */
 };
 
 // -----------------------------------------------------------------------------
@@ -915,36 +936,37 @@ struct interpreter_struct {
 							   (for resolving imports) */
 	struct mg_mgr MgMgr; /**< Mongoose manager for handling HTTP requests (used
 						  * in native modules) */
-	ImportNode* ImportHead;		/**< Head of the linked list of
-								   imported modules */
-	HashMap* Imports;			/**< Imports map */
-	Value*	 Object;			/**< Built-in Object class */
-	Value*	 Array;				/**< Built-in Array class */
-	Value*	 Date;				/**< Built-in Date class */
-	Value*	 Promise;			/**< Built-in Promise class */
-	Value*	 True;				/**< Singleton 'true' value */
-	Value*	 False;				/**< Singleton 'false' value */
-	Value*	 Null;				/**< Singleton 'null' value */
-	Value*	 GcRoot;			/**< Root of the Garbage Collector object
-								   graph */
-	Value*	RootEnv;			/**< Root environment of the current program */
-	Value*	CallEnv;			/**< Current execution environment */
-	size_t	Allocated;			/**< Total allocated bytes since last GC */
-	Value** Constants;			/**< Array of constant values */
-	int		ConstantC;			/**< Count of constants */
-	Value** Functions;			/**< Array of function definitions */
-	int		FunctionC;			/**< Count of functions */
-	Value*	Stacks[STACK_SIZE]; /**< Execution stack */
-	int		StckC;				/**< Stack pointer/count */
-	Value*	Envs[STACK_SIZE];	/**< Environment stack for variable
-								   scopes */
-	int EnvrC;					/**< Environment stack pointer */
+	ImportNode* ImportHead; /**< Head of the linked list of
+							   imported modules */
+	HashMap* Imports;		/**< Imports map */
+	Value*	 Object;		/**< Built-in Object class */
+	Value*	 Array;			/**< Built-in Array class */
+	Value*	 Date;			/**< Built-in Date class */
+	Value*	 Promise;		/**< Built-in Promise class */
+	Value*	 True;			/**< Singleton 'true' value */
+	Value*	 False;			/**< Singleton 'false' value */
+	Value*	 Null;			/**< Singleton 'null' value */
+	Value*	 GcRoot;		/**< Head of the young (gen-0) allocation list */
+	Value*	 OldRoot;		/**< Head of the old (gen-1) allocation list */
+	Value*	 RootEnv;		/**< Root environment of the current program */
+	Value*	 CallEnv;		/**< Current execution environment */
+	size_t	 Allocated;		/**< Count of live young-generation values */
+	size_t	 OldCount;		/**< Count of live old-generation values */
+	Value**	 Constants;		/**< Array of constant values */
+	int		 ConstantC;		/**< Count of constants */
+	Value**	 Functions;		/**< Array of function definitions */
+	int		 FunctionC;		/**< Count of functions */
+	Value*	 Stacks[STACK_SIZE];			/**< Execution stack */
+	int		 StckC;							/**< Stack pointer/count */
+	Value*	 Envs[STACK_SIZE];				/**< Environment stack for variable
+											   scopes */
+	int EnvrC;								/**< Environment stack pointer */
 	ExceptionHandler
 		ExceptionHandlerStacks[STACK_SIZE]; /**< Stack for exception handlers */
 	int ExceptionHandlerStackC;				/**< Exception handler stack
 											   pointer */
-	size_t GcThreshold;			  /**< Threshold for triggering garbage
-								 collection */
+	size_t GcThreshold;	 /**< Young-gen threshold → triggers minor GC */
+	size_t OldThreshold; /**< Old-gen threshold  → triggers major GC */
 	Value* TaskQueue[STACK_SIZE]; /**< Queue for pending tasks
 									 (e.g. resolved promises) */
 	int TaskQueueHead;			  /**< Head index (next item to dequeue) */
