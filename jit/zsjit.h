@@ -44,7 +44,6 @@
 #include "../src/global.h"
 #include "../src/hashmap.h"
 #include "../src/operation.h"
-
 #include <libtcc.h>
 
 

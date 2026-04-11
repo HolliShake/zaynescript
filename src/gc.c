@@ -6,7 +6,7 @@
  * @brief Converts a Value to its string representation.
  * @param value The value to convert.
  * @return A newly allocated string (caller must free).
- * @origin src/value.c:146
+ * @origin src/value.c:150
  */
 extern String ValueToString(Value* value);
 
@@ -321,6 +321,7 @@ static void _MarkCallStack(Interpreter* interpreter) {
 static void _MarkAll(Interpreter* interpreter) {
 	Mark(interpreter->GcRoot);
 	Mark(interpreter->OldRoot);
+	Mark(interpreter->Object);
 	Mark(interpreter->Array);
 	Mark(interpreter->Date);
 	Mark(interpreter->Promise);
@@ -432,4 +433,53 @@ void ForceGarbageCollect(Interpreter* interpreter) {
 	_MajorSweep(interpreter);
 	interpreter->GcThreshold  = GC_YOUNG_THRESHOLD;
 	interpreter->OldThreshold = GC_THRESHOLD;
+}
+
+void GcDestroyHeap(Interpreter* interpreter) {
+	Value* young		 = interpreter->GcRoot;
+	Value* old			 = interpreter->OldRoot;
+	interpreter->GcRoot	 = NULL;
+	interpreter->OldRoot = NULL;
+
+	interpreter->RootEnv				= NULL;
+	interpreter->CallEnv				= NULL;
+	interpreter->StckC					= 0;
+	interpreter->EnvrC					= 0;
+	interpreter->TaskQueueHead			= 0;
+	interpreter->TaskQueueC				= 0;
+	interpreter->CallStackC				= 0;
+	interpreter->ActiveFunction			= NULL;
+	interpreter->ActiveTask				= NULL;
+	interpreter->Error					= NULL;
+	interpreter->ExceptionHandlerStackC = 0;
+	interpreter->Object					= NULL;
+	interpreter->Array					= NULL;
+	interpreter->Date					= NULL;
+	interpreter->Promise				= NULL;
+	interpreter->True					= NULL;
+	interpreter->False					= NULL;
+	interpreter->Null					= NULL;
+	for (int i = 0; i < interpreter->ConstantC; i++) {
+		interpreter->Constants[i] = NULL;
+	}
+	for (int i = 0; i < interpreter->FunctionC; i++) {
+		interpreter->Functions[i] = NULL;
+	}
+	interpreter->ConstantC = 0;
+	interpreter->FunctionC = 0;
+	interpreter->Allocated = 0;
+	interpreter->OldCount  = 0;
+
+	while (young != NULL) {
+		Value* next = young->Next;
+		young->Next = NULL;
+		_Free(interpreter, young);
+		young = next;
+	}
+	while (old != NULL) {
+		Value* next = old->Next;
+		old->Next	= NULL;
+		_Free(interpreter, old);
+		old = next;
+	}
 }

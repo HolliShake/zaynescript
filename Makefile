@@ -47,9 +47,18 @@ endif
 
 BUILD_DATE := $(shell date '+%Y-%m-%d %H:%M:%S')
 
+# ── TinyCC JIT (jit/zsjit.c): dynamic libtcc ──────────────────
+# Link against the system (or prefix) ``libtcc.so`` with ``-ltcc``.
+# Headers: default ``-I tinycc`` so ``#include <libtcc.h>`` uses the vendored
+# copy; override with ``make TCC_CPPFLAGS=`` if your distro ``libtcc-dev``
+# header must match its .so exactly.
+TCC_CPPFLAGS ?= -I tinycc
+
 # ── Base Flags (Applied to all targets) ─────────────────────
-CFLAGS_BASE := -Wno-pointer-sign -DBUILD_DATE='"$(BUILD_DATE)"'
-LDFLAGS     := -lm -ldl -lpthread -ltcc
+CFLAGS_BASE := -Wno-pointer-sign $(TCC_CPPFLAGS) -DBUILD_DATE='"$(BUILD_DATE)"'
+# Prefer the shared lib when both libtcc.a and libtcc.so exist (``-ltcc`` alone
+# often pulls the static archive).
+LDFLAGS     := -lm -ldl -lpthread -l:libtcc.so
 
 # Default RPATH points to the directory containing the executable ($ORIGIN)
 RPATH_FLAG  := -Wl,-rpath,'$$ORIGIN'
@@ -95,30 +104,30 @@ copy_assets: | $(DIST_DIR)
 	@cp -rn lib $(DIST_DIR)/ 2>/dev/null || true
 	@cp -rn tests $(DIST_DIR)/ 2>/dev/null || true
 
-# SQLite shared library build rule
+# ── SQLite shared library ────────────────────────────────────
 $(SQLITE_LIB): sqlite/sqlite3.c | $(DIST_DIR)
 	@echo "Building SQLite shared library..."
 	$(CC) -fPIC -shared -O2 -o $@ $<
 
 release: $(SQLITE_LIB) copy_assets | $(DIST_DIR)
-	@echo "Building in release mode (clang, super-optimized, sqlite dynamic)..."
+	@echo "Building in release mode (clang, super-optimized, sqlite dynamic, libtcc dynamic)..."
 	$(CC) $(CFLAGS_BASE) $(CFLAGS_REL) $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_REL) -L$(DIST_DIR) -lsqlite3 $(RPATH_FLAG)
 	@echo "Build successful → $(TARGET)"
 
 # Override RPATH for installation so the binary knows to look in $(LIBDIR) at runtime
 release-install: RPATH_FLAG := -Wl,-rpath,'$(LIBDIR)'
 release-install: $(SQLITE_LIB) copy_assets | $(DIST_DIR)
-	@echo "Building in release mode (install RPATH, sqlite dynamic)..."
+	@echo "Building in release mode (install RPATH, sqlite + libtcc dynamic)..."
 	$(CC) $(CFLAGS_BASE) $(CFLAGS_REL) $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_REL) -L$(DIST_DIR) -lsqlite3 $(RPATH_FLAG)
 	@echo "Build successful → $(TARGET)"
 
 minimal: copy_assets | $(DIST_DIR)
-	@echo "Building in minimal mode (super-optimized speed, sqlite completely disabled, ZSMINIMAL defined)..."
+	@echo "Building in minimal mode (ZSMINIMAL, sqlite off, libtcc dynamic)..."
 	$(CC) $(CFLAGS_BASE) $(CFLAGS_MIN) $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_MIN)
 	@echo "Build successful → $(TARGET)"
 
 debug: $(SQLITE_LIB) copy_assets | $(DIST_DIR)
-	@echo "Building in debug mode (sqlite dynamic)..."
+	@echo "Building in debug mode (sqlite + libtcc dynamic)..."
 	$(CC) $(CFLAGS_BASE) $(CFLAGS_DBG) $(SRCS) -o $(TARGET) $(LDFLAGS) -L$(DIST_DIR) -lsqlite3 $(RPATH_FLAG)
 	@echo "Build successful → $(TARGET)"
 

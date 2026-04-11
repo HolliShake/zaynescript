@@ -931,6 +931,8 @@ typedef struct exception_handler_struct {
 struct interpreter_struct {
 	bf_context_t BfContext; /**< Context for the libbf library
 							   (memory management, etc.) */
+	Thread	 JitThread;		 /**< Thread for JIT compilation */
+	bool	 JitThreadActive; /**< True while @ref JitThread may be joinable */
 	String ExecPath;		/**< Directory path of the executable */
 	String ModulePath;		/**< Directory path of the main module
 							   (for resolving imports) */
@@ -1516,5 +1518,36 @@ String AbsolutePathFromBase(String baseStr, String pathStr);
  * @return An absolute path string.
  */
 String AbsolutePath(String pathStr);
+
+/**
+ * @brief Starts a new thread.
+ *
+ * Starts a new thread using the platform-specific threading API.
+ *
+ * @param thread Pointer to the thread handle.
+ * @param fn Function pointer to the thread function.
+ * @param arg Argument to pass to the thread function.
+ */
+int ThreadStart(Thread* thread, void* (*fn)(void*), Value* arg);
+
+/**
+ * @brief Joins a thread.
+ *
+ * Joins a thread using the platform-specific threading API.
+ *
+ * @param thread Thread handle.
+ */
+void ThreadJoin(Thread thread);
+
+/**
+ * @brief Blocks until any in-flight JIT compile job on this
+ * interpreter finishes.
+ *
+ * The compiler starts JIT work on @ref Interpreter::JitThread;
+ * this must run before starting another job on the same thread
+ * handle, before execution reads JIT results, and before @ref
+ * ZJitFree() tears down the TCC states.
+ */
+void InterpreterWaitJit(Interpreter* interpreter);
 
 #endif

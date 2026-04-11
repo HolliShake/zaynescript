@@ -2,10 +2,10 @@
  * @file gc.h
  * @brief Garbage collection interface for the interpreter.
  *
- * Defines the three-function API used to drive the
- * mark-and-sweep garbage collector. The collector traces all
- * reachable values starting from the interpreter's root set and
- * reclaims any unreachable memory.
+ * Declares the public garbage collector API: marking, young and
+ * major collection cycles, forced collection, and heap teardown.
+ * The collector traces reachable values from the interpreter root
+ * set and reclaims unreachable memory.
  */
 
 #include "./environment.h"
@@ -30,12 +30,14 @@
 void Mark(Value* value);
 
 /**
- * @brief Performs a garbage collection cycle on the interpreter.
+ * @brief Performs a young-generation garbage collection cycle.
  *
- * Runs a full mark-and-sweep cycle: marks all values reachable
- * from the interpreter's root set, then sweeps the heap to free
- * unreachable objects. Typically triggered automatically when
- * the number of allocations exceeds the current GC threshold.
+ * Marks all values reachable from the interpreter root set,
+ * sweeps the young heap to free unreachable objects, promotes
+ * survivors, clears marks on the old generation, and resets the
+ * allocation threshold for the next young collection. Typically
+ * invoked automatically when allocation volume exceeds the young
+ * GC threshold.
  *
  * @param interpreter Pointer to the Interpreter instance. Must
  * not be NULL.
@@ -70,5 +72,17 @@ void MajorGarbageCollect(Interpreter* interpreter);
  */
 void ForceGarbageCollect(Interpreter* interpreter);
 
+/**
+ * @brief Clears interpreter-owned roots and frees every
+ * GC-tracked Value on the young and old heaps.
+ *
+ * Used on interpreter shutdown. Runs before @ref bf_context_end
+ * so big-number values can still use the bf context during
+ * teardown.
+ *
+ * @param interpreter Pointer to the Interpreter instance whose
+ * heaps are drained and freed.
+ */
+void GcDestroyHeap(Interpreter* interpreter);
 
 #endif /* GC_H */

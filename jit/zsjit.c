@@ -535,7 +535,11 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 									 sizeof(int) * (handler_targets_top + 1)); \
 	}
 
-#define popptmphandler() (handler_targets[--handler_targets_top])
+#define popptmphandler()                                                       \
+	do {                                                                       \
+		if (handler_targets_top > 0)                                           \
+			(void) handler_targets[--handler_targets_top];                     \
+	} while (0)
 
 #define peektmphandler() (handler_targets[handler_targets_top - 1])
 
@@ -562,9 +566,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 			}
 		}
 
-
-		StrAppendf(&sb, "ip=%d;", ip);
 		op = uf->Codes[ip++];
+		StrAppendf(&sb, "ip=%d;", ip);
 
 		switch (op) {
 			case OP_IMPORT_CORE:
@@ -1200,6 +1203,10 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 			case OP_POPN_TRY:
 				{
 					off = _rdint(bytecode, ip);
+					for (int _hrip = 0; _hrip < off && handler_targets_top > 0;
+						 _hrip++) {
+						(void) handler_targets[--handler_targets_top];
+					}
 					StrAppendf(&sb,
 							   "{int _pn=%d;"
 							   "for(int _pi=0;_pi<_pn;_pi++)"
@@ -1354,7 +1361,7 @@ ZJittedFn* ZJitCompile(Interpreter* interpreter, Value* fn) {
 	 * -DNDEBUG   : disable assert() in any inlined runtime headers
 	 * -fno-common: emit each symbol once (avoids tentative-definition merging)
 	 */
-	tcc_set_options(s, "-O2 -s -DNDEBUG -fno-common");
+
 	tcc_set_output_type(s, TCC_OUTPUT_MEMORY);
 
 	if (tcc_compile_string(s, code) == -1) {

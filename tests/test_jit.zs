@@ -22,9 +22,6 @@ println(add(5, 16));
 
 loop(300);
 
-const arr = [1,2,3,4];
-println(arr);
-
 try {
     try {
         2 + add;

@@ -4,7 +4,7 @@
  * @brief Pushes a value onto the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @param value The value to push.
- * @origin src/interpreter.c:118
+ * @origin src/interpreter.c:125
  */
 extern void Push(Interpreter* interpreter, Value* value);
 
@@ -13,7 +13,7 @@ extern void Push(Interpreter* interpreter, Value* value);
  * stack.
  * @param interpreter The interpreter instance.
  * @return The popped value.
- * @origin src/interpreter.c:122
+ * @origin src/interpreter.c:129
  */
 extern Value* Popp(Interpreter* interpreter);
 
@@ -22,7 +22,7 @@ extern Value* Popp(Interpreter* interpreter);
  * without removing it.
  * @param interpreter The interpreter instance.
  * @return The top value on the stack.
- * @origin src/interpreter.c:130
+ * @origin src/interpreter.c:137
  */
 extern Value* Peek(Interpreter* interpreter);
 

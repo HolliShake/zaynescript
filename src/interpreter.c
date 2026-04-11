@@ -46,11 +46,12 @@ Interpreter* CreateInterpreter(String execPath) {
 	interpreter->ExceptionHandlerStackC = 0;
 	/* GcThreshold / OldThreshold already set above, before first allocation */
 	// interpreter->TaskQueue[STACK_SIZE];
-	interpreter->TaskQueueHead	= 0;
-	interpreter->TaskQueueC		= 0;
-	interpreter->ActiveFunction = NULL;
-	interpreter->ActiveTask		= NULL;
-	interpreter->Error			= NULL;
+	interpreter->TaskQueueHead	 = 0;
+	interpreter->TaskQueueC		 = 0;
+	interpreter->ActiveFunction	 = NULL;
+	interpreter->ActiveTask		 = NULL;
+	interpreter->Error			 = NULL;
+	interpreter->JitThreadActive = false;
 	mg_mgr_init(&interpreter->MgMgr);
 	return interpreter;
 }
@@ -1509,6 +1510,8 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 						 interpreter->StckC);
 	}
 
+	printf("Done!\n");
+
 	ForceGarbageCollect(interpreter);
 }
 
@@ -1517,11 +1520,13 @@ void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/) {
 }
 
 void FreeInterpreter(Interpreter* interpreter) {
+	InterpreterWaitJit(interpreter);
 	mg_mgr_free(&interpreter->MgMgr);
 	ZJitFree();
-	bf_context_end(&interpreter->BfContext);
 	FreeHashMap(interpreter->Imports);
 	FreeImportNode(interpreter->ImportHead);
+	GcDestroyHeap(interpreter);
+	bf_context_end(&interpreter->BfContext);
 	if (interpreter->ExecPath)
 		free(interpreter->ExecPath);
 	free(interpreter->Constants);

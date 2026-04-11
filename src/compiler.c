@@ -1,8 +1,5 @@
 #include "./compiler.h"
 
-#include "global.h"
-
-
 #define PushArray(type, array, count, val, defaultValue)                       \
 	do {                                                                       \
 		(array)[count++] = val;                                                \
@@ -55,33 +52,34 @@ static bool _IsAstConstant(Compiler* compiler, Ast* node) {
 }
 
 typedef struct jit_compile_job_struct {
-	Compiler* compiler;
-	Value*	  fn;
+	Interpreter* interpreter;
+	Value*		 fn;
 } JitCompileJob;
 
-int ThreadCompileStart(Thread* thread, void* (*fn)(void*), Value* arg) {
-#if defined(_WIN32)
-	*thread = CreateThread(NULL, 0, fn, arg, 0, NULL);
-	return (*thread != NULL) ? 0 : 1;
-#else
-	return pthread_create(thread, NULL, fn, arg);
-#endif
+static JitCompileJob* _CreateJitCompileJob(Interpreter* interpreter,
+										   Value*		fn) {
+	JitCompileJob* job = Allocate(sizeof(JitCompileJob));
+	job->interpreter   = interpreter;
+	job->fn			   = fn;
+	return job;
 }
 
-// 2. Waiting for a thread to finish
-void ThreadCompileJoin(Thread thread) {
-#if defined(_WIN32)
-	WaitForSingleObject(thread, INFINITE);
-	CloseHandle(thread);  // Windows requires you to close the handle!
-#else
-	pthread_join(thread, NULL);
-#endif
-}
-
-static void* CompileJob(void* arg) {
+static void* _CompileJob(void* arg) {
 	JitCompileJob* job = (JitCompileJob*) arg;
-	ZJitCompile(job->compiler->Interpreter, (Value*) job->fn);
+	ZJitCompile(job->interpreter, job->fn);
+	free(job);
 	return NULL;
+}
+
+static void _StartJitCompileJob(Compiler* compiler, JitCompileJob* job) {
+	InterpreterWaitJit(compiler->Interpreter);
+	if (ThreadStart(&compiler->Interpreter->JitThread,
+					_CompileJob,
+					(Value*) (void*) job)
+		!= 0) {
+		Panic("Failed to start JIT compilation thread!\n");
+	}
+	compiler->Interpreter->JitThreadActive = true;
 }
 
 static int _SaveFunction(Compiler* compiler, Value* fn) {
@@ -677,15 +675,10 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 				_EmitArg(compiler, uf, OP_LOAD_FUNCTION_CLOSURE, funcOffset);
 				FreeScope(fnScope);
 
-				Thread		  thread;
-				JitCompileJob job = { .compiler = compiler, .fn = fnValue };
+				JitCompileJob* job =
+					_CreateJitCompileJob(compiler->Interpreter, fnValue);
+				_StartJitCompileJob(compiler, job);
 
-				if (ThreadCompileStart(&thread, CompileJob, (void*) &job)
-					!= 0) {
-					Panic("Failed to start JIT compilation thread!\n");
-				}
-
-				ThreadCompileJoin(thread);
 				break;
 			}
 		case AST_ALLOCATION:
@@ -2238,15 +2231,11 @@ static void _CompileClassDeclaration(Compiler*	   compiler,
 								   -1);
 					FreeScope(fnScope);
 
-					Thread		  thread;
-					JitCompileJob job = { .compiler = compiler, .fn = fnValue };
 
-					if (ThreadCompileStart(&thread, CompileJob, (void*) &job)
-						!= 0) {
-						Panic("Failed to start JIT compilation thread!\n");
-					}
+					JitCompileJob* job =
+						_CreateJitCompileJob(compiler->Interpreter, fnValue);
+					_StartJitCompileJob(compiler, job);
 
-					ThreadCompileJoin(thread);
 					break;
 				}
 			default:
@@ -2347,14 +2336,8 @@ static void _CompileFunctionDeclaration(Compiler*	  compiler,
 	_EmitArg(compiler, uf, OP_STORE_NAME, nameOffset);
 	FreeScope(fnScope);
 
-	Thread		  thread;
-	JitCompileJob job = { .compiler = compiler, .fn = fnValue };
-
-	if (ThreadCompileStart(&thread, CompileJob, (void*) &job) != 0) {
-		Panic("Failed to start JIT compilation thread!\n");
-	}
-
-	ThreadCompileJoin(thread);
+	JitCompileJob* job = _CreateJitCompileJob(compiler->Interpreter, fnValue);
+	_StartJitCompileJob(compiler, job);
 }
 
 static void _CompileImportStatement(Compiler*	  compiler,
@@ -3389,14 +3372,8 @@ static Value* _Program(Compiler* compiler, Ast* node, bool isModule) {
 
 	FreeScope(scope);
 
-	Thread		  thread;
-	JitCompileJob job = { .compiler = compiler, .fn = value };
-
-	if (ThreadCompileStart(&thread, CompileJob, (void*) &job) != 0) {
-		Panic("Failed to start JIT compilation thread!\n");
-	}
-
-	ThreadCompileJoin(thread);
+	JitCompileJob* job = _CreateJitCompileJob(compiler->Interpreter, value);
+	_StartJitCompileJob(compiler, job);
 
 	return value;
 }
@@ -3409,7 +3386,8 @@ Value* Compile(Compiler* compiler) {
 }
 
 Value* CompileAst(Compiler* compiler, Ast* programAst) {
-	return _Program(compiler, programAst, true);
+	Value* value = _Program(compiler, programAst, true);
+	return value;
 }
 
 void FreeCompiler(Compiler* compiler) {

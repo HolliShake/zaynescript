@@ -849,3 +849,28 @@ String AbsolutePath(String pathStr) {
 	free(resolved_raw_path);
 	return final_path;
 }
+
+int ThreadStart(Thread* thread, void* (*fn)(void*), Value* arg) {
+#if defined(_WIN32)
+	*thread = CreateThread(NULL, 0, fn, arg, 0, NULL);
+	return (*thread != NULL) ? 0 : 1;
+#else
+	return pthread_create(thread, NULL, fn, arg);
+#endif
+}
+
+void ThreadJoin(Thread thread) {
+#if defined(_WIN32)
+	WaitForSingleObject(thread, INFINITE);
+	CloseHandle(thread);  // Windows requires you to close the handle!
+#else
+	pthread_join(thread, NULL);
+#endif
+}
+
+void InterpreterWaitJit(Interpreter* interpreter) {
+	if (!interpreter->JitThreadActive)
+		return;
+	ThreadJoin(interpreter->JitThread);
+	interpreter->JitThreadActive = false;
+}

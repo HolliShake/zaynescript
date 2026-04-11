@@ -22,7 +22,7 @@
  * @brief Pushes a value onto the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @param value The value to push.
- * @origin src/interpreter.c:118
+ * @origin src/interpreter.c:125
  */
 extern void Push(Interpreter* interpreter, Value* value);
 
@@ -31,7 +31,7 @@ extern void Push(Interpreter* interpreter, Value* value);
  * stack.
  * @param interpreter The interpreter instance.
  * @return The popped value.
- * @origin src/interpreter.c:122
+ * @origin src/interpreter.c:129
  */
 extern Value* Popp(Interpreter* interpreter);
 
@@ -39,7 +39,7 @@ extern Value* Popp(Interpreter* interpreter);
  * @brief Pops N values from the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @param n The number of values to pop.
- * @origin src/interpreter.c:126
+ * @origin src/interpreter.c:133
  */
 extern void PopN(Interpreter* interpreter, int n);
 
@@ -48,7 +48,7 @@ extern void PopN(Interpreter* interpreter, int n);
  * without removing it.
  * @param interpreter The interpreter instance.
  * @return The top value on the stack.
- * @origin src/interpreter.c:130
+ * @origin src/interpreter.c:137
  */
 extern Value* Peek(Interpreter* interpreter);
 
@@ -84,7 +84,7 @@ static void _DupTop(Interpreter* interpreter) {
  * function value.
  * @param interpreter The interpreter instance.
  * @param fnValue The compiled function value to execute.
- * @origin src/interpreter.c:423
+ * @origin src/interpreter.c:445
  */
 extern void Run(Interpreter* interpreter, Value* fnValue);
 
@@ -442,7 +442,7 @@ extern void FreeAst(Ast* ast);
  * @param interpreter The interpreter instance.
  * @param parser The parser to read AST from.
  * @return A new Compiler instance.
- * @origin src/compiler.c:13
+ * @origin src/compiler.c:12
  */
 extern Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
 
@@ -452,14 +452,14 @@ extern Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
  * @param compiler The compiler instance.
  * @param programAst The AST to compile.
  * @return The compiled function value.
- * @origin src/compiler.c:3341
+ * @origin src/compiler.c:3388
  */
 extern Value* CompileAst(Compiler* compiler, Ast* programAst);
 
 /**
  * @brief Frees a compiler and its associated resources.
  * @param compiler The compiler to free.
- * @origin src/compiler.c:3345
+ * @origin src/compiler.c:3393
  */
 extern void FreeCompiler(Compiler* compiler);
 
@@ -467,7 +467,7 @@ extern void FreeCompiler(Compiler* compiler);
  * @brief Interprets a compiled function value.
  * @param interpreter The interpreter instance.
  * @param compiled The compiled function value to interpret.
- * @origin src/interpreter.c:1469
+ * @origin src/interpreter.c:1518
  */
 extern void Interpret(Interpreter* interpreter, Value* compiled);
 
@@ -730,14 +730,14 @@ Value* DoCallMethod(Interpreter* interpreter,
  * @param interpreter The interpreter instance.
  * @param line The source line information for the call.
  * @param fn The function value being called.
- * @origin src/interpreter.c:138
+ * @origin src/interpreter.c:145
  */
 extern void PushTrace(Interpreter* interpreter, LineInfo line, Value* fn);
 
 /**
  * @brief Pops the top stack trace entry after a function call returns.
  * @param interpreter The interpreter instance.
- * @origin src/interpreter.c:145
+ * @origin src/interpreter.c:152
  */
 extern void PopTrace(Interpreter* interpreter);
 

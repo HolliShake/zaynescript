@@ -1,5 +1,10 @@
 #include "./value.h"
 
+/**
+ * @brief Runs a young-generation garbage collection cycle on the interpreter heap.
+ * @param interpreter The interpreter whose allocated values may be collected.
+ * @origin src/gc.c:416
+ */
 extern void GarbageCollect(Interpreter* interpreter);
 
 static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
