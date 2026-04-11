@@ -1,6 +1,6 @@
 #include "./value.h"
 
-#include "global.h"
+extern void GarbageCollect(Interpreter* interpreter);
 
 static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
 	Value* v  = Allocate(sizeof(Value));
@@ -10,6 +10,11 @@ static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
 	interpreter->Allocated++;
 	v->Next				= interpreter->GcRoot;
 	interpreter->GcRoot = v;
+
+	if (interpreter->Allocated >= interpreter->GcThreshold) {
+		printf("COLLECT!\n");
+		GarbageCollect(interpreter);
+	}
 	return v;
 }
 

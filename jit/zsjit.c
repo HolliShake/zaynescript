@@ -1,6 +1,6 @@
 #include "./zsjit.h"
 
-#include <libtcc.h>
+#include <stdio.h>
 
 static int _rdint(uint8_t* bytecode, size_t start) {
 	int offset	= 0;
@@ -123,8 +123,37 @@ Value* _zsjit_getcap(UserFunction* _uf, int off) {
 	return UserFunctionGetCapture(_uf, off);
 }
 
+void _zsjit_pushtry(Interpreter* _i, int jmp, size_t pausedAddress) {
+	_i->ExceptionHandlerStacks[_i->ExceptionHandlerStackC++] =
+		(ExceptionHandler){
+			.JumpAddress	  = jmp,
+			.JitPausedAddress = pausedAddress,
+		};
+}
+
+void _zsjit_popptry(Interpreter* _i) {
+	_i->ExceptionHandlerStacks[--_i->ExceptionHandlerStackC];
+}
+
+void _zsjit_seterror(Interpreter* _i, Value* err) {
+	_i->Error = err;
+}
+
+Value* _zsjit_geterror(Interpreter* _i) {
+	return _i->Error;
+}
+
+struct JumpTargets {
+	int* Target;
+	int	 Size;
+};
+
 String fncode =
 	"#ifndef NULL\n#define NULL ((void*)0)\n#endif\n"
+	"#ifndef _SIZE_T_DEFINED\n"
+	"#define _SIZE_T_DEFINED\n"
+	"typedef unsigned long size_t;\n"
+	"#endif\n"
 	"#ifndef __STDBOOL_H\n"
 	"#define __STDBOOL_H\n"
 	"#define __bool_true_false_are_defined 1\n"
@@ -152,6 +181,11 @@ String fncode =
 	"extern Value* _zsjit_getnull(Interpreter* i);\n"
 	"extern Value* _zsjit_getcellvalue(EnvCell* c);\n"
 	"extern Value* _zsjit_getcap(UserFunction* _uf, int off);\n"
+	"extern void _zsjit_pushtry(Interpreter* _i, int jmp, size_t "
+	"pausedAddress);\n"
+	"extern void _zsjit_popptry(Interpreter* _i);\n"
+	"extern void _zsjit_seterror(Interpreter* _i, Value* err);\n"
+	"extern Value* _zsjit_geterror(Interpreter* _i);\n"
 	/* runtime function externs */
 	"extern bool CoerceToBool(Value* value);\n"
 	"extern HashMap* CoerceToHashMap(Value* value);\n"
@@ -176,8 +210,138 @@ String fncode =
 	"(void)_fn;\n"
 	"UserFunction* _uf = CoerceToUserFunction(_fn);\n"
 	"Value* res = NULL, *a = NULL, *b = NULL;\n"
+	"bool hasLocalErrorHandler = false;\n"
+	"int handlerc  =  0;\n"
 	"%s\n"
 	"}\n";
+
+static struct JumpTargets Compute(UserFunction* _uf) {
+	size_t ip  = 0;
+	size_t len = _uf->CodeC;
+
+	struct JumpTargets jt = { .Size = 0, .Target = Allocate(sizeof(int)) };
+
+#define _jt_push(tgt)                                                          \
+	do {                                                                       \
+		int _t	 = (tgt);                                                      \
+		int _dup = 0;                                                          \
+		for (int _k = 0; _k < jt.Size; _k++)                                   \
+			if (jt.Target[_k] == _t) {                                         \
+				_dup = 1;                                                      \
+				break;                                                         \
+			}                                                                  \
+		if (!_dup) {                                                           \
+			jt.Target =                                                        \
+				Reallocate(jt.Target, sizeof(int) * (size_t) (jt.Size + 1));   \
+			jt.Target[jt.Size++] = _t;                                         \
+		}                                                                      \
+	} while (0)
+
+	while (ip < len) {
+		OpcodeEnum op = _uf->Codes[ip++];
+
+		switch (op) {
+			/* ── no operand ──────────────────────────────────────── */
+			case OP_LOAD_NULL:
+			case OP_ARRAY_EXTEND:
+			case OP_ARRAY_PUSH:
+			case OP_OBJECT_EXTEND:
+			case OP_CLASS_EXTEND:
+			case OP_CLASS_DEFINE_STATIC_MEMBER:
+			case OP_CLASS_DEFINE_INSTANCE_MEMBER:
+			case OP_SET_INDEX:
+			case OP_GET_INDEX:
+			case OP_NOT:
+			case OP_POS:
+			case OP_NEG:
+			case OP_AWAIT:
+			case OP_GET_AWAITED_VALUE:
+			case OP_MUL:
+			case OP_DIV:
+			case OP_MOD:
+			case OP_POSTINC:
+			case OP_INC:
+			case OP_ADD:
+			case OP_POSTDEC:
+			case OP_DEC:
+			case OP_SUB:
+			case OP_LSHFT:
+			case OP_RSHFT:
+			case OP_LT:
+			case OP_LTE:
+			case OP_GT:
+			case OP_GTE:
+			case OP_EQ:
+			case OP_NE:
+			case OP_AND:
+			case OP_OR:
+			case OP_XOR:
+			case OP_DUPTOP:
+			case OP_DUP2:
+			case OP_POPTOP:
+			case OP_ROT2:
+			case OP_ROT3:
+			case OP_ROT4:
+			case OP_POP_TRY:
+			case OP_RAISE:
+			case OP_RETURN:
+				break;
+
+			/* ── 4-byte int operand, not a jump target ───────────── */
+			case OP_LOAD_CONST:
+			case OP_LOAD_BOOL:
+			case OP_LOAD_CAPTURE:
+			case OP_LOAD_NAME:
+			case OP_LOAD_LOCAL:
+			case OP_LOAD_FUNCTION:
+			case OP_LOAD_FUNCTION_CLOSURE:
+			case OP_CALL_CTOR:
+			case OP_CALL:
+			case OP_CALL_METHOD:
+			case OP_STORE_CAPTURE:
+			case OP_STORE_NAME:
+			case OP_STORE_LOCAL:
+			case OP_LOCK_VAR:
+			case OP_ARRAY_MAKE:
+			case OP_OBJECT_MAKE:
+			case OP_POPN_TRY:
+				ip += 4;
+				break;
+
+			/* ── 4-byte int operand that IS a jump target ─────────── */
+			case OP_POP_JUMP_IF_FALSE:
+			case OP_POP_JUMP_IF_TRUE:
+			case OP_JUMP_IF_FALSE_OR_POP:
+			case OP_JUMP_IF_TRUE_OR_POP:
+			case OP_JUMP:
+			case OP_ABSOLUTE_JUMP:
+			case OP_SETUP_TRY:
+				_jt_push(_rdint(_uf->Codes, ip));
+				ip += 4;
+				break;
+
+			/* ── null-terminated string operand ──────────────────── */
+			case OP_IMPORT_CORE:
+			case OP_IMPORT_LIB:
+			case OP_IMPORT_RELATIVE:
+			case OP_LOAD_STRING:
+			case OP_OBJECT_PLUCK_ATTRIBUTE:
+			case OP_CLASS_MAKE:
+				{
+					String s  = _rdstr(_uf->Codes, ip);
+					ip		 += strlen(s) + 1;
+					free(s);
+					break;
+				}
+
+			default:
+				break;
+		}
+	}
+
+#undef _jt_push
+	return jt;
+}
 
 static String Codegen(Interpreter* interpreter, Value* fn) {
 	UserFunction* uf	   = CoerceToUserFunction(fn);
@@ -192,20 +356,51 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 	StrBuilder	  sb;
 	StrBuilderInit(&sb);
 
-	int LABEL[1500];
-	int lbl = 0;
+	struct JumpTargets t = Compute(uf);
+	/* sort targets ascending so we can consume them in IP order */
+	for (int _i = 0; _i < t.Size - 1; _i++)
+		for (int _j = _i + 1; _j < t.Size; _j++)
+			if (t.Target[_j] < t.Target[_i]) {
+				int _tmp	 = t.Target[_i];
+				t.Target[_i] = t.Target[_j];
+				t.Target[_j] = _tmp;
+			}
+	int ti = 0; /* cursor into t.Target */
+
 	/* tracks which IP offsets have already had their C label emitted */
-	int EMITTED[1500];
-	memset(EMITTED, 0, sizeof(EMITTED));
+	int* EMITTED = Allocate(sizeof(int) * uf->CodeC);
+	memset(EMITTED, 0, sizeof(int) * uf->CodeC);
+
+	int* handler_targets	 = Allocate(sizeof(int));
+	int	 handler_targets_top = 0;
 
 #define forward(size) (ip += size)
-#define pushlbl(off)  (LABEL[lbl++] = off)
-#define popplbl()	  (LABEL[--lbl])
-#define peeklbl()	  (LABEL[lbl ? lbl - 1 : 0])
+
+#define pushtmphandler(handler)                                                \
+	{                                                                          \
+		handler_targets[handler_targets_top++] = handler;                      \
+		handler_targets = Reallocate(handler_targets,                          \
+									 sizeof(int) * (handler_targets_top + 1)); \
+	}
+
+#define popptmphandler() (handler_targets[--handler_targets_top])
+
+#define peektmphandler() (handler_targets[handler_targets_top - 1])
+
+#define handleError()                                                          \
+	{                                                                          \
+		if (handler_targets_top > 0) {                                         \
+			int _catch_ip = peektmphandler();                                  \
+			StrAppendf(&sb,                                                    \
+					   "if(_zsjit_geterror(_i)!=NULL&&hasLocalErrorHandler){"  \
+					   "_zsjit_seterror(_i, NULL);goto _L%d;}",                \
+					   _catch_ip);                                             \
+		}                                                                      \
+	}
 
 	while (ip < len) {
-		while (lbl > 0 && peeklbl() == (int) ip) {
-			int lv = popplbl();
+		while (ti < t.Size && t.Target[ti] == (int) ip) {
+			int lv = t.Target[ti++];
 			if (!EMITTED[lv]) {
 				StrAppendf(&sb, "_L%d:;", lv);
 				EMITTED[lv] = 1;
@@ -323,10 +518,12 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 			case OP_CALL:
 				{
 					arg = _rdint(bytecode, ip);
-					StrAppendf(&sb,
-							   "{a=_zsjit_popp(_i);res=DoCall(_i,a,%d,0);"
-							   "if(ValueIsError(res)){return res;}}",
-							   arg);
+					StrAppendf(
+						&sb,
+						"{a=_zsjit_popp(_i);res=DoCall(_i,a,%d,0);}"
+						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}",
+						arg);
+					handleError();
 					forward(4);
 					break;
 				}
@@ -335,7 +532,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					StrAppend(&sb,
 							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoMul(_"
 							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
-							  "){return res;}");
+							  "){_zsjit_seterror(_i,res);}");
+					handleError();
 					break;
 				}
 			case OP_ADD:
@@ -343,7 +541,9 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					StrAppend(&sb,
 							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoAdd(_"
 							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
-							  "){return res;}");
+							  "){_zsjit_seterror(_i,res);}");
+
+					handleError();
 					break;
 				}
 			case OP_SUB:
@@ -351,7 +551,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					StrAppend(&sb,
 							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoSub(_"
 							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
-							  "){return res;}");
+							  "){_zsjit_seterror(_i,res);}");
+					handleError();
 					break;
 				}
 			case OP_LTE:
@@ -359,7 +560,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					StrAppend(&sb,
 							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoLTE(_"
 							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
-							  "){return res;}");
+							  "){_zsjit_seterror(_i,res);}");
+					handleError();
 					break;
 				}
 			case OP_RETURN:
@@ -399,7 +601,6 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 							   "{res=_zsjit_popp(_i);if(CoerceToBool(res)==0){"
 							   "goto _L%d;}}",
 							   off);
-					pushlbl(off);
 					forward(4);
 					break;
 				}
@@ -407,8 +608,30 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 				{
 					off = _rdint(bytecode, ip);
 					StrAppendf(&sb, "goto _L%d;", off);
-					pushlbl(off);
 					forward(4);
+					break;
+				}
+			case OP_SETUP_TRY:
+				{
+					off = _rdint(bytecode, ip);
+					pushtmphandler(off);
+					StrAppendf(&sb,
+							   "_TRY_%d_to_%d:;{hasLocalErrorHandler=true;++"
+							   "handlerc;_zsjit_"
+							   "pushtry(_i,%d,%zu);}",
+							   ip,
+							   off,
+							   off,
+							   ip);
+					forward(4);
+					break;
+				}
+			case OP_POP_TRY:
+				{
+					popptmphandler();
+					StrAppend(&sb,
+							  "{hasLocalErrorHandler=(--handlerc)>0;_zsjit_"
+							  "popptry(_i);}");
 					break;
 				}
 			default:
@@ -420,6 +643,7 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 	}
 	String code = FormatString(fncode, sb.buffer);
 	StrBuilderFree(&sb);
+	free(handler_targets);
 	return code;
 }
 
@@ -473,6 +697,10 @@ ZJittedFn* ZJitCompile(Interpreter* interpreter, Value* fn) {
 	tcc_add_symbol(s, "_zsjit_getnull", (void*) _zsjit_getnull);
 	tcc_add_symbol(s, "_zsjit_getcellvalue", (void*) _zsjit_getcellvalue);
 	tcc_add_symbol(s, "_zsjit_getcap", (void*) _zsjit_getcap);
+	tcc_add_symbol(s, "_zsjit_pushtry", (void*) _zsjit_pushtry);
+	tcc_add_symbol(s, "_zsjit_popptry", (void*) _zsjit_popptry);
+	tcc_add_symbol(s, "_zsjit_seterror", (void*) _zsjit_seterror);
+	tcc_add_symbol(s, "_zsjit_geterror", (void*) _zsjit_geterror);
 	tcc_add_symbol(s, "HashMapGet", (void*) HashMapGet);
 	tcc_add_symbol(s, "CoerceToBool", (void*) CoerceToBool);
 	tcc_add_symbol(s, "CoerceToHashMap", (void*) CoerceToHashMap);

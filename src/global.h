@@ -60,14 +60,22 @@
  * Functions below this threshold may also be compiled to native code,
  * to avoid frequent interpretation overhead.
  */
-#define JIT_TRIGGER_MIN_CODE 20
+#define JIT_TRIGGER_MIN_CODE 150
+
+/**
+ * @def JIT_CALL_TRIGGER
+ * @brief Number of invocations required to trigger JIT compilation for a
+ * function. If a function is called more than this number, the JIT compiler may
+ * attempt to compile it.
+ */
+#define JIT_CALL_TRIGGER 15
 
 /**
  * @def GC_THRESHOLD
  * @brief The allocation threshold for triggering garbage
  * collection.
  */
-#define GC_THRESHOLD 2048
+#define GC_THRESHOLD 4096
 
 /**
  * @def VARARG
@@ -659,6 +667,7 @@ typedef struct user_function_struct {
 		  Captures;			   /**< Array of captured environment cells */
 	void* JitFn; /**< Compiled JIT function pointer, or NULL if not yet compiled
 				  */
+	int CallCount;
 } UserFunction;
 
 /**
@@ -880,10 +889,12 @@ typedef struct import_node {
  * was paused.
  */
 typedef struct exception_handler_struct {
-	int JumpAddress;	   /**< Instruction index to jump to on
-							  exception */
-	size_t* PausedAddress; /**< Saved paused instruction/address
-							  pointer */
+	int JumpAddress;		 /**< Instruction index to jump to on
+								exception */
+	size_t* PausedAddress;	 /**< Saved paused instruction/address
+								pointer */
+	size_t JitPausedAddress; /**< Saved  paused instruction/address pointer for
+								jit */
 } ExceptionHandler;
 
 /**
@@ -943,7 +954,9 @@ struct interpreter_struct {
 										 (stores line info and function
 										 for each call frame) */
 	int	   CallStackC;				  /**< Call stack pointer/count */
-	Value* ActiveTask; /**< Currently active task being processed */
+	Value* ActiveFunction; /** < Currently active function being processed */
+	Value* ActiveTask;	   /**< Currently active task being processed */
+	Value* Error;
 };
 
 /**

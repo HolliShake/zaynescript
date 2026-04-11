@@ -13,3 +13,17 @@ fn fact(n) {
 
 println(">>", fact(5));
 println(">>", fact(5));
+
+try {
+    "hello" + a;
+} catch(e)  {
+    println("error>", e);
+}
+
+var i = 0;
+while (i < 120000) {
+    println(i++);
+}
+
+//JIT  : min 381 | max 433
+//nojit: min 396 | max 455

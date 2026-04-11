@@ -1,7 +1,5 @@
 #include "./function.h"
 
-#include "global.h"
-
 UserFunction* CreateUserFunction(String name, int argc, bool async) {
 	UserFunction* userFunction = Allocate(sizeof(UserFunction));
 	userFunction->Scope		   = NULL;
@@ -18,6 +16,7 @@ UserFunction* CreateUserFunction(String name, int argc, bool async) {
 	userFunction->CaptureC	   = 0;
 	userFunction->Captures	   = Allocate(sizeof(EnvCell*) * 1);
 	userFunction->JitFn		   = NULL;
+	userFunction->CallCount	   = 0;
 	return userFunction;
 }
 

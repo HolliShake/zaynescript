@@ -1,5 +1,7 @@
 #include "./interpreter.h"
 
+#include "global.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -45,9 +47,11 @@ Interpreter* CreateInterpreter(String execPath) {
 	interpreter->ExceptionHandlerStackC = 0;
 	interpreter->GcThreshold			= GC_THRESHOLD;
 	// interpreter->TaskQueue[STACK_SIZE];
-	interpreter->TaskQueueHead = 0;
-	interpreter->TaskQueueC	   = 0;
-	interpreter->ActiveTask	   = NULL;
+	interpreter->TaskQueueHead	= 0;
+	interpreter->TaskQueueC		= 0;
+	interpreter->ActiveFunction = NULL;
+	interpreter->ActiveTask		= NULL;
+	interpreter->Error			= NULL;
 	mg_mgr_init(&interpreter->MgMgr);
 	return interpreter;
 }
@@ -424,12 +428,14 @@ static void _TypeError(Interpreter*	 interpreter,
 
 /******* Main interpreter loop */
 void Run(Interpreter* interpreter, Value* fnValue) {
-	StateMachine* sm = NULL;
+	interpreter->ActiveFunction = fnValue;
+	Value*		  fn			= fnValue;
+	StateMachine* sm			= NULL;
 	UserFunction* uf =
 		ValueIsUserFunction(fnValue)
 			? CoerceToUserFunction(fnValue)
 			: CoerceToUserFunction(
-				  (sm = CoerceToStateMachine(fnValue))->Function);
+				  (fn = (sm = CoerceToStateMachine(fnValue))->Function));
 	uint8_t		 opcode		  = 0;
 	Value*		 lhs		  = NULL;
 	Value*		 rhs		  = NULL;
@@ -460,20 +466,19 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 		InterpreterPanic("Attempted to run a non-function value of type %s",
 						 ValueTypeOf(fnValue));
 
-	{
-		ZJittedFn* _jit_fn = ZJitCompile(interpreter, fnValue);
+	if (uf->JitFn != NULL || uf->CodeC <= JIT_TRIGGER_MIN_CODE) {
+		// compile the actual fn if was wrap by state machine
+		ZJittedFn* _jit_fn = ZJitCompile(interpreter, fn);
 		if (_jit_fn != NULL) {
 			ZJittedFn _jf = (ZJittedFn) (void*) _jit_fn;
 			// printf("[%s]:Runs through JIT!\n", uf->Name ? uf->Name :
 			// "<anon>");
-			Value* _je = (Value*) _jf(interpreter,
-									  interpreter->RootEnv,
-									  interpreter->CallEnv,
-									  fnValue);
+			Value* _je =
+				(Value*) _jf(interpreter,
+							 interpreter->RootEnv,
+							 interpreter->CallEnv,
+							 fnValue);	// allow running state machine inside
 			if (_je != NULL && ValueIsError(_je)) {
-				/* The JIT function encountered a runtime error.  Raise it
-				   through the normal interpreter error path so try/catch in
-				   the calling frame (if any) is honoured. */
 				size_t _ip_err = 0;
 				_RaiseError(interpreter, uf, &_ip_err, _je);
 			}
@@ -487,7 +492,6 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 
 	while (ip != uf->CodeC) {
 		if (interpreter->Allocated >= interpreter->GcThreshold) {
-			Mark(fnValue);
 			GarbageCollect(interpreter);
 		}
 
@@ -1369,6 +1373,12 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_RETURN:
 				{
+					if (++uf->CallCount >= JIT_CALL_TRIGGER) {
+						// Compile to NATIVE via tcc
+						uf->CallCount = JIT_CALL_TRIGGER;
+						ZJitCompile(interpreter, fn);
+					}
+
 					if (uf->Async) {
 						val = Popp(interpreter);
 
@@ -1381,6 +1391,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 							EnqueueTask(interpreter, sm->WaitList[i]);
 						}
 					}
+					interpreter->ActiveFunction = NULL;
 					return;
 				}
 			default:
