@@ -1003,6 +1003,7 @@ ZJittedFn* ZJitCompile(Interpreter* interpreter, Value* fn) {
 		tcc_delete(s);
 		return NULL;
 	}
+
 	free(code);
 
 	tcc_add_symbol(s, "_zsjit_popp", (void*) _zsjit_popp);
