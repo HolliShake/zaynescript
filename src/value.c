@@ -12,7 +12,6 @@ static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
 	interpreter->GcRoot = v;
 
 	if (interpreter->Allocated >= interpreter->GcThreshold) {
-		printf("COLLECT!\n");
 		GarbageCollect(interpreter);
 	}
 	return v;

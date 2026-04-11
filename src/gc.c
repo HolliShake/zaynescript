@@ -362,7 +362,7 @@ void GarbageCollect(Interpreter* interpreter) {
 	if (nxt < GC_THRESHOLD) {
 		interpreter->GcThreshold = GC_THRESHOLD;
 	} else {
-		interpreter->GcThreshold = (int) nxt;
+		interpreter->GcThreshold = nxt;
 	}
 
 	interpreter->Allocated = srv;

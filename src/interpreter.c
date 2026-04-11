@@ -23,6 +23,7 @@ Interpreter* CreateInterpreter(String execPath) {
 	interpreter->ImportHead	  = NULL;
 	interpreter->Imports	  = CreateHashMap(16);
 	interpreter->Allocated	  = 0;
+	interpreter->GcThreshold  = GC_THRESHOLD;
 	interpreter->GcRoot		  = NULL;
 	interpreter->RootEnv	  = NULL;
 	interpreter->CallEnv	  = NULL;
@@ -45,7 +46,7 @@ Interpreter* CreateInterpreter(String execPath) {
 	interpreter->EnvrC = 0;
 	// interpreter->ExceptionHandlerStacks[STACK_SIZE];
 	interpreter->ExceptionHandlerStackC = 0;
-	interpreter->GcThreshold			= GC_THRESHOLD;
+	/* GcThreshold already set above, before first allocation */
 	// interpreter->TaskQueue[STACK_SIZE];
 	interpreter->TaskQueueHead	= 0;
 	interpreter->TaskQueueC		= 0;

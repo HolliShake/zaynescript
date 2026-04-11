@@ -929,7 +929,7 @@ struct interpreter_struct {
 								   graph */
 	Value*	RootEnv;			/**< Root environment of the current program */
 	Value*	CallEnv;			/**< Current execution environment */
-	int		Allocated;			/**< Total allocated bytes since last GC */
+	size_t	Allocated;			/**< Total allocated bytes since last GC */
 	Value** Constants;			/**< Array of constant values */
 	int		ConstantC;			/**< Count of constants */
 	Value** Functions;			/**< Array of function definitions */
@@ -943,8 +943,8 @@ struct interpreter_struct {
 		ExceptionHandlerStacks[STACK_SIZE]; /**< Stack for exception handlers */
 	int ExceptionHandlerStackC;				/**< Exception handler stack
 											   pointer */
-	int GcThreshold;			  /**< Threshold for triggering garbage
-									 collection */
+	size_t GcThreshold;			  /**< Threshold for triggering garbage
+								 collection */
 	Value* TaskQueue[STACK_SIZE]; /**< Queue for pending tasks
 									 (e.g. resolved promises) */
 	int TaskQueueHead;			  /**< Head index (next item to dequeue) */
