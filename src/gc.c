@@ -333,8 +333,6 @@ static size_t _Sweep(Interpreter* interpreter) {
 }
 
 void GarbageCollect(Interpreter* interpreter) {
-	// printf("GC: Starting garbage collection. Allocated bytes: %d\n",
-	// 	   interpreter->Allocated);
 	Mark(interpreter->GcRoot);
 	Mark(interpreter->Object);
 	Mark(interpreter->Array);
@@ -346,6 +344,8 @@ void GarbageCollect(Interpreter* interpreter) {
 	Mark(interpreter->RootEnv);
 	Mark(interpreter->CallEnv);
 	Mark(interpreter->ActiveTask);
+	Mark(interpreter->ActiveFunction);
+	Mark(interpreter->Error);
 	_MarkConstants(interpreter);
 	_MarkFunctions(interpreter);
 	_MarkStack(interpreter);

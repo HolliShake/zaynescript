@@ -72,6 +72,11 @@ static void* _CompileJob(void* arg) {
 }
 
 static void _StartJitCompileJob(Compiler* compiler, JitCompileJob* job) {
+	UserFunction* uf = CoerceToUserFunction(job->fn);
+	if (uf->JitMode == JIT_DISABLED) {
+		free(job);
+		return;
+	}
 	if (ThreadStart(&compiler->Interpreter->JitThread,
 					_CompileJob,
 					(Value*) (void*) job)
@@ -3183,11 +3188,25 @@ static void _CompileReturnStatement(Compiler*	  compiler,
 	_Emit(compiler, uf, OP_RETURN);
 }
 
+static void
+_SetupJitMode(Compiler* compiler, UserFunction* uf, String directive) {
+	if (strcmp(directive, DIR_JIT_AUTO) == 0) {
+		uf->JitMode = JIT_AUTO;
+	} else if (strcmp(directive, DIR_JIT_DISABLED) == 0) {
+		uf->JitMode = JIT_DISABLED;
+	} else if (strcmp(directive, DIR_JIT_ALWAYS) == 0) {
+		uf->JitMode = JIT_ALWAYS;
+	}
+	// ignore, invalid directive for jit
+}
+
 static void _CompileExpressionStatement(Compiler*	  compiler,
 										UserFunction* uf,
 										Scope*		  scope,
 										Ast*		  node) {
-	Value* val = _CompileExpression(compiler, uf, scope, node->A);
+	if (node->A->Type == AST_STR)
+		_SetupJitMode(compiler, uf, node->A->Value);
+	_CompileExpression(compiler, uf, scope, node->A);
 	_EmitLine(compiler, uf, node->Position);
 	_Emit(compiler, uf, OP_POPTOP);
 }

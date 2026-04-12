@@ -1,3 +1,4 @@
+"[#jit:always]";
 import { print, println } from "core:io";
 import { sin, cos, floor } from "core:math";
 

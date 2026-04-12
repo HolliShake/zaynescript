@@ -1,4 +1,4 @@
-"[#jit:always]";
+"[#jit:disabled]";
 import { print, println, format } from "core:io";
 
 var width = 80;

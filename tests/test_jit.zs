@@ -20,7 +20,7 @@ const loop = fn(n) {
 
 println(add(5, 16));
 
-loop(300);
+loop(3);
 
 try {
     try {
@@ -34,3 +34,20 @@ try {
 }
 
 const ob = {a: 65};
+
+class Jit {
+    fn init(a,b) {
+        this.a=a;
+        this.b=b;
+    }
+}
+
+import {Server} from "core:mongoose";
+
+try {
+    println([1,2,3, ...([4])]);
+    //ok: (2).a  = 3;
+    println(new Jit(2,3,3), Server);
+} catch (e) {
+    println("ERROR", e);
+}

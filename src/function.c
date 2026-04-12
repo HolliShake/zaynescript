@@ -15,7 +15,9 @@ UserFunction* CreateUserFunction(String name, int argc, bool async) {
 	userFunction->CaptureMetas = Allocate(sizeof(CaptureMeta) * 1);
 	userFunction->CaptureC	   = 0;
 	userFunction->Captures	   = Allocate(sizeof(EnvCell*) * 1);
+	userFunction->JitMode	   = JIT_AUTO;
 	userFunction->JitFn		   = NULL;
+	userFunction->ForceJit	   = false;
 	userFunction->CallCount	   = 0;
 	return userFunction;
 }
@@ -35,7 +37,10 @@ UserFunction* CreateMainUserFunction(String name, int argc) {
 	userFunction->CaptureMetas = Allocate(sizeof(CaptureMeta) * 1);
 	userFunction->CaptureC	   = 0;
 	userFunction->Captures	   = Allocate(sizeof(EnvCell*) * 1);
+	userFunction->JitMode	   = JIT_AUTO;
 	userFunction->JitFn		   = NULL;
+	userFunction->ForceJit	   = false;
+	userFunction->CallCount	   = 0;
 	return userFunction;
 }
 
@@ -73,7 +78,9 @@ UserFunction* UserFunctionClone(UserFunction* userFunction) {
 	for (int i = 0; i < userFunction->CaptureC; i++) {
 		clone->Captures[i] = NULL;
 	}
+	clone->JitMode	 = userFunction->JitMode;
 	clone->JitFn	 = userFunction->JitFn;
+	clone->ForceJit	 = userFunction->ForceJit;
 	clone->CallCount = 0;
 	return clone;
 }

@@ -50,6 +50,16 @@ typedef pthread_t Thread;
 
 // Constants & Macros
 
+typedef enum jit_mode_enum {
+	JIT_AUTO,
+	JIT_DISABLED,
+	JIT_ALWAYS
+} JitMode;
+
+#define DIR_JIT_AUTO	 "[#jit:auto]"		// default!
+#define DIR_JIT_DISABLED "[#jit:disabled]"	// run in interpreter
+#define DIR_JIT_ALWAYS	 "[#jit:always]"	// force JIT compilation
+
 /**
  * @def GC_GROWTH_FACTOR
  * @brief Growth factor for the garbage collection threshold
@@ -87,15 +97,7 @@ typedef pthread_t Thread;
  * @brief The allocation threshold for triggering garbage
  * collection on the old generation (major GC).
  */
-#define GC_THRESHOLD 4096
-
-/**
- * @def GC_YOUNG_THRESHOLD
- * @brief Allocation threshold for the young (nursery) generation.
- * When the young generation reaches this size a minor GC is
- * triggered; survivors are promoted to the old generation.
- */
-#define GC_YOUNG_THRESHOLD 512
+#define GC_THRESHOLD 10
 
 /**
  * @def VARARG
@@ -684,11 +686,12 @@ typedef struct user_function_struct {
 	int			 LocalC;	   /**< Local variable count */
 	CaptureMeta* CaptureMetas; /**< Array of capture metadata */
 	int			 CaptureC;	   /**< Count of captured variables */
-	struct envcell_struct**
-		  Captures;			   /**< Array of captured environment cells */
+	EnvCell**	 Captures;	   /**< Array of captured environment cells */
+	JitMode		 JitMode;	   /**< JIT mode */
 	void* JitFn; /**< Compiled JIT function pointer, or NULL if not yet compiled
 				  */
-	int CallCount;
+	bool ForceJit; /**< True if JIT compilation is forced */
+	int	 CallCount;
 } UserFunction;
 
 /**

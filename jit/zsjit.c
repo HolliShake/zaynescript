@@ -223,6 +223,14 @@ _zsjit_raiseerror(Interpreter* _i, Value* fn, Value* error, size_t* ip) {
 	exit(EXIT_FAILURE);
 }
 
+static bool _zsjit_should_garbagecollect(Interpreter* _i) {
+	return _i->Allocated >= _i->GcThreshold;
+}
+
+static void _zsjit_garbagecollect(Interpreter* _i) {
+	GarbageCollect(_i);
+}
+
 struct JumpTargets {
 	int* Target;
 	int	 Size;
@@ -293,6 +301,8 @@ static String fncode =
 	"extern void   _zsjit_seterror(Interpreter* _i, Value* err);\n"
 	"extern void   _zsjit_setstack(Interpreter* _i, int i, Value* val);\n"
 	"extern void   _zsjit_lockvar(Interpreter* _i, Value* envObj, int off);\n"
+	"extern bool   _zsjit_should_garbagecollect(Interpreter* _i);\n"
+	"extern void   _zsjit_garbagecollect(Interpreter* _i);\n"
 	/* coercion helpers */
 	"extern bool          CoerceToBool(Value* value);\n"
 	"extern Array*        CoerceToArray(Value* value);\n"
@@ -394,7 +404,56 @@ static struct JumpTargets Compute(UserFunction* _uf) {
 		OpcodeEnum op = _uf->Codes[ip++];
 
 		switch (op) {
-			/* ── no operand ──────────────────────────────────────── */
+			/* Operand layout follows Run() in interpreter.c (same opcode
+			 * group order as the big switch there). */
+			/* ── null-terminated string operand ──────────────────── */
+			case OP_IMPORT_CORE:
+			case OP_IMPORT_LIB:
+			case OP_IMPORT_RELATIVE:
+			case OP_LOAD_STRING:
+			case OP_OBJECT_PLUCK_ATTRIBUTE:
+			case OP_CLASS_MAKE:
+				{
+					String s  = _rdstr(_uf->Codes, ip);
+					ip		 += strlen(s) + 1;
+					free(s);
+					break;
+				}
+
+			/* ── 4-byte int operand, not a jump target ───────────── */
+			case OP_LOAD_CONST:
+			case OP_LOAD_BOOL:
+			case OP_LOAD_CAPTURE:
+			case OP_LOAD_NAME:
+			case OP_LOAD_LOCAL:
+			case OP_LOAD_FUNCTION_CLOSURE:
+			case OP_LOAD_FUNCTION:
+			case OP_CALL_CTOR:
+			case OP_CALL:
+			case OP_CALL_METHOD:
+			case OP_STORE_CAPTURE:
+			case OP_STORE_NAME:
+			case OP_STORE_LOCAL:
+			case OP_LOCK_VAR:
+			case OP_ARRAY_MAKE:
+			case OP_OBJECT_MAKE:
+			case OP_POPN_TRY:
+				ip += 4;
+				break;
+
+			/* ── 4-byte int operand that IS a jump target ─────────── */
+			case OP_JUMP_IF_FALSE_OR_POP:
+			case OP_JUMP_IF_TRUE_OR_POP:
+			case OP_POP_JUMP_IF_FALSE:
+			case OP_POP_JUMP_IF_TRUE:
+			case OP_JUMP:
+			case OP_ABSOLUTE_JUMP:
+			case OP_SETUP_TRY:
+				_jt_push(_rdint(_uf->Codes, ip));
+				ip += 4;
+				break;
+
+			/* ── no extra bytecode operand (same order as Run()) ─── */
 			case OP_LOAD_NULL:
 			case OP_ARRAY_EXTEND:
 			case OP_ARRAY_PUSH:
@@ -439,53 +498,6 @@ static struct JumpTargets Compute(UserFunction* _uf) {
 			case OP_RAISE:
 			case OP_RETURN:
 				break;
-
-			/* ── 4-byte int operand, not a jump target ───────────── */
-			case OP_LOAD_CONST:
-			case OP_LOAD_BOOL:
-			case OP_LOAD_CAPTURE:
-			case OP_LOAD_NAME:
-			case OP_LOAD_LOCAL:
-			case OP_LOAD_FUNCTION:
-			case OP_LOAD_FUNCTION_CLOSURE:
-			case OP_CALL_CTOR:
-			case OP_CALL:
-			case OP_CALL_METHOD:
-			case OP_STORE_CAPTURE:
-			case OP_STORE_NAME:
-			case OP_STORE_LOCAL:
-			case OP_LOCK_VAR:
-			case OP_ARRAY_MAKE:
-			case OP_OBJECT_MAKE:
-			case OP_POPN_TRY:
-				ip += 4;
-				break;
-
-			/* ── 4-byte int operand that IS a jump target ─────────── */
-			case OP_POP_JUMP_IF_FALSE:
-			case OP_POP_JUMP_IF_TRUE:
-			case OP_JUMP_IF_FALSE_OR_POP:
-			case OP_JUMP_IF_TRUE_OR_POP:
-			case OP_JUMP:
-			case OP_ABSOLUTE_JUMP:
-			case OP_SETUP_TRY:
-				_jt_push(_rdint(_uf->Codes, ip));
-				ip += 4;
-				break;
-
-			/* ── null-terminated string operand ──────────────────── */
-			case OP_IMPORT_CORE:
-			case OP_IMPORT_LIB:
-			case OP_IMPORT_RELATIVE:
-			case OP_LOAD_STRING:
-			case OP_OBJECT_PLUCK_ATTRIBUTE:
-			case OP_CLASS_MAKE:
-				{
-					String s  = _rdstr(_uf->Codes, ip);
-					ip		 += strlen(s) + 1;
-					free(s);
-					break;
-				}
 
 			default:
 				break;
@@ -830,7 +842,6 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					forward(4);
 					break;
 				}
-			/* ── array literals ───────────────────────────────────── */
 			case OP_CALL:
 				{
 					arg = _rdint(bytecode, ip);
@@ -884,6 +895,17 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 							  "i,res);}");
 					handleError();
 					break;
+				}
+			case OP_AWAIT:
+			case OP_GET_AWAITED_VALUE:
+				{
+					/* Async uses state-machine machinery in the interpreter;
+					 * decline JIT so execution falls back to Run(). */
+					free(t.Target);
+					free(EMITTED);
+					StrBuilderFree(&sb);
+					free(handler_targets);
+					return NULL;
 				}
 			case OP_MUL:
 				{
@@ -1076,7 +1098,6 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					handleError();
 					break;
 				}
-			/* ── stack manipulation ───────────────────────────────── */
 			case OP_STORE_CAPTURE:
 				{
 					off = _rdint(bytecode, ip);
@@ -1087,7 +1108,6 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					forward(4);
 					break;
 				}
-			/* ── control flow ─────────────────────────────────────── */
 			case OP_STORE_NAME:
 				{
 					off = _rdint(bytecode, ip);
@@ -1115,7 +1135,6 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					forward(4);
 					break;
 				}
-			/* ── unary / arithmetic ───────────────────────────────── */
 			case OP_DUPTOP:
 				{
 					StrAppend(&sb, "{_zsjit_push(_i,_zsjit_peek(_i));}");
@@ -1132,7 +1151,6 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 							  "_zsjit_push(_i,_ra);}");
 					break;
 				}
-			/* ── variables ────────────────────────────────────────── */
 			case OP_POPTOP:
 				{
 					StrAppend(&sb, "_zsjit_popp(_i);");
@@ -1151,28 +1169,28 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 				}
 			case OP_ROT3:
 				{
-					/* A B C -> C A B */
+					/* Same stack permutation as Run() (interpreter.c). */
 					StrAppend(&sb,
 							  "{size_t _sp=_zsjit_getstackpntr(_i);"
 							  "Value*_ra=_zsjit_getstack(_i,_sp-1);"
 							  "Value*_rb=_zsjit_getstack(_i,_sp-2);"
 							  "Value*_rc=_zsjit_getstack(_i,_sp-3);"
-							  "_zsjit_setstack(_i,_sp-1,_ra);"
-							  "_zsjit_setstack(_i,_sp-2,_rc);"
+							  "_zsjit_setstack(_i,_sp-1,_rc);"
+							  "_zsjit_setstack(_i,_sp-2,_ra);"
 							  "_zsjit_setstack(_i,_sp-3,_rb);}");
 					break;
 				}
 			case OP_ROT4:
 				{
-					/* A B C D -> D A B C */
+					/* Same stack permutation as Run() (interpreter.c). */
 					StrAppend(&sb,
 							  "{size_t _sp=_zsjit_getstackpntr(_i);"
 							  "Value*_ra=_zsjit_getstack(_i,_sp-1);"
 							  "Value*_rb=_zsjit_getstack(_i,_sp-2);"
 							  "Value*_rc=_zsjit_getstack(_i,_sp-3);"
 							  "Value*_rd=_zsjit_getstack(_i,_sp-4);"
-							  "_zsjit_setstack(_i,_sp-1,_rc);"
-							  "_zsjit_setstack(_i,_sp-2,_rb);"
+							  "_zsjit_setstack(_i,_sp-1,_rb);"
+							  "_zsjit_setstack(_i,_sp-2,_rc);"
 							  "_zsjit_setstack(_i,_sp-3,_rd);"
 							  "_zsjit_setstack(_i,_sp-4,_ra);}");
 					break;
@@ -1294,6 +1312,10 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					return NULL;
 				}
 		}
+
+		StrAppend(&sb,
+				  "{if(_zsjit_should_garbagecollect(_i))"
+				  "{_zsjit_garbagecollect(_i);}}");
 	}
 
 
@@ -1388,6 +1410,10 @@ ZJittedFn* ZJitCompile(Interpreter* interpreter, Value* fn) {
 	tcc_add_symbol(s, "_zsjit_getstackpntr", (void*) _zsjit_getstackpntr);
 	tcc_add_symbol(s, "_zsjit_getstack", (void*) _zsjit_getstack);
 	tcc_add_symbol(s, "_zsjit_setstack", (void*) _zsjit_setstack);
+	tcc_add_symbol(s,
+				   "_zsjit_should_garbagecollect",
+				   (void*) _zsjit_should_garbagecollect);
+	tcc_add_symbol(s, "_zsjit_garbagecollect", (void*) _zsjit_garbagecollect);
 	/* libc */
 	tcc_add_symbol(s, "free", (void*) free);
 	/* array / hashmap */

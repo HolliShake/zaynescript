@@ -1,24 +1,21 @@
 #include "./value.h"
 
 /**
- * @brief Runs a young-generation garbage collection cycle on the interpreter heap.
+ * @brief Runs a young-generation garbage collection cycle on the interpreter
+ * heap.
  * @param interpreter The interpreter whose allocated values may be collected.
  * @origin src/gc.c:416
  */
 extern void GarbageCollect(Interpreter* interpreter);
 
 static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
-	Value* v	  = Allocate(sizeof(Value));
-	v->Type		  = type;
-	v->Marked	  = 0;
-	v->Generation = 0;
-	v->Next		  = interpreter->GcRoot;
+	Value* v			= Allocate(sizeof(Value));
+	v->Type				= type;
+	v->Marked			= 0;
+	v->Next				= NULL;
+	v->Next				= interpreter->GcRoot;
 	interpreter->GcRoot = v;
 	interpreter->Allocated++;
-
-	if (interpreter->Allocated >= interpreter->GcThreshold) {
-		GarbageCollect(interpreter);
-	}
 	return v;
 }
 

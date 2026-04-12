@@ -635,6 +635,7 @@ DoSetIndex(Interpreter* interpreter, Value* obj, Value* index, Value* val) {
 		HashMapSet(cls->StaticMembers, hashKey, val);
 		free(hashKey);
 	} else {
+		free(hashKey);
 		return NewErrorFValue(interpreter,
 							  "%s: cannot set index on non-object",
 							  TYPE_ERROR);
