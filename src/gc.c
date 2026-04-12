@@ -1,12 +1,10 @@
 #include "./gc.h"
 
-#include "global.h"
-
 /**
  * @brief Converts a Value to its string representation.
  * @param value The value to convert.
  * @return A newly allocated string (caller must free).
- * @origin src/value.c:150
+ * @origin src/value.c:146
  */
 extern String ValueToString(Value* value);
 
@@ -316,85 +314,9 @@ static void _MarkCallStack(Interpreter* interpreter) {
 	}
 }
 
-/* ── shared mark phase ──────────────────────────────────────────────────── */
-
-static void _MarkAll(Interpreter* interpreter) {
-	Mark(interpreter->GcRoot);
-	Mark(interpreter->OldRoot);
-	Mark(interpreter->Object);
-	Mark(interpreter->Array);
-	Mark(interpreter->Date);
-	Mark(interpreter->Promise);
-	Mark(interpreter->True);
-	Mark(interpreter->False);
-	Mark(interpreter->Null);
-	Mark(interpreter->RootEnv);
-	Mark(interpreter->CallEnv);
-	Mark(interpreter->ActiveFunction);
-	Mark(interpreter->ActiveTask);
-	Mark(interpreter->Error);
-	_MarkConstants(interpreter);
-	_MarkFunctions(interpreter);
-	_MarkStack(interpreter);
-	_MarkEnvs(interpreter);
-	_MarkTaskQueue(interpreter);
-	_MarkCallStack(interpreter);
-}
-
-/* ── minor sweep: collect young gen, promote survivors to old gen ───────── */
-
-static void _MinorSweep(Interpreter* interpreter) {
-	Value* curr = interpreter->GcRoot;
-	while (curr != NULL) {
-		Value* next = curr->Next;
-		if (!curr->Marked) {
-			_Free(interpreter, curr);
-		} else {
-			curr->Marked		 = 0;
-			curr->Generation	 = 1;
-			curr->Next			 = interpreter->OldRoot;
-			interpreter->OldRoot = curr;
-			interpreter->OldCount++;
-		}
-		curr = next;
-	}
-	interpreter->GcRoot	   = NULL;
-	interpreter->Allocated = 0;
-}
-
-/* ── reset marks on old gen after a minor GC (they were marked but kept) ── */
-
-static void _UnmarkOld(Interpreter* interpreter) {
-	Value* v = interpreter->OldRoot;
-	while (v != NULL) {
-		v->Marked = 0;
-		v		  = v->Next;
-	}
-}
-
-/* ── major sweep: collect both generations, promote young survivors ──────── */
-
-static size_t _MajorSweep(Interpreter* interpreter) {
-	/* First pass: sweep young gen.  Survivors keep Marked=1 so the old
-	   sweep below will count and unmark them correctly. */
-	Value* curr = interpreter->GcRoot;
-	while (curr != NULL) {
-		Value* next = curr->Next;
-		if (!curr->Marked) {
-			_Free(interpreter, curr);
-		} else {
-			curr->Generation	 = 1;
-			curr->Next			 = interpreter->OldRoot;
-			interpreter->OldRoot = curr;
-		}
-		curr = next;
-	}
-	interpreter->GcRoot	   = NULL;
-	interpreter->Allocated = 0;
-
-	/* Second pass: sweep old gen (now includes just-promoted values). */
+static size_t _Sweep(Interpreter* interpreter) {
 	size_t	survivors = 0;
-	Value** current	  = &interpreter->OldRoot;
+	Value** current	  = &interpreter->GcRoot;
 	while (*current != NULL) {
 		Value* value = *current;
 		if (!value->Marked) {
@@ -407,79 +329,43 @@ static size_t _MajorSweep(Interpreter* interpreter) {
 			current		  = &value->Next;
 		}
 	}
-	interpreter->OldCount = survivors;
 	return survivors;
 }
 
-/* ── public GC API ──────────────────────────────────────────────────────── */
-
 void GarbageCollect(Interpreter* interpreter) {
-	_MarkAll(interpreter);
-	_MinorSweep(interpreter);
-	_UnmarkOld(interpreter);
-	interpreter->GcThreshold = GC_YOUNG_THRESHOLD;
-}
+	// printf("GC: Starting garbage collection. Allocated bytes: %d\n",
+	// 	   interpreter->Allocated);
+	Mark(interpreter->GcRoot);
+	Mark(interpreter->Object);
+	Mark(interpreter->Array);
+	Mark(interpreter->Date);
+	Mark(interpreter->Promise);
+	Mark(interpreter->True);
+	Mark(interpreter->False);
+	Mark(interpreter->Null);
+	Mark(interpreter->RootEnv);
+	Mark(interpreter->CallEnv);
+	Mark(interpreter->ActiveTask);
+	_MarkConstants(interpreter);
+	_MarkFunctions(interpreter);
+	_MarkStack(interpreter);
+	_MarkEnvs(interpreter);
+	_MarkTaskQueue(interpreter);
+	_MarkCallStack(interpreter);
 
-void MajorGarbageCollect(Interpreter* interpreter) {
-	_MarkAll(interpreter);
+	size_t srv = _Sweep(interpreter);
+	size_t nxt = srv * GC_GROWTH_FACTOR;
 
-	size_t srv				  = _MajorSweep(interpreter);
-	size_t nxt				  = srv * GC_GROWTH_FACTOR;
-	interpreter->OldThreshold = (nxt < GC_THRESHOLD) ? GC_THRESHOLD : nxt;
+	if (nxt < GC_THRESHOLD) {
+		interpreter->GcThreshold = GC_THRESHOLD;
+	} else {
+		interpreter->GcThreshold = (int) nxt;
+	}
+
+	interpreter->Allocated = srv;
 }
 
 void ForceGarbageCollect(Interpreter* interpreter) {
-	_MarkAll(interpreter);
-	_MajorSweep(interpreter);
-	interpreter->GcThreshold  = GC_YOUNG_THRESHOLD;
-	interpreter->OldThreshold = GC_THRESHOLD;
-}
-
-void GcDestroyHeap(Interpreter* interpreter) {
-	Value* young		 = interpreter->GcRoot;
-	Value* old			 = interpreter->OldRoot;
-	interpreter->GcRoot	 = NULL;
-	interpreter->OldRoot = NULL;
-
-	interpreter->RootEnv				= NULL;
-	interpreter->CallEnv				= NULL;
-	interpreter->StckC					= 0;
-	interpreter->EnvrC					= 0;
-	interpreter->TaskQueueHead			= 0;
-	interpreter->TaskQueueC				= 0;
-	interpreter->CallStackC				= 0;
-	interpreter->ActiveFunction			= NULL;
-	interpreter->ActiveTask				= NULL;
-	interpreter->Error					= NULL;
-	interpreter->ExceptionHandlerStackC = 0;
-	interpreter->Object					= NULL;
-	interpreter->Array					= NULL;
-	interpreter->Date					= NULL;
-	interpreter->Promise				= NULL;
-	interpreter->True					= NULL;
-	interpreter->False					= NULL;
-	interpreter->Null					= NULL;
-	for (int i = 0; i < interpreter->ConstantC; i++) {
-		interpreter->Constants[i] = NULL;
-	}
-	for (int i = 0; i < interpreter->FunctionC; i++) {
-		interpreter->Functions[i] = NULL;
-	}
-	interpreter->ConstantC = 0;
-	interpreter->FunctionC = 0;
+	_Sweep(interpreter);
 	interpreter->Allocated = 0;
-	interpreter->OldCount  = 0;
-
-	while (young != NULL) {
-		Value* next = young->Next;
-		young->Next = NULL;
-		_Free(interpreter, young);
-		young = next;
-	}
-	while (old != NULL) {
-		Value* next = old->Next;
-		old->Next	= NULL;
-		_Free(interpreter, old);
-		old = next;
-	}
 }

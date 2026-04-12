@@ -27,33 +27,6 @@
 #include <string.h>
 #include "cutils.h"
 
-void pstrcpy(char *buf, int buf_size, const char *str)
-{
-    int c;
-    char *q = buf;
-
-    if (buf_size <= 0)
-        return;
-
-    for(;;) {
-        c = *str++;
-        if (c == 0 || q >= buf + buf_size - 1)
-            break;
-        *q++ = c;
-    }
-    *q = '\0';
-}
-
-/* strcat and truncate. */
-char *pstrcat(char *buf, int buf_size, const char *s)
-{
-    int len;
-    len = strlen(buf);
-    if (len < buf_size)
-        pstrcpy(buf + len, buf_size - len, s);
-    return buf;
-}
-
 int strstart(const char *str, const char *val, const char **ptr)
 {
     const char *p, *q;
@@ -68,35 +41,6 @@ int strstart(const char *str, const char *val, const char **ptr)
     if (ptr)
         *ptr = p;
     return 1;
-}
-
-/* Note: at most 21 bits are encoded. At most UTF8_CHAR_LEN_MAX bytes
-   are output. */
-int unicode_to_utf8(uint8_t *buf, unsigned int c)
-{
-    uint8_t *q = buf;
-
-    if (c < 0x80) {
-        *q++ = c;
-    } else {
-        if (c < 0x800) {
-            *q++ = (c >> 6) | 0xc0;
-        } else {
-            if (c < 0x10000) {
-                *q++ = (c >> 12) | 0xe0;
-            } else {
-                if (c < 0x00200000) {
-                    *q++ = (c >> 18) | 0xf0;
-                } else {
-                    return 0;
-                }
-                *q++ = ((c >> 12) & 0x3f) | 0x80;
-            }
-            *q++ = ((c >> 6) & 0x3f) | 0x80;
-        }
-        *q++ = (c & 0x3f) | 0x80;
-    }
-    return q - buf;
 }
 
 /* return -1 if error. *pp is not updated in this case. max_len must

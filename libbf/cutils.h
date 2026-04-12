@@ -54,8 +54,6 @@ enum {
 };
 #endif
 
-void pstrcpy(char *buf, int buf_size, const char *str);
-char *pstrcat(char *buf, int buf_size, const char *s);
 int strstart(const char *str, const char *val, const char **ptr);
 
 static inline int max_int(int a, int b)
@@ -172,7 +170,6 @@ static inline BOOL dbuf_error(DynBuf *s) {
 
 #define UTF8_CHAR_LEN_MAX 4
 
-int unicode_to_utf8(uint8_t *buf, unsigned int c);
 int unicode_from_utf8(const uint8_t *p, int max_len, const uint8_t **pp);
 
 #endif

@@ -23,23 +23,16 @@ if exist "%EXE%" (
 )
 
 :: ── Build SQLite Shared Library (Dynamic) ────────────────────────────────────
-if not "%1"=="--minimal" (
-    echo Building SQLite shared library...
-    gcc -O2 -shared sqlite\sqlite3.c -o "%SQLITE_DLL%"
-    if errorlevel 1 (
-        echo Error: Failed to build sqlite3.dll
-        pause
-        exit /b 1
-    )
+echo Building SQLite shared library...
+gcc -O2 -shared sqlite\sqlite3.c -o "%SQLITE_DLL%"
+if errorlevel 1 (
+    echo Error: Failed to build sqlite3.dll
+    pause
+    exit /b 1
 )
 
 :: ── Compile EXEs ─────────────────────────────────────────────────────────────
-if "%1"=="--minimal" (
-    echo Building in minimal mode (sqlite completely disabled, ZSMINIMAL defined)...
-    gcc -O3 -DNDEBUG -DZSMINIMAL -DMG_ENABLE_LOG=0 -Wno-pointer-sign ^
-        main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c mongoose\*.c ^
-        -o "%EXE%" -lm
-) else if "%1"=="--release" (
+if "%1"=="--release" (
     echo Building in release mode...
     echo Compiling icon resource ^(docs\zs.ico^)...
     windres -O coff -i zscript.rc -o "%OUT_DIR%\zscript-icon.o"

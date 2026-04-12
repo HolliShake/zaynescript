@@ -931,44 +931,41 @@ typedef struct exception_handler_struct {
 struct interpreter_struct {
 	bf_context_t BfContext; /**< Context for the libbf library
 							   (memory management, etc.) */
-	Thread	 JitThread;		 /**< Thread for JIT compilation */
-	bool	 JitThreadActive; /**< True while @ref JitThread may be joinable */
+	Thread JitThread;		/**< Thread for JIT compilation */
+	bool   JitThreadActive; /**< True while @ref JitThread may be joinable */
 	String ExecPath;		/**< Directory path of the executable */
 	String ModulePath;		/**< Directory path of the main module
 							   (for resolving imports) */
 	struct mg_mgr MgMgr; /**< Mongoose manager for handling HTTP requests (used
 						  * in native modules) */
-	ImportNode* ImportHead; /**< Head of the linked list of
-							   imported modules */
-	HashMap* Imports;		/**< Imports map */
-	Value*	 Object;		/**< Built-in Object class */
-	Value*	 Array;			/**< Built-in Array class */
-	Value*	 Date;			/**< Built-in Date class */
-	Value*	 Promise;		/**< Built-in Promise class */
-	Value*	 True;			/**< Singleton 'true' value */
-	Value*	 False;			/**< Singleton 'false' value */
-	Value*	 Null;			/**< Singleton 'null' value */
-	Value*	 GcRoot;		/**< Head of the young (gen-0) allocation list */
-	Value*	 OldRoot;		/**< Head of the old (gen-1) allocation list */
-	Value*	 RootEnv;		/**< Root environment of the current program */
-	Value*	 CallEnv;		/**< Current execution environment */
-	size_t	 Allocated;		/**< Count of live young-generation values */
-	size_t	 OldCount;		/**< Count of live old-generation values */
-	Value**	 Constants;		/**< Array of constant values */
-	int		 ConstantC;		/**< Count of constants */
-	Value**	 Functions;		/**< Array of function definitions */
-	int		 FunctionC;		/**< Count of functions */
-	Value*	 Stacks[STACK_SIZE];			/**< Execution stack */
-	int		 StckC;							/**< Stack pointer/count */
-	Value*	 Envs[STACK_SIZE];				/**< Environment stack for variable
-											   scopes */
-	int EnvrC;								/**< Environment stack pointer */
+	ImportNode* ImportHead;		 /**< Head of the linked list of
+									imported modules */
+	HashMap* Imports;			 /**< Imports map */
+	Value*	 Object;			 /**< Built-in Object class */
+	Value*	 Array;				 /**< Built-in Array class */
+	Value*	 Date;				 /**< Built-in Date class */
+	Value*	 Promise;			 /**< Built-in Promise class */
+	Value*	 True;				 /**< Singleton 'true' value */
+	Value*	 False;				 /**< Singleton 'false' value */
+	Value*	 Null;				 /**< Singleton 'null' value */
+	Value*	 GcRoot;			 /**< Head of the allocation list */
+	Value*	 RootEnv;			 /**< Root environment of the current program */
+	Value*	 CallEnv;			 /**< Current execution environment */
+	size_t	 Allocated;			 /**< Count of live young-generation values */
+	Value**	 Constants;			 /**< Array of constant values */
+	int		 ConstantC;			 /**< Count of constants */
+	Value**	 Functions;			 /**< Array of function definitions */
+	int		 FunctionC;			 /**< Count of functions */
+	Value*	 Stacks[STACK_SIZE]; /**< Execution stack */
+	int		 StckC;				 /**< Stack pointer/count */
+	Value*	 Envs[STACK_SIZE];	 /**< Environment stack for variable
+									scopes */
+	int EnvrC;					 /**< Environment stack pointer */
 	ExceptionHandler
 		ExceptionHandlerStacks[STACK_SIZE]; /**< Stack for exception handlers */
 	int ExceptionHandlerStackC;				/**< Exception handler stack
 											   pointer */
-	size_t GcThreshold;	 /**< Young-gen threshold → triggers minor GC */
-	size_t OldThreshold; /**< Old-gen threshold  → triggers major GC */
+	size_t GcThreshold; /**< Young-gen threshold → triggers minor GC */
 	Value* TaskQueue[STACK_SIZE]; /**< Queue for pending tasks
 									 (e.g. resolved promises) */
 	int TaskQueueHead;			  /**< Head index (next item to dequeue) */
@@ -980,7 +977,7 @@ struct interpreter_struct {
 	int	   CallStackC;				  /**< Call stack pointer/count */
 	Value* ActiveFunction; /** < Currently active function being processed */
 	Value* ActiveTask;	   /**< Currently active task being processed */
-	Value* Error;
+	Value* Error;		   /**< Currently active error being processed */
 };
 
 /**

@@ -567,7 +567,7 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 		}
 
 		op = uf->Codes[ip++];
-		StrAppendf(&sb, "ip=%d;", ip);
+		StrAppendf(&sb, "ip=%d;", (int) ip);
 
 		switch (op) {
 			case OP_IMPORT_CORE:

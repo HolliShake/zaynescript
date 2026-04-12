@@ -25,19 +25,11 @@ ALL_SRCS   := main.c \
               $(wildcard mongoose/*.c)\
               $(wildcard sqlite/*.c)
 
-# Exclude SQLite for dynamic builds
+# Exclude SQLite for dynamic builds (link ``dist/libsqlite3.so`` instead).
 DYN_EXCLUDES := sqlite/%
 
-# Helper macro to build exclude patterns for each feature
-MIN_EXCLUDES := $(foreach f,$(MINIMAL_DISABLE_FEATURES),$f/% )
-
-# Helper: Is a feature enabled? Usage: $(call feature_enabled,sqlite)
-feature_enabled = $(if $(findstring $(1),$(MINIMAL_DISABLE_FEATURES)),0,1)
-
 # Filter sources based on target
-ifeq ($(MAKECMDGOALS),minimal)
-    SRCS := $(filter-out $(MIN_EXCLUDES),$(ALL_SRCS))
-else ifeq ($(MAKECMDGOALS),release)
+ifeq ($(MAKECMDGOALS),release)
     SRCS := $(filter-out $(DYN_EXCLUDES),$(ALL_SRCS))
 else ifeq ($(MAKECMDGOALS),debug)
     SRCS := $(filter-out $(DYN_EXCLUDES),$(ALL_SRCS))
@@ -47,18 +39,26 @@ endif
 
 BUILD_DATE := $(shell date '+%Y-%m-%d %H:%M:%S')
 
-# ── TinyCC JIT (jit/zsjit.c): dynamic libtcc ──────────────────
-# Link against the system (or prefix) ``libtcc.so`` with ``-ltcc``.
-# Headers: default ``-I tinycc`` so ``#include <libtcc.h>`` uses the vendored
-# copy; override with ``make TCC_CPPFLAGS=`` if your distro ``libtcc-dev``
-# header must match its .so exactly.
-TCC_CPPFLAGS ?= -I tinycc
+# ── TinyCC JIT (jit/zsjit.c): static libtcc from vendored ``tinycc/`` ───
+# Builds ``tinycc/libtcc.a`` via TinyCC's configure + make (no runtime
+# ``libtcc.so``).  Headers: ``-I tinycc`` for ``#include <libtcc.h>``.
+# Override include path: ``make TCC_CPPFLAGS=``.
+TINYCC_DIR  ?= tinycc
+LIBTCC_A    := $(TINYCC_DIR)/libtcc.a
+TCC_CPPFLAGS ?= -I $(TINYCC_DIR)
 
 # ── Base Flags (Applied to all targets) ─────────────────────
 CFLAGS_BASE := -Wno-pointer-sign $(TCC_CPPFLAGS) -DBUILD_DATE='"$(BUILD_DATE)"'
-# Prefer the shared lib when both libtcc.a and libtcc.so exist (``-ltcc`` alone
-# often pulls the static archive).
-LDFLAGS     := -lm -ldl -lpthread -l:libtcc.so
+# libtcc.a is linked explicitly so the executable does not depend on libtcc.so.
+LDFLAGS     := -lm -ldl -lpthread $(LIBTCC_A)
+
+$(TINYCC_DIR)/config.mak: $(TINYCC_DIR)/configure
+	@echo "Configuring vendored TinyCC in $(TINYCC_DIR)..."
+	cd $(TINYCC_DIR) && CC=$(CC) ./configure --cc=$(CC)
+
+$(LIBTCC_A): $(TINYCC_DIR)/config.mak
+	@echo "Building static $(LIBTCC_A)..."
+	$(MAKE) -C $(TINYCC_DIR) libtcc.a CC=$(CC)
 
 # Default RPATH points to the directory containing the executable ($ORIGIN)
 RPATH_FLAG  := -Wl,-rpath,'$$ORIGIN'
@@ -76,24 +76,11 @@ CFLAGS_REL  := -O3 -march=native -mtune=native \
                -pipe -DNDEBUG -DMG_ENABLE_LOG=0
 LDFLAGS_REL := -flto=thin -fuse-ld=lld -Wl,--gc-sections -Wl,-O2 -Wl,--strip-all
 
-# ── Minimal Flags (Super-optimized for speed + ZSMINIMAL) ───
-CFLAGS_MIN  := -O3 -march=native -mtune=native \
-               -flto=thin -fomit-frame-pointer -funroll-loops -fno-plt \
-               -ffunction-sections -fdata-sections \
-               -fmerge-all-constants -fno-semantic-interposition \
-               -fno-math-errno -fno-trapping-math \
-               -fstrict-aliasing -fvectorize -fslp-vectorize \
-               -pipe -DNDEBUG -DZSMINIMAL -DMG_ENABLE_LOG=0
-LDFLAGS_MIN := -flto=thin -fuse-ld=lld -Wl,--gc-sections -Wl,-O2 -Wl,--strip-all
-
-# Features to disable in minimal mode (space-separated)
-MINIMAL_DISABLE_FEATURES := sqlite
-
 # ============================================================
 #  Targets
 # ============================================================
 
-.PHONY: all release release-install minimal debug clean run install uninstall amalgamate copy_assets
+.PHONY: all release release-install debug clean clean-tinycc run install uninstall amalgamate copy_assets
 
 all: debug
 
@@ -109,30 +96,31 @@ $(SQLITE_LIB): sqlite/sqlite3.c | $(DIST_DIR)
 	@echo "Building SQLite shared library..."
 	$(CC) -fPIC -shared -O2 -o $@ $<
 
-release: $(SQLITE_LIB) copy_assets | $(DIST_DIR)
-	@echo "Building in release mode (clang, super-optimized, sqlite dynamic, libtcc dynamic)..."
+release: $(LIBTCC_A) $(SQLITE_LIB) copy_assets | $(DIST_DIR)
+	@echo "Building in release mode (clang, super-optimized, sqlite dynamic, vendored libtcc static)..."
 	$(CC) $(CFLAGS_BASE) $(CFLAGS_REL) $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_REL) -L$(DIST_DIR) -lsqlite3 $(RPATH_FLAG)
 	@echo "Build successful → $(TARGET)"
 
 # Override RPATH for installation so the binary knows to look in $(LIBDIR) at runtime
 release-install: RPATH_FLAG := -Wl,-rpath,'$(LIBDIR)'
-release-install: $(SQLITE_LIB) copy_assets | $(DIST_DIR)
-	@echo "Building in release mode (install RPATH, sqlite + libtcc dynamic)..."
+release-install: $(LIBTCC_A) $(SQLITE_LIB) copy_assets | $(DIST_DIR)
+	@echo "Building in release mode (install RPATH, sqlite dynamic, vendored libtcc static)..."
 	$(CC) $(CFLAGS_BASE) $(CFLAGS_REL) $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_REL) -L$(DIST_DIR) -lsqlite3 $(RPATH_FLAG)
 	@echo "Build successful → $(TARGET)"
 
-minimal: copy_assets | $(DIST_DIR)
-	@echo "Building in minimal mode (ZSMINIMAL, sqlite off, libtcc dynamic)..."
-	$(CC) $(CFLAGS_BASE) $(CFLAGS_MIN) $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_MIN)
-	@echo "Build successful → $(TARGET)"
-
-debug: $(SQLITE_LIB) copy_assets | $(DIST_DIR)
-	@echo "Building in debug mode (sqlite + libtcc dynamic)..."
+debug: $(LIBTCC_A) $(SQLITE_LIB) copy_assets | $(DIST_DIR)
+	@echo "Building in debug mode (sqlite + vendored libtcc static)..."
 	$(CC) $(CFLAGS_BASE) $(CFLAGS_DBG) $(SRCS) -o $(TARGET) $(LDFLAGS) -L$(DIST_DIR) -lsqlite3 $(RPATH_FLAG)
 	@echo "Build successful → $(TARGET)"
 
 clean:
 	rm -rf $(DIST_DIR)
+
+# Optional: remove TinyCC build products (config + static lib).  Not part of
+# default ``clean`` so incremental zscript builds keep a warm libtcc.a.
+clean-tinycc:
+	$(MAKE) -C $(TINYCC_DIR) distclean 2>/dev/null || true
+	rm -f $(LIBTCC_A)
 
 install: release-install
 	@echo "Installing $(TARGET) → $(BINDIR)/zscript"
@@ -145,10 +133,8 @@ install: release-install
 	@echo "Installing tests → $(LIBDIR)/tests/"
 	cd tests && find . -type d -exec install -d $(LIBDIR)/tests/{} \; \
              && find . -type f -exec install -m 644 {} $(LIBDIR)/tests/{} \;
-	@if [ "$(call feature_enabled,sqlite)" != "0" ]; then \
-		echo "Installing sqlite/libsqlite3.so → $(LIBDIR)/libsqlite3.so"; \
-		install -m 755 $(SQLITE_LIB) $(LIBDIR)/libsqlite3.so; \
-	fi
+	@echo "Installing sqlite/libsqlite3.so → $(LIBDIR)/libsqlite3.so"
+	install -m 755 $(SQLITE_LIB) $(LIBDIR)/libsqlite3.so
 
 uninstall:
 	@echo "Removing $(BINDIR)/zscript"

@@ -18,11 +18,8 @@ Interpreter* CreateInterpreter(String execPath) {
 	interpreter->ImportHead	  = NULL;
 	interpreter->Imports	  = CreateHashMap(16);
 	interpreter->Allocated	  = 0;
-	interpreter->OldCount	  = 0;
 	interpreter->GcThreshold  = GC_YOUNG_THRESHOLD;
-	interpreter->OldThreshold = GC_THRESHOLD;
 	interpreter->GcRoot		  = NULL;
-	interpreter->OldRoot	  = NULL;
 	interpreter->RootEnv	  = NULL;
 	interpreter->CallEnv	  = NULL;
 	interpreter->Object		  = CreateObjectClass(interpreter);
@@ -85,10 +82,9 @@ Interpreter* CreateInterpreter(String execPath) {
 		for (int i = 0; i < interpreter->StckC; i++) {                         \
 			if (i > 0)                                                         \
 				printf(", ");                                                  \
-			/*Note: memory leak (ValueToString allocates a                     \
-			 * string that is passed to printf but never                       \
-			 * freed)*/                                                        \
-			printf("%s", ValueToString(interpreter->Stacks[i]));               \
+			String str = ValueToString(interpreter->Stacks[i]);                \
+			printf("%s", str);                                                 \
+			free(str);                                                         \
 		}                                                                      \
 		printf(" ]\n");                                                        \
 	} while (0)
@@ -508,9 +504,6 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 	while (ip != uf->CodeC) {
 		if (interpreter->Allocated >= interpreter->GcThreshold) {
 			GarbageCollect(interpreter);
-		}
-		if (interpreter->OldCount >= interpreter->OldThreshold) {
-			MajorGarbageCollect(interpreter);
 		}
 
 		opcode	= uf->Codes[ip++];
@@ -1525,7 +1518,6 @@ void FreeInterpreter(Interpreter* interpreter) {
 	ZJitFree();
 	FreeHashMap(interpreter->Imports);
 	FreeImportNode(interpreter->ImportHead);
-	GcDestroyHeap(interpreter);
 	bf_context_end(&interpreter->BfContext);
 	if (interpreter->ExecPath)
 		free(interpreter->ExecPath);
