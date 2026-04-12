@@ -1536,15 +1536,4 @@ int ThreadStart(Thread* thread, void* (*fn)(void*), Value* arg);
  */
 void ThreadJoin(Thread thread);
 
-/**
- * @brief Blocks until any in-flight JIT compile job on this
- * interpreter finishes.
- *
- * The compiler starts JIT work on @ref Interpreter::JitThread;
- * this must run before starting another job on the same thread
- * handle, before execution reads JIT results, and before @ref
- * ZJitFree() tears down the TCC states.
- */
-void InterpreterWaitJit(Interpreter* interpreter);
-
 #endif

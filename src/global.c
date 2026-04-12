@@ -867,10 +867,3 @@ void ThreadJoin(Thread thread) {
 	pthread_join(thread, NULL);
 #endif
 }
-
-void InterpreterWaitJit(Interpreter* interpreter) {
-	if (!interpreter->JitThreadActive)
-		return;
-	ThreadJoin(interpreter->JitThread);
-	interpreter->JitThreadActive = false;
-}

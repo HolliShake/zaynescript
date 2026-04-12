@@ -32,3 +32,5 @@ try {
 } catch (e) {
     println("outer>>",e);
 }
+
+const ob = {a: 65};

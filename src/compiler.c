@@ -72,7 +72,6 @@ static void* _CompileJob(void* arg) {
 }
 
 static void _StartJitCompileJob(Compiler* compiler, JitCompileJob* job) {
-	InterpreterWaitJit(compiler->Interpreter);
 	if (ThreadStart(&compiler->Interpreter->JitThread,
 					_CompileJob,
 					(Value*) (void*) job)

@@ -1,5 +1,7 @@
 #include "./interpreter.h"
 
+#include <stdbool.h>
+
 static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
 	// libbf uses size == 0 to signal a free() operation
 	if (size == 0) {
@@ -305,21 +307,13 @@ BAD:;
 	return (LineInfo){};
 }
 
-static void _Error(Interpreter*	 interpreter,
-				   UserFunction* uf,
-				   size_t*		 ip,
-				   const String	 type,
-				   String		 message) {
-	LineInfo line = _GetLineFromPc(uf, *ip);
-	if (interpreter->ActiveTask != NULL) {
-		StateMachine* sm  = CoerceToStateMachine(interpreter->ActiveTask);
-		String		  fmt = FormatString("[%s:%d]::%s: %s",
-										 line.Path,
-										 line.Line,
-										 type,
-										 message);
-		free(message);
-		Value*		  error = NewErrorValue(interpreter, fmt);
+static void _RaiseError(Interpreter* interpreter,
+						Value*		 fn,
+						Value*		 error,
+						size_t*		 ip,
+						bool		 catchable) {
+	UserFunction* uf = CoerceToUserFunction(fn);
+	if (interpreter->ActiveTask != NULL && catchable) {
 		StateMachine* activeTask =
 			CoerceToStateMachine(interpreter->ActiveTask);
 		StateMachineReject(activeTask, error);
@@ -328,65 +322,7 @@ static void _Error(Interpreter*	 interpreter,
 		return;
 	}
 
-	if (isCatched()) {
-		ExceptionHandler handler = _PeekTry(interpreter);
-		/* Caught: create the error value and hand it to the
-		 * catch handler */
-		String fmt = FormatString("[%s:%d]::%s: %s",
-								  line.Path,
-								  line.Line,
-								  type,
-								  message);
-		free(message);
-		Value* err = NewErrorValue(interpreter, fmt);
-		free(fmt);
-		// Jump the current function to end
-		JumpToError(ip, uf->CodeC);
-		// Jump the main function to the handle
-		JumpToError(handler.PausedAddress, handler.JumpAddress);
-		_PoppTry(interpreter);
-		Push(interpreter, err);
-		return;
-	}
-
-	/* Uncaught: no need to allocate a tracked Value, just report
-	 * and abort */
-	String buf =
-		FormatString("[%s:%d]::%s: %s\n", line.Path, line.Line, type, message);
-	free(message);
-
-	for (int i = interpreter->CallStackC - 1; i >= 0; i--) {
-		StackTrace trace = interpreter->CallStack[i];
-		String	   frame =
-			FormatString("  |> [%s:%d]\n", trace.line.Path, trace.line.Line);
-		String tmp = FormatString("%s%s", buf, frame);
-		free(frame);
-		free(buf);
-		buf = tmp;
-	}
-
-	fprintf(stderr, "%s", buf);
-	free(buf);
-	ForceGarbageCollect(interpreter);
-	FreeInterpreter(interpreter);
-	fprintf(stderr, "Program exited with panic.\n");
-	exit(EXIT_FAILURE);
-}
-
-static void _RaiseError(Interpreter*  interpreter,
-						UserFunction* uf,
-						size_t*		  ip,
-						Value*		  error) {
-	if (interpreter->ActiveTask != NULL) {
-		StateMachine* activeTask =
-			CoerceToStateMachine(interpreter->ActiveTask);
-		StateMachineReject(activeTask, error);
-		Push(interpreter, interpreter->ActiveTask);
-		JumpToError(ip, uf->CodeC);
-		return;
-	}
-
-	if (isCatched()) {
+	if (isCatched() && catchable) {
 		ExceptionHandler handler = _PeekTry(interpreter);
 		/* Caught: preserve the original error value as-is for
 		 * the catch handler
@@ -423,30 +359,38 @@ static void _RaiseError(Interpreter*  interpreter,
 	exit(EXIT_FAILURE);
 }
 
-static void _ReferenceError(Interpreter*  interpreter,
-							UserFunction* uf,
-							size_t*		  ip,
-							String		  message) {
-	_Error(interpreter, uf, ip, REFERENCE_ERROR, message);
+static Value*
+_CreateError(Interpreter* interpreter, const String type, String message) {
+	String fmt = FormatString("%s: %s", type, message);
+	Value* err = NewErrorValue(interpreter, fmt);
+	free(message);
+	free(fmt);
+	return err;
 }
 
-static void _TypeError(Interpreter*	 interpreter,
-					   UserFunction* uf,
-					   size_t*		 ip,
-					   String		 message) {
-	_Error(interpreter, uf, ip, TYPE_ERROR, message);
-}
+// static void _ReferenceError(Interpreter*  interpreter,
+// 							UserFunction* uf,
+// 							size_t*		  ip,
+// 							String		  message) {
+// 	_Error(interpreter, uf, ip, REFERENCE_ERROR, message);
+// }
+
+// static void _TypeError(Interpreter*	 interpreter,
+// 					   UserFunction* uf,
+// 					   size_t*		 ip,
+// 					   String		 message) {
+// 	_Error(interpreter, uf, ip, TYPE_ERROR, message);
+// }
 
 /******* Main interpreter loop */
-void Run(Interpreter* interpreter, Value* fnValue) {
-	interpreter->ActiveFunction = fnValue;
-	Value*		  fn			= fnValue;
-	StateMachine* sm			= NULL;
+void Run(Interpreter* interpreter, Value* fnOrSm) {
+	Value*		  fn = fnOrSm;
+	StateMachine* sm = NULL;
 	UserFunction* uf =
-		ValueIsUserFunction(fnValue)
-			? CoerceToUserFunction(fnValue)
+		ValueIsUserFunction(fnOrSm)
+			? CoerceToUserFunction(fnOrSm)
 			: CoerceToUserFunction(
-				  (fn = (sm = CoerceToStateMachine(fnValue))->Function));
+				  (fn = (sm = CoerceToStateMachine(fnOrSm))->Function));
 	uint8_t		 opcode		  = 0;
 	Value*		 lhs		  = NULL;
 	Value*		 rhs		  = NULL;
@@ -470,17 +414,17 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 	bool		 localhandler = false;
 	String		 str		  = NULL;
 
-	if (ValueIsPromise(fnValue))
+	if (ValueIsPromise(fnOrSm))
 		ip = sm->Ip;
 
 	if (uf == NULL)
 		InterpreterPanic("Attempted to run a non-function value of type %s",
-						 ValueTypeOf(fnValue));
+						 ValueTypeOf(fnOrSm));
 
 	if ((uf->JitFn != NULL)
 		&& (uf->CodeC <= JIT_TRIGGER_MIN_CODE
 			|| uf->CodeC >= JIT_TRIGGER_MAX_CODE)) {
-		// compile the actual fn if was wrap by state machine
+		// compile the actual fn if it was wrapped by a state machine
 		ZJittedFn* _jit_fn = ZJitCompile(interpreter, fn);
 		if (_jit_fn != NULL) {
 			ZJittedFn _jf = (ZJittedFn) (void*) _jit_fn;
@@ -488,10 +432,10 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 										 interpreter->RootEnv,
 										 interpreter->CallEnv,
 										 // allow running state machine inside
-										 fnValue);
+										 fnOrSm);
 			if (_je != NULL && ValueIsError(_je)) {
 				size_t _ip_err = 0;
-				_RaiseError(interpreter, uf, &_ip_err, _je);
+				_RaiseError(interpreter, fn, _je, &_ip_err, true);
 			}
 			return;
 		}
@@ -516,7 +460,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					res = DoImportCore(interpreter, str);
 					if (ValueIsError(res)) {
 						free(str);
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, false);
 						break;
 					}
 					Push(interpreter, res);
@@ -530,7 +474,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					res = DoImportLib(interpreter, str);
 					if (ValueIsError(res)) {
 						free(str);
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, false);
 						break;
 					}
 					Push(interpreter, res);
@@ -544,7 +488,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					res = DoImportFile(interpreter, str);
 					if (ValueIsError(res)) {
 						free(str);
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, false);
 						break;
 					}
 					Push(interpreter, res);
@@ -557,12 +501,11 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					offset = _ReadInt32(uf->Codes, ip);
 					val	   = GetCap(uf, offset);
 					if (val == NULL) {
-						_ReferenceError(
+						err = _CreateError(
 							interpreter,
-							uf,
-							&ip,
-							AllocateString("variable is referenced before "
-										   "initialization"));
+							REFERENCE_ERROR,
+							"variable is referenced before initialization");
+						_RaiseError(interpreter, fn, err, &ip, false);
 						break;
 					}
 					Push(interpreter, val);
@@ -574,12 +517,11 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					offset = _ReadInt32(uf->Codes, ip);
 					val	   = GetVar(interpreter->RootEnv, offset);
 					if (val == NULL) {
-						_ReferenceError(
+						err = _CreateError(
 							interpreter,
-							uf,
-							&ip,
-							AllocateString("variable is referenced before "
-										   "initialization"));
+							REFERENCE_ERROR,
+							"variable is referenced before initialization");
+						_RaiseError(interpreter, fn, err, &ip, false);
 						break;
 					}
 					Push(interpreter, val);
@@ -591,12 +533,11 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					offset = _ReadInt32(uf->Codes, ip);
 					val	   = GetVar(interpreter->CallEnv, offset);
 					if (val == NULL) {
-						_ReferenceError(
+						err = _CreateError(
 							interpreter,
-							uf,
-							&ip,
-							AllocateString("variable is referenced before "
-										   "initialization"));
+							REFERENCE_ERROR,
+							"variable is referenced before initialization");
+						_RaiseError(interpreter, fn, err, &ip, false);
 						break;
 					}
 					Push(interpreter, val);
@@ -636,12 +577,13 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					ext = Popp(interpreter);
 					arr = Peek(interpreter);
 					if (!ValueIsArray(ext)) {
-						_TypeError(interpreter,
-								   uf,
-								   &ip,
-								   FormatString("expected array to extend to "
-												"be an array, got %s",
-												ValueTypeOf(ext)));
+						err = _CreateError(
+							interpreter,
+							TYPE_ERROR,
+							FormatString("expected array to extend to "
+										 "be an array, got %s",
+										 ValueTypeOf(ext)));
+						_RaiseError(interpreter, fn, err, &ip, true);
 						break;
 					}
 					ArrayExtend(CoerceToArray(arr), CoerceToArray(ext));
@@ -651,13 +593,14 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				{
 					val = Popp(interpreter);
 					arr = Peek(interpreter);
-					if (!ValueIsArray(ext)) {
-						_TypeError(interpreter,
-								   uf,
-								   &ip,
-								   FormatString("expected array to push "
-												"to be an array, got %s",
-												ValueTypeOf(ext)));
+					if (!ValueIsArray(arr)) {
+						err =
+							_CreateError(interpreter,
+										 TYPE_ERROR,
+										 FormatString("expected array to push "
+													  "to be an array, got %s",
+													  ValueTypeOf(ext)));
+						_RaiseError(interpreter, fn, err, &ip, true);
 						break;
 					}
 					ArrayPush(CoerceToArray(arr), val);
@@ -682,12 +625,13 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					ext = Popp(interpreter);
 					obj = Peek(interpreter);
 					if (!ValueIsObject(ext)) {
-						_TypeError(interpreter,
-								   uf,
-								   &ip,
-								   FormatString("expected object to extend to "
-												"be an object, got %s",
-												ValueTypeOf(ext)));
+						err = _CreateError(
+							interpreter,
+							TYPE_ERROR,
+							FormatString("expected object to extend to "
+										 "be an object, got %s",
+										 ValueTypeOf(ext)));
+						_RaiseError(interpreter, fn, err, &ip, true);
 						break;
 					}
 					HashMapExtend(CoerceToHashMap(obj), CoerceToHashMap(ext));
@@ -725,12 +669,13 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					ext = Popp(interpreter);  // super class
 					cls = Peek(interpreter);  // class being extended
 					if (!ValueIsClass(ext)) {
-						_TypeError(interpreter,
-								   uf,
-								   &ip,
-								   FormatString("expected superclass "
-												"to be a class, got %s",
-												ValueTypeOf(ext)));
+						err = _CreateError(
+							interpreter,
+							TYPE_ERROR,
+							FormatString("expected class to extend to "
+										 "be a class, got %s",
+										 ValueTypeOf(ext)));
+						_RaiseError(interpreter, fn, err, &ip, false);
 						break;
 					}
 					ClassExtend(CoerceToUserClass(cls), ext);
@@ -766,7 +711,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					obj = Peek(interpreter);
 					res = DoSetIndex(interpreter, obj, key, val);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					break;
@@ -777,7 +722,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					obj = Popp(interpreter);
 					res = DoGetIndex(interpreter, obj, key);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -801,7 +746,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					cls = Popp(interpreter);
 					res = DoCallCtor(interpreter, cls, argc);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					break;
@@ -813,7 +758,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					obj = Popp(interpreter);
 					res = DoCall(interpreter, obj, argc, false);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					break;
@@ -826,7 +771,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					obj = Popp(interpreter);  // 'this' object
 					res = DoCallMethod(interpreter, obj, key, argc);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					break;
@@ -836,7 +781,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					rhs = Popp(interpreter);
 					res = DoNot(interpreter, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -847,7 +792,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					rhs = Popp(interpreter);
 					res = DoPos(interpreter, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -858,7 +803,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					rhs = Popp(interpreter);
 					res = DoNeg(interpreter, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -962,12 +907,12 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					StateMachine* awaitedSM = CoerceToStateMachine(val);
 
 					if (awaitedSM->State == FULFILLED) {
-						EnqueueTask(interpreter, fnValue);
+						EnqueueTask(interpreter, fnOrSm);
 					} else {
-						StateMachineAddWaitList(awaitedSM, fnValue);
+						StateMachineAddWaitList(awaitedSM, fnOrSm);
 					}
 
-					Push(interpreter, fnValue);
+					Push(interpreter, fnOrSm);
 					return;
 				}
 			case OP_GET_AWAITED_VALUE:
@@ -985,7 +930,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoMul(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -997,7 +942,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoDiv(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1009,7 +954,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoMod(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1021,7 +966,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);  // old value
 					res = DoInc(interpreter, lhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1033,7 +978,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					rhs = Popp(interpreter);
 					res = DoInc(interpreter, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1045,7 +990,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoAdd(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1057,7 +1002,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);  // old value
 					res = DoDec(interpreter, lhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1069,7 +1014,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					rhs = Popp(interpreter);
 					res = DoDec(interpreter, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1081,7 +1026,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoSub(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1093,7 +1038,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoLShift(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1105,7 +1050,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoRShift(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1117,7 +1062,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoLT(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1129,7 +1074,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoLTE(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1141,7 +1086,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoGT(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1153,7 +1098,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoGTE(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1165,7 +1110,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoEQ(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1177,7 +1122,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoNE(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1189,7 +1134,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoAnd(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1201,7 +1146,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoOr(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1213,7 +1158,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoXor(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1379,7 +1324,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_RAISE:
 				{
-					_RaiseError(interpreter, uf, &ip, Popp(interpreter));
+					_RaiseError(interpreter, fn, Popp(interpreter), &ip, true);
 					break;
 				}
 			case OP_RETURN:
@@ -1388,7 +1333,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 						val = Popp(interpreter);
 
 						StateMachineFulfill(sm, val);
-						Push(interpreter, fnValue);
+						Push(interpreter, fnOrSm);
 
 						for (int i = 0; i < sm->WaitListC; i++) {
 							// Queue all listeners waiting on
@@ -1503,8 +1448,6 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 						 interpreter->StckC);
 	}
 
-	printf("Done!\n");
-
 	ForceGarbageCollect(interpreter);
 }
 
@@ -1512,8 +1455,15 @@ void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/) {
 	_RunProgram(interpreter, fnValue);
 }
 
+static void _InterpreterWaitJit(Interpreter* interpreter) {
+	if (!interpreter->JitThreadActive)
+		return;
+	ThreadJoin(interpreter->JitThread);
+	interpreter->JitThreadActive = false;
+}
+
 void FreeInterpreter(Interpreter* interpreter) {
-	InterpreterWaitJit(interpreter);
+	_InterpreterWaitJit(interpreter);
 	mg_mgr_free(&interpreter->MgMgr);
 	ZJitFree();
 	FreeHashMap(interpreter->Imports);
