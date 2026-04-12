@@ -1383,6 +1383,7 @@ ZJittedFn* ZJitCompile(Interpreter* interpreter, Value* fn) {
 	 * -DNDEBUG   : disable assert() in any inlined runtime headers
 	 * -fno-common: emit each symbol once (avoids tentative-definition merging)
 	 */
+	tcc_set_options(s, "-O2 -s -DNDEBUG -fno-common");
 
 	tcc_set_output_type(s, TCC_OUTPUT_MEMORY);
 

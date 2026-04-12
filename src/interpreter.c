@@ -1497,7 +1497,6 @@ static void _InterpreterWaitJit(Interpreter* interpreter) {
 }
 
 void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/) {
-	_InterpreterWaitJit(interpreter);
 	_RunProgram(interpreter, fnValue);
 }
 
