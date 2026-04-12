@@ -415,6 +415,7 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 		// compile the actual fn if it was wrapped by a state machine
 		ZJittedFn* _jit_fn = ZJitCompile(interpreter, fn);
 		if (_jit_fn != NULL) {
+			printf("compiling or running\n");
 			ZJittedFn _jf = (ZJittedFn) (void*) _jit_fn;
 			Value*	  _je = (Value*) _jf(interpreter,
 										 interpreter->RootEnv,
@@ -428,6 +429,7 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 			return;
 		}
 	}
+	printf("not compiling or running, running interpreter loop\n");
 
 #define Forward(size)		   (ip += size)
 #define JmpFrwd(addr)		   (ip = addr)
@@ -1497,6 +1499,7 @@ static void _InterpreterWaitJit(Interpreter* interpreter) {
 }
 
 void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/) {
+	_InterpreterWaitJit(interpreter);
 	_RunProgram(interpreter, fnValue);
 }
 

@@ -16,6 +16,7 @@
 #include <limits.h>
 #include <math.h>
 #include <stdarg.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -499,9 +500,8 @@ struct value_struct {
 	} Value;
 
 	// GC
-	Value*	Next;		/**< Next value in the GC tracking list */
-	int		Marked;		/**< GC mark flag (0 = unmarked, 1 = marked) */
-	uint8_t Generation; /**< GC generation: 0 = young (nursery), 1 = old */
+	Value* Next;   /**< Next value in the GC tracking list */
+	int	   Marked; /**< GC mark flag (0 = unmarked, 1 = marked) */
 };
 
 // -----------------------------------------------------------------------------
@@ -690,8 +690,9 @@ typedef struct user_function_struct {
 	JitMode		 JitMode;	   /**< JIT mode */
 	void* JitFn; /**< Compiled JIT function pointer, or NULL if not yet compiled
 				  */
-	bool ForceJit; /**< True if JIT compilation is forced */
-	int	 CallCount;
+	bool		ForceJit; /**< True if JIT compilation is forced */
+	int			CallCount;
+	atomic_bool Compiling;
 } UserFunction;
 
 /**

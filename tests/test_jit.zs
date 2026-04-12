@@ -1,3 +1,4 @@
+"[#jit:always]";
 import { println }  from "core:io";
 
 var i = 0;
@@ -47,7 +48,7 @@ import {Server} from "core:mongoose";
 try {
     println([1,2,3, ...([4])]);
     //ok: (2).a  = 3;
-    println(new Jit(2,3,3), Server);
+    println(new Jit(2, 3,4), Server);
 } catch (e) {
     println("ERROR", e);
 }

@@ -72,18 +72,18 @@ static void* _CompileJob(void* arg) {
 }
 
 static void _StartJitCompileJob(Compiler* compiler, JitCompileJob* job) {
-	UserFunction* uf = CoerceToUserFunction(job->fn);
-	if (uf->JitMode == JIT_DISABLED) {
-		free(job);
-		return;
-	}
-	if (ThreadStart(&compiler->Interpreter->JitThread,
-					_CompileJob,
-					(Value*) (void*) job)
-		!= 0) {
-		Panic("Failed to start JIT compilation thread!\n");
-	}
-	compiler->Interpreter->JitThreadActive = true;
+	// UserFunction* uf = CoerceToUserFunction(job->fn);
+	// if (uf->JitMode == JIT_DISABLED) {
+	// 	free(job);
+	// 	return;
+	// }
+	// if (ThreadStart(&compiler->Interpreter->JitThread,
+	// 				_CompileJob,
+	// 				(Value*) (void*) job)
+	// 	!= 0) {
+	// 	Panic("Failed to start JIT compilation thread!\n");
+	// }
+	// compiler->Interpreter->JitThreadActive = true;
 }
 
 static int _SaveFunction(Compiler* compiler, Value* fn) {

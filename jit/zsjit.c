@@ -100,6 +100,10 @@ static void _zsjit_push(Interpreter* _i, Value* v) {
 	_i->Stacks[_i->StckC++] = v;
 }
 
+static void _zsjit_popn(Interpreter* _i, int n) {
+	_i->StckC -= n;
+}
+
 static Value* _zsjit_getconst(Interpreter* _i, int off) {
 	return _i->Constants[off];
 }
@@ -134,6 +138,10 @@ static void _zsjit_pushtry(Interpreter* _i, int jmp, size_t pausedAddress) {
 
 static void _zsjit_popptry(Interpreter* _i) {
 	--_i->ExceptionHandlerStackC;
+}
+
+static int _zsjit_exception_handlers_active(Interpreter* _i) {
+	return _i->ExceptionHandlerStackC > 0;
 }
 
 static void _zsjit_seterror(Interpreter* _i, Value* err) {
@@ -295,14 +303,18 @@ static String fncode =
 	"extern Value* _zsjit_peek(Interpreter* i);\n"
 	"extern Value* _zsjit_popp(Interpreter* i);\n"
 	"extern void   _zsjit_popptry(Interpreter* _i);\n"
+	"extern void   _zsjit_popn(Interpreter* i, int n);\n"
 	"extern void   _zsjit_push(Interpreter* i, Value* v);\n"
 	"extern void   _zsjit_pushtry(Interpreter* _i, int jmp, size_t "
 	"pausedAddress);\n"
+	"extern int    _zsjit_exception_handlers_active(Interpreter* _i);\n"
 	"extern void   _zsjit_seterror(Interpreter* _i, Value* err);\n"
 	"extern void   _zsjit_setstack(Interpreter* _i, int i, Value* val);\n"
 	"extern void   _zsjit_lockvar(Interpreter* _i, Value* envObj, int off);\n"
 	"extern bool   _zsjit_should_garbagecollect(Interpreter* _i);\n"
 	"extern void   _zsjit_garbagecollect(Interpreter* _i);\n"
+	"extern void   _zsjit_raiseerror(Interpreter* _i, Value* fn, Value* err, "
+	"size_t* pc);\n"
 	/* coercion helpers */
 	"extern bool          CoerceToBool(Value* value);\n"
 	"extern Array*        CoerceToArray(Value* value);\n"
@@ -365,6 +377,7 @@ static String fncode =
 	"bool closure);\n"
 	/* value utilities */
 	"extern Value* NewArrayValue(Interpreter* interpreter);\n"
+	"extern Value* NewStrValue(Interpreter* interpreter, String value);\n"
 	"extern bool   ValueIsError(Value* v);\n"
 	/* JIT entry point */
 	"Value* __jit_fn(Interpreter* _i, Value* _re, Value* _ce, Value* _fn)\n"
@@ -372,9 +385,7 @@ static String fncode =
 	"\t(void)_fn;\n"
 	"\tUserFunction* _uf = CoerceToUserFunction(_fn);\n"
 	"\tValue* res = NULL, *a = NULL, *b = NULL, *c = NULL;\n"
-	"\tbool hasLocalErrorHandler = false;\n"
-	"\tint handlerc = 0;\n"
-	"\tint ip = 0;\n"
+	"\tsize_t ip = 0;\n"
 	"\t%s\n"
 	"}\n";
 
@@ -404,81 +415,87 @@ static struct JumpTargets Compute(UserFunction* _uf) {
 		OpcodeEnum op = _uf->Codes[ip++];
 
 		switch (op) {
-			/* Operand layout follows Run() in interpreter.c (same opcode
-			 * group order as the big switch there). */
-			/* ── null-terminated string operand ──────────────────── */
+			/* Operand layout matches Run() in interpreter.c: same case
+			 * order, same stack effects (see Codegen switch there). */
 			case OP_IMPORT_CORE:
 			case OP_IMPORT_LIB:
 			case OP_IMPORT_RELATIVE:
+				{
+					String s = _rdstr(_uf->Codes, ip);
+					ip += strlen(s) + 1;
+					free(s);
+					break;
+				}
+			case OP_LOAD_CAPTURE:
+			case OP_LOAD_NAME:
+			case OP_LOAD_LOCAL:
+			case OP_LOAD_CONST:
+			case OP_LOAD_BOOL:
+				ip += 4;
+				break;
+			case OP_LOAD_NULL:
+				break;
 			case OP_LOAD_STRING:
 			case OP_OBJECT_PLUCK_ATTRIBUTE:
 			case OP_CLASS_MAKE:
 				{
-					String s  = _rdstr(_uf->Codes, ip);
-					ip		 += strlen(s) + 1;
+					String s = _rdstr(_uf->Codes, ip);
+					ip += strlen(s) + 1;
 					free(s);
 					break;
 				}
-
-			/* ── 4-byte int operand, not a jump target ───────────── */
-			case OP_LOAD_CONST:
-			case OP_LOAD_BOOL:
-			case OP_LOAD_CAPTURE:
-			case OP_LOAD_NAME:
-			case OP_LOAD_LOCAL:
+			case OP_ARRAY_EXTEND:
+			case OP_ARRAY_PUSH:
+				break;
+			case OP_ARRAY_MAKE:
+				ip += 4;
+				break;
+			case OP_OBJECT_EXTEND:
+				break;
+			case OP_OBJECT_MAKE:
+				ip += 4;
+				break;
+			case OP_CLASS_EXTEND:
+				break;
+			case OP_CLASS_DEFINE_STATIC_MEMBER:
+			case OP_CLASS_DEFINE_INSTANCE_MEMBER:
+				break;
+			case OP_SET_INDEX:
+			case OP_GET_INDEX:
+				break;
 			case OP_LOAD_FUNCTION_CLOSURE:
 			case OP_LOAD_FUNCTION:
+				ip += 4;
+				break;
 			case OP_CALL_CTOR:
 			case OP_CALL:
 			case OP_CALL_METHOD:
-			case OP_STORE_CAPTURE:
-			case OP_STORE_NAME:
-			case OP_STORE_LOCAL:
-			case OP_LOCK_VAR:
-			case OP_ARRAY_MAKE:
-			case OP_OBJECT_MAKE:
-			case OP_POPN_TRY:
 				ip += 4;
 				break;
-
-			/* ── 4-byte int operand that IS a jump target ─────────── */
-			case OP_JUMP_IF_FALSE_OR_POP:
-			case OP_JUMP_IF_TRUE_OR_POP:
-			case OP_POP_JUMP_IF_FALSE:
-			case OP_POP_JUMP_IF_TRUE:
-			case OP_JUMP:
-			case OP_ABSOLUTE_JUMP:
-			case OP_SETUP_TRY:
-				_jt_push(_rdint(_uf->Codes, ip));
-				ip += 4;
-				break;
-
-			/* ── no extra bytecode operand (same order as Run()) ─── */
-			case OP_LOAD_NULL:
-			case OP_ARRAY_EXTEND:
-			case OP_ARRAY_PUSH:
-			case OP_OBJECT_EXTEND:
-			case OP_CLASS_EXTEND:
-			case OP_CLASS_DEFINE_STATIC_MEMBER:
-			case OP_CLASS_DEFINE_INSTANCE_MEMBER:
-			case OP_SET_INDEX:
-			case OP_GET_INDEX:
 			case OP_NOT:
 			case OP_POS:
 			case OP_NEG:
+				break;
 			case OP_AWAIT:
 			case OP_GET_AWAITED_VALUE:
+				break;
 			case OP_MUL:
 			case OP_DIV:
 			case OP_MOD:
+				break;
 			case OP_POSTINC:
 			case OP_INC:
+				break;
 			case OP_ADD:
+				break;
 			case OP_POSTDEC:
 			case OP_DEC:
+				break;
 			case OP_SUB:
+				break;
 			case OP_LSHFT:
 			case OP_RSHFT:
+				break;
 			case OP_LT:
 			case OP_LTE:
 			case OP_GT:
@@ -488,17 +505,42 @@ static struct JumpTargets Compute(UserFunction* _uf) {
 			case OP_AND:
 			case OP_OR:
 			case OP_XOR:
+				break;
+			case OP_STORE_CAPTURE:
+			case OP_STORE_NAME:
+			case OP_STORE_LOCAL:
+			case OP_LOCK_VAR:
+				ip += 4;
+				break;
 			case OP_DUPTOP:
 			case OP_DUP2:
 			case OP_POPTOP:
+				break;
 			case OP_ROT2:
 			case OP_ROT3:
 			case OP_ROT4:
+				break;
+			case OP_SETUP_TRY:
+				_jt_push(_rdint(_uf->Codes, ip));
+				ip += 4;
+				break;
 			case OP_POP_TRY:
+				break;
+			case OP_POPN_TRY:
+				ip += 4;
+				break;
+			case OP_JUMP_IF_FALSE_OR_POP:
+			case OP_JUMP_IF_TRUE_OR_POP:
+			case OP_POP_JUMP_IF_FALSE:
+			case OP_POP_JUMP_IF_TRUE:
+			case OP_JUMP:
+			case OP_ABSOLUTE_JUMP:
+				_jt_push(_rdint(_uf->Codes, ip));
+				ip += 4;
+				break;
 			case OP_RAISE:
 			case OP_RETURN:
 				break;
-
 			default:
 				break;
 		}
@@ -556,18 +598,23 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 #define peektmphandler() (handler_targets[handler_targets_top - 1])
 
 #define handleError()                                                          \
-	{                                                                          \
+	do {                                                                       \
 		if (handler_targets_top > 0) {                                         \
 			int _catch_ip = peektmphandler();                                  \
 			StrAppendf(&sb,                                                    \
-					   "if(_zsjit_geterror(_i)!=NULL&&hasLocalErrorHandler){"  \
-					   "_zsjit_seterror(_i, NULL);goto _L%d;}",                \
+					   "if(_zsjit_geterror(_i)!=NULL&&"                         \
+					   "_zsjit_exception_handlers_active(_i)){"                  \
+					   "Value*_zjite=_zsjit_geterror(_i);"                       \
+					   "_zsjit_seterror(_i,NULL);_zsjit_push(_i,_zjite);goto "   \
+					   "_L%d;}else if(_zsjit_geterror(_i)!=NULL){"               \
+					   "_zsjit_raiseerror(_i,_fn,_zsjit_geterror(_i),&ip);}",  \
 					   _catch_ip);                                             \
+		} else {                                                               \
 			StrAppend(&sb,                                                     \
-					  "else{_zsjit_raiseerror(_i, _fn, _zsjit_geterror(_i), "  \
-					  "&ip);}");                                               \
+					  "if(_zsjit_geterror(_i)!=NULL){_zsjit_raiseerror(_i,_fn," \
+					  "_zsjit_geterror(_i),&ip);}");                            \
 		}                                                                      \
-	}
+	} while (0)
 
 	while (ip < len) {
 		while (ti < t.Size && t.Target[ti] == (int) ip) {
@@ -587,8 +634,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					str = _rdstr(bytecode, ip);
 					StrAppendf(&sb,
 							   "{res=DoImportCore(_i, "
-							   "\"%s\");_zsjit_push(_i,res);}if(ValueIsError("
-							   "res)){_zsjit_seterror(_i,res);}",
+							   "\"%s\");if(ValueIsError(res)){_zsjit_seterror(_i,"
+							   "res);}else{_zsjit_push(_i,res);}}",
 							   str);
 					handleError();
 					forward(strlen(str) + 1);
@@ -600,8 +647,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					str = _rdstr(bytecode, ip);
 					StrAppendf(&sb,
 							   "{res=DoImportLib(_i, "
-							   "\"%s\");_zsjit_push(_i,res);}if(ValueIsError("
-							   "res)){_zsjit_seterror(_i,res);}",
+							   "\"%s\");if(ValueIsError(res)){_zsjit_seterror(_i,"
+							   "res);}else{_zsjit_push(_i,res);}}",
 							   str);
 					handleError();
 					forward(strlen(str) + 1);
@@ -613,8 +660,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					str = _rdstr(bytecode, ip);
 					StrAppendf(&sb,
 							   "{res=DoImportFile(_i, "
-							   "\"%s\");_zsjit_push(_i,res);}if(ValueIsError("
-							   "res)){_zsjit_seterror(_i,res);}",
+							   "\"%s\");if(ValueIsError(res)){_zsjit_seterror(_i,"
+							   "res);}else{_zsjit_push(_i,res);}}",
 							   str);
 					handleError();
 					forward(strlen(str) + 1);
@@ -680,7 +727,7 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 				{
 					str = _rdstr(bytecode, ip);
 					StrAppendf(&sb,
-							   "{_zsjit_push(_i,CreateString(\"%s\"));}",
+							   "{_zsjit_push(_i,NewStrValue(_i,\"%s\"));}",
 							   str);
 					forward(strlen(str) + 1);
 					free(str);
@@ -709,8 +756,10 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 							   "{res=NewArrayValue(_i);Array*arr=CoerceToArray("
 							   "res);for(int "
 							   "i=0;i<%d;i++){Value*val=_zsjit_getstack(_i,(_"
-							   "zsjit_getstackpntr(_i)-%d)-i);"
-							   "ArrayPush(arr,val);}_zsjit_push(_i,res);}",
+							   "zsjit_getstackpntr(_i)-%d)+i);"
+							   "ArrayPush(arr,val);}_zsjit_popn(_i,%d);"
+							   "_zsjit_push(_i,res);}",
+							   arg,
 							   arg,
 							   arg);
 					forward(4);
@@ -749,7 +798,7 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					str = _rdstr(bytecode, ip);
 					StrAppendf(
 						&sb,
-						"{a=_zsjit_peek(_i);res=HashMapGet("
+						"{a=_zsjit_peek(_i);res=(Value*)HashMapGet("
 						"CoerceToHashMap(a), "
 						"\"%s\");}_zsjit_push(_i, res==NULL?_zsjit_getnull(_"
 						"i):res);",
@@ -803,7 +852,7 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					StrAppend(
 						&sb,
 						"{c=_zsjit_popp(_i);b=_zsjit_popp(_i);a=_zsjit_peek(_i)"
-						";res=DoSetIndex(_i,a,b,c);_zsjit_push(_i,res);}if("
+						";res=DoSetIndex(_i,a,b,c);if("
 						"ValueIsError(res)){_zsjit_seterror(_i,res);}");
 					handleError();
 					break;
@@ -812,8 +861,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 				{
 					StrAppend(&sb,
 							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res="
-							  "DoGetIndex(_i,a,b);_zsjit_push(_i,res);}if("
-							  "ValueIsError(res)){_zsjit_seterror(_i,res);}");
+							  "DoGetIndex(_i,a,b);if(ValueIsError(res)){"
+							  "_zsjit_seterror(_i,res);}else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
@@ -871,28 +920,26 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 				{
 					StrAppend(&sb,
 							  "{a=_zsjit_popp(_i);res=DoNot(_i,a);"
-							  "_zsjit_push(_i,res);}if(ValueIsError(res))"
-							  "{_zsjit_seterror(_i,res);}");
+							  "if(ValueIsError(res)){_zsjit_seterror(_i,res);}"
+							  "else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
 			case OP_POS:
 				{
 					StrAppend(&sb,
-							  "{a=_zsjit_popp(_i);res=DoPos(_i,a);_zsjit_push(_"
-							  "i,res);}if(ValueIsError(res))"
-							  "{_zsjit_seterror(_"
-							  "i,res);}");
+							  "{a=_zsjit_popp(_i);res=DoPos(_i,a);"
+							  "if(ValueIsError(res)){_zsjit_seterror(_i,res);}"
+							  "else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
 			case OP_NEG:
 				{
 					StrAppend(&sb,
-							  "{a=_zsjit_popp(_i);res=DoNeg(_i,a);_zsjit_push(_"
-							  "i,res);}if(ValueIsError(res))"
-							  "{_zsjit_seterror(_"
-							  "i,res);}");
+							  "{a=_zsjit_popp(_i);res=DoNeg(_i,a);"
+							  "if(ValueIsError(res)){_zsjit_seterror(_i,res);}"
+							  "else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
@@ -911,8 +958,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 				{
 					StrAppend(&sb,
 							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoMul(_"
-							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
-							  "){_zsjit_seterror(_i,res);}");
+							  "i,a,b);if(ValueIsError(res)){_zsjit_seterror(_i,res);}"
+							  "else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
@@ -920,8 +967,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 				{
 					StrAppend(&sb,
 							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoDiv(_"
-							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
-							  "){_zsjit_seterror(_i,res);}");
+							  "i,a,b);if(ValueIsError(res)){_zsjit_seterror(_i,res);}"
+							  "else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
@@ -930,18 +977,17 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					StrAppend(
 						&sb,
 						"{b=_zsjit_popp(_i);a=_zsjit_popp(_i);"
-						"res=DoMod(_i,a,b);_zsjit_push(_i,res);}"
-						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}");
+						"res=DoMod(_i,a,b);if(ValueIsError(res)){_zsjit_seterror(_i,"
+						"res);}else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
 			case OP_POSTINC:
 				{
 					StrAppend(&sb,
-							  "{a=_zsjit_popp(_i);res=DoInc(_i,a);_zsjit_push("
-							  "_i,res);_zsjit_push(_i,a);}if(ValueIsError(res))"
-							  "{_zsjit_seterror(_"
-							  "i,res);}");
+							  "{a=_zsjit_popp(_i);res=DoInc(_i,a);"
+							  "if(ValueIsError(res)){_zsjit_seterror(_i,res);}"
+							  "else{_zsjit_push(_i,res);_zsjit_push(_i,a);}}");
 					handleError();
 					break;
 				}
@@ -949,8 +995,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 				{
 					StrAppend(&sb,
 							  "{a=_zsjit_popp(_i);res=DoInc(_i,a);"
-							  "_zsjit_push(_i,res);}if(ValueIsError(res))"
-							  "{_zsjit_seterror(_i,res);}");
+							  "if(ValueIsError(res)){_zsjit_seterror(_i,res);}"
+							  "else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
@@ -958,8 +1004,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 				{
 					StrAppend(&sb,
 							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoAdd(_"
-							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
-							  "){_zsjit_seterror(_i,res);}");
+							  "i,a,b);if(ValueIsError(res)){_zsjit_seterror(_i,res);}"
+							  "else{_zsjit_push(_i,res);}}");
 
 					handleError();
 					break;
@@ -969,8 +1015,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					StrAppend(
 						&sb,
 						"{a=_zsjit_popp(_i);res=DoDec(_i,a);"
-						"_zsjit_push(_i,res);_zsjit_push(_i,a);}"
-						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}");
+						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}"
+						"else{_zsjit_push(_i,res);_zsjit_push(_i,a);}}");
 					handleError();
 					break;
 				}
@@ -978,8 +1024,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 				{
 					StrAppend(&sb,
 							  "{a=_zsjit_popp(_i);res=DoDec(_i,a);"
-							  "_zsjit_push(_i,res);}if(ValueIsError(res))"
-							  "{_zsjit_seterror(_i,res);}");
+							  "if(ValueIsError(res)){_zsjit_seterror(_i,res);}"
+							  "else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
@@ -987,8 +1033,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 				{
 					StrAppend(&sb,
 							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoSub(_"
-							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
-							  "){_zsjit_seterror(_i,res);}");
+							  "i,a,b);if(ValueIsError(res)){_zsjit_seterror(_i,res);}"
+							  "else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
@@ -997,8 +1043,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					StrAppend(
 						&sb,
 						"{b=_zsjit_popp(_i);a=_zsjit_popp(_i);"
-						"res=DoLShift(_i,a,b);_zsjit_push(_i,res);}"
-						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}");
+						"res=DoLShift(_i,a,b);if(ValueIsError(res)){_zsjit_seterror(_i,"
+						"res);}else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
@@ -1007,8 +1053,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					StrAppend(
 						&sb,
 						"{b=_zsjit_popp(_i);a=_zsjit_popp(_i);"
-						"res=DoRShift(_i,a,b);_zsjit_push(_i,res);}"
-						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}");
+						"res=DoRShift(_i,a,b);if(ValueIsError(res)){_zsjit_seterror(_i,"
+						"res);}else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
@@ -1017,8 +1063,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 				{
 					StrAppend(&sb,
 							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoLT(_"
-							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
-							  "){_zsjit_seterror(_i,res);}");
+							  "i,a,b);if(ValueIsError(res)){_zsjit_seterror(_i,res);}"
+							  "else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
@@ -1026,8 +1072,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 				{
 					StrAppend(&sb,
 							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoLTE(_"
-							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
-							  "){_zsjit_seterror(_i,res);}");
+							  "i,a,b);if(ValueIsError(res)){_zsjit_seterror(_i,res);}"
+							  "else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
@@ -1035,8 +1081,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 				{
 					StrAppend(&sb,
 							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoGT(_"
-							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
-							  "){_zsjit_seterror(_i,res);}");
+							  "i,a,b);if(ValueIsError(res)){_zsjit_seterror(_i,res);}"
+							  "else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
@@ -1044,8 +1090,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 				{
 					StrAppend(&sb,
 							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoGTE(_"
-							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
-							  "){_zsjit_seterror(_i,res);}");
+							  "i,a,b);if(ValueIsError(res)){_zsjit_seterror(_i,res);}"
+							  "else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
@@ -1053,8 +1099,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 				{
 					StrAppend(&sb,
 							  "{b=_zsjit_popp(_i);a=_zsjit_popp(_i);res=DoEQ(_"
-							  "i,a,b);_zsjit_push(_i,res);}if(ValueIsError(res)"
-							  "){_zsjit_seterror(_i,res);}");
+							  "i,a,b);if(ValueIsError(res)){_zsjit_seterror(_i,res);}"
+							  "else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
@@ -1063,8 +1109,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					StrAppend(
 						&sb,
 						"{b=_zsjit_popp(_i);a=_zsjit_popp(_i);"
-						"res=DoNE(_i,a,b);_zsjit_push(_i,res);}"
-						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}");
+						"res=DoNE(_i,a,b);if(ValueIsError(res)){_zsjit_seterror(_i,"
+						"res);}else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
@@ -1073,8 +1119,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					StrAppend(
 						&sb,
 						"{b=_zsjit_popp(_i);a=_zsjit_popp(_i);"
-						"res=DoAnd(_i,a,b);_zsjit_push(_i,res);}"
-						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}");
+						"res=DoAnd(_i,a,b);if(ValueIsError(res)){_zsjit_seterror(_i,"
+						"res);}else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
@@ -1083,8 +1129,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					StrAppend(
 						&sb,
 						"{b=_zsjit_popp(_i);a=_zsjit_popp(_i);"
-						"res=DoOr(_i,a,b);_zsjit_push(_i,res);}"
-						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}");
+						"res=DoOr(_i,a,b);if(ValueIsError(res)){_zsjit_seterror(_i,"
+						"res);}else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
@@ -1093,8 +1139,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					StrAppend(
 						&sb,
 						"{b=_zsjit_popp(_i);a=_zsjit_popp(_i);"
-						"res=DoXor(_i,a,b);_zsjit_push(_i,res);}"
-						"if(ValueIsError(res)){_zsjit_seterror(_i,res);}");
+						"res=DoXor(_i,a,b);if(ValueIsError(res)){_zsjit_seterror(_i,"
+						"res);}else{_zsjit_push(_i,res);}}");
 					handleError();
 					break;
 				}
@@ -1200,9 +1246,7 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					off = _rdint(bytecode, ip);
 					pushtmphandler(off);
 					StrAppendf(&sb,
-							   "_TRY_%d_to_%d:;{hasLocalErrorHandler=true;++"
-							   "handlerc;_zsjit_"
-							   "pushtry(_i,%d,%zu);}",
+							   "_TRY_%d_to_%d:;{_zsjit_pushtry(_i,%d,%zu);}",
 							   ip,
 							   off,
 							   off,
@@ -1212,10 +1256,15 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 				}
 			case OP_POP_TRY:
 				{
-					popptmphandler();
-					StrAppend(&sb,
-							  "{hasLocalErrorHandler=(--handlerc)>0;_zsjit_"
-							  "popptry(_i);}");
+					/* Normal try exit is POP_TRY then OP_JUMP past the catch.
+					 * That POP may never run on the exception path; the catch
+					 * block begins with another POP_TRY. Only the success-path
+					 * form (POP_TRY immediately before JUMP) must not pop the
+					 * compile-time handler stack — otherwise nested try/catch
+					 * mis-pairs later handleError() with the wrong _L target. */
+					if (!(ip < len && uf->Codes[ip] == OP_JUMP))
+						popptmphandler();
+					StrAppend(&sb, "{_zsjit_popptry(_i);}");
 					break;
 				}
 			case OP_POPN_TRY:
@@ -1227,10 +1276,8 @@ static String Codegen(Interpreter* interpreter, Value* fn) {
 					}
 					StrAppendf(&sb,
 							   "{int _pn=%d;"
-							   "for(int _pi=0;_pi<_pn;_pi++)"
-							   "{_zsjit_popptry(_i);}"
-							   "handlerc-=_pn;"
-							   "hasLocalErrorHandler=handlerc>0;}",
+							   "for(int _pi=0;_pi<_pn;_pi++){"
+							   "_zsjit_popptry(_i);}}",
 							   off);
 					forward(4);
 					break;
@@ -1348,6 +1395,7 @@ static size_t	  _tcc_states_cap = 0;
 static void _tcc_silent_error(void* opaque, const char* msg) {
 	(void) opaque;
 	(void) msg;
+	printf("TCC silent error: %s\n", msg);
 }
 
 static void _tcc_register(TCCState* s) {
@@ -1362,19 +1410,39 @@ static void _tcc_register(TCCState* s) {
 ZJittedFn* ZJitCompile(Interpreter* interpreter, Value* fn) {
 	UserFunction* uf = CoerceToUserFunction(fn);
 
+	uf->Compiling = true;
+
 	if (uf->JitFn != NULL)
 		return (ZJittedFn*) uf->JitFn;
 
 	String code = Codegen(interpreter, fn);
-	if (code == NULL)
+	if (code == NULL) {
+		printf("Codegen failed!\n");
+		exit(1);
 		return NULL;
+	}
 
 	// printf(">>%s\n", code);
 
 	TCCState* s = tcc_new();
 	if (s == NULL) {
+		printf("TCCState creation failed!\n");
+		exit(1);
 		free(code);
 		return NULL;
+	}
+
+	/* `tcc_relocate` loads `libtcc1.a` from TinyCC’s lib dir (runtime helpers).
+	 * Build with `-DZSCRIPT_TCC_LIB_PATH=...` (see Makefile), or set env
+	 * `ZSCRIPT_TCC_LIB` to that directory when moving the binary. */
+	{
+		const char* tcclib = getenv("ZSCRIPT_TCC_LIB");
+#ifdef ZSCRIPT_TCC_LIB_PATH
+		if (tcclib == NULL || tcclib[0] == '\0')
+			tcclib = ZSCRIPT_TCC_LIB_PATH;
+#endif
+		if (tcclib != NULL && tcclib[0] != '\0')
+			tcc_set_lib_path(s, tcclib);
 	}
 
 	tcc_set_error_func(s, NULL, _tcc_silent_error);
@@ -1383,13 +1451,16 @@ ZJittedFn* ZJitCompile(Interpreter* interpreter, Value* fn) {
 	 * -DNDEBUG   : disable assert() in any inlined runtime headers
 	 * -fno-common: emit each symbol once (avoids tentative-definition merging)
 	 */
-	tcc_set_options(s, "-O2 -s -DNDEBUG -fno-common");
+	// tcc_set_options(s, "-O2 -s -DNDEBUG -fno-common");
 
 	tcc_set_output_type(s, TCC_OUTPUT_MEMORY);
 
 	if (tcc_compile_string(s, code) == -1) {
+		printf("Compilation failed!\n");
+		uf->Compiling = false;
 		free(code);
 		tcc_delete(s);
+		exit(1);
 		return NULL;
 	}
 
@@ -1397,6 +1468,7 @@ ZJittedFn* ZJitCompile(Interpreter* interpreter, Value* fn) {
 
 	tcc_add_symbol(s, "_zsjit_popp", (void*) _zsjit_popp);
 	tcc_add_symbol(s, "_zsjit_peek", (void*) _zsjit_peek);
+	tcc_add_symbol(s, "_zsjit_popn", (void*) _zsjit_popn);
 	tcc_add_symbol(s, "_zsjit_push", (void*) _zsjit_push);
 	tcc_add_symbol(s, "_zsjit_getconst", (void*) _zsjit_getconst);
 	tcc_add_symbol(s, "_zsjit_gettrue", (void*) _zsjit_gettrue);
@@ -1406,6 +1478,9 @@ ZJittedFn* ZJitCompile(Interpreter* interpreter, Value* fn) {
 	tcc_add_symbol(s, "_zsjit_getcap", (void*) _zsjit_getcap);
 	tcc_add_symbol(s, "_zsjit_pushtry", (void*) _zsjit_pushtry);
 	tcc_add_symbol(s, "_zsjit_popptry", (void*) _zsjit_popptry);
+	tcc_add_symbol(s,
+				   "_zsjit_exception_handlers_active",
+				   (void*) _zsjit_exception_handlers_active);
 	tcc_add_symbol(s, "_zsjit_seterror", (void*) _zsjit_seterror);
 	tcc_add_symbol(s, "_zsjit_geterror", (void*) _zsjit_geterror);
 	tcc_add_symbol(s, "_zsjit_getstackpntr", (void*) _zsjit_getstackpntr);
@@ -1415,6 +1490,9 @@ ZJittedFn* ZJitCompile(Interpreter* interpreter, Value* fn) {
 				   "_zsjit_should_garbagecollect",
 				   (void*) _zsjit_should_garbagecollect);
 	tcc_add_symbol(s, "_zsjit_garbagecollect", (void*) _zsjit_garbagecollect);
+	// raise error
+	tcc_add_symbol(s, "_zsjit_raiseerror", (void*) _zsjit_raiseerror);
+
 	/* libc */
 	tcc_add_symbol(s, "free", (void*) free);
 	/* array / hashmap */
@@ -1487,22 +1565,35 @@ ZJittedFn* ZJitCompile(Interpreter* interpreter, Value* fn) {
 	tcc_add_symbol(s, "DoLoadFunction", (void*) DoLoadFunction);
 	/* value utilities */
 	tcc_add_symbol(s, "NewArrayValue", (void*) NewArrayValue);
+	tcc_add_symbol(s, "NewStrValue", (void*) NewStrValue);
 	tcc_add_symbol(s, "ValueIsError", (void*) ValueIsError);
+	tcc_add_symbol(s, "ValueIsEqual", (void*) ValueIsEqual);
+	tcc_add_symbol(s, "CoerceToI64", (void*) CoerceToI64);
+	tcc_add_symbol(s, "CoerceToNum", (void*) CoerceToNum);
+	tcc_add_symbol(s, "NewIntValue", (void*) NewIntValue);
+	tcc_add_symbol(s, "NewNumValue", (void*) NewNumValue);
+	tcc_add_symbol(s, "NewErrorFValue", (void*) NewErrorFValue);
 	/* jit ABI */
 	tcc_add_symbol(s, "_zsjit_lockvar", (void*) _zsjit_lockvar);
+	tcc_add_symbol(s, "_zsjit_raiseerror", (void*) _zsjit_raiseerror);
 	if (tcc_relocate(s) == -1) {
+		printf("TCC relocation failed!\n");
+		exit(1);
 		tcc_delete(s);
 		return NULL;
 	}
 
 	void* sym = tcc_get_symbol(s, "__jit_fn");
 	if (sym == NULL) {
+		printf("__jit_fn symbol not found!\n");
+		exit(1);
 		tcc_delete(s);
 		return NULL;
 	}
 
 	_tcc_register(s);
-	uf->JitFn = sym;
+	uf->JitFn	  = sym;
+	uf->Compiling = false;
 	return (ZJittedFn*) sym;
 }
 

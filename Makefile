@@ -45,10 +45,14 @@ BUILD_DATE := $(shell date '+%Y-%m-%d %H:%M:%S')
 # Override include path: ``make TCC_CPPFLAGS=``.
 TINYCC_DIR  ?= tinycc
 LIBTCC_A    := $(TINYCC_DIR)/libtcc.a
+LIBTCC1_A   := $(TINYCC_DIR)/libtcc1.a
 TCC_CPPFLAGS ?= -I $(TINYCC_DIR)
+# Absolute path so in-memory JIT (`tcc_relocate`) can find `libtcc1.a`
+ZJIT_TCC_LIBDIR := $(abspath $(TINYCC_DIR))
 
 # ── Base Flags (Applied to all targets) ─────────────────────
-CFLAGS_BASE := -Wno-pointer-sign $(TCC_CPPFLAGS) -DBUILD_DATE='"$(BUILD_DATE)"'
+CFLAGS_BASE := -Wno-pointer-sign $(TCC_CPPFLAGS) -DBUILD_DATE='"$(BUILD_DATE)"' \
+	-DZSCRIPT_TCC_LIB_PATH=\"$(ZJIT_TCC_LIBDIR)\"
 # libtcc.a is linked explicitly so the executable does not depend on libtcc.so.
 LDFLAGS     := -lm -ldl -lpthread $(LIBTCC_A)
 
@@ -59,6 +63,11 @@ $(TINYCC_DIR)/config.mak: $(TINYCC_DIR)/configure
 $(LIBTCC_A): $(TINYCC_DIR)/config.mak
 	@echo "Building static $(LIBTCC_A)..."
 	$(MAKE) -C $(TINYCC_DIR) libtcc.a CC=$(CC)
+
+# Runtime helpers for `TCC_OUTPUT_MEMORY` / `tcc_relocate` (built after `tcc`).
+$(LIBTCC1_A): $(LIBTCC_A)
+	@echo "Building $(LIBTCC1_A) (TinyCC runtime)..."
+	$(MAKE) -C $(TINYCC_DIR) libtcc1.a CC=$(CC)
 
 # Default RPATH points to the directory containing the executable ($ORIGIN)
 RPATH_FLAG  := -Wl,-rpath,'$$ORIGIN'
@@ -96,19 +105,19 @@ $(SQLITE_LIB): sqlite/sqlite3.c | $(DIST_DIR)
 	@echo "Building SQLite shared library..."
 	$(CC) -fPIC -shared -O2 -o $@ $<
 
-release: $(LIBTCC_A) $(SQLITE_LIB) copy_assets | $(DIST_DIR)
+release: $(LIBTCC_A) $(LIBTCC1_A) $(SQLITE_LIB) copy_assets | $(DIST_DIR)
 	@echo "Building in release mode (clang, super-optimized, sqlite dynamic, vendored libtcc static)..."
 	$(CC) $(CFLAGS_BASE) $(CFLAGS_REL) $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_REL) -L$(DIST_DIR) -lsqlite3 $(RPATH_FLAG)
 	@echo "Build successful → $(TARGET)"
 
 # Override RPATH for installation so the binary knows to look in $(LIBDIR) at runtime
 release-install: RPATH_FLAG := -Wl,-rpath,'$(LIBDIR)'
-release-install: $(LIBTCC_A) $(SQLITE_LIB) copy_assets | $(DIST_DIR)
+release-install: $(LIBTCC_A) $(LIBTCC1_A) $(SQLITE_LIB) copy_assets | $(DIST_DIR)
 	@echo "Building in release mode (install RPATH, sqlite dynamic, vendored libtcc static)..."
 	$(CC) $(CFLAGS_BASE) $(CFLAGS_REL) $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_REL) -L$(DIST_DIR) -lsqlite3 $(RPATH_FLAG)
 	@echo "Build successful → $(TARGET)"
 
-debug: $(LIBTCC_A) $(SQLITE_LIB) copy_assets | $(DIST_DIR)
+debug: $(LIBTCC_A) $(LIBTCC1_A) $(SQLITE_LIB) copy_assets | $(DIST_DIR)
 	@echo "Building in debug mode (sqlite + vendored libtcc static)..."
 	$(CC) $(CFLAGS_BASE) $(CFLAGS_DBG) $(SRCS) -o $(TARGET) $(LDFLAGS) -L$(DIST_DIR) -lsqlite3 $(RPATH_FLAG)
 	@echo "Build successful → $(TARGET)"
@@ -120,7 +129,7 @@ clean:
 # default ``clean`` so incremental zscript builds keep a warm libtcc.a.
 clean-tinycc:
 	$(MAKE) -C $(TINYCC_DIR) distclean 2>/dev/null || true
-	rm -f $(LIBTCC_A)
+	rm -f $(LIBTCC_A) $(LIBTCC1_A)
 
 install: release-install
 	@echo "Installing $(TARGET) → $(BINDIR)/zscript"

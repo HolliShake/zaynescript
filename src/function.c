@@ -19,6 +19,7 @@ UserFunction* CreateUserFunction(String name, int argc, bool async) {
 	userFunction->JitFn		   = NULL;
 	userFunction->ForceJit	   = false;
 	userFunction->CallCount	   = 0;
+	userFunction->Compiling	   = false;
 	return userFunction;
 }
 
@@ -41,6 +42,7 @@ UserFunction* CreateMainUserFunction(String name, int argc) {
 	userFunction->JitFn		   = NULL;
 	userFunction->ForceJit	   = false;
 	userFunction->CallCount	   = 0;
+	userFunction->Compiling	   = false;
 	return userFunction;
 }
 
@@ -82,6 +84,7 @@ UserFunction* UserFunctionClone(UserFunction* userFunction) {
 	clone->JitFn	 = userFunction->JitFn;
 	clone->ForceJit	 = userFunction->ForceJit;
 	clone->CallCount = 0;
+	clone->Compiling = false;
 	return clone;
 }
 
