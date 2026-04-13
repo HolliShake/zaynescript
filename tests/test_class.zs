@@ -24,5 +24,13 @@ println(dg);
 const a = [18];
 a.push(19);
 
-println(a, dg.t());
+const ob = {
+    cls:  Dog
+};
+
+
+import { Object } from "core:object";
+import { Array } from "core:array";
+
+println(a, dg.t(), new Dog, new ob.cls, new Object, new Array);
 

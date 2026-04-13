@@ -71,6 +71,7 @@ Value* _ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
 
 	Value* arrayVal = NewArrayValue(interpreter);
 	Array* newArray = CoerceToArray(arrayVal);
+	Push(interpreter, arrayVal);
 
 	for (size_t i = 0; i < ArrayLength(array); i++) {
 		Value* item	 = ArrayGet(array, i);
@@ -81,6 +82,7 @@ Value* _ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
 		ArrayPush(newArray, Popp(interpreter));
 	}
 
+	Popp(interpreter);
 	return arrayVal;
 }
 
@@ -118,6 +120,7 @@ Value* _ArrayKeep(Interpreter* interpreter, int argc, Value** arguments) {
 
 	Value* arrayVal = NewArrayValue(interpreter);
 	Array* newArray = CoerceToArray(arrayVal);
+	Push(interpreter, arrayVal);
 
 	for (size_t i = 0; i < ArrayLength(array); i++) {
 		Value* item	 = ArrayGet(array, i);
@@ -130,6 +133,7 @@ Value* _ArrayKeep(Interpreter* interpreter, int argc, Value** arguments) {
 		}
 	}
 
+	Popp(interpreter);
 	return arrayVal;
 }
 

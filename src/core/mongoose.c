@@ -365,8 +365,9 @@ static String _JsonEscape(const String src) {
  * @brief Represents a single registered HTTP route handler.
  */
 typedef struct {
-	String Method;  /**< HTTP method string (e.g. "GET", "POST"), or NULL for wildcard */
-	String Path;    /**< URL path pattern used by mg_match() */
+	String Method;	/**< HTTP method string (e.g. "GET", "POST"), or NULL for
+					   wildcard */
+	String Path;	/**< URL path pattern used by mg_match() */
 	Value* Handler; /**< Callable Value invoked when the route matches */
 } Route;
 
@@ -375,16 +376,17 @@ typedef struct {
  * the Server ClassInstance).
  */
 typedef struct {
-	Route*				  Routes;                   /**< Array of registered route handlers */
-	size_t				  Count;                    /**< Number of routes registered */
-	size_t				  Capacity;                 /**< Allocated capacity of the Routes array */
-	Value*				  Middleware[MAX_MIDDLEWARE]; /**< Array of middleware callbacks */
-	size_t				  MwCount;                  /**< Number of registered middleware callbacks */
-	Interpreter*		  Interp;                   /**< Interpreter instance owning this server */
-	struct mg_connection* Listener;                 /**< Mongoose listening connection on interp->MgMgr */
-	bool				  Running;                  /**< True while the server event loop is active */
-	Value*				  ReqClass;                 /**< Built-in Request class Value */
-	Value*				  ResClass;                 /**< Built-in Response class Value */
+	Route* Routes;	 /**< Array of registered route handlers */
+	size_t Count;	 /**< Number of routes registered */
+	size_t Capacity; /**< Allocated capacity of the Routes array */
+	Value* Middleware[MAX_MIDDLEWARE]; /**< Array of middleware callbacks */
+	size_t MwCount;		 /**< Number of registered middleware callbacks */
+	Interpreter* Interp; /**< Interpreter instance owning this server */
+	struct mg_connection*
+		   Listener;	 /**< Mongoose listening connection on interp->MgMgr */
+	bool   Running;		 /**< True while the server event loop is active */
+	Value* ReqClass;	 /**< Built-in Request class Value */
+	Value* ResClass;	 /**< Built-in Response class Value */
 } AppState;
 
 /**
@@ -392,9 +394,9 @@ typedef struct {
  * to link it with the parsed HTTP message and response state.
  */
 typedef struct {
-	struct mg_connection*   Conn;      /**< Active Mongoose connection */
-	struct mg_http_message* Msg;       /**< Parsed HTTP request message */
-	bool                    Responded; /**< True once a response has been sent */
+	struct mg_connection*	Conn; /**< Active Mongoose connection */
+	struct mg_http_message* Msg;  /**< Parsed HTTP request message */
+	bool Responded;				  /**< True once a response has been sent */
 } ReqResCtx;
 
 /* -----------------------------------------------------------------------
@@ -1259,14 +1261,14 @@ _BuildClass(Interpreter* interp, const String name, ModuleFunction methods[]) {
  * Mongoose connection fn_data during the async request lifecycle.
  */
 typedef struct {
-	Interpreter* interp;    /**< Interpreter instance owning the fetch */
-	Value*       promise;   /**< Promise Value to resolve/reject on completion */
-	char*        host;      /**< Host header value for the request */
-	char*        uri;       /**< Request URI path */
-	char*        method;    /**< HTTP method string (e.g. "GET", "POST") */
-	char*        extraHdr;  /**< Additional raw headers string (may be NULL) */
-	char*        bodyStr;   /**< Request body payload (may be NULL) */
-	bool         sent;      /**< True once the request line has been sent */
+	Interpreter* interp;   /**< Interpreter instance owning the fetch */
+	Value*		 promise;  /**< Promise Value to resolve/reject on completion */
+	char*		 host;	   /**< Host header value for the request */
+	char*		 uri;	   /**< Request URI path */
+	char*		 method;   /**< HTTP method string (e.g. "GET", "POST") */
+	char*		 extraHdr; /**< Additional raw headers string (may be NULL) */
+	char*		 bodyStr;  /**< Request body payload (may be NULL) */
+	bool		 sent;	   /**< True once the request line has been sent */
 } FetchCtx;
 
 static void _FetchEvHandler(struct mg_connection* c, int ev, void* ev_data) {

@@ -17,6 +17,7 @@
 #include "./os.h"
 #include "./promise.h"
 #include "./sqlite.h"
+#include "./utf8.h"
 
 #ifndef CORE_LOADER_H
 #	define CORE_LOADER_H

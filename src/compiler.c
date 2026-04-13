@@ -648,7 +648,13 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 		case AST_ALLOCATION:
 			{
 				Ast* cls	   = node->A;
-				Ast* arguments = node->B;
+				Ast* arguments = NULL;
+
+				if (cls->Type == AST_CALL) {
+					Ast* ctor_call = cls;
+					arguments	   = ctor_call->B;
+					cls			   = ctor_call->A;
+				}
 
 				int argc = 0;
 				// Count arguments first

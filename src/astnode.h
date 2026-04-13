@@ -195,13 +195,11 @@ Ast* AstObjectLiteral(Ast* properties, Position position);
  * represents a class instantiation (new) expression.
  *
  * @param cls Pointer to the class AST node.
- * @param arguments Pointer to the constructor arguments AST
- * node.
  * @param position Source code location information.
  * @return Pointer to newly allocated AST_ALLOCATION node, or
  * NULL on allocation failure.
  */
-Ast* AstAllocation(Ast* cls, Ast* arguments, Position position);
+Ast* AstAllocation(Ast* cls, Position position);
 
 /**
  * @brief Creates an AST node representing a member access.
