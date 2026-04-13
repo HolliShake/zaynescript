@@ -66,7 +66,9 @@ Value* NewBigNumValue(Interpreter* interpreter, bf_t* value) {
 }
 
 Value* NewStrValue(Interpreter* interpreter, String value) {
-	Value* v		= _CreateValue(interpreter, VLT_STR);
+	Value* v = _CreateValue(interpreter, VLT_STR);
+	/* String values store UTF-32 rune arrays (see StringToRunes, Utf8Core_*).
+	 */
 	v->Value.Opaque = StringToRunes(value);
 	return v;
 }
