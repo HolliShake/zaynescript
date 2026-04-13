@@ -10,6 +10,7 @@
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
+#include <assert.h>
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
