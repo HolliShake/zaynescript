@@ -737,8 +737,9 @@ static ModuleFunction _DbClassMethods[] = {
 // Class factory + module loader
 // =============================================================================
 
-static Value*
-_BuildClass(Interpreter* interp, const char* name, ModuleFunction methods[]) {
+static Value* _SqliteBuildClass(Interpreter*   interp,
+								const char*	   name,
+								ModuleFunction methods[]) {
 	Value* classVal =
 		NewClassValue(interp, CreateUserClass((String) name, NULL));
 	Class* cls = CoerceToUserClass(classVal);
@@ -764,8 +765,9 @@ _BuildClass(Interpreter* interp, const char* name, ModuleFunction methods[]) {
 // built fresh on each call and stored exclusively as a GC-visible static member
 // of Database — no interpreter-global C statics, no GC-invisible raw pointers.
 Value* LoadCoreSqlite(Interpreter* interp) {
-	Value* stmtClass = _BuildClass(interp, "Statement", _StmtClassMethods);
-	Value* dbClass	 = _BuildClass(interp, "Database", _DbClassMethods);
+	Value* stmtClass =
+		_SqliteBuildClass(interp, "Statement", _StmtClassMethods);
+	Value* dbClass = _SqliteBuildClass(interp, "Database", _DbClassMethods);
 
 	// Store Statement class as a static (class-level) member of Database so
 	// the GC keeps it alive as long as the Database class is reachable, and

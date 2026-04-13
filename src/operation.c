@@ -19,10 +19,26 @@
 #define GetOffset() (interpreter->ConstantC)
 
 /**
+ * @brief Sets the currently active function.
+ * @param interpreter The interpreter instance.
+ * @param function The function to set as active.
+ * @origin src/interpreter.c:118
+ */
+extern void SetActiveFunction(Interpreter* interpreter, Value* function);
+
+/**
+ * @brief Sets the currently active task.
+ * @param interpreter The interpreter instance.
+ * @param task The task to set as active.
+ * @origin src/interpreter.c:122
+ */
+extern void SetActiveTask(Interpreter* interpreter, Value* task);
+
+/**
  * @brief Pushes a value onto the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @param value The value to push.
- * @origin src/interpreter.c:115
+ * @origin src/interpreter.c:126
  */
 extern void Push(Interpreter* interpreter, Value* value);
 
@@ -31,7 +47,7 @@ extern void Push(Interpreter* interpreter, Value* value);
  * stack.
  * @param interpreter The interpreter instance.
  * @return The popped value.
- * @origin src/interpreter.c:119
+ * @origin src/interpreter.c:130
  */
 extern Value* Popp(Interpreter* interpreter);
 
@@ -39,7 +55,7 @@ extern Value* Popp(Interpreter* interpreter);
  * @brief Pops N values from the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @param n The number of values to pop.
- * @origin src/interpreter.c:123
+ * @origin src/interpreter.c:134
  */
 extern void PopN(Interpreter* interpreter, int n);
 
@@ -48,7 +64,7 @@ extern void PopN(Interpreter* interpreter, int n);
  * without removing it.
  * @param interpreter The interpreter instance.
  * @return The top value on the stack.
- * @origin src/interpreter.c:127
+ * @origin src/interpreter.c:138
  */
 extern Value* Peek(Interpreter* interpreter);
 
@@ -84,7 +100,7 @@ static void _DupTop(Interpreter* interpreter) {
  * function value.
  * @param interpreter The interpreter instance.
  * @param fnValue The compiled function value to execute.
- * @origin src/interpreter.c:416
+ * @origin src/interpreter.c:375
  */
 extern void Run(Interpreter* interpreter, Value* fnValue);
 
@@ -442,7 +458,7 @@ extern void FreeAst(Ast* ast);
  * @param interpreter The interpreter instance.
  * @param parser The parser to read AST from.
  * @return A new Compiler instance.
- * @origin src/compiler.c:13
+ * @origin src/compiler.c:12
  */
 extern Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
 
@@ -452,7 +468,7 @@ extern Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
  * @param compiler The compiler instance.
  * @param programAst The AST to compile.
  * @return The compiled function value.
- * @origin src/compiler.c:3341
+ * @origin src/compiler.c:3340
  */
 extern Value* CompileAst(Compiler* compiler, Ast* programAst);
 
@@ -467,7 +483,7 @@ extern void FreeCompiler(Compiler* compiler);
  * @brief Interprets a compiled function value.
  * @param interpreter The interpreter instance.
  * @param compiled The compiled function value to interpret.
- * @origin src/interpreter.c:1469
+ * @origin src/interpreter.c:1465
  */
 extern void Interpret(Interpreter* interpreter, Value* compiled);
 
@@ -635,6 +651,7 @@ DoSetIndex(Interpreter* interpreter, Value* obj, Value* index, Value* val) {
 		HashMapSet(cls->StaticMembers, hashKey, val);
 		free(hashKey);
 	} else {
+		free(hashKey);
 		return NewErrorFValue(interpreter,
 							  "%s: cannot set index on non-object",
 							  TYPE_ERROR);
@@ -730,14 +747,14 @@ Value* DoCallMethod(Interpreter* interpreter,
  * @param interpreter The interpreter instance.
  * @param line The source line information for the call.
  * @param fn The function value being called.
- * @origin src/interpreter.c:135
+ * @origin src/interpreter.c:146
  */
 extern void PushTrace(Interpreter* interpreter, LineInfo line, Value* fn);
 
 /**
  * @brief Pops the top stack trace entry after a function call returns.
  * @param interpreter The interpreter instance.
- * @origin src/interpreter.c:142
+ * @origin src/interpreter.c:153
  */
 extern void PopTrace(Interpreter* interpreter);
 
@@ -774,10 +791,10 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 	}
 
 	if (ValueIsPromise(fn)) {
-		interpreter->ActiveTask = fn;
-		sm						= CoerceToStateMachine(fn);
-		sm->StckBot				= interpreter->StckC;
-		sm->EnvrBot				= interpreter->EnvrC;
+		SetActiveTask(interpreter, fn);
+		sm			= CoerceToStateMachine(fn);
+		sm->StckBot = interpreter->StckC;
+		sm->EnvrBot = interpreter->EnvrC;
 
 		PushTrace(interpreter, sm->Line, fn);
 
@@ -814,6 +831,8 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 			interpreter->CallEnv = sm->CallEnv;
 			Run(interpreter, fn);
 		}
+
+		SetActiveTask(interpreter, NULL);
 
 		PopTrace(interpreter);
 
@@ -894,8 +913,12 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 		interpreter->RootEnv = en;
 	}
 
+	SetActiveFunction(interpreter, fn);
+
 	// 2. Run the function
 	Run(interpreter, fn);
+
+	SetActiveFunction(interpreter, NULL);
 
 	PopTrace(interpreter);
 

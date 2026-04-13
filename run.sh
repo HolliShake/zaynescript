@@ -34,20 +34,14 @@ if [[ "$1" == "--format" ]]; then
 fi
 
 # ── Build SQLite Shared Library (Dynamic) ─────────────────────
-if [[ "$1" != "--minimal" ]]; then
-    echo "Building SQLite shared library..."
-    gcc -O2 -fPIC -shared sqlite/sqlite3.c -o "$SQLITE_LIB"
-fi
+echo "Building SQLite shared library..."
+gcc -O2 -fPIC -shared sqlite/sqlite3.c -o "$SQLITE_LIB"
 
 # RPATH tells the Linux linker to look in the executable's current directory for .so files
 RPATH_FLAG='-Wl,-rpath,$ORIGIN'
 
 # ── Compile Executable ────────────────────────────────────────
-if [[ "$1" == "--minimal" ]]; then
-    echo "Building in minimal mode (sqlite completely disabled, ZSMINIMAL defined)..."
-    SRC_FILES=(main.c $(find src/core -name '*.c' | grep -vE 'sqlite') $(find src -maxdepth 1 -name '*.c') $(find utf -name '*.c') $(find utf/utf8proc -name '*.c') $(find libbf -name '*.c') $(find mongoose -name '*.c'))
-    gcc -O3 -DNDEBUG -DZSMINIMAL -DMG_ENABLE_LOG=0 -DBUILD_DATE="\"$BUILD_DATE\"" -Wno-pointer-sign "${SRC_FILES[@]}" -o "$EXE" -lm -ldl -lpthread
-elif [[ "$1" == "--release" ]]; then
+if [[ "$1" == "--release" ]]; then
     echo "Building in release mode..."
     gcc -O3 -DNDEBUG -DMG_ENABLE_LOG=0 -DBUILD_DATE="\"$BUILD_DATE\"" -Wno-pointer-sign main.c src/core/*.c src/*.c utf/*.c utf/utf8proc/*.c ./libbf/*.c mongoose/mongoose.c -o "$EXE" -L"$DIST_DIR" -lsqlite3 "$RPATH_FLAG" -lm -ldl -lpthread
 else
@@ -67,7 +61,7 @@ fi
 
 echo "Build successful -> $EXE"
 
-if [[ "$1" == "--compile" || "$1" == "--release" || "$1" == "--minimal" ]]; then
+if [[ "$1" == "--compile" || "$1" == "--release" ]]; then
     # build-only, do nothing
     exit 0
 elif [[ "$1" == "--dbg" ]]; then

@@ -1,3 +1,12 @@
+/**
+ * @file object.h
+ * @brief Core Object module interface.
+ *
+ * Defines the interface for creating the built-in Object class
+ * and loading the core Object module, which provides object
+ * introspection and manipulation utilities within the interpreter.
+ */
+
 #include "../class.h"
 #include "../function.h"
 #include "../global.h"

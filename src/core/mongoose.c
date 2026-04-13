@@ -6,9 +6,12 @@
  * dot is included (or NULL when there is no extension).
  * ----------------------------------------------------------------------- */
 
+/**
+ * @brief Maps a file extension to its corresponding MIME type string.
+ */
 typedef struct {
-	const String ext;
-	const String mime;
+	const String ext;  /**< File extension (without leading dot, e.g. "html") */
+	const String mime; /**< MIME type string (e.g. "text/html") */
 } MimeEntry;
 
 static const MimeEntry _MimeTable[] = {
@@ -114,7 +117,7 @@ static const MimeEntry _MimeTable[] = {
  * @brief Pushes a value onto the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @param value The value to push.
- * @origin src/interpreter.c:115
+ * @origin src/interpreter.c:126
  */
 extern void Push(Interpreter* interpreter, Value* value);
 
@@ -122,7 +125,7 @@ extern void Push(Interpreter* interpreter, Value* value);
  * @brief Pops and returns the top value from the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @return The popped value.
- * @origin src/interpreter.c:119
+ * @origin src/interpreter.c:130
  */
 extern Value* Popp(Interpreter* interpreter);
 
@@ -133,7 +136,7 @@ extern Value* Popp(Interpreter* interpreter);
  * @param argc The number of arguments.
  * @param withThis Whether the call includes a 'this' context.
  * @return The return value of the function call.
- * @origin src/operation.c:726
+ * @origin src/operation.c:774
  */
 extern Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
 
@@ -142,7 +145,7 @@ extern Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
  * loop.
  * @param interpreter The interpreter instance.
  * @param task The promise value to enqueue.
- * @origin src/interpreter.c:148
+ * @origin src/interpreter.c:162
  */
 extern void EnqueueTask(Interpreter* interpreter, Value* task);
 
@@ -358,29 +361,42 @@ static String _JsonEscape(const String src) {
 #define MAX_MIDDLEWARE 32
 #define ROUTE_GROW	   16
 
+/**
+ * @brief Represents a single registered HTTP route handler.
+ */
 typedef struct {
-	String Method;	/* "GET", "POST", … or NULL = wildcard */
-	String Path;	/* mg_match() pattern                  */
-	Value* Handler; /* callable Value*                    */
+	String Method;	/**< HTTP method string (e.g. "GET", "POST"), or NULL for
+					   wildcard */
+	String Path;	/**< URL path pattern used by mg_match() */
+	Value* Handler; /**< Callable Value invoked when the route matches */
 } Route;
 
+/**
+ * @brief Internal state for an HTTP server instance (opaque pointer stored on
+ * the Server ClassInstance).
+ */
 typedef struct {
-	Route*				  Routes;
-	size_t				  Count;
-	size_t				  Capacity;
-	Value*				  Middleware[MAX_MIDDLEWARE];
-	size_t				  MwCount;
-	Interpreter*		  Interp;
-	struct mg_connection* Listener; /* listening conn on interp->MgMgr */
-	bool				  Running;
-	Value*				  ReqClass;
-	Value*				  ResClass;
+	Route* Routes;	 /**< Array of registered route handlers */
+	size_t Count;	 /**< Number of routes registered */
+	size_t Capacity; /**< Allocated capacity of the Routes array */
+	Value* Middleware[MAX_MIDDLEWARE]; /**< Array of middleware callbacks */
+	size_t MwCount;		 /**< Number of registered middleware callbacks */
+	Interpreter* Interp; /**< Interpreter instance owning this server */
+	struct mg_connection*
+		   Listener;	 /**< Mongoose listening connection on interp->MgMgr */
+	bool   Running;		 /**< True while the server event loop is active */
+	Value* ReqClass;	 /**< Built-in Request class Value */
+	Value* ResClass;	 /**< Built-in Response class Value */
 } AppState;
 
+/**
+ * @brief Context bundle passed as opaque data on each Mongoose connection
+ * to link it with the parsed HTTP message and response state.
+ */
 typedef struct {
-	struct mg_connection*	Conn;
-	struct mg_http_message* Msg;
-	bool					Responded;
+	struct mg_connection*	Conn; /**< Active Mongoose connection */
+	struct mg_http_message* Msg;  /**< Parsed HTTP request message */
+	bool Responded;				  /**< True once a response has been sent */
 } ReqResCtx;
 
 /* -----------------------------------------------------------------------
@@ -1240,15 +1256,19 @@ _BuildClass(Interpreter* interp, const String name, ModuleFunction methods[]) {
  *   body    – string body for POST/PUT
  * ----------------------------------------------------------------------- */
 
+/**
+ * @brief Context for an outbound HTTP fetch request, stored as
+ * Mongoose connection fn_data during the async request lifecycle.
+ */
 typedef struct {
-	Interpreter* interp;
-	Value*		 promise;
-	char*		 host;	   /* for the Host header */
-	char*		 uri;	   /* request URI path */
-	char*		 method;
-	char*		 extraHdr; /* additional headers string */
-	char*		 bodyStr;  /* request body (or NULL) */
-	bool		 sent;	   /* true once request line has been sent */
+	Interpreter* interp;   /**< Interpreter instance owning the fetch */
+	Value*		 promise;  /**< Promise Value to resolve/reject on completion */
+	char*		 host;	   /**< Host header value for the request */
+	char*		 uri;	   /**< Request URI path */
+	char*		 method;   /**< HTTP method string (e.g. "GET", "POST") */
+	char*		 extraHdr; /**< Additional raw headers string (may be NULL) */
+	char*		 bodyStr;  /**< Request body payload (may be NULL) */
+	bool		 sent;	   /**< True once the request line has been sent */
 } FetchCtx;
 
 static void _FetchEvHandler(struct mg_connection* c, int ev, void* ev_data) {

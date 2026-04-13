@@ -10,11 +10,8 @@ CoreMapper _CoreModuleMappers[] = {
 	{ .Name = "array", .Loader = LoadCoreArray },
 	{ .Name = "promise", .Loader = LoadCorePromise },
 	{ .Name = "mongoose", .Loader = LoadCoreMongoose },
-// Do not map these library on minimal builds to save space, and because they
-// are not commonly
-#ifndef ZSMINIMAL
 	{ .Name = "sqlite", .Loader = LoadCoreSqlite },
-#endif
+	{ .Name = "utf8", .Loader = LoadCoreUtf8 },
 	// End marker
 	{ .Name = NULL, .Loader = NULL }
 };

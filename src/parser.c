@@ -339,33 +339,10 @@ static Ast* _ParseFunctionExpression(Parser* parser) {
 					   MergePositions(start, ended));
 }
 
-static Ast* _ParseAllocation(Parser* parser) {
-	if (CHECKTV(KEY_NEW)) {
-		Position start = parser->Next.Position, ended = start;
-		ACCEPTV_FREE(KEY_NEW);
-
-		Ast* cls = _ParseGroup(parser);
-
-		if (cls == NULL) {
-			ThrowError(parser->Lexer->Path,
-					   parser->Lexer->Data,
-					   parser->Next.Position,
-					   "expected a class");
-		}
-
-		ACCEPTV_FREE("(");
-		Ast* arguments = _ParseListOfExpressions(parser);
-		ended		   = parser->Next.Position;
-		ACCEPTV_FREE(")");
-
-		return AstAllocation(cls, arguments, MergePositions(start, ended));
-	}
-	return _ParseGroup(parser);
-}
-
-static Ast* _ParseMemberOrCall(Parser* parser) {
-	Ast* call = _ParseAllocation(parser);
-	if (call == NULL) {
+static Ast* _ParsePostfixMemberChain(Parser* parser,
+									 Ast*	 node,
+									 bool	 stop_after_call_before_split) {
+	if (node == NULL) {
 		return NULL;
 	}
 
@@ -378,13 +355,13 @@ static Ast* _ParseMemberOrCall(Parser* parser) {
 			if (member == NULL || member->Type != AST_NAME) {
 				ThrowError(parser->Lexer->Path,
 						   parser->Lexer->Data,
-						   call->Position,
+						   node->Position,
 						   "expected a member name");
 			}
 
-			call = AstMember(call,
+			node = AstMember(node,
 							 member,
-							 MergePositions(call->Position, member->Position));
+							 MergePositions(node->Position, member->Position));
 		} else if (CHECKTV("[")) {
 			ACCEPTV_FREE("[");
 
@@ -393,35 +370,67 @@ static Ast* _ParseMemberOrCall(Parser* parser) {
 			if (index == NULL) {
 				ThrowError(parser->Lexer->Path,
 						   parser->Lexer->Data,
-						   call->Position,
+						   node->Position,
 						   "expected an expression");
 			}
 
 			Position ended = parser->Next.Position;
 			ACCEPTV_FREE("]");
 
-			call = AstIndex(call, index, MergePositions(call->Position, ended));
+			node = AstIndex(node, index, MergePositions(node->Position, ended));
 		} else if (CHECKTV("(")) {
 			ACCEPTV_FREE("(");
 			Ast*	 arguments = _ParseListOfExpressions(parser);
 			Position ended	   = parser->Next.Position;
 			ACCEPTV_FREE(")");
 
-			call =
-				AstCall(call, arguments, MergePositions(call->Position, ended));
+			node =
+				AstCall(node, arguments, MergePositions(node->Position, ended));
+			if (stop_after_call_before_split
+				&& (CHECKTV(".") || CHECKTV("[") || CHECKTV("("))) {
+				break;
+			}
 		} else {
 			ThrowError(parser->Lexer->Path,
 					   parser->Lexer->Data,
-					   call->Position,
+					   node->Position,
 					   "expected a member name, index, or call");
 		}
 	}
 
-	return call;
+	return node;
+}
+
+static Ast* _ParseMemberOrCall(Parser* parser) {
+	return _ParsePostfixMemberChain(parser, _ParseGroup(parser), false);
+}
+
+static Ast* _ParseNewOperand(Parser* parser) {
+	return _ParsePostfixMemberChain(parser, _ParseGroup(parser), true);
+}
+
+static Ast* _ParseAllocation(Parser* parser) {
+	if (CHECKTV(KEY_NEW)) {
+		Position start = parser->Next.Position;
+		ACCEPTV_FREE(KEY_NEW);
+
+		Ast* cls = _ParseNewOperand(parser);
+
+		if (cls == NULL) {
+			ThrowError(parser->Lexer->Path,
+					   parser->Lexer->Data,
+					   parser->Next.Position,
+					   "expected a class");
+		}
+
+		Ast* node = AstAllocation(cls, MergePositions(start, cls->Position));
+		return _ParsePostfixMemberChain(parser, node, false);
+	}
+	return _ParseMemberOrCall(parser);
 }
 
 static Ast* _ParsePostfix(Parser* parser) {
-	Ast* node = _ParseMemberOrCall(parser);
+	Ast* node = _ParseAllocation(parser);
 	if (node == NULL) {
 		return NULL;
 	}

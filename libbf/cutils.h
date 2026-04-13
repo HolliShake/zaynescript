@@ -163,7 +163,7 @@ static inline int dbuf_put_u16(DynBuf *s, uint16_t val)
     return dbuf_put(s, (uint8_t *)&val, 2);
 }
 int __attribute__((format(printf, 2, 3))) dbuf_printf(DynBuf *s,
-                                                      const char *fmt, ...);
+                                                    const char *fmt, ...);
 void dbuf_free(DynBuf *s);
 static inline BOOL dbuf_error(DynBuf *s) {
     return s->error;

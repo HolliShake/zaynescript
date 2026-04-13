@@ -89,10 +89,9 @@ Ast* AstObjectLiteral(Ast* properties, Position position) {
 	return ast;
 }
 
-Ast* AstAllocation(Ast* cls, Ast* arguments, Position position) {
+Ast* AstAllocation(Ast* cls, Position position) {
 	Ast* ast = InitAst(AST_ALLOCATION, position);
 	ast->A	 = cls;
-	ast->B	 = arguments;
 	return ast;
 }
 

@@ -4,7 +4,7 @@
  * @brief Pushes a value onto the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @param value The value to push.
- * @origin src/interpreter.c:115
+ * @origin src/interpreter.c:126
  */
 extern void Push(Interpreter* interpreter, Value* value);
 
@@ -13,7 +13,7 @@ extern void Push(Interpreter* interpreter, Value* value);
  * stack.
  * @param interpreter The interpreter instance.
  * @return The popped value.
- * @origin src/interpreter.c:119
+ * @origin src/interpreter.c:130
  */
 extern Value* Popp(Interpreter* interpreter);
 
@@ -22,7 +22,7 @@ extern Value* Popp(Interpreter* interpreter);
  * without removing it.
  * @param interpreter The interpreter instance.
  * @return The top value on the stack.
- * @origin src/interpreter.c:127
+ * @origin src/interpreter.c:138
  */
 extern Value* Peek(Interpreter* interpreter);
 
@@ -33,7 +33,7 @@ extern Value* Peek(Interpreter* interpreter);
  * @param argc The number of arguments.
  * @param withThis Whether the call includes a 'this' context.
  * @return The return value of the function call.
- * @origin src/operation.c:726
+ * @origin src/operation.c:774
  */
 extern Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
 
@@ -71,6 +71,7 @@ Value* _ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
 
 	Value* arrayVal = NewArrayValue(interpreter);
 	Array* newArray = CoerceToArray(arrayVal);
+	Push(interpreter, arrayVal);
 
 	for (size_t i = 0; i < ArrayLength(array); i++) {
 		Value* item	 = ArrayGet(array, i);
@@ -81,6 +82,7 @@ Value* _ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
 		ArrayPush(newArray, Popp(interpreter));
 	}
 
+	Popp(interpreter);
 	return arrayVal;
 }
 
@@ -118,6 +120,7 @@ Value* _ArrayKeep(Interpreter* interpreter, int argc, Value** arguments) {
 
 	Value* arrayVal = NewArrayValue(interpreter);
 	Array* newArray = CoerceToArray(arrayVal);
+	Push(interpreter, arrayVal);
 
 	for (size_t i = 0; i < ArrayLength(array); i++) {
 		Value* item	 = ArrayGet(array, i);
@@ -130,6 +133,7 @@ Value* _ArrayKeep(Interpreter* interpreter, int argc, Value** arguments) {
 		}
 	}
 
+	Popp(interpreter);
 	return arrayVal;
 }
 

@@ -24,19 +24,11 @@ ALL_SRCS   := main.c \
               $(wildcard mongoose/*.c)\
               $(wildcard sqlite/*.c)
 
-# Exclude SQLite for dynamic builds
+# Exclude SQLite for dynamic builds (link ``dist/libsqlite3.so`` instead).
 DYN_EXCLUDES := sqlite/%
 
-# Helper macro to build exclude patterns for each feature
-MIN_EXCLUDES := $(foreach f,$(MINIMAL_DISABLE_FEATURES),$f/% )
-
-# Helper: Is a feature enabled? Usage: $(call feature_enabled,sqlite)
-feature_enabled = $(if $(findstring $(1),$(MINIMAL_DISABLE_FEATURES)),0,1)
-
 # Filter sources based on target
-ifeq ($(MAKECMDGOALS),minimal)
-    SRCS := $(filter-out $(MIN_EXCLUDES),$(ALL_SRCS))
-else ifeq ($(MAKECMDGOALS),release)
+ifeq ($(MAKECMDGOALS),release)
     SRCS := $(filter-out $(DYN_EXCLUDES),$(ALL_SRCS))
 else ifeq ($(MAKECMDGOALS),debug)
     SRCS := $(filter-out $(DYN_EXCLUDES),$(ALL_SRCS))
@@ -66,24 +58,11 @@ CFLAGS_REL  := -O3 -march=native -mtune=native \
                -pipe -DNDEBUG -DMG_ENABLE_LOG=0
 LDFLAGS_REL := -flto=thin -fuse-ld=lld -Wl,--gc-sections -Wl,-O2 -Wl,--strip-all
 
-# ── Minimal Flags (Super-optimized for speed + ZSMINIMAL) ───
-CFLAGS_MIN  := -O3 -march=native -mtune=native \
-               -flto=thin -fomit-frame-pointer -funroll-loops -fno-plt \
-               -ffunction-sections -fdata-sections \
-               -fmerge-all-constants -fno-semantic-interposition \
-               -fno-math-errno -fno-trapping-math \
-               -fstrict-aliasing -fvectorize -fslp-vectorize \
-               -pipe -DNDEBUG -DZSMINIMAL -DMG_ENABLE_LOG=0
-LDFLAGS_MIN := -flto=thin -fuse-ld=lld -Wl,--gc-sections -Wl,-O2 -Wl,--strip-all
-
-# Features to disable in minimal mode (space-separated)
-MINIMAL_DISABLE_FEATURES := sqlite
-
 # ============================================================
 #  Targets
 # ============================================================
 
-.PHONY: all release release-install minimal debug clean run install uninstall amalgamate copy_assets
+.PHONY: all release release-install debug clean run install uninstall amalgamate copy_assets
 
 all: debug
 
@@ -94,7 +73,7 @@ copy_assets: | $(DIST_DIR)
 	@cp -rn lib $(DIST_DIR)/ 2>/dev/null || true
 	@cp -rn tests $(DIST_DIR)/ 2>/dev/null || true
 
-# SQLite shared library build rule
+# ── SQLite shared library ────────────────────────────────────
 $(SQLITE_LIB): sqlite/sqlite3.c | $(DIST_DIR)
 	@echo "Building SQLite shared library..."
 	$(CC) -fPIC -shared -O2 -o $@ $<
@@ -109,11 +88,6 @@ release-install: RPATH_FLAG := -Wl,-rpath,'$(LIBDIR)'
 release-install: $(SQLITE_LIB) copy_assets | $(DIST_DIR)
 	@echo "Building in release mode (install RPATH, sqlite dynamic)..."
 	$(CC) $(CFLAGS_BASE) $(CFLAGS_REL) $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_REL) -L$(DIST_DIR) -lsqlite3 $(RPATH_FLAG)
-	@echo "Build successful → $(TARGET)"
-
-minimal: copy_assets | $(DIST_DIR)
-	@echo "Building in minimal mode (super-optimized speed, sqlite completely disabled, ZSMINIMAL defined)..."
-	$(CC) $(CFLAGS_BASE) $(CFLAGS_MIN) $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_MIN)
 	@echo "Build successful → $(TARGET)"
 
 debug: $(SQLITE_LIB) copy_assets | $(DIST_DIR)
@@ -135,10 +109,8 @@ install: release-install
 	@echo "Installing tests → $(LIBDIR)/tests/"
 	cd tests && find . -type d -exec install -d $(LIBDIR)/tests/{} \; \
              && find . -type f -exec install -m 644 {} $(LIBDIR)/tests/{} \;
-	@if [ "$(call feature_enabled,sqlite)" != "0" ]; then \
-		echo "Installing sqlite/libsqlite3.so → $(LIBDIR)/libsqlite3.so"; \
-		install -m 755 $(SQLITE_LIB) $(LIBDIR)/libsqlite3.so; \
-	fi
+	@echo "Installing sqlite/libsqlite3.so → $(LIBDIR)/libsqlite3.so"
+	install -m 755 $(SQLITE_LIB) $(LIBDIR)/libsqlite3.so
 
 uninstall:
 	@echo "Removing $(BINDIR)/zscript"

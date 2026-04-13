@@ -18,6 +18,7 @@ Interpreter* CreateInterpreter(String execPath) {
 	interpreter->ImportHead	  = NULL;
 	interpreter->Imports	  = CreateHashMap(16);
 	interpreter->Allocated	  = 0;
+	interpreter->GcThreshold  = GC_THRESHOLD;
 	interpreter->GcRoot		  = NULL;
 	interpreter->RootEnv	  = NULL;
 	interpreter->CallEnv	  = NULL;
@@ -40,11 +41,11 @@ Interpreter* CreateInterpreter(String execPath) {
 	interpreter->EnvrC = 0;
 	// interpreter->ExceptionHandlerStacks[STACK_SIZE];
 	interpreter->ExceptionHandlerStackC = 0;
-	interpreter->GcThreshold			= GC_THRESHOLD;
 	// interpreter->TaskQueue[STACK_SIZE];
-	interpreter->TaskQueueHead = 0;
-	interpreter->TaskQueueC	   = 0;
-	interpreter->ActiveTask	   = NULL;
+	interpreter->TaskQueueHead	= 0;
+	interpreter->TaskQueueC		= 0;
+	interpreter->ActiveFunction = NULL;
+	interpreter->ActiveTask		= NULL;
 	mg_mgr_init(&interpreter->MgMgr);
 	return interpreter;
 }
@@ -78,10 +79,9 @@ Interpreter* CreateInterpreter(String execPath) {
 		for (int i = 0; i < interpreter->StckC; i++) {                         \
 			if (i > 0)                                                         \
 				printf(", ");                                                  \
-			/*Note: memory leak (ValueToString allocates a                     \
-			 * string that is passed to printf but never                       \
-			 * freed)*/                                                        \
-			printf("%s", ValueToString(interpreter->Stacks[i]));               \
+			String str = ValueToString(interpreter->Stacks[i]);                \
+			printf("%s", str);                                                 \
+			free(str);                                                         \
 		}                                                                      \
 		printf(" ]\n");                                                        \
 	} while (0)
@@ -114,6 +114,14 @@ Interpreter* CreateInterpreter(String execPath) {
 		free(message);                                                         \
 		break;                                                                 \
 	}
+
+void SetActiveFunction(Interpreter* interpreter, Value* function) {
+	interpreter->ActiveFunction = function;
+}
+
+void SetActiveTask(Interpreter* interpreter, Value* task) {
+	interpreter->ActiveTask = task;
+}
 
 void Push(Interpreter* interpreter, Value* value) {
 	interpreter->Stacks[interpreter->StckC++] = value;
@@ -197,7 +205,7 @@ String ReadString(uint8_t* codes, int alignStart) {
 	return new;
 }
 
-static int _ReadInt32(uint8_t* codes, int alignStart) {
+int ReadInt32(uint8_t* codes, int alignStart) {
 	int offset	= 0;
 	offset	   |= codes[alignStart + 0] << 24;
 	offset	   |= codes[alignStart + 1] << 16;
@@ -302,21 +310,13 @@ BAD:;
 	return (LineInfo){};
 }
 
-static void _Error(Interpreter*	 interpreter,
-				   UserFunction* uf,
-				   size_t*		 ip,
-				   const String	 type,
-				   String		 message) {
-	LineInfo line = _GetLineFromPc(uf, *ip);
-	if (interpreter->ActiveTask != NULL) {
-		StateMachine* sm  = CoerceToStateMachine(interpreter->ActiveTask);
-		String		  fmt = FormatString("[%s:%d]::%s: %s",
-										 line.Path,
-										 line.Line,
-										 type,
-										 message);
-		free(message);
-		Value*		  error = NewErrorValue(interpreter, fmt);
+static void _RaiseError(Interpreter* interpreter,
+						Value*		 fn,
+						Value*		 error,
+						size_t*		 ip,
+						bool		 catchable) {
+	UserFunction* uf = CoerceToUserFunction(fn);
+	if (interpreter->ActiveTask != NULL && catchable) {
 		StateMachine* activeTask =
 			CoerceToStateMachine(interpreter->ActiveTask);
 		StateMachineReject(activeTask, error);
@@ -325,56 +325,7 @@ static void _Error(Interpreter*	 interpreter,
 		return;
 	}
 
-	if (isCatched()) {
-		ExceptionHandler handler = _PeekTry(interpreter);
-		/* Caught: create the error value and hand it to the
-		 * catch handler */
-		String fmt = FormatString("[%s:%d]::%s: %s",
-								  line.Path,
-								  line.Line,
-								  type,
-								  message);
-		free(message);
-		Value* err = NewErrorValue(interpreter, fmt);
-		free(fmt);
-		// Jump the current function to end
-		JumpToError(ip, uf->CodeC);
-		// Jump the main function to the handle
-		JumpToError(handler.PausedAddress, handler.JumpAddress);
-		_PoppTry(interpreter);
-		Push(interpreter, err);
-		return;
-	}
-
-	/* Uncaught: no need to allocate a tracked Value, just report
-	 * and abort */
-	fprintf(stderr, "[%s:%d]::%s: %s\n", line.Path, line.Line, type, message);
-	free(message);
-	// Stack trace for debugging
-	for (int i = interpreter->CallStackC - 1; i >= 0; i--) {
-		StackTrace trace = interpreter->CallStack[i];
-		fprintf(stderr, "  |> [%s:%d]\n", trace.line.Path, trace.line.Line);
-	}
-	ForceGarbageCollect(interpreter);
-	FreeInterpreter(interpreter);
-	fprintf(stderr, "Program exited with panic.\n");
-	exit(EXIT_FAILURE);
-}
-
-static void _RaiseError(Interpreter*  interpreter,
-						UserFunction* uf,
-						size_t*		  ip,
-						Value*		  error) {
-	if (interpreter->ActiveTask != NULL) {
-		StateMachine* activeTask =
-			CoerceToStateMachine(interpreter->ActiveTask);
-		StateMachineReject(activeTask, error);
-		Push(interpreter, interpreter->ActiveTask);
-		JumpToError(ip, uf->CodeC);
-		return;
-	}
-
-	if (isCatched()) {
+	if (isCatched() && catchable) {
 		ExceptionHandler handler = _PeekTry(interpreter);
 		/* Caught: preserve the original error value as-is for
 		 * the catch handler
@@ -390,43 +341,45 @@ static void _RaiseError(Interpreter*  interpreter,
 	 * created */
 	LineInfo line	= _GetLineFromPc(uf, *ip);
 	String	 errStr = ValueToString(error);
-	String	 msg	= FormatString("[%s:%d]::%s", line.Path, line.Line, errStr);
+	String	 buf = FormatString("[%s:%d]::%s\n", line.Path, line.Line, errStr);
 	free(errStr);
-	fprintf(stderr, "%s\n", msg);
-	free(msg);
-	// Stack trace for debugging
+
 	for (int i = interpreter->CallStackC - 1; i >= 0; i--) {
 		StackTrace trace = interpreter->CallStack[i];
-		fprintf(stderr, "  |> [%s:%d]\n", trace.line.Path, trace.line.Line);
+		String	   frame =
+			FormatString("  |> [%s:%d]\n", trace.line.Path, trace.line.Line);
+		String tmp = FormatString("%s%s", buf, frame);
+		free(frame);
+		free(buf);
+		buf = tmp;
 	}
+
+	fprintf(stderr, "%s", buf);
+	free(buf);
 	ForceGarbageCollect(interpreter);
 	FreeInterpreter(interpreter);
 	fprintf(stderr, "Program exited with panic.\n");
 	exit(EXIT_FAILURE);
 }
 
-static void _ReferenceError(Interpreter*  interpreter,
-							UserFunction* uf,
-							size_t*		  ip,
-							String		  message) {
-	_Error(interpreter, uf, ip, REFERENCE_ERROR, message);
-}
-
-static void _TypeError(Interpreter*	 interpreter,
-					   UserFunction* uf,
-					   size_t*		 ip,
-					   String		 message) {
-	_Error(interpreter, uf, ip, TYPE_ERROR, message);
+static Value*
+_CreateError(Interpreter* interpreter, const String type, String message) {
+	String fmt = FormatString("%s: %s", type, message);
+	Value* err = NewErrorValue(interpreter, fmt);
+	free(message);
+	free(fmt);
+	return err;
 }
 
 /******* Main interpreter loop */
-void Run(Interpreter* interpreter, Value* fnValue) {
+void Run(Interpreter* interpreter, Value* fnOrSm) {
+	Value*		  fn = fnOrSm;
 	StateMachine* sm = NULL;
 	UserFunction* uf =
-		ValueIsUserFunction(fnValue)
-			? CoerceToUserFunction(fnValue)
+		ValueIsUserFunction(fnOrSm)
+			? CoerceToUserFunction(fnOrSm)
 			: CoerceToUserFunction(
-				  (sm = CoerceToStateMachine(fnValue))->Function);
+				  (fn = (sm = CoerceToStateMachine(fnOrSm))->Function));
 	uint8_t		 opcode		  = 0;
 	Value*		 lhs		  = NULL;
 	Value*		 rhs		  = NULL;
@@ -450,12 +403,12 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 	bool		 localhandler = false;
 	String		 str		  = NULL;
 
-	if (ValueIsPromise(fnValue))
+	if (ValueIsPromise(fnOrSm))
 		ip = sm->Ip;
 
 	if (uf == NULL)
 		InterpreterPanic("Attempted to run a non-function value of type %s",
-						 ValueTypeOf(fnValue));
+						 ValueTypeOf(fnOrSm));
 
 #define Forward(size)		   (ip += size)
 #define JmpFrwd(addr)		   (ip = addr)
@@ -463,7 +416,6 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 
 	while (ip != uf->CodeC) {
 		if (interpreter->Allocated >= interpreter->GcThreshold) {
-			Mark(fnValue);
 			GarbageCollect(interpreter);
 		}
 
@@ -477,7 +429,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					res = DoImportCore(interpreter, str);
 					if (ValueIsError(res)) {
 						free(str);
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, false);
 						break;
 					}
 					Push(interpreter, res);
@@ -491,7 +444,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					res = DoImportLib(interpreter, str);
 					if (ValueIsError(res)) {
 						free(str);
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, false);
 						break;
 					}
 					Push(interpreter, res);
@@ -505,7 +459,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					res = DoImportFile(interpreter, str);
 					if (ValueIsError(res)) {
 						free(str);
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, false);
 						break;
 					}
 					Push(interpreter, res);
@@ -515,15 +470,15 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_LOAD_CAPTURE:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					val	   = GetCap(uf, offset);
 					if (val == NULL) {
-						_ReferenceError(
+						err = _CreateError(
 							interpreter,
-							uf,
-							&ip,
-							AllocateString("variable is referenced before "
-										   "initialization"));
+							REFERENCE_ERROR,
+							"variable is referenced before initialization");
+						// Raise
+						_RaiseError(interpreter, fn, err, &ip, false);
 						break;
 					}
 					Push(interpreter, val);
@@ -532,15 +487,15 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_LOAD_NAME:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					val	   = GetVar(interpreter->RootEnv, offset);
 					if (val == NULL) {
-						_ReferenceError(
+						err = _CreateError(
 							interpreter,
-							uf,
-							&ip,
-							AllocateString("variable is referenced before "
-										   "initialization"));
+							REFERENCE_ERROR,
+							"variable is referenced before initialization");
+						// Raise
+						_RaiseError(interpreter, fn, err, &ip, false);
 						break;
 					}
 					Push(interpreter, val);
@@ -549,15 +504,15 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_LOAD_LOCAL:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					val	   = GetVar(interpreter->CallEnv, offset);
 					if (val == NULL) {
-						_ReferenceError(
+						err = _CreateError(
 							interpreter,
-							uf,
-							&ip,
-							AllocateString("variable is referenced before "
-										   "initialization"));
+							REFERENCE_ERROR,
+							"variable is referenced before initialization");
+						// Raise
+						_RaiseError(interpreter, fn, err, &ip, false);
 						break;
 					}
 					Push(interpreter, val);
@@ -566,14 +521,14 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_LOAD_CONST:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					Push(interpreter, interpreter->Constants[offset]);
 					Forward(4);
 					break;
 				}
 			case OP_LOAD_BOOL:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					Push(interpreter,
 						 offset ? interpreter->True : interpreter->False);
 					Forward(4);
@@ -597,12 +552,16 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					ext = Popp(interpreter);
 					arr = Peek(interpreter);
 					if (!ValueIsArray(ext)) {
-						_TypeError(interpreter,
-								   uf,
-								   &ip,
-								   FormatString("expected array to extend to "
-												"be an array, got %s",
-												ValueTypeOf(ext)));
+						// Pop the array that was extended
+						Popp(interpreter);
+						err = _CreateError(
+							interpreter,
+							TYPE_ERROR,
+							FormatString("expected array to extend to "
+										 "be an array, got %s",
+										 ValueTypeOf(ext)));
+						// Raise
+						_RaiseError(interpreter, fn, err, &ip, true);
 						break;
 					}
 					ArrayExtend(CoerceToArray(arr), CoerceToArray(ext));
@@ -612,13 +571,17 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				{
 					val = Popp(interpreter);
 					arr = Peek(interpreter);
-					if (!ValueIsArray(ext)) {
-						_TypeError(interpreter,
-								   uf,
-								   &ip,
-								   FormatString("expected array to push "
-												"to be an array, got %s",
-												ValueTypeOf(ext)));
+					if (!ValueIsArray(arr)) {
+						// Pop the array that was pushed
+						Popp(interpreter);
+						err =
+							_CreateError(interpreter,
+										 TYPE_ERROR,
+										 FormatString("expected array to push "
+													  "to be an array, got %s",
+													  ValueTypeOf(ext)));
+						// Raise
+						_RaiseError(interpreter, fn, err, &ip, true);
 						break;
 					}
 					ArrayPush(CoerceToArray(arr), val);
@@ -626,7 +589,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_ARRAY_MAKE:
 				{
-					size  = _ReadInt32(uf->Codes, ip);
+					size  = ReadInt32(uf->Codes, ip);
 					arr	  = NewArrayValue(interpreter);
 					array = CoerceToArray(arr);
 					for (int i = 0; i < size; i++) {
@@ -643,12 +606,16 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					ext = Popp(interpreter);
 					obj = Peek(interpreter);
 					if (!ValueIsObject(ext)) {
-						_TypeError(interpreter,
-								   uf,
-								   &ip,
-								   FormatString("expected object to extend to "
-												"be an object, got %s",
-												ValueTypeOf(ext)));
+						// Pop the object that was extended
+						Popp(interpreter);
+						err = _CreateError(
+							interpreter,
+							TYPE_ERROR,
+							FormatString("expected object to extend to "
+										 "be an object, got %s",
+										 ValueTypeOf(ext)));
+						// Raise
+						_RaiseError(interpreter, fn, err, &ip, true);
 						break;
 					}
 					HashMapExtend(CoerceToHashMap(obj), CoerceToHashMap(ext));
@@ -656,7 +623,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_OBJECT_MAKE:
 				{
-					size = _ReadInt32(uf->Codes, ip);
+					size = ReadInt32(uf->Codes, ip);
 					obj	 = NewObjectValue(interpreter);
 					map	 = CoerceToHashMap(obj);
 					for (int i = 0; i < size; i++) {
@@ -686,12 +653,16 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					ext = Popp(interpreter);  // super class
 					cls = Peek(interpreter);  // class being extended
 					if (!ValueIsClass(ext)) {
-						_TypeError(interpreter,
-								   uf,
-								   &ip,
-								   FormatString("expected superclass "
-												"to be a class, got %s",
-												ValueTypeOf(ext)));
+						// Pop the class that was extended
+						Popp(interpreter);
+						err = _CreateError(
+							interpreter,
+							TYPE_ERROR,
+							FormatString("expected class to extend to "
+										 "be a class, got %s",
+										 ValueTypeOf(ext)));
+						// Raise
+						_RaiseError(interpreter, fn, err, &ip, false);
 						break;
 					}
 					ClassExtend(CoerceToUserClass(cls), ext);
@@ -727,7 +698,12 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					obj = Peek(interpreter);
 					res = DoSetIndex(interpreter, obj, key, val);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Pop the object
+						Popp(interpreter);
+						//  Pop the duplicated value
+						Popp(interpreter);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					break;
@@ -738,7 +714,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					obj = Popp(interpreter);
 					res = DoGetIndex(interpreter, obj, key);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -747,7 +724,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 			case OP_LOAD_FUNCTION_CLOSURE:
 			case OP_LOAD_FUNCTION:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					res = DoLoadFunction(interpreter,
 										 offset,
 										 (opcode == OP_LOAD_FUNCTION_CLOSURE));
@@ -757,37 +734,40 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_CALL_CTOR:
 				{
-					argc = _ReadInt32(uf->Codes, ip);
+					argc = ReadInt32(uf->Codes, ip);
 					Forward(4);
 					cls = Popp(interpreter);
 					res = DoCallCtor(interpreter, cls, argc);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					break;
 				}
 			case OP_CALL:
 				{
-					argc = _ReadInt32(uf->Codes, ip);
+					argc = ReadInt32(uf->Codes, ip);
 					Forward(4);
 					obj = Popp(interpreter);
 					res = DoCall(interpreter, obj, argc, false);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					break;
 				}
 			case OP_CALL_METHOD:
 				{
-					argc = _ReadInt32(uf->Codes, ip);
+					argc = ReadInt32(uf->Codes, ip);
 					Forward(4);
 					key = Popp(interpreter);  // method name
 					obj = Popp(interpreter);  // 'this' object
 					res = DoCallMethod(interpreter, obj, key, argc);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					break;
@@ -797,7 +777,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					rhs = Popp(interpreter);
 					res = DoNot(interpreter, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -808,7 +789,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					rhs = Popp(interpreter);
 					res = DoPos(interpreter, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -819,7 +801,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					rhs = Popp(interpreter);
 					res = DoNeg(interpreter, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -923,12 +906,12 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					StateMachine* awaitedSM = CoerceToStateMachine(val);
 
 					if (awaitedSM->State == FULFILLED) {
-						EnqueueTask(interpreter, fnValue);
+						EnqueueTask(interpreter, fnOrSm);
 					} else {
-						StateMachineAddWaitList(awaitedSM, fnValue);
+						StateMachineAddWaitList(awaitedSM, fnOrSm);
 					}
 
-					Push(interpreter, fnValue);
+					Push(interpreter, fnOrSm);
 					return;
 				}
 			case OP_GET_AWAITED_VALUE:
@@ -946,7 +929,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoMul(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -958,7 +942,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoDiv(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -970,7 +955,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoMod(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -982,7 +968,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);  // old value
 					res = DoInc(interpreter, lhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -994,7 +981,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					rhs = Popp(interpreter);
 					res = DoInc(interpreter, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1006,7 +994,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoAdd(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1018,7 +1007,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);  // old value
 					res = DoDec(interpreter, lhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1030,7 +1020,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					rhs = Popp(interpreter);
 					res = DoDec(interpreter, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1042,7 +1033,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoSub(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1054,7 +1046,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoLShift(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1066,7 +1059,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoRShift(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1078,7 +1072,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoLT(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1090,7 +1085,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoLTE(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1102,7 +1098,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoGT(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1114,7 +1111,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoGTE(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1126,7 +1124,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoEQ(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1138,7 +1137,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoNE(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1150,7 +1150,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoAnd(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1162,7 +1163,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoOr(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1174,7 +1176,8 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 					lhs = Popp(interpreter);
 					res = DoXor(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
-						_RaiseError(interpreter, uf, &ip, res);
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
 						break;
 					}
 					Push(interpreter, res);
@@ -1182,28 +1185,28 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_STORE_CAPTURE:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					SetCap(uf, offset, Popp(interpreter));
 					Forward(4);
 					break;
 				}
 			case OP_STORE_NAME:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					SetVar(interpreter->RootEnv, offset, Popp(interpreter));
 					Forward(4);
 					break;
 				}
 			case OP_STORE_LOCAL:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					SetVar(interpreter->CallEnv, offset, Popp(interpreter));
 					Forward(4);
 					break;
 				}
 			case OP_LOCK_VAR:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					LockVar(interpreter->CallEnv, offset);
 					Forward(4);
 					break;
@@ -1262,7 +1265,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 			case OP_SETUP_TRY:
 				{
 					SetLocalHandler(true);
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					_PushTry(interpreter, offset, &ip);
 					Forward(4);
 					break;
@@ -1275,14 +1278,14 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_POPN_TRY:
 				{
-					size = _ReadInt32(uf->Codes, ip);
+					size = ReadInt32(uf->Codes, ip);
 					_PopNTry(interpreter, size);
 					Forward(4);
 					break;
 				}
 			case OP_JUMP_IF_FALSE_OR_POP:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					val	   = Peek(interpreter);
 					if (!CoerceToBool(val)) {
 						JmpFrwd(offset);
@@ -1294,7 +1297,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_JUMP_IF_TRUE_OR_POP:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					val	   = Peek(interpreter);
 					if (CoerceToBool(val)) {
 						JmpFrwd(offset);
@@ -1306,7 +1309,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_POP_JUMP_IF_FALSE:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					val	   = Popp(interpreter);
 					if (CoerceToBool(val) == false) {
 						JmpFrwd(offset);
@@ -1317,7 +1320,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_POP_JUMP_IF_TRUE:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					val	   = Popp(interpreter);
 					if (CoerceToBool(val) == true) {
 						JmpFrwd(offset);
@@ -1328,19 +1331,19 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 				}
 			case OP_JUMP:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					JmpFrwd(offset);
 					break;
 				}
 			case OP_ABSOLUTE_JUMP:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					JmpFrwd(offset);
 					break;
 				}
 			case OP_RAISE:
 				{
-					_RaiseError(interpreter, uf, &ip, Popp(interpreter));
+					_RaiseError(interpreter, fn, Popp(interpreter), &ip, true);
 					break;
 				}
 			case OP_RETURN:
@@ -1349,7 +1352,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 						val = Popp(interpreter);
 
 						StateMachineFulfill(sm, val);
-						Push(interpreter, fnValue);
+						Push(interpreter, fnOrSm);
 
 						for (int i = 0; i < sm->WaitListC; i++) {
 							// Queue all listeners waiting on
@@ -1357,6 +1360,7 @@ void Run(Interpreter* interpreter, Value* fnValue) {
 							EnqueueTask(interpreter, sm->WaitList[i]);
 						}
 					}
+					interpreter->ActiveFunction = NULL;
 					return;
 				}
 			default:
@@ -1406,8 +1410,7 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 		}
 
 		// Awaited
-		StateMachine* sm		= CoerceToStateMachine(task);
-		interpreter->ActiveTask = task;
+		StateMachine* sm = CoerceToStateMachine(task);
 
 		if (!sm->IsCallback) {
 			DoCall(interpreter, task, 0, false);
@@ -1446,22 +1449,15 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 				EnqueueTask(interpreter, sm->WaitList[i]);
 			}
 		}
-
-		interpreter->ActiveTask = NULL;
 	}
 
 	interpreter->StckC	 = old;
 	interpreter->RootEnv = saveGbl;
 
-	if (interpreter->StckC != 1) {
-		DumpStack();
-		InterpreterPanic("internal error: stack not cleaned up after "
-						 "function "
-						 "'%s' execution, "
-						 "expected 1 value on stack but got %d values",
-						 uf->Name != NULL ? uf->Name : "<anonymous>",
-						 interpreter->StckC);
-	}
+	if (interpreter->StckC != 0)
+		PopN(interpreter, interpreter->StckC);
+
+	assert(interpreter->StckC == 0);
 
 	ForceGarbageCollect(interpreter);
 }
@@ -1472,9 +1468,9 @@ void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/) {
 
 void FreeInterpreter(Interpreter* interpreter) {
 	mg_mgr_free(&interpreter->MgMgr);
-	bf_context_end(&interpreter->BfContext);
 	FreeHashMap(interpreter->Imports);
 	FreeImportNode(interpreter->ImportHead);
+	bf_context_end(&interpreter->BfContext);
 	if (interpreter->ExecPath)
 		free(interpreter->ExecPath);
 	free(interpreter->Constants);

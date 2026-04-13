@@ -1,6 +1,5 @@
 #include "./compiler.h"
 
-
 #define PushArray(type, array, count, val, defaultValue)                       \
 	do {                                                                       \
 		(array)[count++] = val;                                                \
@@ -649,7 +648,13 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 		case AST_ALLOCATION:
 			{
 				Ast* cls	   = node->A;
-				Ast* arguments = node->B;
+				Ast* arguments = NULL;
+
+				if (cls->Type == AST_CALL) {
+					Ast* ctor_call = cls;
+					arguments	   = ctor_call->B;
+					cls			   = ctor_call->A;
+				}
 
 				int argc = 0;
 				// Count arguments first
@@ -3144,7 +3149,7 @@ static void _CompileExpressionStatement(Compiler*	  compiler,
 										UserFunction* uf,
 										Scope*		  scope,
 										Ast*		  node) {
-	Value* val = _CompileExpression(compiler, uf, scope, node->A);
+	_CompileExpression(compiler, uf, scope, node->A);
 	_EmitLine(compiler, uf, node->Position);
 	_Emit(compiler, uf, OP_POPTOP);
 }
@@ -3339,7 +3344,8 @@ Value* Compile(Compiler* compiler) {
 }
 
 Value* CompileAst(Compiler* compiler, Ast* programAst) {
-	return _Program(compiler, programAst, true);
+	Value* value = _Program(compiler, programAst, true);
+	return value;
 }
 
 void FreeCompiler(Compiler* compiler) {

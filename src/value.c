@@ -1,15 +1,21 @@
 #include "./value.h"
 
-#include "global.h"
+/**
+ * @brief Runs a young-generation garbage collection cycle on the interpreter
+ * heap.
+ * @param interpreter The interpreter whose allocated values may be collected.
+ * @origin src/gc.c:335
+ */
+extern void GarbageCollect(Interpreter* interpreter);
 
 static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
-	Value* v  = Allocate(sizeof(Value));
-	v->Type	  = type;
-	v->Marked = 0;
-	v->Next	  = NULL;
-	interpreter->Allocated++;
+	Value* v			= Allocate(sizeof(Value));
+	v->Type				= type;
+	v->Marked			= 0;
+	v->Next				= NULL;
 	v->Next				= interpreter->GcRoot;
 	interpreter->GcRoot = v;
+	interpreter->Allocated++;
 	return v;
 }
 
@@ -60,7 +66,9 @@ Value* NewBigNumValue(Interpreter* interpreter, bf_t* value) {
 }
 
 Value* NewStrValue(Interpreter* interpreter, String value) {
-	Value* v		= _CreateValue(interpreter, VLT_STR);
+	Value* v = _CreateValue(interpreter, VLT_STR);
+	/* String values store UTF-32 rune arrays (see StringToRunes, Utf8Core_*).
+	 */
 	v->Value.Opaque = StringToRunes(value);
 	return v;
 }

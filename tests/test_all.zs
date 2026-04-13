@@ -8,6 +8,7 @@
 
 import { println, format } from "core:io";
 import { abs, ceil, cos, floor, hypot, max, min, pow, round, sin, sqrt, pi, e } from "core:math";
+import { nfc, len, casefold, toLower, categoryString, validCodepoint } from "core:utf8";
 import { Date } from "core:date";
 
 assert -83 == 7, "arith: unary minus";
@@ -134,6 +135,14 @@ assert fmt3 == "ZS is true", "format: mixed types";
 
 const fmt4 = format("empty={}", null);
 assert fmt4 == "empty=null", "format: null substitution";
+
+assert nfc("") == "", "utf8: nfc empty";
+assert len("hello") == 5, "utf8: len ascii";
+assert toLower("AbC") == "abc", "utf8: toLower";
+assert casefold("a") == "a", "utf8: casefold ascii";
+assert categoryString(65) == "Lu", "utf8: category A";
+assert validCodepoint(65), "utf8: valid A";
+assert !validCodepoint(1183744), "utf8: invalid high codepoint";
 
 // =============================================================
 //  4. COMPARISON & LOGICAL OPERATORS

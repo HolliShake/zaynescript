@@ -6,26 +6,27 @@
  * @param codes The bytecode array.
  * @param alignStart The byte offset to start reading from.
  * @return The decoded string.
- * @origin src/interpreter.c:185
+ * @origin src/interpreter.c:200
  */
 extern String ReadString(uint8_t* codes, int alignStart);
+
+/**
+ * @brief Reads a 32-bit integer from a bytecode array at the given
+ * offset.
+ * @param codes The bytecode array.
+ * @param alignStart The byte offset to start reading from.
+ * @return The decoded integer.
+ * @origin src/interpreter.c:208
+ */
+extern int ReadInt32(uint8_t* codes, int alignStart);
 
 /**
  * @brief Converts a Value to its string representation.
  * @param value The value to convert.
  * @return A newly allocated string (caller must free).
- * @origin src/value.c:146
+ * @origin src/value.c:152
  */
 extern String ValueToString(Value* value);
-
-static int _ReadOffset(uint8_t* codes, int alignStart) {
-	int offset	= 0;
-	offset	   |= codes[alignStart + 0] << 24;
-	offset	   |= codes[alignStart + 1] << 16;
-	offset	   |= codes[alignStart + 2] << 8;
-	offset	   |= codes[alignStart + 3] << 0;
-	return offset;
-}
 
 static void _Append(String* dest, String src) {
 	if (*dest == NULL) {
@@ -97,28 +98,28 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
 				}
 			case OP_LOAD_CAPTURE:
 				{
-					int offset = _ReadOffset(uf->Codes, ip);
+					int offset = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_LOAD_CAPTURE %d\n", offset);
 					ip += 4;
 					break;
 				}
 			case OP_LOAD_NAME:
 				{
-					int offset = _ReadOffset(uf->Codes, ip);
+					int offset = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_LOAD_NAME %d\n", offset);
 					ip += 4;
 					break;
 				}
 			case OP_LOAD_LOCAL:
 				{
-					int offset = _ReadOffset(uf->Codes, ip);
+					int offset = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_LOAD_LOCAL %d\n", offset);
 					ip += 4;
 					break;
 				}
 			case OP_LOAD_CONST:
 				{
-					int offset = _ReadOffset(uf->Codes, ip);
+					int offset = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_LOAD_CONST %d", offset);
 					if (interpreter && interpreter->Constants
 						&& offset < interpreter->ConstantC) {
@@ -133,7 +134,7 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
 				}
 			case OP_LOAD_BOOL:
 				{
-					int offset = _ReadOffset(uf->Codes, ip);
+					int offset = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_LOAD_BOOL %d\n", offset);
 					ip += 4;
 					break;
@@ -159,7 +160,7 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
 				break;
 			case OP_ARRAY_MAKE:
 				{
-					int size = _ReadOffset(uf->Codes, ip);
+					int size = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_ARRAY_MAKE %d\n", size);
 					ip += 4;
 					break;
@@ -177,7 +178,7 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
 				}
 			case OP_OBJECT_MAKE:
 				{
-					int size = _ReadOffset(uf->Codes, ip);
+					int size = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_OBJECT_MAKE %d\n", size);
 					ip += 4;
 					break;
@@ -207,7 +208,7 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
 				break;
 			case OP_LOAD_FUNCTION_CLOSURE:
 				{
-					int offset = _ReadOffset(uf->Codes, ip);
+					int offset = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result,
 							   "OP_LOAD_FUNCTION_CLOSURE %d\n",
 							   offset);
@@ -216,28 +217,28 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
 				}
 			case OP_LOAD_FUNCTION:
 				{
-					int offset = _ReadOffset(uf->Codes, ip);
+					int offset = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_LOAD_FUNCTION %d\n", offset);
 					ip += 4;
 					break;
 				}
 			case OP_CALL_CTOR:
 				{
-					int argc = _ReadOffset(uf->Codes, ip);
+					int argc = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_CALL_CTOR %d\n", argc);
 					ip += 4;
 					break;
 				}
 			case OP_CALL:
 				{
-					int argc = _ReadOffset(uf->Codes, ip);
+					int argc = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_CALL %d\n", argc);
 					ip += 4;
 					break;
 				}
 			case OP_CALL_METHOD:
 				{
-					int argc = _ReadOffset(uf->Codes, ip);
+					int argc = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_CALL_METHOD %d\n", argc);
 					ip += 4;
 					break;
@@ -319,21 +320,21 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
 				break;
 			case OP_STORE_CAPTURE:
 				{
-					int offset = _ReadOffset(uf->Codes, ip);
+					int offset = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_STORE_CAPTURE %d\n", offset);
 					ip += 4;
 					break;
 				}
 			case OP_STORE_NAME:
 				{
-					int offset = _ReadOffset(uf->Codes, ip);
+					int offset = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_STORE_NAME %d\n", offset);
 					ip += 4;
 					break;
 				}
 			case OP_STORE_LOCAL:
 				{
-					int offset = _ReadOffset(uf->Codes, ip);
+					int offset = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_STORE_LOCAL %d\n", offset);
 					ip += 4;
 					break;
@@ -358,7 +359,7 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
 				break;
 			case OP_SETUP_TRY:
 				{
-					int offset = _ReadOffset(uf->Codes, ip);
+					int offset = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_SETUP_TRY %d\n", offset);
 					ip += 4;
 					break;
@@ -368,49 +369,49 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
 				break;
 			case OP_POPN_TRY:
 				{
-					int size = _ReadOffset(uf->Codes, ip);
+					int size = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_POPN_TRY %d\n", size);
 					ip += 4;
 					break;
 				}
 			case OP_JUMP_IF_FALSE_OR_POP:
 				{
-					int offset = _ReadOffset(uf->Codes, ip);
+					int offset = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_JUMP_IF_FALSE_OR_POP %d\n", offset);
 					ip += 4;
 					break;
 				}
 			case OP_JUMP_IF_TRUE_OR_POP:
 				{
-					int offset = _ReadOffset(uf->Codes, ip);
+					int offset = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_JUMP_IF_TRUE_OR_POP %d\n", offset);
 					ip += 4;
 					break;
 				}
 			case OP_POP_JUMP_IF_FALSE:
 				{
-					int offset = _ReadOffset(uf->Codes, ip);
+					int offset = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_POP_JUMP_IF_FALSE %d\n", offset);
 					ip += 4;
 					break;
 				}
 			case OP_POP_JUMP_IF_TRUE:
 				{
-					int offset = _ReadOffset(uf->Codes, ip);
+					int offset = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_POP_JUMP_IF_TRUE %d\n", offset);
 					ip += 4;
 					break;
 				}
 			case OP_JUMP:
 				{
-					int offset = _ReadOffset(uf->Codes, ip);
+					int offset = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_JUMP %d\n", offset);
 					ip += 4;
 					break;
 				}
 			case OP_ABSOLUTE_JUMP:
 				{
-					int offset = _ReadOffset(uf->Codes, ip);
+					int offset = ReadInt32(uf->Codes, ip);
 					_AppendFmt(&result, "OP_ABSOLUTE_JUMP %d\n", offset);
 					ip += 4;
 					break;
