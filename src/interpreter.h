@@ -7,7 +7,6 @@
  * execution context, and provides the main interpretation loop.
  */
 
-#include "../jit/zsjit.h"
 #include "./array.h"
 #include "./class.h"
 #include "./decompiler.h"

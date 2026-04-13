@@ -345,7 +345,6 @@ void GarbageCollect(Interpreter* interpreter) {
 	Mark(interpreter->CallEnv);
 	Mark(interpreter->ActiveTask);
 	Mark(interpreter->ActiveFunction);
-	Mark(interpreter->Error);
 	_MarkConstants(interpreter);
 	_MarkFunctions(interpreter);
 	_MarkStack(interpreter);

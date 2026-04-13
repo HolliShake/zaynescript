@@ -51,41 +51,6 @@ static bool _IsAstConstant(Compiler* compiler, Ast* node) {
 	}
 }
 
-typedef struct jit_compile_job_struct {
-	Interpreter* interpreter;
-	Value*		 fn;
-} JitCompileJob;
-
-static JitCompileJob* _CreateJitCompileJob(Interpreter* interpreter,
-										   Value*		fn) {
-	JitCompileJob* job = Allocate(sizeof(JitCompileJob));
-	job->interpreter   = interpreter;
-	job->fn			   = fn;
-	return job;
-}
-
-static void* _CompileJob(void* arg) {
-	JitCompileJob* job = (JitCompileJob*) arg;
-	ZJitCompile(job->interpreter, job->fn);
-	free(job);
-	return NULL;
-}
-
-static void _StartJitCompileJob(Compiler* compiler, JitCompileJob* job) {
-	// UserFunction* uf = CoerceToUserFunction(job->fn);
-	// if (uf->JitMode == JIT_DISABLED) {
-	// 	free(job);
-	// 	return;
-	// }
-	// if (ThreadStart(&compiler->Interpreter->JitThread,
-	// 				_CompileJob,
-	// 				(Value*) (void*) job)
-	// 	!= 0) {
-	// 	Panic("Failed to start JIT compilation thread!\n");
-	// }
-	// compiler->Interpreter->JitThreadActive = true;
-}
-
 static int _SaveFunction(Compiler* compiler, Value* fn) {
 	int offset = compiler->Interpreter->FunctionC;
 	PushArray(Value*,
@@ -678,11 +643,6 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 				_EmitLine(compiler, uf, lastLine);
 				_EmitArg(compiler, uf, OP_LOAD_FUNCTION_CLOSURE, funcOffset);
 				FreeScope(fnScope);
-
-				JitCompileJob* job =
-					_CreateJitCompileJob(compiler->Interpreter, fnValue);
-				_StartJitCompileJob(compiler, job);
-
 				break;
 			}
 		case AST_ALLOCATION:
@@ -2234,12 +2194,6 @@ static void _CompileClassDeclaration(Compiler*	   compiler,
 								   false,
 								   -1);
 					FreeScope(fnScope);
-
-
-					JitCompileJob* job =
-						_CreateJitCompileJob(compiler->Interpreter, fnValue);
-					_StartJitCompileJob(compiler, job);
-
 					break;
 				}
 			default:
@@ -2339,9 +2293,6 @@ static void _CompileFunctionDeclaration(Compiler*	  compiler,
 	_EmitLine(compiler, uf, lastLine);
 	_EmitArg(compiler, uf, OP_STORE_NAME, nameOffset);
 	FreeScope(fnScope);
-
-	JitCompileJob* job = _CreateJitCompileJob(compiler->Interpreter, fnValue);
-	_StartJitCompileJob(compiler, job);
 }
 
 static void _CompileImportStatement(Compiler*	  compiler,
@@ -3188,24 +3139,10 @@ static void _CompileReturnStatement(Compiler*	  compiler,
 	_Emit(compiler, uf, OP_RETURN);
 }
 
-static void
-_SetupJitMode(Compiler* compiler, UserFunction* uf, String directive) {
-	if (strcmp(directive, DIR_JIT_AUTO) == 0) {
-		uf->JitMode = JIT_AUTO;
-	} else if (strcmp(directive, DIR_JIT_DISABLED) == 0) {
-		uf->JitMode = JIT_DISABLED;
-	} else if (strcmp(directive, DIR_JIT_ALWAYS) == 0) {
-		uf->JitMode = JIT_ALWAYS;
-	}
-	// ignore, invalid directive for jit
-}
-
 static void _CompileExpressionStatement(Compiler*	  compiler,
 										UserFunction* uf,
 										Scope*		  scope,
 										Ast*		  node) {
-	if (node->A->Type == AST_STR)
-		_SetupJitMode(compiler, uf, node->A->Value);
 	_CompileExpression(compiler, uf, scope, node->A);
 	_EmitLine(compiler, uf, node->Position);
 	_Emit(compiler, uf, OP_POPTOP);
@@ -3389,9 +3326,6 @@ static Value* _Program(Compiler* compiler, Ast* node, bool isModule) {
 	_Emit(compiler, uf, OP_RETURN);
 
 	FreeScope(scope);
-
-	JitCompileJob* job = _CreateJitCompileJob(compiler->Interpreter, value);
-	_StartJitCompileJob(compiler, job);
 
 	return value;
 }

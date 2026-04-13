@@ -1,6 +1,6 @@
 #include "./interpreter.h"
 
-#include "global.h"
+#include <assert.h>
 
 static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
 	// libbf uses size == 0 to signal a free() operation
@@ -43,14 +43,11 @@ Interpreter* CreateInterpreter(String execPath) {
 	interpreter->EnvrC = 0;
 	// interpreter->ExceptionHandlerStacks[STACK_SIZE];
 	interpreter->ExceptionHandlerStackC = 0;
-	/* GcThreshold / OldThreshold already set above, before first allocation */
 	// interpreter->TaskQueue[STACK_SIZE];
-	interpreter->TaskQueueHead	 = 0;
-	interpreter->TaskQueueC		 = 0;
-	interpreter->ActiveFunction	 = NULL;
-	interpreter->ActiveTask		 = NULL;
-	interpreter->Error			 = NULL;
-	interpreter->JitThreadActive = false;
+	interpreter->TaskQueueHead	= 0;
+	interpreter->TaskQueueC		= 0;
+	interpreter->ActiveFunction = NULL;
+	interpreter->ActiveTask		= NULL;
 	mg_mgr_init(&interpreter->MgMgr);
 	return interpreter;
 }
@@ -119,6 +116,14 @@ Interpreter* CreateInterpreter(String execPath) {
 		free(message);                                                         \
 		break;                                                                 \
 	}
+
+void SetActiveFunction(Interpreter* interpreter, Value* function) {
+	interpreter->ActiveFunction = function;
+}
+
+void SetActiveTask(Interpreter* interpreter, Value* task) {
+	interpreter->ActiveTask = task;
+}
 
 void Push(Interpreter* interpreter, Value* value) {
 	interpreter->Stacks[interpreter->StckC++] = value;
@@ -202,7 +207,7 @@ String ReadString(uint8_t* codes, int alignStart) {
 	return new;
 }
 
-static int _ReadInt32(uint8_t* codes, int alignStart) {
+int ReadInt32(uint8_t* codes, int alignStart) {
 	int offset	= 0;
 	offset	   |= codes[alignStart + 0] << 24;
 	offset	   |= codes[alignStart + 1] << 16;
@@ -407,30 +412,6 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 		InterpreterPanic("Attempted to run a non-function value of type %s",
 						 ValueTypeOf(fnOrSm));
 
-	if (uf->JitMode != JIT_DISABLED
-		&& (uf->JitMode == JIT_ALWAYS
-			|| (uf->JitMode == JIT_AUTO
-				&& (uf->CodeC <= JIT_TRIGGER_MIN_CODE
-					|| uf->CodeC >= JIT_TRIGGER_MAX_CODE)))) {
-		// compile the actual fn if it was wrapped by a state machine
-		ZJittedFn* _jit_fn = ZJitCompile(interpreter, fn);
-		if (_jit_fn != NULL) {
-			printf("compiling or running\n");
-			ZJittedFn _jf = (ZJittedFn) (void*) _jit_fn;
-			Value*	  _je = (Value*) _jf(interpreter,
-										 interpreter->RootEnv,
-										 interpreter->CallEnv,
-										 // allow running state machine inside
-										 fnOrSm);
-			if (_je != NULL && ValueIsError(_je)) {
-				size_t _ip_err = 0;
-				_RaiseError(interpreter, fn, _je, &_ip_err, true);
-			}
-			return;
-		}
-	}
-	printf("not compiling or running, running interpreter loop\n");
-
 #define Forward(size)		   (ip += size)
 #define JmpFrwd(addr)		   (ip = addr)
 #define SetLocalHandler(value) (localhandler = value)
@@ -491,7 +472,7 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 				}
 			case OP_LOAD_CAPTURE:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					val	   = GetCap(uf, offset);
 					if (val == NULL) {
 						err = _CreateError(
@@ -508,7 +489,7 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 				}
 			case OP_LOAD_NAME:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					val	   = GetVar(interpreter->RootEnv, offset);
 					if (val == NULL) {
 						err = _CreateError(
@@ -525,7 +506,7 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 				}
 			case OP_LOAD_LOCAL:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					val	   = GetVar(interpreter->CallEnv, offset);
 					if (val == NULL) {
 						err = _CreateError(
@@ -542,14 +523,14 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 				}
 			case OP_LOAD_CONST:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					Push(interpreter, interpreter->Constants[offset]);
 					Forward(4);
 					break;
 				}
 			case OP_LOAD_BOOL:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					Push(interpreter,
 						 offset ? interpreter->True : interpreter->False);
 					Forward(4);
@@ -610,7 +591,7 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 				}
 			case OP_ARRAY_MAKE:
 				{
-					size  = _ReadInt32(uf->Codes, ip);
+					size  = ReadInt32(uf->Codes, ip);
 					arr	  = NewArrayValue(interpreter);
 					array = CoerceToArray(arr);
 					for (int i = 0; i < size; i++) {
@@ -644,7 +625,7 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 				}
 			case OP_OBJECT_MAKE:
 				{
-					size = _ReadInt32(uf->Codes, ip);
+					size = ReadInt32(uf->Codes, ip);
 					obj	 = NewObjectValue(interpreter);
 					map	 = CoerceToHashMap(obj);
 					for (int i = 0; i < size; i++) {
@@ -745,7 +726,7 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 			case OP_LOAD_FUNCTION_CLOSURE:
 			case OP_LOAD_FUNCTION:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					res = DoLoadFunction(interpreter,
 										 offset,
 										 (opcode == OP_LOAD_FUNCTION_CLOSURE));
@@ -755,7 +736,7 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 				}
 			case OP_CALL_CTOR:
 				{
-					argc = _ReadInt32(uf->Codes, ip);
+					argc = ReadInt32(uf->Codes, ip);
 					Forward(4);
 					cls = Popp(interpreter);
 					res = DoCallCtor(interpreter, cls, argc);
@@ -768,7 +749,7 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 				}
 			case OP_CALL:
 				{
-					argc = _ReadInt32(uf->Codes, ip);
+					argc = ReadInt32(uf->Codes, ip);
 					Forward(4);
 					obj = Popp(interpreter);
 					res = DoCall(interpreter, obj, argc, false);
@@ -781,7 +762,7 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 				}
 			case OP_CALL_METHOD:
 				{
-					argc = _ReadInt32(uf->Codes, ip);
+					argc = ReadInt32(uf->Codes, ip);
 					Forward(4);
 					key = Popp(interpreter);  // method name
 					obj = Popp(interpreter);  // 'this' object
@@ -1206,28 +1187,28 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 				}
 			case OP_STORE_CAPTURE:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					SetCap(uf, offset, Popp(interpreter));
 					Forward(4);
 					break;
 				}
 			case OP_STORE_NAME:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					SetVar(interpreter->RootEnv, offset, Popp(interpreter));
 					Forward(4);
 					break;
 				}
 			case OP_STORE_LOCAL:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					SetVar(interpreter->CallEnv, offset, Popp(interpreter));
 					Forward(4);
 					break;
 				}
 			case OP_LOCK_VAR:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					LockVar(interpreter->CallEnv, offset);
 					Forward(4);
 					break;
@@ -1286,7 +1267,7 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 			case OP_SETUP_TRY:
 				{
 					SetLocalHandler(true);
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					_PushTry(interpreter, offset, &ip);
 					Forward(4);
 					break;
@@ -1299,14 +1280,14 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 				}
 			case OP_POPN_TRY:
 				{
-					size = _ReadInt32(uf->Codes, ip);
+					size = ReadInt32(uf->Codes, ip);
 					_PopNTry(interpreter, size);
 					Forward(4);
 					break;
 				}
 			case OP_JUMP_IF_FALSE_OR_POP:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					val	   = Peek(interpreter);
 					if (!CoerceToBool(val)) {
 						JmpFrwd(offset);
@@ -1318,7 +1299,7 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 				}
 			case OP_JUMP_IF_TRUE_OR_POP:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					val	   = Peek(interpreter);
 					if (CoerceToBool(val)) {
 						JmpFrwd(offset);
@@ -1330,7 +1311,7 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 				}
 			case OP_POP_JUMP_IF_FALSE:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					val	   = Popp(interpreter);
 					if (CoerceToBool(val) == false) {
 						JmpFrwd(offset);
@@ -1341,7 +1322,7 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 				}
 			case OP_POP_JUMP_IF_TRUE:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					val	   = Popp(interpreter);
 					if (CoerceToBool(val) == true) {
 						JmpFrwd(offset);
@@ -1352,13 +1333,13 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 				}
 			case OP_JUMP:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					JmpFrwd(offset);
 					break;
 				}
 			case OP_ABSOLUTE_JUMP:
 				{
-					offset = _ReadInt32(uf->Codes, ip);
+					offset = ReadInt32(uf->Codes, ip);
 					JmpFrwd(offset);
 					break;
 				}
@@ -1431,8 +1412,7 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 		}
 
 		// Awaited
-		StateMachine* sm		= CoerceToStateMachine(task);
-		interpreter->ActiveTask = task;
+		StateMachine* sm = CoerceToStateMachine(task);
 
 		if (!sm->IsCallback) {
 			DoCall(interpreter, task, 0, false);
@@ -1471,42 +1451,25 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 				EnqueueTask(interpreter, sm->WaitList[i]);
 			}
 		}
-
-		interpreter->ActiveTask = NULL;
 	}
 
 	interpreter->StckC	 = old;
 	interpreter->RootEnv = saveGbl;
 
-	if (interpreter->StckC != 1) {
-		DumpStack();
-		InterpreterPanic("internal error: stack not cleaned up after "
-						 "function "
-						 "'%s' execution, "
-						 "expected 1 value on stack but got %d values",
-						 uf->Name != NULL ? uf->Name : "<anonymous>",
-						 interpreter->StckC);
-	}
+	if (interpreter->StckC != 0)
+		PopN(interpreter, interpreter->StckC);
+
+	assert(interpreter->StckC == 0);
 
 	ForceGarbageCollect(interpreter);
 }
 
-static void _InterpreterWaitJit(Interpreter* interpreter) {
-	if (!interpreter->JitThreadActive)
-		return;
-	ThreadJoin(interpreter->JitThread);
-	interpreter->JitThreadActive = false;
-}
-
 void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/) {
-	_InterpreterWaitJit(interpreter);
 	_RunProgram(interpreter, fnValue);
 }
 
 void FreeInterpreter(Interpreter* interpreter) {
-	_InterpreterWaitJit(interpreter);
 	mg_mgr_free(&interpreter->MgMgr);
-	ZJitFree();
 	FreeHashMap(interpreter->Imports);
 	FreeImportNode(interpreter->ImportHead);
 	bf_context_end(&interpreter->BfContext);

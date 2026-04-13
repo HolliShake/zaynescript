@@ -19,6 +19,22 @@
 #define GetOffset() (interpreter->ConstantC)
 
 /**
+ * @brief Sets the currently active function.
+ * @param interpreter The interpreter instance.
+ * @param function The function to set as active.
+ * @origin src/interpreter.c:125
+ */
+extern void SetActiveFunction(Interpreter* interpreter, Value* function);
+
+/**
+ * @brief Sets the currently active task.
+ * @param interpreter The interpreter instance.
+ * @param task The task to set as active.
+ * @origin src/interpreter.c:125
+ */
+extern void SetActiveTask(Interpreter* interpreter, Value* task);
+
+/**
  * @brief Pushes a value onto the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @param value The value to push.
@@ -775,10 +791,10 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 	}
 
 	if (ValueIsPromise(fn)) {
-		interpreter->ActiveTask = fn;
-		sm						= CoerceToStateMachine(fn);
-		sm->StckBot				= interpreter->StckC;
-		sm->EnvrBot				= interpreter->EnvrC;
+		SetActiveTask(interpreter, fn);
+		sm			= CoerceToStateMachine(fn);
+		sm->StckBot = interpreter->StckC;
+		sm->EnvrBot = interpreter->EnvrC;
 
 		PushTrace(interpreter, sm->Line, fn);
 
@@ -815,6 +831,8 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 			interpreter->CallEnv = sm->CallEnv;
 			Run(interpreter, fn);
 		}
+
+		SetActiveTask(interpreter, NULL);
 
 		PopTrace(interpreter);
 
@@ -895,8 +913,12 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 		interpreter->RootEnv = en;
 	}
 
+	SetActiveFunction(interpreter, fn);
+
 	// 2. Run the function
 	Run(interpreter, fn);
+
+	SetActiveFunction(interpreter, NULL);
 
 	PopTrace(interpreter);
 

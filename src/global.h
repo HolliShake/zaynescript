@@ -51,16 +51,6 @@ typedef pthread_t Thread;
 
 // Constants & Macros
 
-typedef enum jit_mode_enum {
-	JIT_AUTO,
-	JIT_DISABLED,
-	JIT_ALWAYS
-} JitMode;
-
-#define DIR_JIT_AUTO	 "[#jit:auto]"		// default!
-#define DIR_JIT_DISABLED "[#jit:disabled]"	// run in interpreter
-#define DIR_JIT_ALWAYS	 "[#jit:always]"	// force JIT compilation
-
 /**
  * @def GC_GROWTH_FACTOR
  * @brief Growth factor for the garbage collection threshold
@@ -687,12 +677,6 @@ typedef struct user_function_struct {
 	CaptureMeta* CaptureMetas; /**< Array of capture metadata */
 	int			 CaptureC;	   /**< Count of captured variables */
 	EnvCell**	 Captures;	   /**< Array of captured environment cells */
-	JitMode		 JitMode;	   /**< JIT mode */
-	void* JitFn; /**< Compiled JIT function pointer, or NULL if not yet compiled
-				  */
-	bool		ForceJit; /**< True if JIT compilation is forced */
-	int			CallCount;
-	atomic_bool Compiling;
 } UserFunction;
 
 /**
@@ -935,8 +919,6 @@ typedef struct exception_handler_struct {
 struct interpreter_struct {
 	bf_context_t BfContext; /**< Context for the libbf library
 							   (memory management, etc.) */
-	Thread JitThread;		/**< Thread for JIT compilation */
-	bool   JitThreadActive; /**< True while @ref JitThread may be joinable */
 	String ExecPath;		/**< Directory path of the executable */
 	String ModulePath;		/**< Directory path of the main module
 							   (for resolving imports) */
@@ -981,7 +963,6 @@ struct interpreter_struct {
 	int	   CallStackC;				  /**< Call stack pointer/count */
 	Value* ActiveFunction; /** < Currently active function being processed */
 	Value* ActiveTask;	   /**< Currently active task being processed */
-	Value* Error;		   /**< Currently active error being processed */
 };
 
 /**
