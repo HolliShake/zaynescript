@@ -54,6 +54,8 @@ enum {
 };
 #endif
 
+void pstrcpy(char *buf, int buf_size, const char *str);
+char *pstrcat(char *buf, int buf_size, const char *s);
 int strstart(const char *str, const char *val, const char **ptr);
 
 static inline int max_int(int a, int b)
@@ -161,7 +163,7 @@ static inline int dbuf_put_u16(DynBuf *s, uint16_t val)
     return dbuf_put(s, (uint8_t *)&val, 2);
 }
 int __attribute__((format(printf, 2, 3))) dbuf_printf(DynBuf *s,
-                                                      const char *fmt, ...);
+                                                    const char *fmt, ...);
 void dbuf_free(DynBuf *s);
 static inline BOOL dbuf_error(DynBuf *s) {
     return s->error;
@@ -170,6 +172,7 @@ static inline BOOL dbuf_error(DynBuf *s) {
 
 #define UTF8_CHAR_LEN_MAX 4
 
+int unicode_to_utf8(uint8_t *buf, unsigned int c);
 int unicode_from_utf8(const uint8_t *p, int max_len, const uint8_t **pp);
 
 #endif
