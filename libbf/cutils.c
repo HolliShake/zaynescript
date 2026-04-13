@@ -21,12 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <string.h>
-#include "cutils.h"
-
+ #include <stdlib.h>
+ #include <stdio.h>
+ #include <stdarg.h>
+ #include <string.h>
+ #include "cutils.h"
+ 
 void pstrcpy(char *buf, int buf_size, const char *str)
 {
     int c;
@@ -71,7 +71,7 @@ int strstart(const char *str, const char *val, const char **ptr)
 }
 
 /* Note: at most 21 bits are encoded. At most UTF8_CHAR_LEN_MAX bytes
-   are output. */
+are output. */
 int unicode_to_utf8(uint8_t *buf, unsigned int c)
 {
     uint8_t *q = buf;
@@ -100,7 +100,7 @@ int unicode_to_utf8(uint8_t *buf, unsigned int c)
 }
 
 /* return -1 if error. *pp is not updated in this case. max_len must
-   be >= 1. */
+be >= 1. */
 int unicode_from_utf8(const uint8_t *p, int max_len, const uint8_t **pp)
 {
     int l, c, b, i, min_code;
@@ -213,7 +213,7 @@ int dbuf_putstr(DynBuf *s, const char *str)
 }
 
 int __attribute__((format(printf, 2, 3))) dbuf_printf(DynBuf *s,
-                                                      const char *fmt, ...)
+                                                    const char *fmt, ...)
 {
     va_list ap;
     char buf[128];
@@ -230,7 +230,7 @@ int __attribute__((format(printf, 2, 3))) dbuf_printf(DynBuf *s,
             return -1;
         va_start(ap, fmt);
         vsnprintf((char *)(s->buf + s->size), s->allocated_size - s->size,
-                  fmt, ap);
+                fmt, ap);
         va_end(ap);
         s->size += len;
     }
@@ -240,7 +240,7 @@ int __attribute__((format(printf, 2, 3))) dbuf_printf(DynBuf *s,
 void dbuf_free(DynBuf *s)
 {
     /* we test s->buf as a fail safe to avoid crashing if dbuf_free()
-       is called twice */
+    is called twice */
     if (s->buf) {
         s->realloc_func(s->opaque, s->buf, 0);
     }

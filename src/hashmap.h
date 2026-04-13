@@ -35,7 +35,7 @@ HashMap* CreateHashMap(size_t size);
  * original.
  *
  * @param original Pointer to the hash map to clone
- * @param readOnly If true, the cloned hash map will be marked as
+ * @param readOnly If true, the cloned hash map will be marked as read-only.
  * @return Pointer to the cloned HashMap structure, or NULL on
  * failure
  */

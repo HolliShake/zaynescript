@@ -1,28 +1,44 @@
 #include "./operation.h"
 
 
-#define FreeTempBf(interpreter, bf, val)                                       \
-	do {                                                                       \
-		if ((val)->Type == VLT_INT || (val)->Type == VLT_NUM) {                \
-			bf_delete(bf);                                                     \
-			free(bf);                                                          \
-		}                                                                      \
+#define FreeTempBf(interpreter, bf, val)                                  \
+	do {                                                                  \
+		if ((val)->Type == VLT_INT || (val)->Type == VLT_NUM) {           \
+			bf_delete(bf);                                                \
+			free(bf);                                                     \
+		}                                                                 \
 	} while (0)
 
-#define PushArray(type, array, count, val, defaultValue)                        \
-	do {                                                                        \
-		(array)[(count)++] = val;                                               \
-		(array)			   = Reallocate((array), sizeof(type) * ((count) + 1)); \
-		(array)[(count)]   = (defaultValue);                                    \
+#define PushArray(type, array, count, val, defaultValue)                  \
+	do {                                                                  \
+		(array)[(count)++] = val;                                         \
+		(array) = Reallocate((array), sizeof(type) * ((count) + 1));      \
+		(array)[(count)] = (defaultValue);                                \
 	} while (0)
 
 #define GetOffset() (interpreter->ConstantC)
 
 /**
+ * @brief Sets the currently active function.
+ * @param interpreter The interpreter instance.
+ * @param function The function to set as active.
+ * @origin src/interpreter.c:118
+ */
+extern void SetActiveFunction(Interpreter* interpreter, Value* function);
+
+/**
+ * @brief Sets the currently active task.
+ * @param interpreter The interpreter instance.
+ * @param task The task to set as active.
+ * @origin src/interpreter.c:122
+ */
+extern void SetActiveTask(Interpreter* interpreter, Value* task);
+
+/**
  * @brief Pushes a value onto the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @param value The value to push.
- * @origin src/interpreter.c:115
+ * @origin src/interpreter.c:126
  */
 extern void Push(Interpreter* interpreter, Value* value);
 
@@ -31,7 +47,7 @@ extern void Push(Interpreter* interpreter, Value* value);
  * stack.
  * @param interpreter The interpreter instance.
  * @return The popped value.
- * @origin src/interpreter.c:119
+ * @origin src/interpreter.c:130
  */
 extern Value* Popp(Interpreter* interpreter);
 
@@ -39,7 +55,7 @@ extern Value* Popp(Interpreter* interpreter);
  * @brief Pops N values from the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @param n The number of values to pop.
- * @origin src/interpreter.c:123
+ * @origin src/interpreter.c:134
  */
 extern void PopN(Interpreter* interpreter, int n);
 
@@ -48,7 +64,7 @@ extern void PopN(Interpreter* interpreter, int n);
  * without removing it.
  * @param interpreter The interpreter instance.
  * @return The top value on the stack.
- * @origin src/interpreter.c:127
+ * @origin src/interpreter.c:138
  */
 extern Value* Peek(Interpreter* interpreter);
 
@@ -60,7 +76,8 @@ static int _GetConstantOffset(Interpreter* interpreter, Value* value) {
 	for (int i = 0; i < interpreter->ConstantC; i++) {
 		if (interpreter->Constants[i] != NULL) {
 			constantStr = ValueToString(interpreter->Constants[i]);
-			if (constantStr != NULL && strcmp(constantStr, valueStr) == 0) {
+			if (constantStr != NULL
+				&& strcmp(constantStr, valueStr) == 0) {
 				free(constantStr);
 				free(valueStr);
 				return i;
@@ -84,7 +101,7 @@ static void _DupTop(Interpreter* interpreter) {
  * function value.
  * @param interpreter The interpreter instance.
  * @param fnValue The compiled function value to execute.
- * @origin src/interpreter.c:416
+ * @origin src/interpreter.c:375
  */
 extern void Run(Interpreter* interpreter, Value* fnValue);
 
@@ -130,7 +147,9 @@ void RestoreNthEnvAndSync(Interpreter* interpreter, int n) {
 	interpreter->CallEnv  = top;
 }
 
-bool IsMethodOfObject(Interpreter* interpreter, Value* obj, Value* method) {
+bool IsMethodOfObject(Interpreter* interpreter,
+					  Value*	   obj,
+					  Value*	   method) {
 	String key = ValueToString(method);
 	if (ValueIsPromise(obj)) {
 		// Handle Promise methods or attributes
@@ -338,11 +357,11 @@ Value* GenericGetAttribute(Interpreter* interpreter,
 		if (!ValueIsAnyNum(index)) {
 			free(key);
 			String idxStr = ValueToString(index);
-			String errMsg =
-				FormatString("%s: string indices must be integers, not %s (%s)",
-							 TYPE_ERROR,
-							 ValueTypeOf(index),
-							 idxStr);
+			String errMsg = FormatString(
+				"%s: string indices must be integers, not %s (%s)",
+				TYPE_ERROR,
+				ValueTypeOf(index),
+				idxStr);
 			Value* errVal = NewErrorValue(interpreter, errMsg);
 			free(idxStr);
 			free(errMsg);
@@ -351,9 +370,10 @@ Value* GenericGetAttribute(Interpreter* interpreter,
 		long idx = CoerceToI64(index);
 		if (idx < 0 || idx >= ln) {
 			free(key);
-			String errMsg = FormatString("%s: string index %ld out of bounds",
-										 INDEX_ERROR,
-										 idx);
+			String errMsg =
+				FormatString("%s: string index %ld out of bounds",
+							 INDEX_ERROR,
+							 idx);
 			Value* errVal = NewErrorValue(interpreter, errMsg);
 			free(errMsg);
 			return errVal;
@@ -442,7 +462,7 @@ extern void FreeAst(Ast* ast);
  * @param interpreter The interpreter instance.
  * @param parser The parser to read AST from.
  * @return A new Compiler instance.
- * @origin src/compiler.c:13
+ * @origin src/compiler.c:12
  */
 extern Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
 
@@ -452,7 +472,7 @@ extern Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
  * @param compiler The compiler instance.
  * @param programAst The AST to compile.
  * @return The compiled function value.
- * @origin src/compiler.c:3341
+ * @origin src/compiler.c:3340
  */
 extern Value* CompileAst(Compiler* compiler, Ast* programAst);
 
@@ -467,7 +487,7 @@ extern void FreeCompiler(Compiler* compiler);
  * @brief Interprets a compiled function value.
  * @param interpreter The interpreter instance.
  * @param compiled The compiled function value to interpret.
- * @origin src/interpreter.c:1469
+ * @origin src/interpreter.c:1465
  */
 extern void Interpret(Interpreter* interpreter, Value* compiled);
 
@@ -485,18 +505,20 @@ static Value* DoImportFileOrLib(Interpreter* interpreter,
 	if (isLib) {
 		String basePath = interpreter->ExecPath;
 #ifdef _WIN32
-		filePath = FormatString("%slib\\%s.zs", basePath, moduleNameOrPath);
-#else
 		filePath =
-			FormatString("/usr/local/lib/zscript/lib/%s.zs", moduleNameOrPath);
+			FormatString("%slib\\%s.zs", basePath, moduleNameOrPath);
+#else
+		filePath = FormatString("/usr/local/lib/zscript/lib/%s.zs",
+								moduleNameOrPath);
 #endif
 		file = fopen(filePath, "rb");
 
 		// Search for relative lib fallback
 		if (!file) {
 			free(filePath);
-			filePath = FormatString("%slib/%s.zs", basePath, moduleNameOrPath);
-			file	 = fopen(filePath, "rb");
+			filePath =
+				FormatString("%slib/%s.zs", basePath, moduleNameOrPath);
+			file = fopen(filePath, "rb");
 		}
 	} else {
 		filePath = FormatString("%s.zs", moduleNameOrPath);
@@ -507,14 +529,15 @@ static Value* DoImportFileOrLib(Interpreter* interpreter,
 	if (!file) {
 		String errMsg;
 		if (isLib) {
-			errMsg =
-				FormatString("%s: lib module '%s' not found (searched '%s')",
-							 IMPORT_ERROR,
-							 moduleNameOrPath,
-							 filePath);
+			errMsg = FormatString(
+				"%s: lib module '%s' not found (searched '%s')",
+				IMPORT_ERROR,
+				moduleNameOrPath,
+				filePath);
 		} else {
-			errMsg =
-				FormatString("%s: file '%s' not found", IMPORT_ERROR, filePath);
+			errMsg = FormatString("%s: file '%s' not found",
+								  IMPORT_ERROR,
+								  filePath);
 		}
 		Value* errVal = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
@@ -526,10 +549,11 @@ static Value* DoImportFileOrLib(Interpreter* interpreter,
 	ImportNode* newNode = CreateOrGetImportNode(interpreter, filePath);
 
 	if (newNode->State == VISITING) {
-		String errMsg = FormatString("%s: circular dependency detected when "
-									 "importing '%s'",
-									 IMPORT_ERROR,
-									 filePath);
+		String errMsg =
+			FormatString("%s: circular dependency detected when "
+						 "importing '%s'",
+						 IMPORT_ERROR,
+						 filePath);
 		Value* errVal = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 		free(filePath);
@@ -600,17 +624,20 @@ Value* DoImportFile(Interpreter* interpreter, String filePathNoExt) {
 	return DoImportFileOrLib(interpreter, filePathNoExt, false);
 }
 
-Value*
-DoSetIndex(Interpreter* interpreter, Value* obj, Value* index, Value* val) {
+Value* DoSetIndex(Interpreter* interpreter,
+				  Value*	   obj,
+				  Value*	   index,
+				  Value*	   val) {
 	String hashKey = ValueToString(index);
 	if (ValueIsArray(obj)) {
 		free(hashKey);
 		Array* array = CoerceToArray(obj);
 		long   idx	 = (long) CoerceToI64(index);
 		if (idx < 0 || idx >= array->Count) {
-			String errMsg = FormatString("%s: array index %ld out of bounds",
-										 INDEX_ERROR,
-										 idx);
+			String errMsg =
+				FormatString("%s: array index %ld out of bounds",
+							 INDEX_ERROR,
+							 idx);
 			Value* errVal = NewErrorValue(interpreter, errMsg);
 			free(errMsg);
 			return errVal;
@@ -620,9 +647,10 @@ DoSetIndex(Interpreter* interpreter, Value* obj, Value* index, Value* val) {
 		HashMap* map = CoerceToHashMap(obj);
 		if (map->ReadOnly) {
 			free(hashKey);
-			return NewErrorFValue(interpreter,
-								  "%s: cannot set index on read-only object",
-								  TYPE_ERROR);
+			return NewErrorFValue(
+				interpreter,
+				"%s: cannot set index on read-only object",
+				TYPE_ERROR);
 		}
 		HashMapSet(map, hashKey, val);
 		free(hashKey);
@@ -635,6 +663,7 @@ DoSetIndex(Interpreter* interpreter, Value* obj, Value* index, Value* val) {
 		HashMapSet(cls->StaticMembers, hashKey, val);
 		free(hashKey);
 	} else {
+		free(hashKey);
 		return NewErrorFValue(interpreter,
 							  "%s: cannot set index on non-object",
 							  TYPE_ERROR);
@@ -706,7 +735,8 @@ Value* DoCallMethod(Interpreter* interpreter,
 		Popp(interpreter);	// pop 'this'
 	}
 
-	Value* method = GenericGetAttribute(interpreter, obj, methodName, true);
+	Value* method =
+		GenericGetAttribute(interpreter, obj, methodName, true);
 
 	if (ValueIsNull(method)) {
 		PopN(interpreter, argc);
@@ -730,18 +760,19 @@ Value* DoCallMethod(Interpreter* interpreter,
  * @param interpreter The interpreter instance.
  * @param line The source line information for the call.
  * @param fn The function value being called.
- * @origin src/interpreter.c:135
+ * @origin src/interpreter.c:146
  */
 extern void PushTrace(Interpreter* interpreter, LineInfo line, Value* fn);
 
 /**
  * @brief Pops the top stack trace entry after a function call returns.
  * @param interpreter The interpreter instance.
- * @origin src/interpreter.c:142
+ * @origin src/interpreter.c:153
  */
 extern void PopTrace(Interpreter* interpreter);
 
-Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
+Value*
+DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 	Value* en = NULL;
 
 	if (fn == NULL)
@@ -774,10 +805,10 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 	}
 
 	if (ValueIsPromise(fn)) {
-		interpreter->ActiveTask = fn;
-		sm						= CoerceToStateMachine(fn);
-		sm->StckBot				= interpreter->StckC;
-		sm->EnvrBot				= interpreter->EnvrC;
+		SetActiveTask(interpreter, fn);
+		sm			= CoerceToStateMachine(fn);
+		sm->StckBot = interpreter->StckC;
+		sm->EnvrBot = interpreter->EnvrC;
 
 		PushTrace(interpreter, sm->Line, fn);
 
@@ -814,6 +845,8 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 			interpreter->CallEnv = sm->CallEnv;
 			Run(interpreter, fn);
 		}
+
+		SetActiveTask(interpreter, NULL);
 
 		PopTrace(interpreter);
 
@@ -871,11 +904,12 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 	// Call
 	if (argc != uf->Argc) {
 		PopN(interpreter, argc);
-		String errMsg = FormatString("%s: argument count mismatch: expected %d "
-									 "arguments but got %d",
-									 ARGUMENT_ERROR,
-									 uf->Argc,
-									 argc);
+		String errMsg =
+			FormatString("%s: argument count mismatch: expected %d "
+						 "arguments but got %d",
+						 ARGUMENT_ERROR,
+						 uf->Argc,
+						 argc);
 
 		Value* errVal = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
@@ -894,8 +928,12 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 		interpreter->RootEnv = en;
 	}
 
+	SetActiveFunction(interpreter, fn);
+
 	// 2. Run the function
 	Run(interpreter, fn);
+
+	SetActiveFunction(interpreter, NULL);
 
 	PopTrace(interpreter);
 
@@ -928,9 +966,10 @@ Value* DoPos(Interpreter* interpreter, Value* val) {
 		return prec == PREC_INT ? NewBigIntValue(interpreter, resNum)
 								: NewBigNumValue(interpreter, resNum);
 	} else {
-		String errMsg = FormatString("%s: invalid operand for operator (+): %s",
-									 TYPE_ERROR,
-									 ValueTypeOf(val));
+		String errMsg =
+			FormatString("%s: invalid operand for operator (+): %s",
+						 TYPE_ERROR,
+						 ValueTypeOf(val));
 		Value* errVal = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 		return errVal;
@@ -953,9 +992,10 @@ Value* DoNeg(Interpreter* interpreter, Value* val) {
 		return prec == PREC_INT ? NewBigIntValue(interpreter, resNum)
 								: NewBigNumValue(interpreter, resNum);
 	} else {
-		String errMsg = FormatString("%s: invalid operand for operator (-): %s",
-									 TYPE_ERROR,
-									 ValueTypeOf(val));
+		String errMsg =
+			FormatString("%s: invalid operand for operator (-): %s",
+						 TYPE_ERROR,
+						 ValueTypeOf(val));
 		Value* errVal = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 		return errVal;
@@ -967,15 +1007,15 @@ Value* DoMul(Interpreter* interpreter, Value* lhs, Value* rhs) {
 
 	if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
 		long resultNum = CoerceToI64(lhs) * CoerceToI64(rhs);
-		result		   = (resultNum <= INT_MAX && resultNum >= INT_MIN)
-							 ? NewIntValue(interpreter, (int) resultNum)
-							 : NewNumValue(interpreter, (double) resultNum);
+		result = (resultNum <= INT_MAX && resultNum >= INT_MIN)
+					 ? NewIntValue(interpreter, (int) resultNum)
+					 : NewNumValue(interpreter, (double) resultNum);
 	} else if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
 		double resultNum = CoerceToNum(lhs) * CoerceToNum(rhs);
-		result			 = (resultNum == (int) resultNum && resultNum <= INT_MAX
-							&& resultNum >= INT_MIN)
-							   ? NewIntValue(interpreter, (int) resultNum)
-							   : NewNumValue(interpreter, resultNum);
+		result = (resultNum == (int) resultNum && resultNum <= INT_MAX
+				  && resultNum >= INT_MIN)
+					 ? NewIntValue(interpreter, (int) resultNum)
+					 : NewNumValue(interpreter, resultNum);
 	} else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
 		bf_t* lhsNum = CoerceToBitField(interpreter, lhs);
 		bf_t* rhsNum = CoerceToBitField(interpreter, rhs);
@@ -992,11 +1032,11 @@ Value* DoMul(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		result = prec == PREC_INT ? NewBigIntValue(interpreter, resNum)
 								  : NewBigNumValue(interpreter, resNum);
 	} else {
-		String errMsg =
-			FormatString("%s: invalid operands for operator (*): %s and %s",
-						 TYPE_ERROR,
-						 ValueTypeOf(lhs),
-						 ValueTypeOf(rhs));
+		String errMsg = FormatString(
+			"%s: invalid operands for operator (*): %s and %s",
+			TYPE_ERROR,
+			ValueTypeOf(lhs),
+			ValueTypeOf(rhs));
 		result = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 	}
@@ -1017,15 +1057,15 @@ Value* DoDiv(Interpreter* interpreter, Value* lhs, Value* rhs) {
 
 	if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
 		long resultNum = CoerceToI64(lhs) / CoerceToI64(rhs);
-		result		   = (resultNum <= INT_MAX && resultNum >= INT_MIN)
-							 ? NewIntValue(interpreter, (int) resultNum)
-							 : NewNumValue(interpreter, (double) resultNum);
+		result = (resultNum <= INT_MAX && resultNum >= INT_MIN)
+					 ? NewIntValue(interpreter, (int) resultNum)
+					 : NewNumValue(interpreter, (double) resultNum);
 	} else if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
 		double resultNum = CoerceToNum(lhs) / CoerceToNum(rhs);
-		result			 = (resultNum == (int) resultNum && resultNum <= INT_MAX
-							&& resultNum >= INT_MIN)
-							   ? NewIntValue(interpreter, (int) resultNum)
-							   : NewNumValue(interpreter, resultNum);
+		result = (resultNum == (int) resultNum && resultNum <= INT_MAX
+				  && resultNum >= INT_MIN)
+					 ? NewIntValue(interpreter, (int) resultNum)
+					 : NewNumValue(interpreter, resultNum);
 	} else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
 		bf_t* lhsNum = CoerceToBitField(interpreter, lhs);
 		bf_t* rhsNum = CoerceToBitField(interpreter, rhs);
@@ -1042,11 +1082,11 @@ Value* DoDiv(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		result = prec == PREC_INT ? NewBigIntValue(interpreter, resNum)
 								  : NewBigNumValue(interpreter, resNum);
 	} else {
-		String errMsg =
-			FormatString("%s: invalid operands for operator (/): %s and %s",
-						 TYPE_ERROR,
-						 ValueTypeOf(lhs),
-						 ValueTypeOf(rhs));
+		String errMsg = FormatString(
+			"%s: invalid operands for operator (/): %s and %s",
+			TYPE_ERROR,
+			ValueTypeOf(lhs),
+			ValueTypeOf(rhs));
 		result = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 	}
@@ -1067,15 +1107,15 @@ Value* DoMod(Interpreter* interpreter, Value* lhs, Value* rhs) {
 
 	if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
 		long resultNum = CoerceToI64(lhs) % CoerceToI64(rhs);
-		result		   = (resultNum <= INT_MAX && resultNum >= INT_MIN)
-							 ? NewIntValue(interpreter, (int) resultNum)
-							 : NewNumValue(interpreter, (double) resultNum);
+		result = (resultNum <= INT_MAX && resultNum >= INT_MIN)
+					 ? NewIntValue(interpreter, (int) resultNum)
+					 : NewNumValue(interpreter, (double) resultNum);
 	} else if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
 		double resultNum = fmod(CoerceToNum(lhs), CoerceToNum(rhs));
-		result			 = (resultNum == (int) resultNum && resultNum <= INT_MAX
-							&& resultNum >= INT_MIN)
-							   ? NewIntValue(interpreter, (int) resultNum)
-							   : NewNumValue(interpreter, resultNum);
+		result = (resultNum == (int) resultNum && resultNum <= INT_MAX
+				  && resultNum >= INT_MIN)
+					 ? NewIntValue(interpreter, (int) resultNum)
+					 : NewNumValue(interpreter, resultNum);
 	} else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
 		bf_t* lhsNum = CoerceToBitField(interpreter, lhs);
 		bf_t* rhsNum = CoerceToBitField(interpreter, rhs);
@@ -1093,11 +1133,11 @@ Value* DoMod(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		result = prec == PREC_INT ? NewBigIntValue(interpreter, resNum)
 								  : NewBigNumValue(interpreter, resNum);
 	} else {
-		String errMsg =
-			FormatString("%s: invalid operands for operator (%%): %s and %s",
-						 TYPE_ERROR,
-						 ValueTypeOf(lhs),
-						 ValueTypeOf(rhs));
+		String errMsg = FormatString(
+			"%s: invalid operands for operator (%%): %s and %s",
+			TYPE_ERROR,
+			ValueTypeOf(lhs),
+			ValueTypeOf(rhs));
 		result = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 	}
@@ -1111,15 +1151,15 @@ Value* DoInc(Interpreter* interpreter, Value* val) {
 
 	if (ValueIsInt(val)) {
 		long resultNum = CoerceToI64(val) + 1;
-		result		   = (resultNum <= INT_MAX && resultNum >= INT_MIN)
-							 ? NewIntValue(interpreter, (int) resultNum)
-							 : NewNumValue(interpreter, (double) resultNum);
+		result = (resultNum <= INT_MAX && resultNum >= INT_MIN)
+					 ? NewIntValue(interpreter, (int) resultNum)
+					 : NewNumValue(interpreter, (double) resultNum);
 	} else if (ValueIsNum(val)) {
 		double resultNum = CoerceToNum(val) + 1.0;
-		result			 = (resultNum == (int) resultNum && resultNum <= INT_MAX
-							&& resultNum >= INT_MIN)
-							   ? NewIntValue(interpreter, (int) resultNum)
-							   : NewNumValue(interpreter, resultNum);
+		result = (resultNum == (int) resultNum && resultNum <= INT_MAX
+				  && resultNum >= INT_MIN)
+					 ? NewIntValue(interpreter, (int) resultNum)
+					 : NewNumValue(interpreter, resultNum);
 	} else if (ValueIsAnyNum(val)) {
 		bf_t* resNum = Allocate(sizeof(bf_t));
 		bf_init(&interpreter->BfContext, resNum);
@@ -1151,15 +1191,15 @@ Value* DoAdd(Interpreter* interpreter, Value* lhs, Value* rhs) {
 
 	if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
 		long resultNum = CoerceToI64(lhs) + CoerceToI64(rhs);
-		result		   = (resultNum <= INT_MAX && resultNum >= INT_MIN)
-							 ? NewIntValue(interpreter, (int) resultNum)
-							 : NewNumValue(interpreter, (double) resultNum);
+		result = (resultNum <= INT_MAX && resultNum >= INT_MIN)
+					 ? NewIntValue(interpreter, (int) resultNum)
+					 : NewNumValue(interpreter, (double) resultNum);
 	} else if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
 		double resultNum = CoerceToNum(lhs) + CoerceToNum(rhs);
-		result			 = (resultNum == (int) resultNum && resultNum <= INT_MAX
-							&& resultNum >= INT_MIN)
-							   ? NewIntValue(interpreter, (int) resultNum)
-							   : NewNumValue(interpreter, resultNum);
+		result = (resultNum == (int) resultNum && resultNum <= INT_MAX
+				  && resultNum >= INT_MIN)
+					 ? NewIntValue(interpreter, (int) resultNum)
+					 : NewNumValue(interpreter, resultNum);
 	} else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
 		bf_t* lhsNum = CoerceToBitField(interpreter, lhs);
 		bf_t* rhsNum = CoerceToBitField(interpreter, rhs);
@@ -1191,11 +1231,11 @@ Value* DoAdd(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		free(rhsStr);
 		free(resultStr);
 	} else {
-		String errMsg =
-			FormatString("%s: invalid operands for operator (+): %s and %s",
-						 TYPE_ERROR,
-						 ValueTypeOf(lhs),
-						 ValueTypeOf(rhs));
+		String errMsg = FormatString(
+			"%s: invalid operands for operator (+): %s and %s",
+			TYPE_ERROR,
+			ValueTypeOf(lhs),
+			ValueTypeOf(rhs));
 		result = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 	}
@@ -1209,15 +1249,15 @@ Value* DoDec(Interpreter* interpreter, Value* val) {
 
 	if (ValueIsInt(val)) {
 		long resultNum = CoerceToI64(val) - 1;
-		result		   = (resultNum <= INT_MAX && resultNum >= INT_MIN)
-							 ? NewIntValue(interpreter, (int) resultNum)
-							 : NewNumValue(interpreter, (double) resultNum);
+		result = (resultNum <= INT_MAX && resultNum >= INT_MIN)
+					 ? NewIntValue(interpreter, (int) resultNum)
+					 : NewNumValue(interpreter, (double) resultNum);
 	} else if (ValueIsNum(val)) {
 		double resultNum = CoerceToNum(val) - 1.0;
-		result			 = (resultNum == (int) resultNum && resultNum <= INT_MAX
-							&& resultNum >= INT_MIN)
-							   ? NewIntValue(interpreter, (int) resultNum)
-							   : NewNumValue(interpreter, resultNum);
+		result = (resultNum == (int) resultNum && resultNum <= INT_MAX
+				  && resultNum >= INT_MIN)
+					 ? NewIntValue(interpreter, (int) resultNum)
+					 : NewNumValue(interpreter, resultNum);
 	} else if (ValueIsAnyNum(val)) {
 		bf_t* resNum = Allocate(sizeof(bf_t));
 		bf_init(&interpreter->BfContext, resNum);
@@ -1249,15 +1289,15 @@ Value* DoSub(Interpreter* interpreter, Value* lhs, Value* rhs) {
 
 	if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
 		long resultNum = CoerceToI64(lhs) - CoerceToI64(rhs);
-		result		   = (resultNum <= INT_MAX && resultNum >= INT_MIN)
-							 ? NewIntValue(interpreter, (int) resultNum)
-							 : NewNumValue(interpreter, (double) resultNum);
+		result = (resultNum <= INT_MAX && resultNum >= INT_MIN)
+					 ? NewIntValue(interpreter, (int) resultNum)
+					 : NewNumValue(interpreter, (double) resultNum);
 	} else if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
 		double resultNum = CoerceToNum(lhs) - CoerceToNum(rhs);
-		result			 = (resultNum == (int) resultNum && resultNum <= INT_MAX
-							&& resultNum >= INT_MIN)
-							   ? NewIntValue(interpreter, (int) resultNum)
-							   : NewNumValue(interpreter, resultNum);
+		result = (resultNum == (int) resultNum && resultNum <= INT_MAX
+				  && resultNum >= INT_MIN)
+					 ? NewIntValue(interpreter, (int) resultNum)
+					 : NewNumValue(interpreter, resultNum);
 	} else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
 		bf_t* lhsNum = CoerceToBitField(interpreter, lhs);
 		bf_t* rhsNum = CoerceToBitField(interpreter, rhs);
@@ -1274,11 +1314,11 @@ Value* DoSub(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		result = prec == PREC_INT ? NewBigIntValue(interpreter, resNum)
 								  : NewBigNumValue(interpreter, resNum);
 	} else {
-		String errMsg =
-			FormatString("%s: invalid operands for operator (-): %s and %s",
-						 TYPE_ERROR,
-						 ValueTypeOf(lhs),
-						 ValueTypeOf(rhs));
+		String errMsg = FormatString(
+			"%s: invalid operands for operator (-): %s and %s",
+			TYPE_ERROR,
+			ValueTypeOf(lhs),
+			ValueTypeOf(rhs));
 		result = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 	}
@@ -1291,10 +1331,10 @@ Value* DoLShift(Interpreter* interpreter, Value* lhs, Value* rhs) {
 
 	if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
 		long resultNum = CoerceToI64(lhs) << CoerceToI64(rhs);
-		result		   = (resultNum == (int) resultNum && resultNum <= INT_MAX
-						  && resultNum >= INT_MIN)
-							 ? NewIntValue(interpreter, (int) resultNum)
-							 : NewNumValue(interpreter, resultNum);
+		result = (resultNum == (int) resultNum && resultNum <= INT_MAX
+				  && resultNum >= INT_MIN)
+					 ? NewIntValue(interpreter, (int) resultNum)
+					 : NewNumValue(interpreter, resultNum);
 	} else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
 		bf_t* lhsNum = CoerceToBitField(interpreter, lhs);
 		bf_t* rhsNum = CoerceToBitField(interpreter, rhs);
@@ -1327,11 +1367,11 @@ Value* DoLShift(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		result	 = prec == PREC_INT ? NewBigIntValue(interpreter, resNum)
 									: NewBigNumValue(interpreter, resNum);
 	} else {
-		String errMsg =
-			FormatString("%s: invalid operands for operator (<<): %s and %s",
-						 TYPE_ERROR,
-						 ValueTypeOf(lhs),
-						 ValueTypeOf(rhs));
+		String errMsg = FormatString(
+			"%s: invalid operands for operator (<<): %s and %s",
+			TYPE_ERROR,
+			ValueTypeOf(lhs),
+			ValueTypeOf(rhs));
 		result = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 	}
@@ -1344,10 +1384,10 @@ Value* DoRShift(Interpreter* interpreter, Value* lhs, Value* rhs) {
 
 	if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
 		long resultNum = CoerceToI64(lhs) >> CoerceToI64(rhs);
-		result		   = (resultNum == (int) resultNum && resultNum <= INT_MAX
-						  && resultNum >= INT_MIN)
-							 ? NewIntValue(interpreter, (int) resultNum)
-							 : NewNumValue(interpreter, resultNum);
+		result = (resultNum == (int) resultNum && resultNum <= INT_MAX
+				  && resultNum >= INT_MIN)
+					 ? NewIntValue(interpreter, (int) resultNum)
+					 : NewNumValue(interpreter, resultNum);
 	} else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
 		bf_t* lhsNum = CoerceToBitField(interpreter, lhs);
 		bf_t* rhsNum = CoerceToBitField(interpreter, rhs);
@@ -1381,11 +1421,11 @@ Value* DoRShift(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		result	 = prec == PREC_INT ? NewBigIntValue(interpreter, resNum)
 									: NewBigNumValue(interpreter, resNum);
 	} else {
-		String errMsg =
-			FormatString("%s: invalid operands for operator (>>): %s and %s",
-						 TYPE_ERROR,
-						 ValueTypeOf(lhs),
-						 ValueTypeOf(rhs));
+		String errMsg = FormatString(
+			"%s: invalid operands for operator (>>): %s and %s",
+			TYPE_ERROR,
+			ValueTypeOf(lhs),
+			ValueTypeOf(rhs));
 		result = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 	}
@@ -1398,7 +1438,7 @@ Value* DoLT(Interpreter* interpreter, Value* lhs, Value* rhs) {
 
 	if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
 		int comparison = CoerceToNum(lhs) < CoerceToNum(rhs);
-		result		   = comparison ? interpreter->True : interpreter->False;
+		result = comparison ? interpreter->True : interpreter->False;
 	} else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
 		bf_t* lhsNum	 = CoerceToBitField(interpreter, lhs);
 		bf_t* rhsNum	 = CoerceToBitField(interpreter, rhs);
@@ -1407,11 +1447,11 @@ Value* DoLT(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		FreeTempBf(interpreter, rhsNum, rhs);
 		result = comparison ? interpreter->True : interpreter->False;
 	} else {
-		String errMsg =
-			FormatString("%s: invalid operands for operator (<): %s and %s",
-						 TYPE_ERROR,
-						 ValueTypeOf(lhs),
-						 ValueTypeOf(rhs));
+		String errMsg = FormatString(
+			"%s: invalid operands for operator (<): %s and %s",
+			TYPE_ERROR,
+			ValueTypeOf(lhs),
+			ValueTypeOf(rhs));
 		result = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 	}
@@ -1424,7 +1464,7 @@ Value* DoLTE(Interpreter* interpreter, Value* lhs, Value* rhs) {
 
 	if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
 		int comparison = CoerceToNum(lhs) <= CoerceToNum(rhs);
-		result		   = comparison ? interpreter->True : interpreter->False;
+		result = comparison ? interpreter->True : interpreter->False;
 	} else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
 		bf_t* lhsNum	 = CoerceToBitField(interpreter, lhs);
 		bf_t* rhsNum	 = CoerceToBitField(interpreter, rhs);
@@ -1433,11 +1473,11 @@ Value* DoLTE(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		FreeTempBf(interpreter, rhsNum, rhs);
 		result = comparison ? interpreter->True : interpreter->False;
 	} else {
-		String errMsg =
-			FormatString("%s: invalid operands for operator (<=): %s and %s",
-						 TYPE_ERROR,
-						 ValueTypeOf(lhs),
-						 ValueTypeOf(rhs));
+		String errMsg = FormatString(
+			"%s: invalid operands for operator (<=): %s and %s",
+			TYPE_ERROR,
+			ValueTypeOf(lhs),
+			ValueTypeOf(rhs));
 		result = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 	}
@@ -1450,7 +1490,7 @@ Value* DoGT(Interpreter* interpreter, Value* lhs, Value* rhs) {
 
 	if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
 		int comparison = CoerceToNum(lhs) > CoerceToNum(rhs);
-		result		   = comparison ? interpreter->True : interpreter->False;
+		result = comparison ? interpreter->True : interpreter->False;
 	} else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
 		bf_t* lhsNum	 = CoerceToBitField(interpreter, lhs);
 		bf_t* rhsNum	 = CoerceToBitField(interpreter, rhs);
@@ -1459,11 +1499,11 @@ Value* DoGT(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		FreeTempBf(interpreter, rhsNum, rhs);
 		result = comparison ? interpreter->True : interpreter->False;
 	} else {
-		String errMsg =
-			FormatString("%s: invalid operands for operator (>): %s and %s",
-						 TYPE_ERROR,
-						 ValueTypeOf(lhs),
-						 ValueTypeOf(rhs));
+		String errMsg = FormatString(
+			"%s: invalid operands for operator (>): %s and %s",
+			TYPE_ERROR,
+			ValueTypeOf(lhs),
+			ValueTypeOf(rhs));
 		result = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 	}
@@ -1476,7 +1516,7 @@ Value* DoGTE(Interpreter* interpreter, Value* lhs, Value* rhs) {
 
 	if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
 		int comparison = CoerceToNum(lhs) >= CoerceToNum(rhs);
-		result		   = comparison ? interpreter->True : interpreter->False;
+		result = comparison ? interpreter->True : interpreter->False;
 	} else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
 		bf_t* lhsNum	 = CoerceToBitField(interpreter, lhs);
 		bf_t* rhsNum	 = CoerceToBitField(interpreter, rhs);
@@ -1485,11 +1525,11 @@ Value* DoGTE(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		FreeTempBf(interpreter, rhsNum, rhs);
 		result = comparison ? interpreter->True : interpreter->False;
 	} else {
-		String errMsg =
-			FormatString("%s: invalid operands for operator (>=): %s and %s",
-						 TYPE_ERROR,
-						 ValueTypeOf(lhs),
-						 ValueTypeOf(rhs));
+		String errMsg = FormatString(
+			"%s: invalid operands for operator (>=): %s and %s",
+			TYPE_ERROR,
+			ValueTypeOf(lhs),
+			ValueTypeOf(rhs));
 		result = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 	}
@@ -1523,7 +1563,8 @@ Value* DoNE(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		FreeTempBf(interpreter, rhsNum, rhs);
 		return comparison ? interpreter->True : interpreter->False;
 	}
-	return !ValueIsEqual(lhs, rhs) ? interpreter->True : interpreter->False;
+	return !ValueIsEqual(lhs, rhs) ? interpreter->True
+								   : interpreter->False;
 }
 
 Value* DoAnd(Interpreter* interpreter, Value* lhs, Value* rhs) {
@@ -1534,8 +1575,9 @@ Value* DoAnd(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		int resultValue = lhs->Value.I32 & rhs->Value.I32;
 		result			= NewIntValue(interpreter, resultValue);
 	} else if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
-		long long resultValue = (int) CoerceToI64(lhs) & (int) CoerceToI64(rhs);
-		result				  = NewNumValue(interpreter, resultValue);
+		long long resultValue =
+			(int) CoerceToI64(lhs) & (int) CoerceToI64(rhs);
+		result = NewNumValue(interpreter, resultValue);
 	} else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
 		bf_t* lhsNum = CoerceToBitField(interpreter, lhs);
 		bf_t* rhsNum = CoerceToBitField(interpreter, rhs);
@@ -1546,11 +1588,11 @@ Value* DoAnd(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		FreeTempBf(interpreter, rhsNum, rhs);
 		result = NewBigIntValue(interpreter, resNum);
 	} else {
-		String errMsg =
-			FormatString("%s: invalid operands for operator (&): %s and %s",
-						 TYPE_ERROR,
-						 ValueTypeOf(lhs),
-						 ValueTypeOf(rhs));
+		String errMsg = FormatString(
+			"%s: invalid operands for operator (&): %s and %s",
+			TYPE_ERROR,
+			ValueTypeOf(lhs),
+			ValueTypeOf(rhs));
 		result = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 	}
@@ -1566,8 +1608,9 @@ Value* DoOr(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		int resultValue = lhs->Value.I32 | rhs->Value.I32;
 		result			= NewIntValue(interpreter, resultValue);
 	} else if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
-		long long resultValue = (int) CoerceToI64(lhs) | (int) CoerceToI64(rhs);
-		result				  = NewNumValue(interpreter, resultValue);
+		long long resultValue =
+			(int) CoerceToI64(lhs) | (int) CoerceToI64(rhs);
+		result = NewNumValue(interpreter, resultValue);
 	} else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
 		bf_t* lhsNum = CoerceToBitField(interpreter, lhs);
 		bf_t* rhsNum = CoerceToBitField(interpreter, rhs);
@@ -1578,11 +1621,11 @@ Value* DoOr(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		FreeTempBf(interpreter, rhsNum, rhs);
 		result = NewBigIntValue(interpreter, resNum);
 	} else {
-		String errMsg =
-			FormatString("%s: invalid operands for operator (|): %s and %s",
-						 TYPE_ERROR,
-						 ValueTypeOf(lhs),
-						 ValueTypeOf(rhs));
+		String errMsg = FormatString(
+			"%s: invalid operands for operator (|): %s and %s",
+			TYPE_ERROR,
+			ValueTypeOf(lhs),
+			ValueTypeOf(rhs));
 		result = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 	}
@@ -1598,8 +1641,9 @@ Value* DoXor(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		int resultValue = lhs->Value.I32 ^ rhs->Value.I32;
 		result			= NewIntValue(interpreter, resultValue);
 	} else if (ValueIsNum(lhs) && ValueIsNum(rhs)) {
-		long long resultValue = (int) CoerceToI64(lhs) ^ (int) CoerceToI64(rhs);
-		result				  = NewNumValue(interpreter, resultValue);
+		long long resultValue =
+			(int) CoerceToI64(lhs) ^ (int) CoerceToI64(rhs);
+		result = NewNumValue(interpreter, resultValue);
 	} else if (ValueIsAnyNum(lhs) && ValueIsAnyNum(rhs)) {
 		bf_t* lhsNum = CoerceToBitField(interpreter, lhs);
 		bf_t* rhsNum = CoerceToBitField(interpreter, rhs);
@@ -1610,11 +1654,11 @@ Value* DoXor(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		FreeTempBf(interpreter, rhsNum, rhs);
 		result = NewBigIntValue(interpreter, resNum);
 	} else {
-		String errMsg =
-			FormatString("%s: invalid operands for operator (^): %s and %s",
-						 TYPE_ERROR,
-						 ValueTypeOf(lhs),
-						 ValueTypeOf(rhs));
+		String errMsg = FormatString(
+			"%s: invalid operands for operator (^): %s and %s",
+			TYPE_ERROR,
+			ValueTypeOf(lhs),
+			ValueTypeOf(rhs));
 		result = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 	}
@@ -1629,8 +1673,8 @@ Value* DoLoadFunction(Interpreter* interpreter, int offset, bool closure) {
 	uf->Scope		 = interpreter->CallEnv;
 
 	if (closure) {
-		fn		  = NewUserFunctionValue(interpreter, UserFunctionClone(uf));
-		uf		  = CoerceToUserFunction(fn);
+		fn = NewUserFunctionValue(interpreter, UserFunctionClone(uf));
+		uf = CoerceToUserFunction(fn);
 		uf->Scope = interpreter->CallEnv;
 	}
 
@@ -1649,7 +1693,7 @@ Value* DoLoadFunction(Interpreter* interpreter, int offset, bool closure) {
 			depth++;
 		}
 
-		uf->Captures[capture.Dst]			  = currentEnv->Locals[capture.Src];
+		uf->Captures[capture.Dst] = currentEnv->Locals[capture.Src];
 		uf->Captures[capture.Dst]->IsCaptured = true;
 		uf->Captures[capture.Dst]->RefCount++;
 	}

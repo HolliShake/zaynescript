@@ -1,7 +1,5 @@
 #include "./scope.h"
 
-#include "global.h"
-
 Symbol* CreateSymbol(bool isGlobal,
 					 bool isLocalToFn,
 					 bool isConstant,
@@ -154,7 +152,8 @@ void ScopeSetSymbol(Scope* scope,
 	// Note: memory leak (if 'name' already exists in
 	// scope->Symbols, HashMapSet overwrites the old Symbol*
 	// without freeing it)
-	Symbol* symbol = CreateSymbol(isGlobal, isLocalToFn, isConstant, offset, 0);
+	Symbol* symbol =
+		CreateSymbol(isGlobal, isLocalToFn, isConstant, offset, 0);
 	HashMapSet(scope->Symbols, name, symbol);
 }
 
@@ -214,7 +213,8 @@ void ScopeSetCapture(Scope* scope,
 	// Note: memory leak (if 'name' already exists in
 	// closureScope->Captures, HashMapSet overwrites the old
 	// Symbol* without freeing it)
-	Symbol* symbol = CreateSymbol(isGlobal, isLocalToFn, isConstant, offset, 0);
+	Symbol* symbol =
+		CreateSymbol(isGlobal, isLocalToFn, isConstant, offset, 0);
 	HashMapSet(closureScope->Captures, name, symbol);
 }
 
@@ -259,11 +259,14 @@ int ScopeCountNested(Scope* scope, ScopeType type) {
 	return count;
 }
 
-int ScopeCountNestedUntil(Scope* scope, ScopeType type, ScopeType untilType) {
+int ScopeCountNestedUntil(Scope*	scope,
+						  ScopeType type,
+						  ScopeType untilType) {
 	int count = 0;
 	while (scope != NULL) {
 		// Universally stop at function boundaries.
-		// Control flow unwinding cannot cross into a parent function's scope.
+		// Control flow unwinding cannot cross into a parent function's
+		// scope.
 		if (scope->Type == SCOPE_FUNCTION) {
 			return count;
 		}

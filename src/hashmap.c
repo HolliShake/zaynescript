@@ -270,7 +270,7 @@ int HashMapContains(HashMap* hashmap, String key) {
  * @brief Checks if a Value is a string.
  * @param value The value to check.
  * @return true if the value is a string, false otherwise.
- * @origin src/value.c:338
+ * @origin src/value.c:346
  */
 extern bool ValueIsStr(Value* value);
 
@@ -278,7 +278,7 @@ extern bool ValueIsStr(Value* value);
  * @brief Converts a Value to its string representation.
  * @param value The value to convert.
  * @return A newly allocated string (caller must free).
- * @origin src/value.c:146
+ * @origin src/value.c:152
  */
 extern String ValueToString(Value* value);
 

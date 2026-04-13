@@ -1,7 +1,5 @@
 #include "./function.h"
 
-#include "global.h"
-
 UserFunction* CreateUserFunction(String name, int argc, bool async) {
 	UserFunction* userFunction = Allocate(sizeof(UserFunction));
 	userFunction->Scope		   = NULL;

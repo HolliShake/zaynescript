@@ -10,12 +10,14 @@
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
+#include <assert.h>
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <limits.h>
 #include <math.h>
 #include <stdarg.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -36,6 +38,18 @@
 #	include <malloc.h>
 #endif
 
+// --- OS DETECTION & INCLUDES ---
+#if defined(_WIN32)
+#	include <windows.h>
+typedef HANDLE Thread;
+#	define THREAD_RETURN DWORD WINAPI
+#else
+#	include <pthread.h>
+#	include <unistd.h>
+typedef pthread_t Thread;
+#	define THREAD_RETURN void*
+#endif
+
 // Constants & Macros
 
 /**
@@ -46,11 +60,36 @@
 #define GC_GROWTH_FACTOR 2
 
 /**
+ * @def JIT_TRIGGER_MAX_CODEC
+ * @brief Maximum bytecode instruction count to trigger JIT compilation.
+ * If a function's bytecode length is above or below this threshold,
+ * it will be compiled to native code if it's too large (to avoid
+ * interpreter overhead) or too small (to avoid frequent interpretation).
+ */
+#define JIT_TRIGGER_MAX_CODE 2500
+
+/**
+ * @def JIT_TRIGGER_MIN_CODE
+ * @brief Minimum bytecode instruction count to trigger JIT compilation.
+ * Functions below this threshold may also be compiled to native code,
+ * to avoid frequent interpretation overhead.
+ */
+#define JIT_TRIGGER_MIN_CODE 20
+
+/**
+ * @def JIT_CALL_TRIGGER
+ * @brief Number of invocations required to trigger JIT compilation for a
+ * function. If a function is called more than this number, the JIT compiler may
+ * attempt to compile it.
+ */
+#define JIT_CALL_TRIGGER 15
+
+/**
  * @def GC_THRESHOLD
  * @brief The allocation threshold for triggering garbage
- * collection.
+ * collection on the old generation (major GC).
  */
-#define GC_THRESHOLD 2048
+#define GC_THRESHOLD 10
 
 /**
  * @def VARARG
@@ -638,8 +677,7 @@ typedef struct user_function_struct {
 	int			 LocalC;	   /**< Local variable count */
 	CaptureMeta* CaptureMetas; /**< Array of capture metadata */
 	int			 CaptureC;	   /**< Count of captured variables */
-	struct envcell_struct**
-		Captures;			   /**< Array of captured environment cells */
+	EnvCell**	 Captures;	   /**< Array of captured environment cells */
 } UserFunction;
 
 /**
@@ -861,10 +899,12 @@ typedef struct import_node {
  * was paused.
  */
 typedef struct exception_handler_struct {
-	int JumpAddress;	   /**< Instruction index to jump to on
-							  exception */
-	size_t* PausedAddress; /**< Saved paused instruction/address
-							  pointer */
+	int JumpAddress;		 /**< Instruction index to jump to on
+								exception */
+	size_t* PausedAddress;	 /**< Saved paused instruction/address
+								pointer */
+	size_t JitPausedAddress; /**< Saved  paused instruction/address pointer for
+								jit */
 } ExceptionHandler;
 
 /**
@@ -885,36 +925,34 @@ struct interpreter_struct {
 							   (for resolving imports) */
 	struct mg_mgr MgMgr; /**< Mongoose manager for handling HTTP requests (used
 						  * in native modules) */
-	ImportNode* ImportHead;		/**< Head of the linked list of
-								   imported modules */
-	HashMap* Imports;			/**< Imports map */
-	Value*	 Object;			/**< Built-in Object class */
-	Value*	 Array;				/**< Built-in Array class */
-	Value*	 Date;				/**< Built-in Date class */
-	Value*	 Promise;			/**< Built-in Promise class */
-	Value*	 True;				/**< Singleton 'true' value */
-	Value*	 False;				/**< Singleton 'false' value */
-	Value*	 Null;				/**< Singleton 'null' value */
-	Value*	 GcRoot;			/**< Root of the Garbage Collector object
-								   graph */
-	Value*	RootEnv;			/**< Root environment of the current program */
-	Value*	CallEnv;			/**< Current execution environment */
-	int		Allocated;			/**< Total allocated bytes since last GC */
-	Value** Constants;			/**< Array of constant values */
-	int		ConstantC;			/**< Count of constants */
-	Value** Functions;			/**< Array of function definitions */
-	int		FunctionC;			/**< Count of functions */
-	Value*	Stacks[STACK_SIZE]; /**< Execution stack */
-	int		StckC;				/**< Stack pointer/count */
-	Value*	Envs[STACK_SIZE];	/**< Environment stack for variable
-								   scopes */
-	int EnvrC;					/**< Environment stack pointer */
+	ImportNode* ImportHead;		 /**< Head of the linked list of
+									imported modules */
+	HashMap* Imports;			 /**< Imports map */
+	Value*	 Object;			 /**< Built-in Object class */
+	Value*	 Array;				 /**< Built-in Array class */
+	Value*	 Date;				 /**< Built-in Date class */
+	Value*	 Promise;			 /**< Built-in Promise class */
+	Value*	 True;				 /**< Singleton 'true' value */
+	Value*	 False;				 /**< Singleton 'false' value */
+	Value*	 Null;				 /**< Singleton 'null' value */
+	Value*	 GcRoot;			 /**< Head of the allocation list */
+	Value*	 RootEnv;			 /**< Root environment of the current program */
+	Value*	 CallEnv;			 /**< Current execution environment */
+	size_t	 Allocated;			 /**< Count of live young-generation values */
+	Value**	 Constants;			 /**< Array of constant values */
+	int		 ConstantC;			 /**< Count of constants */
+	Value**	 Functions;			 /**< Array of function definitions */
+	int		 FunctionC;			 /**< Count of functions */
+	Value*	 Stacks[STACK_SIZE]; /**< Execution stack */
+	int		 StckC;				 /**< Stack pointer/count */
+	Value*	 Envs[STACK_SIZE];	 /**< Environment stack for variable
+									scopes */
+	int EnvrC;					 /**< Environment stack pointer */
 	ExceptionHandler
 		ExceptionHandlerStacks[STACK_SIZE]; /**< Stack for exception handlers */
 	int ExceptionHandlerStackC;				/**< Exception handler stack
 											   pointer */
-	int GcThreshold;			  /**< Threshold for triggering garbage
-									 collection */
+	size_t GcThreshold; /**< Young-gen threshold → triggers minor GC */
 	Value* TaskQueue[STACK_SIZE]; /**< Queue for pending tasks
 									 (e.g. resolved promises) */
 	int TaskQueueHead;			  /**< Head index (next item to dequeue) */
@@ -924,7 +962,8 @@ struct interpreter_struct {
 										 (stores line info and function
 										 for each call frame) */
 	int	   CallStackC;				  /**< Call stack pointer/count */
-	Value* ActiveTask; /**< Currently active task being processed */
+	Value* ActiveFunction; /** < Currently active function being processed */
+	Value* ActiveTask;	   /**< Currently active task being processed */
 };
 
 /**
@@ -1462,5 +1501,25 @@ String AbsolutePathFromBase(String baseStr, String pathStr);
  * @return An absolute path string.
  */
 String AbsolutePath(String pathStr);
+
+/**
+ * @brief Starts a new thread.
+ *
+ * Starts a new thread using the platform-specific threading API.
+ *
+ * @param thread Pointer to the thread handle.
+ * @param fn Function pointer to the thread function.
+ * @param arg Argument to pass to the thread function.
+ */
+int ThreadStart(Thread* thread, void* (*fn)(void*), Value* arg);
+
+/**
+ * @brief Joins a thread.
+ *
+ * Joins a thread using the platform-specific threading API.
+ *
+ * @param thread Thread handle.
+ */
+void ThreadJoin(Thread thread);
 
 #endif

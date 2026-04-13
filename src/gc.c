@@ -1,12 +1,10 @@
 #include "./gc.h"
 
-#include "global.h"
-
 /**
  * @brief Converts a Value to its string representation.
  * @param value The value to convert.
  * @return A newly allocated string (caller must free).
- * @origin src/value.c:146
+ * @origin src/value.c:152
  */
 extern String ValueToString(Value* value);
 
@@ -335,9 +333,8 @@ static size_t _Sweep(Interpreter* interpreter) {
 }
 
 void GarbageCollect(Interpreter* interpreter) {
-	// printf("GC: Starting garbage collection. Allocated bytes: %d\n",
-	// 	   interpreter->Allocated);
 	Mark(interpreter->GcRoot);
+	Mark(interpreter->Object);
 	Mark(interpreter->Array);
 	Mark(interpreter->Date);
 	Mark(interpreter->Promise);
@@ -346,8 +343,8 @@ void GarbageCollect(Interpreter* interpreter) {
 	Mark(interpreter->Null);
 	Mark(interpreter->RootEnv);
 	Mark(interpreter->CallEnv);
-	if (interpreter->ActiveTask != NULL)
-		Mark(interpreter->ActiveTask);
+	Mark(interpreter->ActiveTask);
+	Mark(interpreter->ActiveFunction);
 	_MarkConstants(interpreter);
 	_MarkFunctions(interpreter);
 	_MarkStack(interpreter);
