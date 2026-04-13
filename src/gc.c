@@ -333,7 +333,6 @@ static size_t _Sweep(Interpreter* interpreter) {
 }
 
 void GarbageCollect(Interpreter* interpreter) {
-	Mark(interpreter->GcRoot);
 	Mark(interpreter->Object);
 	Mark(interpreter->Array);
 	Mark(interpreter->Date);
