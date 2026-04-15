@@ -6,6 +6,9 @@
  * core Blob module for byte-buffer operations in the interpreter.
  */
 
+#include "../array.h"
+#include "../class.h"
+#include "../function.h"
 #include "../value.h"
 
 #ifndef CORE_BLOB_H

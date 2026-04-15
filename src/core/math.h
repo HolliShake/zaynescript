@@ -7,7 +7,9 @@
  * and constants.
  */
 
+#include "../function.h"
 #include "../global.h"
+#include "../hashmap.h"
 #include "../value.h"
 
 #ifndef CORE_MATH_H

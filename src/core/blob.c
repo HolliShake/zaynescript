@@ -1,16 +1,12 @@
 #include "./blob.h"
 
-#include "../array.h"
-#include "../class.h"
-#include "../function.h"
-
 /**
  * @brief Growable byte buffer used while constructing Blob values.
  */
 typedef struct {
 	uint8_t* data; /**< Allocated storage; may be NULL when empty. */
-	size_t	 len; /**< Number of bytes currently stored. */
-	size_t	 cap; /**< Allocated capacity in bytes. */
+	size_t	 len;  /**< Number of bytes currently stored. */
+	size_t	 cap;  /**< Allocated capacity in bytes. */
 } _BlobBuf;
 
 static Value* _BlobBufAppend(_BlobBuf*		buf,
