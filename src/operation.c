@@ -438,21 +438,21 @@ extern Parser* CreateParser(Lexer* lexer);
  * @brief Parses the token stream into an AST.
  * @param parser The parser instance.
  * @return The root AST node of the parsed program.
- * @origin src/parser.c:1863
+ * @origin src/parser.c:1872
  */
 extern Ast* Parse(Parser* parser);
 
 /**
  * @brief Frees a parser and its associated resources.
  * @param parser The parser to free.
- * @origin src/parser.c:1868
+ * @origin src/parser.c:1877
  */
 extern void FreeParser(Parser* parser);
 
 /**
  * @brief Frees an AST and all its child nodes.
  * @param ast The AST to free.
- * @origin src/astnode.c:298
+ * @origin src/astnode.c:297
  */
 extern void FreeAst(Ast* ast);
 
@@ -471,14 +471,14 @@ extern Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
  * @param compiler The compiler instance.
  * @param programAst The AST to compile.
  * @return The compiled function value.
- * @origin src/compiler.c:3340
+ * @origin src/compiler.c:3346
  */
 extern Value* CompileAst(Compiler* compiler, Ast* programAst);
 
 /**
  * @brief Frees a compiler and its associated resources.
  * @param compiler The compiler to free.
- * @origin src/compiler.c:3345
+ * @origin src/compiler.c:3351
  */
 extern void FreeCompiler(Compiler* compiler);
 
@@ -486,7 +486,7 @@ extern void FreeCompiler(Compiler* compiler);
  * @brief Interprets a compiled function value.
  * @param interpreter The interpreter instance.
  * @param compiled The compiled function value to interpret.
- * @origin src/interpreter.c:1465
+ * @origin src/interpreter.c:1466
  */
 extern void Interpret(Interpreter* interpreter, Value* compiled);
 

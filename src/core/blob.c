@@ -4,10 +4,13 @@
 #include "../class.h"
 #include "../function.h"
 
+/**
+ * @brief Growable byte buffer used while constructing Blob values.
+ */
 typedef struct {
-	uint8_t* data;
-	size_t	 len;
-	size_t	 cap;
+	uint8_t* data; /**< Allocated storage; may be NULL when empty. */
+	size_t	 len; /**< Number of bytes currently stored. */
+	size_t	 cap; /**< Allocated capacity in bytes. */
 } _BlobBuf;
 
 static Value* _BlobBufAppend(_BlobBuf*		buf,
@@ -43,8 +46,7 @@ _BlobBufAppendUtf8(_BlobBuf* buf, Interpreter* interpreter, const String utf8) {
 }
 
 /**
- * @brief JS Array.prototype.toString-style join (commas, recursive arrays).
- * @origin src/core/blob.c
+ * @brief Formats one element for Blob string join (commas; arrays recurse).
  */
 static String _BlobJoinElementString(Value* el, Interpreter* interpreter);
 

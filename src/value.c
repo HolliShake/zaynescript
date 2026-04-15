@@ -4,7 +4,7 @@
  * @brief Runs a young-generation garbage collection cycle on the interpreter
  * heap.
  * @param interpreter The interpreter whose allocated values may be collected.
- * @origin src/gc.c:335
+ * @origin src/gc.c:339
  */
 extern void GarbageCollect(Interpreter* interpreter);
 

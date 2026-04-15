@@ -136,7 +136,7 @@ extern Value* Popp(Interpreter* interpreter);
  * @param argc The number of arguments.
  * @param withThis Whether the call includes a 'this' context.
  * @return The return value of the function call.
- * @origin src/operation.c:774
+ * @origin src/operation.c:775
  */
 extern Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
 
