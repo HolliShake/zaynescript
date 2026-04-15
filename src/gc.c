@@ -124,6 +124,10 @@ static void _Free(Interpreter* interp, Value* value) {
 						free(blob->Data);
 						blob->Data = NULL;
 					}
+					if (blob->MimeType != NULL) {
+						free(blob->MimeType);
+						blob->MimeType = NULL;
+					}
 					free(blob);
 					value->Value.Opaque = NULL;
 				}

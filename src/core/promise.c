@@ -8,7 +8,8 @@
  */
 extern void EnqueueTask(Interpreter* interpreter, Value* task);
 
-Value* _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
+static Value*
+_PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 2) {
 		return NewErrorValue(interpreter, "Promise.then expects 2 arguments");
 	}
@@ -60,7 +61,8 @@ Value* _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
 	return newPromise;
 }
 
-Value* _PromiseError(Interpreter* interpreter, int argc, Value** arguments) {
+static Value*
+_PromiseError(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 2) {
 		return NewErrorValue(interpreter, "Promise.error expects 2 arguments");
 	}
@@ -130,7 +132,8 @@ static ModuleFunction _PromiseClassMethods[] = {
 
 Value* CreatePromiseClass(Interpreter* interpreter) {
 	Value* promiseClass =
-		NewClassValue(interpreter, CreateUserClass("Promise", NULL));
+		NewClassValue(interpreter,
+					  CreateUserClass("Promise", interpreter->Object));
 	Class* cls = CoerceToUserClass(promiseClass);
 
 	for (int i = 0; _PromiseClassMethods[i].Name != NULL; i++) {

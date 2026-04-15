@@ -1,7 +1,10 @@
 #include "./object.h"
 
 static Value* _ObjectInit(Interpreter* interp, int argc, Value** args) {
-	return NewObjectValue(interp);
+	if (argc != 1) {
+		return NewErrorValue(interp, "Object constructor expects 0 arguments");
+	}
+	return interp->Null;
 }
 
 static Value* _ObjectKeys(Interpreter* interp, int argc, Value** args) {
@@ -69,6 +72,13 @@ static ModuleFunction _ObjectClassMethods[] = {
 };
 
 static ModuleFunction _ObjectClassStatic[] = {
+	// Members
+	{
+		.Name	   = "constructor",
+		.Argc	   = 0,
+		.CFunction = (NativeFunctionCallback) _ObjectInit,
+		.Value	   = NULL,
+	},
 	// Static
 	{
 		.Name	   = "keys",

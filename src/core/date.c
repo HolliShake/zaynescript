@@ -268,7 +268,8 @@ static ModuleFunction _DateClassMethods[] = {
 
 Value* CreateDateClass(Interpreter* interpreter) {
 	Value* dateClass =
-		NewClassValue(interpreter, CreateUserClass("Date", NULL));
+		NewClassValue(interpreter,
+					  CreateUserClass("Date", interpreter->Object));
 	Class* cls = CoerceToUserClass(dateClass);
 
 	// Register methods

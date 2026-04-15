@@ -1,5 +1,5 @@
 "[#jit:always]";
-import { println }  from "core:io";
+import { println, }  from "core:io";
 
 var i = 0;
 while (i < 120) {

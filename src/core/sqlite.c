@@ -146,12 +146,17 @@ static Value* _StmtRowToObject(Interpreter* interp, sqlite3_stmt* stmt) {
 					break;
 				}
 			case SQLITE_BLOB:
-				// BLOBs have no representation in the current value model and
-				// are returned as null.  To support them, add a byte-array
-				// value type and bind it here via sqlite3_column_blob /
-				// sqlite3_column_bytes.
-				colVal = interp->Null;
-				break;
+				{
+					int			   nbytes = sqlite3_column_bytes(stmt, i);
+					const void*	   raw	  = sqlite3_column_blob(stmt, i);
+					const uint8_t* bytes =
+						nbytes > 0 ? (const uint8_t*) raw : (const uint8_t*) "";
+					colVal = NewBlobValue(interp,
+										  (uint8_t*) bytes,
+										  (size_t) nbytes,
+										  "");
+					break;
+				}
 			case SQLITE_NULL:
 			default:
 				colVal = interp->Null;
@@ -175,7 +180,16 @@ static Value* _ColValue(Interpreter* interp, sqlite3_stmt* stmt, int idx) {
 				return NewStrValue(interp, text ? (String) text : "");
 			}
 		case SQLITE_BLOB:
-			return interp->Null;
+			{
+				int			   nbytes = sqlite3_column_bytes(stmt, idx);
+				const void*	   raw	  = sqlite3_column_blob(stmt, idx);
+				const uint8_t* bytes =
+					nbytes > 0 ? (const uint8_t*) raw : (const uint8_t*) "";
+				return NewBlobValue(interp,
+									(uint8_t*) bytes,
+									(size_t) nbytes,
+									"");
+			}
 		case SQLITE_NULL:
 		default:
 			return interp->Null;
@@ -213,6 +227,10 @@ static int _BindParam(sqlite3_stmt* stmt, int idx, Value* val) {
 		int	   rc	 = sqlite3_bind_text(stmt, idx, str, -1, SQLITE_TRANSIENT);
 		free(str);
 		return rc;
+	} else if (ValueIsBlob(val)) {
+		Blob*		b = CoerceToBlob(val);
+		const void* p = b->Size > 0 ? (const void*) b->Data : "";
+		return sqlite3_bind_blob(stmt, idx, p, (int) b->Size, SQLITE_TRANSIENT);
 	} else {
 		String s  = ValueToString(val);
 		int	   rc = sqlite3_bind_text(stmt, idx, s, -1, SQLITE_TRANSIENT);
@@ -741,7 +759,7 @@ static Value* _SqliteBuildClass(Interpreter*   interp,
 								const char*	   name,
 								ModuleFunction methods[]) {
 	Value* classVal =
-		NewClassValue(interp, CreateUserClass((String) name, NULL));
+		NewClassValue(interp, CreateUserClass((String) name, interp->Object));
 	Class* cls = CoerceToUserClass(classVal);
 
 	for (int i = 0; methods[i].Name != NULL; i++) {

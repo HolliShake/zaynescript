@@ -9,6 +9,7 @@
 
 #include "../global.h"
 #include "./array.h"
+#include "./blob.h"
 #include "./date.h"
 #include "./io.h"
 #include "./math.h"

@@ -1211,7 +1211,7 @@ static ModuleFunction _ServerClassMethods[] = {
 static Value*
 _BuildClass(Interpreter* interp, const String name, ModuleFunction methods[]) {
 	Value* classVal =
-		NewClassValue(interp, CreateUserClass((String) name, NULL));
+		NewClassValue(interp, CreateUserClass((String) name, interp->Object));
 	Class* cls = CoerceToUserClass(classVal);
 
 	for (int i = 0; methods[i].Name != NULL; i++) {

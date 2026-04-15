@@ -1,5 +1,8 @@
 #include "./operation.h"
 
+#include <sched.h>
+#include <string.h>
+
 
 #define FreeTempBf(interpreter, bf, val)                                       \
 	do {                                                                       \
@@ -696,8 +699,19 @@ Value* DoCallCtor(Interpreter* interpreter, Value* clsValue, int argc) {
 	}
 
 	// Push thisArg
-	Value* instanceValue =
-		NewClassInstanceValue(interpreter, CreateClassInstance(clsValue));
+	Value* instanceValue = NULL;
+
+	if (strcmp(cls->Name, "Object") == 0) {
+		instanceValue = NewObjectValue(interpreter);
+	} else if (strcmp(cls->Name, "Array") == 0) {
+		instanceValue = NewArrayValue(interpreter);
+	} else if (strcmp(cls->Name, "Blob") == 0) {
+		instanceValue = NewBlobValue(interpreter, NULL, 0, NULL);
+	} else {
+		instanceValue =
+			NewClassInstanceValue(interpreter, CreateClassInstance(clsValue));
+	}
+
 	Push(interpreter, instanceValue);
 
 	Value* constructor = ClassGetMember(cls, CONSTRUCTOR_NAME, false);

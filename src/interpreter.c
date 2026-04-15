@@ -671,8 +671,9 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 			case OP_CLASS_MAKE:
 				{
 					str = ReadString(uf->Codes, ip);
-					obj =
-						NewClassValue(interpreter, CreateUserClass(str, NULL));
+					obj = NewClassValue(
+						interpreter,
+						CreateUserClass(str, interpreter->Object));
 					Push(interpreter, obj);
 					Forward(strlen(str) + 1);
 					free(str);
