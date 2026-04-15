@@ -102,7 +102,9 @@ static const MimeEntry _MimeTable[] = {
  * Internal binding property keys
  * ----------------------------------------------------------------------- */
 
-#define PROP_APP_PTR	"__ptr"
+#define PROP_APP_PTR	 "__ptr"
+#define PROP_MG_GC_ROOTS "__mg_gc_roots" /**< Keeps route/middleware Values visible
+											to the GC (see AppState). */
 #define PROP_RES_CTX	"__ctx"
 #define PROP_RES_STATUS "__status"
 #define PROP_RES_HDRSTR "__hdrstr"
@@ -419,7 +421,14 @@ static void _AppStateFree(AppState* app) {
 	free(app);
 }
 
-static void _AppAddRoute(AppState*	  app,
+static void _PushMgGcRoot(ClassInstance* cls, Value* handler) {
+	Value* rootsVal = (Value*) HashMapGet(cls->Members, PROP_MG_GC_ROOTS);
+	if (rootsVal != NULL && ValueIsArray(rootsVal))
+		ArrayPush(CoerceToArray(rootsVal), handler);
+}
+
+static void _AppAddRoute(ClassInstance* cls,
+						 AppState*	  app,
 						 const String method,
 						 const String path,
 						 Value*		  handler) {
@@ -431,6 +440,7 @@ static void _AppAddRoute(AppState*	  app,
 	app->Routes[app->Count].Path	= strdup(path);
 	app->Routes[app->Count].Handler = handler;
 	app->Count++;
+	_PushMgGcRoot(cls, handler);
 }
 
 /* -----------------------------------------------------------------------
@@ -1062,6 +1072,7 @@ static Value* _ServerInit(Interpreter* interp, int argc, Value** args) {
 	app->ReqClass = reqClass;
 	app->ResClass = resClass;
 
+	HashMapSet(cls->Members, PROP_MG_GC_ROOTS, NewArrayValue(interp));
 	HashMapSet(cls->Members, PROP_APP_PTR, NewOpquePtrValue(interp, app));
 	return interp->Null;
 }
@@ -1077,7 +1088,7 @@ static Value* _ServerInit(Interpreter* interp, int argc, Value** args) {
 			return NewErrorValue(interp,                                       \
 								 #ZsName "(): server not initialised");        \
 		String path = ValueToString(args[1]);                                  \
-		_AppAddRoute(app, HttpMethod, path, args[2]);                          \
+		_AppAddRoute(cls, app, HttpMethod, path, args[2]);                       \
 		free(path);                                                            \
 		return args[0];                                                        \
 	}
@@ -1099,6 +1110,7 @@ static Value* _AppUse(Interpreter* interp, int argc, Value** args) {
 	if (app->MwCount >= MAX_MIDDLEWARE)
 		return NewErrorValue(interp, "use(): maximum middleware count reached");
 	app->Middleware[app->MwCount++] = args[1];
+	_PushMgGcRoot(cls, args[1]);
 	return args[0];
 }
 

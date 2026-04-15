@@ -416,6 +416,8 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 
 	while (ip != uf->CodeC) {
 		if (interpreter->Allocated >= interpreter->GcThreshold) {
+			Mark(fn);
+			Mark(fnOrSm);
 			GarbageCollect(interpreter);
 		}
 
