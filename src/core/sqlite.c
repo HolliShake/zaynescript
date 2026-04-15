@@ -545,8 +545,8 @@ static Value* _StmtFinalize(Interpreter* interp, int argc, Value** arguments) {
 	if (!stmt)
 		return interp->Null;
 	sqlite3_finalize(stmt);
-	HashMapSet(cls->Members, "_stmt", _PtrToValue(interp, NULL));
-	HashMapSet(cls->Members, "_db", _PtrToValue(interp, NULL));
+	HashMapSet(cls->Members, PROP_STMT_PTR, _PtrToValue(interp, NULL));
+	HashMapSet(cls->Members, PROP_STMT_DB, _PtrToValue(interp, NULL));
 	return interp->Null;
 }
 
