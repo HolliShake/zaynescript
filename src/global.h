@@ -60,36 +60,11 @@ typedef pthread_t Thread;
 #define GC_GROWTH_FACTOR 2
 
 /**
- * @def JIT_TRIGGER_MAX_CODEC
- * @brief Maximum bytecode instruction count to trigger JIT compilation.
- * If a function's bytecode length is above or below this threshold,
- * it will be compiled to native code if it's too large (to avoid
- * interpreter overhead) or too small (to avoid frequent interpretation).
- */
-#define JIT_TRIGGER_MAX_CODE 2500
-
-/**
- * @def JIT_TRIGGER_MIN_CODE
- * @brief Minimum bytecode instruction count to trigger JIT compilation.
- * Functions below this threshold may also be compiled to native code,
- * to avoid frequent interpretation overhead.
- */
-#define JIT_TRIGGER_MIN_CODE 20
-
-/**
- * @def JIT_CALL_TRIGGER
- * @brief Number of invocations required to trigger JIT compilation for a
- * function. If a function is called more than this number, the JIT compiler may
- * attempt to compile it.
- */
-#define JIT_CALL_TRIGGER 15
-
-/**
  * @def GC_THRESHOLD
  * @brief The allocation threshold for triggering garbage
  * collection on the old generation (major GC).
  */
-#define GC_THRESHOLD 10
+#define GC_THRESHOLD 2048
 
 /**
  * @def VARARG
