@@ -1,5 +1,5 @@
 "[#jit:always]";
-import { println, }  from "core:io";
+import { println }  from "core:io";
 
 var i = 0;
 while (i < 120) {
@@ -41,14 +41,10 @@ class Jit {
         this.a=a;
         this.b=b;
     }
+
+    fn destroy() {
+        println("WILL BE DESTROYED BY GC!!");
+    }
 }
 
-import {Server} from "core:mongoose";
-
-try {
-    println([1,2,3, ...([4])]);
-    //ok: (2).a  = 3;
-    println(new Jit(2, 3,4), Server);
-} catch (e) {
-    println("ERROR", e);
-}
+new Jit(2, 3);

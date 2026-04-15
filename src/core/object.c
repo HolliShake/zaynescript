@@ -7,6 +7,14 @@ static Value* _ObjectInit(Interpreter* interp, int argc, Value** args) {
 	return interp->Null;
 }
 
+static Value* _ObjectDestroy(Interpreter* interp, int argc, Value** args) {
+	if (argc != 0) {
+		return NewErrorValue(interp, "Object destructor expects 0 arguments");
+	}
+	// Do nothing!!
+	return interp->Null;
+}
+
 static Value* _ObjectKeys(Interpreter* interp, int argc, Value** args) {
 	if (argc != 1 || !ValueIsObject(args[0]))
 		return NewErrorValue(interp, "Object.keys expects 1 object argument");
@@ -67,6 +75,10 @@ static ModuleFunction _ObjectClassMethods[] = {
 	{ .Name		 = CONSTRUCTOR_NAME,
 	  .Argc		 = 1,
 	  .CFunction = (NativeFunctionCallback) _ObjectInit,
+	  .Value	 = NULL },
+	{ .Name		 = DESTRUCTOR_NAME,
+	  .Argc		 = 0,
+	  .CFunction = (NativeFunctionCallback) _ObjectDestroy,
 	  .Value	 = NULL },
 	{ .Name = NULL }
 };

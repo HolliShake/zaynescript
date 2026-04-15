@@ -8,6 +8,7 @@
  * reclaims any unreachable memory.
  */
 
+#include "./class.h"
 #include "./environment.h"
 #include "./function.h"
 #include "./global.h"

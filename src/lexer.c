@@ -1,5 +1,7 @@
 #include "./lexer.h"
 
+#include "global.h"
+
 // Helper function to get current rune
 static Rune CurrentRune(Lexer* lexer) {
 	return lexer->Data[lexer->Indx];
@@ -146,8 +148,16 @@ static Token TokenizeString(Lexer* lexer) {
 	Rune	 quote = CurrentRune(lexer);
 	Advance(lexer);	 // Skip opening quote
 
-	int scan = lexer->Indx;
-	while (lexer->Data[scan] != 0 && lexer->Data[scan] != quote) {
+	int	 scan	= lexer->Indx;
+	bool closed = false;
+	while (lexer->Data[scan] != 0) {
+		if (lexer->Data[scan] == quote) {
+			closed = true;
+			break;
+		}
+		if (lexer->Data[scan] == '\n') {
+			break;	// Do not allow newlines
+		}
 		if (lexer->Data[scan] == '\\' && lexer->Data[scan + 1] != 0) {
 			scan += 2;	// Safely skip the backslash and the escaped char
 		} else {
@@ -161,6 +171,8 @@ static Token TokenizeString(Lexer* lexer) {
 
 	// 2. SINGLE-PASS DECODING
 	while (CurrentRune(lexer) != 0 && CurrentRune(lexer) != quote) {
+		if (CurrentRune(lexer) == '\n')
+			break;
 		if (CurrentRune(lexer) == '\\') {
 			Advance(lexer);	 // Skip escape character '\'
 
@@ -277,14 +289,19 @@ static Token TokenizeString(Lexer* lexer) {
 	String value = RunesToString(decoded, 0, decodedLength);
 	free(decoded);
 
-	if (CurrentRune(lexer) == quote) {
+	if (closed && CurrentRune(lexer) == quote) {
 		Advance(lexer);	 // Skip closing quote
+		pos.LineEnded = lexer->Line;
+		pos.ColmEnded = lexer->Colm;
+		return MakeToken(TK_STR, value, pos);
+	} else {
+		pos.LineEnded = lexer->Line;
+		pos.ColmEnded = lexer->Colm;
+		ThrowError(lexer->Path, lexer->Data, pos, "Unclosed string literal");
+		return MakeToken(TK_STR,
+						 AllocateString("Unclosed string literal"),
+						 pos);
 	}
-
-	pos.LineEnded = lexer->Line;
-	pos.ColmEnded = lexer->Colm;
-
-	return MakeToken(TK_STR, value, pos);
 }
 
 // Tokenize symbol

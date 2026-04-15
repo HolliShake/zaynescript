@@ -86,6 +86,12 @@ typedef pthread_t Thread;
 #define CONSTRUCTOR_NAME "init"
 
 /**
+ * @def DESTRUCTOR_NAME
+ * @brief The reserved name for class destructor methods.
+ */
+#define DESTRUCTOR_NAME "destroy"
+
+/**
  * @def PREC_INT
  * @brief Precision for integer big-number operations (exact).
  */

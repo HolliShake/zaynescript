@@ -1,9 +1,5 @@
 #include "./operation.h"
 
-#include <sched.h>
-#include <string.h>
-
-
 #define FreeTempBf(interpreter, bf, val)                                       \
 	do {                                                                       \
 		if ((val)->Type == VLT_INT || (val)->Type == VLT_NUM) {                \
