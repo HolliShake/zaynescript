@@ -101,6 +101,39 @@ _OsGetType(Interpreter* interpreter, int argc, Value** arguments) {
 #endif
 }
 
+static Value* _OsArgs(Interpreter* interpreter, int argc, Value** arguments) {
+	if (argc != 0) {
+		return NewErrorValue(interpreter, "args() expects exactly 0 arguments");
+	}
+
+	Value* array = NewArrayValue(interpreter);
+	Array* arr	 = CoerceToArray(array);
+
+	String argStr = interpreter->ArgString;
+	if (argStr == NULL)
+		return array;
+
+	while (*argStr) {
+		while (*argStr == ' ')
+			argStr++;
+		if (*argStr == '\0')
+			break;
+
+		const char* start = argStr;
+		while (*argStr != '\0' && *argStr != ' ')
+			argStr++;
+
+		size_t len = (size_t) (argStr - start);
+		String tok = (String) Allocate(len + 1);
+		memcpy(tok, start, len);
+		tok[len] = '\0';
+		ArrayPush(arr, NewStrValue(interpreter, tok));
+		free(tok);
+	}
+
+	return array;
+}
+
 // ... Rest of your Module Loading logic remains the same ...
 
 static ModuleFunction _OsModuleFunctions[] = {
@@ -129,6 +162,13 @@ static ModuleFunction _OsModuleFunctions[] = {
 	  .Argc		 = 0,
 	  .CFunction = (NativeFunctionCallback) (_OsGetType),
 	  .Value	 = NULL },
+	// Arg
+	{
+		.Name	   = "args",
+		.Argc	   = 0,
+		.CFunction = (NativeFunctionCallback) (_OsArgs),
+		.Value	   = NULL,
+	},
 	// end of module functions
 	{ .Name = NULL }
 };

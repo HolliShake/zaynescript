@@ -880,8 +880,12 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 			return errVal;
 		}
 
-		Value** args = Allocate(sizeof(Value*) * argc);
-		args[0]		 = NULL;
+		Value** args = NULL;
+
+		if (argc > 0) {
+			args	= Allocate(sizeof(Value*) * argc);
+			args[0] = NULL;
+		}
 
 		for (int i = 0; i < argc; i++) {
 			args[i] = Popp(interpreter);

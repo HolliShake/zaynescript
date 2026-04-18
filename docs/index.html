@@ -495,8 +495,11 @@ println(2n ** 64n); // 18446744073709551616n</code></pre>
           <tr>
             <td><code>dist/</code></td>
             <td>
-              Compiler output: <code>zscript.exe</code>, copied
-              <code>lib/</code> and <code>tests/</code> for running
+              Compiler output: <code>zscript.exe</code>. On each build,
+              <code>lib/</code> and <code>tests/</code> are copied into
+              <code>dist/</code> so <code>lib:name</code> imports resolve next to
+              the executable (for example <code>lib:http</code>,
+              <code>lib:argparser</code>).
             </td>
           </tr>
           <tr>
@@ -507,7 +510,10 @@ println(2n ** 64n); // 18446744073709551616n</code></pre>
           </tr>
           <tr>
             <td><code>lib/</code></td>
-            <td>User-level library files importable via <code>lib:</code></td>
+            <td>
+              User-level libraries importable via <code>lib:</code> (for example
+              <code>lib/http.zs</code>, <code>lib/argparser.zs</code>)
+            </td>
           </tr>
           <tr>
             <td><code>utf/</code></td>

@@ -6,7 +6,7 @@
     <title>Standard Library — ZayneScript</title>
     <meta
       name="description"
-      content="ZayneScript standard library reference: core:io, core:math, core:os, core:object, core:array, core:date, core:promise, core:sqlite, core:utf8 (Unicode), core:mongoose (HTTP server and client)."
+      content="ZayneScript standard library reference: core:io, core:math, core:os (including args for scripts), core:object, core:array, core:date, core:promise, core:sqlite, core:utf8 (Unicode), core:mongoose (HTTP server and client), plus user libraries lib:http and lib:argparser."
     />
     <link rel="stylesheet" href="style.css" />
     <link rel="icon" type="image/x-icon" href="zs.ico" />
@@ -79,6 +79,8 @@
             <li><a href="#sqlite">core:sqlite</a></li>
             <li><a href="#utf8">core:utf8</a></li>
             <li><a href="#mongoose">core:mongoose</a></li>
+            <li><a href="#lib-http">lib:http</a></li>
+            <li><a href="#lib-argparser">lib:argparser</a></li>
           </ul>
         </div>
         <div class="sidebar-group">
@@ -110,6 +112,7 @@
             <li><a href="#os-getuser">getUser</a></li>
             <li><a href="#os-gettype">getType</a></li>
             <li><a href="#os-system">system</a></li>
+            <li><a href="#os-args">args</a></li>
           </ul>
         </div>
         <div class="sidebar-group">
@@ -176,6 +179,15 @@
             <li><a href="#lib-http">Overview</a></li>
             <li><a href="#lib-http-statuscode">StatusCode</a></li>
             <li><a href="#lib-http-method">Method</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-group">
+          <div class="sidebar-group-title">lib:argparser</div>
+          <ul>
+            <li><a href="#lib-argparser">Overview</a></li>
+            <li><a href="#lib-argparser-args">args() and argv</a></li>
+            <li><a href="#lib-argparser-api">ArgParser API</a></li>
+            <li><a href="#lib-argparser-parsewithdefs">parseWithDefs</a></li>
           </ul>
         </div>
         <div class="sidebar-group">
@@ -475,7 +487,7 @@ println(e);             // 2.718281828459045</code></pre>
          ============================================================== -->
         <h2 id="os">core:os — Operating System Utilities</h2>
         <p>Import with:</p>
-        <pre><code class="language-javascript">import { getCwd, getPid, getUser, getType, system } from "core:os";</code></pre>
+        <pre><code class="language-javascript">import { getCwd, getPid, getUser, getType, system, args } from "core:os";</code></pre>
 
         <hr />
 
@@ -536,6 +548,31 @@ println(e);             // 2.718281828459045</code></pre>
         </div>
         <pre><code class="language-javascript">const code = system("ls -la");
 println("exit:", code);</code></pre>
+
+        <h3 id="os-args">args</h3>
+        <div class="method">
+          <div class="method-sig">args() → array of string</div>
+          <p class="method-desc">
+            When the interpreter is started with
+            <code>zscript --run path/to/script.zs …</code>, returns the tokens
+            passed after the script path as an array of strings. The host joins
+            <code>argv[3…]</code> with single spaces and the runtime splits on
+            spaces, so each entry is one shell word after the script name (no
+            embedded spaces inside a token unless the shell already split
+            differently).
+          </p>
+        </div>
+        <p>
+          Use these tokens as a conventional <code>argv</code> for flags and
+          positionals. For structured parsing (long options, short clusters,
+          <code>--</code>, defaults), import
+          <a href="#lib-argparser"><code>lib:argparser</code></a>.
+        </p>
+        <pre><code class="language-javascript">import { args } from "core:os";
+import { println } from "core:io";
+
+// zscript --run ./app.zs input.txt --verbose --out=out.txt
+println(args()); // e.g. [input.txt, --verbose, --out=out.txt]</code></pre>
 
         <!-- ==============================================================
          core:object
@@ -1538,7 +1575,9 @@ request("http://127.0.0.1:8080/api/ping", {
 });</code></pre>
         <p>
           For named constants and a re-export of <code>request</code>, see
-          <a href="#lib-http">lib:http</a> below.
+          <a href="#lib-http">lib:http</a> below. For parsing
+          <code>args()</code> into flags and positionals, see
+          <a href="#lib-argparser">lib:argparser</a>.
         </p>
 
         <h2 id="mongoose-server">Server class</h2>
@@ -1945,6 +1984,121 @@ request("http://api.example.com/users", {
         <p>
           See <code>tests/test_request.zs</code> for a minimal client example
           using <code>lib:http</code>.
+        </p>
+
+        <!-- ==============================================================
+         lib:argparser (user library)
+         ============================================================== -->
+        <h2 id="lib-argparser">lib:argparser — command-line argument parser</h2>
+        <p>
+          The repository includes <code>lib/argparser.zs</code>, copied next to
+          the executable at build time (see the
+          <code>dist/</code> layout on the home page). It parses the string array
+          returned by <a href="#os-args"><code>args()</code></a> from
+          <code>core:os</code> into positionals, boolean flags, and value flags.
+        </p>
+
+        <h3 id="lib-argparser-args">How <code>args()</code> relates to the shell</h3>
+        <p>
+          Everything after the script path on the host command line becomes
+          <code>args()</code>. Tokens are split on ASCII spaces only; use
+          <code>lib:argparser</code> on that flat list the same way you would use
+          a classic <code>argv</code> in C.
+        </p>
+
+        <h3 id="lib-argparser-api">ArgParser class</h3>
+        <p>Import symbols:</p>
+        <pre><code class="language-javascript">import { ArgParser, createArgParser, parseWithDefs } from "lib:argparser";</code></pre>
+        <ul>
+          <li>
+            <code>createArgParser()</code> — same as <code>new ArgParser()</code>;
+            returns a parser instance with <code>strict</code> defaulting to
+            <code>false</code>.
+          </li>
+          <li>
+            <code>p.option(def)</code> — registers an option. Object
+            <code>def</code> may include:
+            <code>long</code> (string), <code>short</code> (single-character
+            string), <code>takesValue</code> (boolean), <code>multiple</code>
+            (boolean; values accumulate in an array), <code>defaultVal</code>
+            (applied if the flag never appears), and <code>help</code> (for
+            <code>helpText</code>). At least one of <code>long</code> or
+            <code>short</code> is required. Duplicate names or invalid identifiers
+            <strong>raise</strong> at registration time.
+          </li>
+          <li>
+            <code>p.strict = true</code> — unknown <code>--long</code> or
+            <code>-x</code> options are recorded in <code>errors</code> instead
+            of only in <code>unknown</code>.
+          </li>
+          <li>
+            <code>p.parse(argv)</code> — returns an object:
+            <code>ok</code> (boolean), <code>errors</code> (array of strings),
+            <code>positional</code> (array), <code>flags</code> (object; keys use
+            <code>long</code> when present, otherwise <code>short</code>), and
+            <code>unknown</code> (object of unrecognized flags when not strict).
+          </li>
+          <li>
+            <code>p.helpText(programName)</code> — multi-line usage string from
+            registered options.
+          </li>
+        </ul>
+        <p>Supported syntax (high level):</p>
+        <ul>
+          <li>
+            <code>--</code> — end of options; remaining tokens are positional.
+          </li>
+          <li>
+            Long options: <code>--name</code>, <code>--name=value</code>, or
+            <code>--name</code> with the next token as the value when
+            <code>takesValue</code> is true and <code>=</code> is omitted.
+          </li>
+          <li>
+            Short options: <code>-x</code>; clustered booleans
+            <code>-xyz</code>; value either glued (<code>-fvalue</code>) or as
+            the next token (<code>-f value</code>).
+          </li>
+          <li>
+            A lone <code>-</code> is kept as a positional (common “stdin”
+            placeholder).
+          </li>
+          <li>
+            Tokens that look like signed decimal numbers (for example
+            <code>-3</code> or <code>-1.5</code>) are treated as positionals so
+            numeric arguments are not mistaken for flags.
+          </li>
+        </ul>
+        <pre><code class="language-javascript">import { args } from "core:os";
+import { createArgParser } from "lib:argparser";
+import { println } from "core:io";
+
+const p = createArgParser();
+p.option({ long: "output", short: "o", takesValue: true, help: "output file" });
+p.option({ long: "verbose", short: "v", help: "more logging" });
+
+const r = p.parse(args());
+if (!r.ok) {
+    println(r.errors);
+} else {
+    println("flags:", r.flags, "positionals:", r.positional);
+}</code></pre>
+
+        <h3 id="lib-argparser-parsewithdefs">parseWithDefs</h3>
+        <p>
+          <code>parseWithDefs(defs, argv)</code> builds a temporary parser,
+          registers every object in the <code>defs</code> array with
+          <code>option</code>, then returns <code>parse(argv)</code>. Useful for
+          small tools without keeping a parser instance.
+        </p>
+        <pre><code class="language-javascript">import { parseWithDefs } from "lib:argparser";
+
+const r = parseWithDefs([
+    { long: "out", short: "o", takesValue: true },
+    { long: "quiet", short: "q" }
+], argv);</code></pre>
+        <p>
+          See <code>tests/test_args.zs</code> for a runnable example with
+          <code>args()</code> and <code>lib:argparser</code>.
         </p>
       </main>
     </div>

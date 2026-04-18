@@ -965,7 +965,7 @@ local extended = { ...person, city: "NYC" };</code></pre>
         <h3>Named imports</h3>
         <pre><code class="language-javascript">import { println, scan, parseNum } from "core:io";
 import { sqrt, pi, pow }           from "core:math";
-import { getUser, getCwd }         from "core:os";
+import { getUser, getCwd, args }  from "core:os";
 import { Array }                   from "core:array";
 import { Date }                    from "core:date";
 import { Promise }                 from "core:promise";
@@ -1000,9 +1000,13 @@ import { helper } from "./helpers/math"; // named import from file</code></pre>
           <code>/</code>. The repository ships <code>lib/http.zs</code>, which
           re-exports <code>request</code> from <code>core:mongoose</code> plus
           frozen <code>StatusCode</code> and <code>Method</code> lookup objects
-          built with <code>Object.freeze</code> from <code>core:object</code>:
+          built with <code>Object.freeze</code> from <code>core:object</code>.
+          It also ships <code>lib/argparser.zs</code>, a parser for the token
+          array returned by <code>args()</code> from <code>core:os</code> (see
+          <a href="stdlib.html#lib-argparser">Standard Library → lib:argparser</a>).
         </p>
         <pre><code class="language-javascript">import { request, Method, StatusCode } from "lib:http";
+import { createArgParser } from "lib:argparser";
 
 import "lib:nested/mod"; // lib/nested/mod.zs → bound as `mod`</code></pre>
       </main>

@@ -70,8 +70,8 @@ $(DIST_DIR):
 	mkdir -p $(DIST_DIR)
 
 copy_assets: | $(DIST_DIR)
-	@cp -rn lib $(DIST_DIR)/ 2>/dev/null || true
-	@cp -rn tests $(DIST_DIR)/ 2>/dev/null || true
+	@cp -rf lib $(DIST_DIR)/ 2>/dev/null || true
+	@cp -rf tests $(DIST_DIR)/ 2>/dev/null || true
 
 # ── SQLite shared library ────────────────────────────────────
 $(SQLITE_LIB): sqlite/sqlite3.c | $(DIST_DIR)

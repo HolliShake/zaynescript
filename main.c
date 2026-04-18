@@ -44,6 +44,33 @@ String ReadInternalFile(String path) {
 	return buffer;
 }
 
+/** Join argv[start..argc-1] with single spaces; returns NULL if start >= argc.
+ */
+static String JoinArgvFrom(int argc, char** argv, int start) {
+	if (start >= argc)
+		return NULL;
+
+	size_t total = 0;
+	for (int i = start; i < argc; i++) {
+		total += strlen(argv[i]);
+		if (i + 1 < argc)
+			total++;
+	}
+
+	String buf = (String) Allocate(total + 1);
+
+	size_t pos = 0;
+	for (int i = start; i < argc; i++) {
+		if (i > start)
+			buf[pos++] = ' ';
+		size_t len = strlen(argv[i]);
+		memcpy(buf + pos, argv[i], len);
+		pos += len;
+	}
+	buf[pos] = '\0';
+	return buf;
+}
+
 #ifdef _WIN32
 int RunTestInProcess(const char* testPath, const char* exePath) {
 	STARTUPINFOA		si;
@@ -478,6 +505,7 @@ int main(int argc, char** argv) {
 	}
 
 	Interpreter* interpreter = CreateInterpreter(execPath);
+	interpreter->ArgString	 = JoinArgvFrom(argc, argv, 3);
 
 	// NOTE: memory leak (ReadFile allocates a buffer,
 	// StringToRunes reads it, but the buffer is never freed)

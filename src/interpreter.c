@@ -15,6 +15,7 @@ Interpreter* CreateInterpreter(String execPath) {
 	bf_context_init(&(interpreter->BfContext), interpreter_bf_realloc, NULL);
 	interpreter->ExecPath	  = AllocateString(execPath);
 	interpreter->ModulePath	  = NULL;
+	interpreter->ArgString	  = NULL;
 	interpreter->ImportHead	  = NULL;
 	interpreter->Imports	  = CreateHashMap(16);
 	interpreter->Allocated	  = 0;
@@ -1476,6 +1477,8 @@ void FreeInterpreter(Interpreter* interpreter) {
 	bf_context_end(&interpreter->BfContext);
 	if (interpreter->ExecPath)
 		free(interpreter->ExecPath);
+	if (interpreter->ArgString)
+		free(interpreter->ArgString);
 	free(interpreter->Constants);
 	free(interpreter->Functions);
 	free(interpreter);
