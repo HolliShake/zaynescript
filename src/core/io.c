@@ -257,7 +257,7 @@ _IoSetColor(Interpreter* interpreter, int argc, Value** arguments) {
  * decompiled.
  * @return Newly allocated string containing the decompiled text.
  * Caller must free.
- * @origin src/decompiler.c:58
+ * @origin src/decompiler.c
  */
 extern String DecompileFunction(Interpreter* interpreter, UserFunction* uf);
 

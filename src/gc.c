@@ -4,7 +4,7 @@
  * @brief Converts a Value to its string representation.
  * @param value The value to convert.
  * @return A newly allocated string (caller must free).
- * @origin src/value.c:159
+ * @origin src/value.c
  */
 extern String ValueToString(Value* value);
 
