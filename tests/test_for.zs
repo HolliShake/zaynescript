@@ -2,7 +2,8 @@ import { println, format } from "core:io";
  
 var arr = [];
 
-for (i:=0;i<5;i++) {
+for (i, j, k := 0, 1, 2; i < 5; i++) {
+    println(i, j, k);
     arr.push(fn(j) {
         println(i + j);
     });

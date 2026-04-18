@@ -6,7 +6,7 @@
  * @param codes The bytecode array.
  * @param alignStart The byte offset to start reading from.
  * @return The decoded string.
- * @origin src/interpreter.c:200
+ * @origin src/interpreter.c:201
  */
 extern String ReadString(uint8_t* codes, int alignStart);
 
@@ -16,7 +16,7 @@ extern String ReadString(uint8_t* codes, int alignStart);
  * @param codes The bytecode array.
  * @param alignStart The byte offset to start reading from.
  * @return The decoded integer.
- * @origin src/interpreter.c:208
+ * @origin src/interpreter.c:209
  */
 extern int ReadInt32(uint8_t* codes, int alignStart);
 
@@ -24,7 +24,7 @@ extern int ReadInt32(uint8_t* codes, int alignStart);
  * @brief Converts a Value to its string representation.
  * @param value The value to convert.
  * @return A newly allocated string (caller must free).
- * @origin src/value.c:154
+ * @origin src/value.c:159
  */
 extern String ValueToString(Value* value);
 

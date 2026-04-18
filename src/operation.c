@@ -21,7 +21,7 @@
  * @brief Sets the currently active function.
  * @param interpreter The interpreter instance.
  * @param function The function to set as active.
- * @origin src/interpreter.c:118
+ * @origin src/interpreter.c:119
  */
 extern void SetActiveFunction(Interpreter* interpreter, Value* function);
 
@@ -29,7 +29,7 @@ extern void SetActiveFunction(Interpreter* interpreter, Value* function);
  * @brief Sets the currently active task.
  * @param interpreter The interpreter instance.
  * @param task The task to set as active.
- * @origin src/interpreter.c:122
+ * @origin src/interpreter.c:123
  */
 extern void SetActiveTask(Interpreter* interpreter, Value* task);
 
@@ -37,7 +37,7 @@ extern void SetActiveTask(Interpreter* interpreter, Value* task);
  * @brief Pushes a value onto the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @param value The value to push.
- * @origin src/interpreter.c:126
+ * @origin src/interpreter.c:127
  */
 extern void Push(Interpreter* interpreter, Value* value);
 
@@ -46,7 +46,7 @@ extern void Push(Interpreter* interpreter, Value* value);
  * stack.
  * @param interpreter The interpreter instance.
  * @return The popped value.
- * @origin src/interpreter.c:130
+ * @origin src/interpreter.c:131
  */
 extern Value* Popp(Interpreter* interpreter);
 
@@ -54,7 +54,7 @@ extern Value* Popp(Interpreter* interpreter);
  * @brief Pops N values from the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @param n The number of values to pop.
- * @origin src/interpreter.c:134
+ * @origin src/interpreter.c:135
  */
 extern void PopN(Interpreter* interpreter, int n);
 
@@ -63,7 +63,7 @@ extern void PopN(Interpreter* interpreter, int n);
  * without removing it.
  * @param interpreter The interpreter instance.
  * @return The top value on the stack.
- * @origin src/interpreter.c:138
+ * @origin src/interpreter.c:139
  */
 extern Value* Peek(Interpreter* interpreter);
 
@@ -98,10 +98,10 @@ static void _DupTop(Interpreter* interpreter) {
  * @brief Runs the interpreter's main execution loop on a
  * function value.
  * @param interpreter The interpreter instance.
- * @param fnValue The compiled function value to execute.
- * @origin src/interpreter.c:375
+ * @param fnOrSm User function or state machine value to execute.
+ * @origin src/interpreter.c:376
  */
-extern void Run(Interpreter* interpreter, Value* fnValue);
+extern void Run(Interpreter* interpreter, Value* fnOrSm);
 
 /**
  * @brief Array of core module mappers for built-in module
@@ -411,14 +411,14 @@ Value* DoImportCore(Interpreter* interpreter, String moduleName) {
  * @param path The path of the source file.
  * @param data The source code as a Rune array.
  * @return A new Lexer instance.
- * @origin src/lexer.c:339
+ * @origin src/lexer.c:356
  */
 extern Lexer* CreateLexer(String path, Rune* data);
 
 /**
  * @brief Frees a lexer and its associated resources.
  * @param lexer The lexer to free.
- * @origin src/lexer.c:410
+ * @origin src/lexer.c:427
  */
 extern void FreeLexer(Lexer* lexer);
 
@@ -426,7 +426,7 @@ extern void FreeLexer(Lexer* lexer);
  * @brief Creates a new parser from a lexer.
  * @param lexer The lexer to read tokens from.
  * @return A new Parser instance.
- * @origin src/parser.c:3
+ * @origin src/parser.c:5
  */
 extern Parser* CreateParser(Lexer* lexer);
 
@@ -434,14 +434,14 @@ extern Parser* CreateParser(Lexer* lexer);
  * @brief Parses the token stream into an AST.
  * @param parser The parser instance.
  * @return The root AST node of the parsed program.
- * @origin src/parser.c:1872
+ * @origin src/parser.c:1877
  */
 extern Ast* Parse(Parser* parser);
 
 /**
  * @brief Frees a parser and its associated resources.
  * @param parser The parser to free.
- * @origin src/parser.c:1877
+ * @origin src/parser.c:1882
  */
 extern void FreeParser(Parser* parser);
 
@@ -457,7 +457,7 @@ extern void FreeAst(Ast* ast);
  * @param interpreter The interpreter instance.
  * @param parser The parser to read AST from.
  * @return A new Compiler instance.
- * @origin src/compiler.c:12
+ * @origin src/compiler.c:18
  */
 extern Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
 
@@ -467,24 +467,24 @@ extern Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
  * @param compiler The compiler instance.
  * @param programAst The AST to compile.
  * @return The compiled function value.
- * @origin src/compiler.c:3346
+ * @origin src/compiler.c:3410
  */
 extern Value* CompileAst(Compiler* compiler, Ast* programAst);
 
 /**
  * @brief Frees a compiler and its associated resources.
  * @param compiler The compiler to free.
- * @origin src/compiler.c:3351
+ * @origin src/compiler.c:3415
  */
 extern void FreeCompiler(Compiler* compiler);
 
 /**
  * @brief Interprets a compiled function value.
  * @param interpreter The interpreter instance.
- * @param compiled The compiled function value to interpret.
- * @origin src/interpreter.c:1466
+ * @param fnValue The compiled user function value to interpret.
+ * @origin src/interpreter.c:1469
  */
-extern void Interpret(Interpreter* interpreter, Value* compiled);
+extern void Interpret(Interpreter* interpreter, Value* fnValue);
 
 static Value* DoImportFileOrLib(Interpreter* interpreter,
 								String		 moduleNameOrPath,
@@ -757,14 +757,14 @@ Value* DoCallMethod(Interpreter* interpreter,
  * @param interpreter The interpreter instance.
  * @param line The source line information for the call.
  * @param fn The function value being called.
- * @origin src/interpreter.c:146
+ * @origin src/interpreter.c:147
  */
 extern void PushTrace(Interpreter* interpreter, LineInfo line, Value* fn);
 
 /**
  * @brief Pops the top stack trace entry after a function call returns.
  * @param interpreter The interpreter instance.
- * @origin src/interpreter.c:153
+ * @origin src/interpreter.c:154
  */
 extern void PopTrace(Interpreter* interpreter);
 

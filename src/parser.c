@@ -1,5 +1,7 @@
 #include "./parser.h"
 
+#include "global.h"
+
 Parser* CreateParser(Lexer* lexer) {
 	Parser* parser = Allocate(sizeof(Parser));
 	parser->Lexer  = lexer;
@@ -1301,25 +1303,29 @@ static Ast* _ParseDeclarationList(Parser* parser);
 
 static Ast* _ParseInitializerConditionMutator(Parser* parser) {
 	String op  = NULL;
-	Ast *  lhs = _ParseExpression(parser), *rhs = NULL;
+	Ast *  lhs = _ParseListOfExpressions(parser), *rhs = NULL;
 
 	if (lhs == NULL) {
 		return NULL;
 	}
 
 	while (CHECKTV(":=")) {
-		if (lhs->Type != AST_NAME) {
-			ThrowError(parser->Lexer->Path,
-					   parser->Lexer->Data,
-					   lhs->Position,
-					   "expected an identifier or name");
+		Ast* curr = lhs;
+		while (curr != NULL) {
+			if (curr->Type != AST_NAME) {
+				ThrowError(parser->Lexer->Path,
+						   parser->Lexer->Data,
+						   curr->Position,
+						   "expected an identifier or name");
+			}
+			curr = curr->Next;
 		}
 
 		// :=
 		op = parser->Next.Value;
 		ACCEPTT(TK_SYM);
 
-		rhs = _ParseExpression(parser);
+		rhs = _ParseListOfExpressions(parser);
 
 		if (rhs == NULL) {
 			free(op);

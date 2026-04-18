@@ -4,7 +4,7 @@
  * @brief Enqueues a task (callback) into the interpreter's task queue.
  * @param interpreter The interpreter instance.
  * @param task The task value to enqueue.
- * @origin src/interpreter.c:162
+ * @origin src/interpreter.c:163
  */
 extern void EnqueueTask(Interpreter* interpreter, Value* task);
 
