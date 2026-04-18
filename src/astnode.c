@@ -204,6 +204,20 @@ Ast* AstFunction(Ast*	  fnName,
 	return ast;
 }
 
+Ast* AstImmediateFunction(Ast*	   fnName,
+						  Ast*	   parameters,
+						  Ast*	   body,
+						  bool	   async,
+						  Position position) {
+	Ast* ast	   = InitAst(AST_FUNCTION, position);
+	ast->Flag	   = async;
+	ast->Immediate = true;
+	ast->A		   = fnName;
+	ast->B		   = parameters;
+	ast->C		   = body;
+	return ast;
+}
+
 Ast* AstImport(Ast* imports, Ast* moduleName, Position position) {
 	Ast* ast = InitAst(AST_IMPORT, position);
 	ast->A	 = imports;

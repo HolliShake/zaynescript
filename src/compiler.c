@@ -631,6 +631,11 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 
 				fn->Argc = paramc;
 
+				if (node->Immediate) {
+					_CompileExpression(compiler, fn, fnScope, body);
+					goto REG;
+				}
+
 				while (body != NULL) {
 					_CompileStatement(compiler, fn, fnScope, body);
 					body = body->Next;
@@ -638,6 +643,8 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 
 				_EmitLine(compiler, fn, lastLine);
 				_Emit(compiler, fn, OP_LOAD_NULL);
+
+			REG:;
 				_EmitLine(compiler, fn, lastLine);
 				_Emit(compiler, fn, OP_RETURN);
 

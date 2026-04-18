@@ -9,8 +9,10 @@ for (i, j, k := 0, 1, 2; i < 5; i++) {
     });
 }
 
-arr.each(fn(e,i) {
-    e(i);
-});
+arr.each(fn(e, i) => e(i));
 
 println("Done!");
+
+const add = fn(a,b) => a + b;
+
+println(add(5,10));

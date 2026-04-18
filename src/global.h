@@ -410,6 +410,7 @@ struct ast_struct {
 	bool Flag;		   /**< Generic boolean flag for various uses (e.g.
 						* async functions)
 						*/
+	bool Immediate;	   /**< True if the function is an immediate function */
 	Ast* A;			   /**< First child node (usage depends on Type) */
 	Ast* B;			   /**< Second child node (usage depends on Type) */
 	Ast* C;			   /**< Third child node (usage depends on Type) */

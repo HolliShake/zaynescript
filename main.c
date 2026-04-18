@@ -507,8 +507,6 @@ int main(int argc, char** argv) {
 	Interpreter* interpreter = CreateInterpreter(execPath);
 	interpreter->ArgString	 = JoinArgvFrom(argc, argv, 3);
 
-	// NOTE: memory leak (ReadFile allocates a buffer,
-	// StringToRunes reads it, but the buffer is never freed)
 	String fileContent = ReadInternalFile(path);
 	if (!fileContent) {
 		free(execPath);
@@ -517,8 +515,8 @@ int main(int argc, char** argv) {
 		FreeInterpreter(interpreter);
 		return EXIT_FAILURE;
 	}
+
 	Rune* data = StringToRunes(fileContent);
-	free(fileContent);
 
 	Lexer*	lexer  = CreateLexer(path, data);
 	Parser* parser = CreateParser(lexer);
@@ -535,6 +533,7 @@ int main(int argc, char** argv) {
 	free(execPath);
 	free(path);
 	free(data);
+	free(fileContent);
 	printf("Program Finished");
 	return EXIT_SUCCESS;
 }
