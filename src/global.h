@@ -461,6 +461,18 @@ typedef enum value_type_enum {
  */
 typedef struct value_struct Value;
 
+/**
+ * @typedef DestroyCallback
+ * @brief Function pointer type for value destruction callbacks.
+ *
+ * Used to define custom cleanup logic for heap-allocated values
+ * when they are garbage collected. The callback receives a
+ * pointer to the Value being destroyed.
+ *
+ * @param value Pointer to the Value being destroyed.
+ */
+typedef void (*DestroyCallback)(Value*);
+
 struct value_struct {
 	ValueType Type; /**< The type of the value */
 
@@ -472,8 +484,9 @@ struct value_struct {
 	} Value;
 
 	// GC
-	Value* Next;   /**< Next value in the GC tracking list */
-	int	   Marked; /**< GC mark flag (0 = unmarked, 1 = marked) */
+	Value*			Next;	   /**< Next value in the GC tracking list */
+	int				Marked;	   /**< GC mark flag (0 = unmarked, 1 = marked) */
+	DestroyCallback Destroyer; /**< Callback for destroying the value */
 };
 
 // -----------------------------------------------------------------------------

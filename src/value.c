@@ -1,5 +1,6 @@
 #include "./value.h"
 
+
 /**
  * @brief Runs a young-generation garbage collection cycle on the interpreter
  * heap.
@@ -8,12 +9,17 @@
  */
 extern void GarbageCollect(Interpreter* interpreter);
 
+static void DefaultDestroyer(Value* thisArg) {
+	// Do nothing!
+}
+
 static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
 	Value* v			= Allocate(sizeof(Value));
 	v->Type				= type;
 	v->Marked			= 0;
 	v->Next				= NULL;
 	v->Next				= interpreter->GcRoot;
+	v->Destroyer		= (DestroyCallback) DefaultDestroyer;
 	interpreter->GcRoot = v;
 	interpreter->Allocated++;
 	return v;

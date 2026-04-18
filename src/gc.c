@@ -1,31 +1,12 @@
 #include "./gc.h"
 
 /**
- * @brief Creates a new string value.
- * @param interp The interpreter instance.
- * @param str The string to create.
- * @return A newly allocated string value.
- */
-extern Value* NewStrValue(Interpreter* interp, String str);
-
-/**
  * @brief Converts a Value to its string representation.
  * @param value The value to convert.
  * @return A newly allocated string (caller must free).
  * @origin src/value.c:154
  */
 extern String ValueToString(Value* value);
-
-/**
- * @brief Calls a method on an object.
- * @param interpreter The interpreter instance.
- * @param obj The object to call the method on.
- * @param methodName The name of the method to call.
- * @param argc The number of arguments to pass to the method.
- * @return The result of the method call.
- */
-extern Value*
-DoCallMethod(Interpreter* interpreter, Value* obj, Value* methodName, int argc);
 
 /**
  * @brief Frees a value and its associated memory
@@ -98,13 +79,6 @@ static void _Free(Interpreter* interp, Value* value) {
 			{
 				ClassInstance* instance = CoerceToClassInstance(value);
 				if (instance != NULL) {
-					// Call destructor if it exists
-					DoCallMethod(interp,
-								 value,
-								 NewStrValue(interp, DESTRUCTOR_NAME),
-								 1);
-
-					// endcall
 					if (instance->Members != NULL) {
 						FreeHashMap(instance->Members);
 						instance->Members = NULL;
@@ -168,6 +142,7 @@ static void _Free(Interpreter* interp, Value* value) {
 		default:
 			break;
 	}
+	value->Destroyer(value);
 	free(value);
 }
 

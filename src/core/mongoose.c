@@ -102,14 +102,15 @@ static const MimeEntry _MimeTable[] = {
  * Internal binding property keys
  * ----------------------------------------------------------------------- */
 
-#define PROP_APP_PTR	 "__ptr"
-#define PROP_MG_GC_ROOTS "__mg_gc_roots" /**< Keeps route/middleware Values visible
-											to the GC (see AppState). */
+#define PROP_APP_PTR "__ptr"
+#define PROP_MG_GC_ROOTS                                                       \
+	"__mg_gc_roots" /**< Keeps route/middleware Values visible                 \
+					   to the GC (see AppState). */
 #define PROP_RES_CTX	"__ctx"
 #define PROP_RES_STATUS "__status"
 #define PROP_RES_HDRSTR "__hdrstr"
-#define PROP_REQ_CLASS	"__ReqClass"
-#define PROP_RES_CLASS	"__ResClass"
+#define PROP_REQ_CLASS	"__RequestClass"
+#define PROP_RES_CLASS	"__ResponseClass"
 
 /* -----------------------------------------------------------------------
  * Forward declarations
@@ -428,10 +429,10 @@ static void _PushMgGcRoot(ClassInstance* cls, Value* handler) {
 }
 
 static void _AppAddRoute(ClassInstance* cls,
-						 AppState*	  app,
-						 const String method,
-						 const String path,
-						 Value*		  handler) {
+						 AppState*		app,
+						 const String	method,
+						 const String	path,
+						 Value*			handler) {
 	if (app->Count >= app->Capacity) {
 		app->Capacity += ROUTE_GROW;
 		app->Routes	   = realloc(app->Routes, sizeof(Route) * app->Capacity);
@@ -1088,7 +1089,7 @@ static Value* _ServerInit(Interpreter* interp, int argc, Value** args) {
 			return NewErrorValue(interp,                                       \
 								 #ZsName "(): server not initialised");        \
 		String path = ValueToString(args[1]);                                  \
-		_AppAddRoute(cls, app, HttpMethod, path, args[2]);                       \
+		_AppAddRoute(cls, app, HttpMethod, path, args[2]);                     \
 		free(path);                                                            \
 		return args[0];                                                        \
 	}
