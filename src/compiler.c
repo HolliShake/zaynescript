@@ -2,6 +2,8 @@
 
 #include "global.h"
 
+#include <alloca.h>
+#include <sched.h>
 #include <string.h>
 
 #define PushArray(type, array, count, val, defaultValue)                       \
@@ -2549,21 +2551,55 @@ static void _CompileInitializerConditionMutator(Compiler*	  compiler,
 												UserFunction* uf,
 												Scope*		  scope,
 												Ast*		  node,
-												int*		  outputVar) {
+												int**		  outputVars,
+												int*		  count) {
 	Ast *lhs = node->A, *rhs = node->B;
 	if (node->Type == AST_SHORT_ASSIGN) {
-		_CompileExpression(compiler, uf, scope, rhs);
-		if (ScopeHasLocal(scope, lhs->Value)) {
+		Ast *currV = rhs, *currK = lhs;
+		bool multiValue = currV->Next != NULL;
+
+		int kcount = 0, vcount = 0;
+		while (currK != NULL)
+			currK = currK->Next, kcount++;
+		while (currV != NULL)
+			currV = currV->Next, vcount++;
+
+		if (kcount != vcount) {
 			ThrowError(compiler->Parser->Lexer->Path,
 					   compiler->Parser->Lexer->Data,
-					   lhs->Position,
-					   "variable not found");
+					   (kcount < vcount ? lhs : rhs)->Position,
+					   "not enough values to unpack");
 		}
-		int offset = UserFunctionEmitLocal(uf);
-		ScopeSetSymbol(scope, lhs->Value, false, true, false, offset);
-		_EmitLine(compiler, uf, lhs->Position);
-		_EmitArg(compiler, uf, OP_STORE_LOCAL, offset);
-		*outputVar = offset;
+
+		currK = lhs;
+		currV = rhs;
+
+		*count = kcount, vcount = 0;
+
+		while (currV != NULL && currK != NULL) {
+			_CompileExpression(compiler, uf, scope, currV);
+
+			if (ScopeHasLocal(scope, currK->Value)) {
+				ThrowError(compiler->Parser->Lexer->Path,
+						   compiler->Parser->Lexer->Data,
+						   currK->Position,
+						   "variable already exists");
+			}
+			int offset = UserFunctionEmitLocal(uf);
+			ScopeSetSymbol(scope, currK->Value, false, true, false, offset);
+			_EmitLine(compiler, uf, currK->Position);
+			_EmitArg(compiler, uf, OP_STORE_LOCAL, offset);
+
+			(*outputVars)[vcount++] = offset;
+
+			currK = currK->Next;
+			currV = currV->Next;
+
+			if (currK != NULL && currV != NULL) {
+				*outputVars =
+					Reallocate(*outputVars, sizeof(int) * (vcount + 1));
+			}
+		}
 		return;
 	}
 	_CompileExpression(compiler, uf, scope, node);
@@ -2577,7 +2613,8 @@ static void _CompileIfStatement(Compiler*	  compiler,
 	Ast*	 condition	 = initializer->Next;
 	Ast*	 thenBranch	 = node->B;
 	Ast*	 elseBranch	 = node->C;
-	int		 ifVar		 = -1;
+	int*	 ifVars		 = Allocate(sizeof(int));
+	int		 count		 = 0;
 	Position nextLine	 = _ToFirstPosition(node->Position);
 
 	// IFSTART:;
@@ -2587,7 +2624,8 @@ static void _CompileIfStatement(Compiler*	  compiler,
 											uf,
 											scope,
 											initializer,
-											&ifVar);
+											&ifVars,
+											&count);
 		_CompileExpression(compiler, uf, scope, condition);
 	} else if (initializer != NULL) {
 		nextLine = _ToFirstPosition(initializer->Position);
@@ -2596,7 +2634,8 @@ static void _CompileIfStatement(Compiler*	  compiler,
 											uf,
 											scope,
 											initializer,
-											&ifVar);
+											&ifVars,
+											&count);
 	} else {
 		nextLine = _ToFirstPosition(condition->Position);
 		_CompileExpression(compiler, uf, scope, condition);
@@ -2626,10 +2665,13 @@ static void _CompileIfStatement(Compiler*	  compiler,
 	_JumpToLabel(compiler, uf, labelENDIF);
 
 	// Close the iteration variable scope if it exists
-	if (ifVar != -1) {
-		_EmitLine(compiler, uf, nextLine);
-		_EmitArg(compiler, uf, OP_LOCK_VAR, ifVar);
+	if (count > 0) {
+		for (int i = 0; i < count; i++) {
+			_EmitLine(compiler, uf, nextLine);
+			_EmitArg(compiler, uf, OP_LOCK_VAR, ifVars[i]);
+		}
 	}
+	free(ifVars);
 }
 
 static void _CompileSwitchStatement(Compiler*	  compiler,
@@ -2760,7 +2802,8 @@ static void _CompileForStatement(Compiler*	   compiler,
 															: initializer,
 		*mutator	= (condition && condition->Next) ? condition->Next : NULL,
 		*thenBranch = node->B;
-	int	 loopVar	= -1;
+	int* loopVars	= Allocate(sizeof(int));
+	int	 count		= 0;
 	bool hasLocalInitializer =
 		initializer != NULL && initializer->Type == AST_SHORT_ASSIGN;
 	Position nextLine = _ToFirstPosition(node->Position);
@@ -2771,7 +2814,8 @@ static void _CompileForStatement(Compiler*	   compiler,
 											uf,
 											loopScope,
 											initializer,
-											&loopVar);
+											&loopVars,
+											&count);
 	}
 
 	// FORSTART:;
@@ -2789,9 +2833,11 @@ static void _CompileForStatement(Compiler*	   compiler,
 	_CompileStatement(compiler, uf, loopScope, thenBranch);
 
 	// Close the iteration variable scope if it exists
-	if (loopVar != -1) {
-		_EmitLine(compiler, uf, nextLine);
-		_EmitArg(compiler, uf, OP_LOCK_VAR, loopVar);
+	if (count > 0) {
+		for (int i = 0; i < count; i++) {
+			_EmitLine(compiler, uf, nextLine);
+			_EmitArg(compiler, uf, OP_LOCK_VAR, loopVars[i]);
+		}
 	}
 
 	nextLine = _ToLastPosition(thenBranch->Position);
@@ -2831,6 +2877,7 @@ static void _CompileForStatement(Compiler*	   compiler,
 	if (labelENDFOR != -1)
 		_JumpToLabel(compiler, uf, labelENDFOR);
 
+	free(loopVars);
 	FreeScope(loopScope);
 }
 
@@ -2844,7 +2891,8 @@ static void _CompileWhileStatement(Compiler*	 compiler,
 															: initializer,
 		*mutator	= (condition && condition->Next) ? condition->Next : NULL,
 		*thenBranch = node->B;
-	int	 loopVar	= -1;
+	int* loopVars	= Allocate(sizeof(int));
+	int	 count		= 0;
 	bool hasLocalInitializer =
 		initializer != NULL && initializer->Type == AST_SHORT_ASSIGN;
 	Position nextLine = _ToFirstPosition(node->Position);
@@ -2855,7 +2903,8 @@ static void _CompileWhileStatement(Compiler*	 compiler,
 											uf,
 											loopScope,
 											initializer,
-											&loopVar);
+											&loopVars,
+											&count);
 	}
 
 	// FORSTART:;
@@ -2873,9 +2922,11 @@ static void _CompileWhileStatement(Compiler*	 compiler,
 	_CompileStatement(compiler, uf, loopScope, thenBranch);
 
 	// Close the iteration variable scope if it exists
-	if (loopVar != -1) {
-		_EmitLine(compiler, uf, nextLine);
-		_EmitArg(compiler, uf, OP_LOCK_VAR, loopVar);
+	if (count > 0) {
+		for (int i = 0; i < count; i++) {
+			_EmitLine(compiler, uf, nextLine);
+			_EmitArg(compiler, uf, OP_LOCK_VAR, loopVars[i]);
+		}
 	}
 
 	nextLine = _ToLastPosition(thenBranch->Position);
@@ -2915,6 +2966,7 @@ static void _CompileWhileStatement(Compiler*	 compiler,
 	if (labelENDFOR != -1)
 		_JumpToLabel(compiler, uf, labelENDFOR);
 
+	free(loopVars);
 	FreeScope(loopScope);
 }
 
