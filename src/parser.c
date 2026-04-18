@@ -1310,24 +1310,15 @@ static Ast* _ParseInitializerConditionMutator(Parser* parser) {
 	}
 
 	while (CHECKTV(":=")) {
-		switch (lhs->Type) {
-			case AST_NAME:
-				{
-					break;
-				}
-			default:
-				{
-					Ast* curr = lhs;
-					while (curr != NULL) {
-						if (curr->Type != AST_NAME) {
-							ThrowError(parser->Lexer->Path,
-									   parser->Lexer->Data,
-									   curr->Position,
-									   "expected an identifier or name");
-						}
-						curr = curr->Next;
-					}
-				}
+		Ast* curr = lhs;
+		while (curr != NULL) {
+			if (curr->Type != AST_NAME) {
+				ThrowError(parser->Lexer->Path,
+						   parser->Lexer->Data,
+						   curr->Position,
+						   "expected an identifier or name");
+			}
+			curr = curr->Next;
 		}
 
 		// :=
