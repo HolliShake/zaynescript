@@ -33,11 +33,34 @@ extern Value* Peek(Interpreter* interpreter);
  * @param argc The number of arguments.
  * @param withThis Whether the call includes a 'this' context.
  * @return The return value of the function call.
- * @origin src/operation.c:774
+ * @origin src/operation.c:775
  */
 extern Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
 
-Value* _ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
+static Value*
+_ArrayInit(Interpreter* interpreter, int argc, Value** arguments) {
+	if (argc < 1) {
+		return NewErrorFValue(interpreter,
+							  "Array constructor requires at least 1 argument");
+	}
+
+	Value* thisArg = arguments[0];
+	if (!ValueIsArray(thisArg)) {
+		return NewErrorFValue(interpreter,
+							  "Array constructor requires an Array argument");
+	}
+
+	Array* array = CoerceToArray(thisArg);
+
+	for (int i = 1; i < argc; i++) {
+		ArrayPush(array, arguments[i]);
+	}
+
+	return interpreter->Null;
+}
+
+static Value*
+_ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
 	// Reserve 1 arg for thisArg"
 	if (argc != 2) {
 		return NewErrorValue(interpreter, "Array.each expects 1 argument");
@@ -86,7 +109,8 @@ Value* _ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
 	return arrayVal;
 }
 
-Value* _ArrayKeep(Interpreter* interpreter, int argc, Value** arguments) {
+static Value*
+_ArrayKeep(Interpreter* interpreter, int argc, Value** arguments) {
 	// Reserve 1 arg for thisArg"
 	if (argc != 2) {
 		return NewErrorValue(interpreter, "Array.keep expects 1 argument");
@@ -137,7 +161,8 @@ Value* _ArrayKeep(Interpreter* interpreter, int argc, Value** arguments) {
 	return arrayVal;
 }
 
-Value* _ArrayPush(Interpreter* interpreter, int argc, Value** arguments) {
+static Value*
+_ArrayPush(Interpreter* interpreter, int argc, Value** arguments) {
 	// Reserve 1 arg for thisArg"
 	if (argc != 2) {
 		return NewErrorValue(interpreter, "Array.push expects 1 argument");
@@ -157,7 +182,7 @@ Value* _ArrayPush(Interpreter* interpreter, int argc, Value** arguments) {
 	return interpreter->Null;
 }
 
-Value* _ArrayPop(Interpreter* interpreter, int argc, Value** arguments) {
+static Value* _ArrayPop(Interpreter* interpreter, int argc, Value** arguments) {
 	// Reserve 1 arg for thisArg"
 	if (argc != 1) {
 		return NewErrorValue(interpreter, "Array.pop expects no arguments");
@@ -201,6 +226,10 @@ _ArrayLength(Interpreter* interpreter, int argc, Value** arguments) {
 
 static ModuleFunction _ArrayClassMethods[] = {
 	// Array class
+	{ .Name		 = CONSTRUCTOR_NAME,
+	  .Argc		 = VARARG,
+	  .CFunction = (NativeFunctionCallback) _ArrayInit,
+	  .Value	 = NULL },
 	{ .Name		 = "each",
 	  .Argc		 = 2,
 	  .CFunction = (NativeFunctionCallback) _ArrayEach,
@@ -227,7 +256,8 @@ static ModuleFunction _ArrayClassMethods[] = {
 
 Value* CreateArrayClass(Interpreter* interpreter) {
 	Value* arrayClass =
-		NewClassValue(interpreter, CreateUserClass("Array", NULL));
+		NewClassValue(interpreter,
+					  CreateUserClass("Array", interpreter->Object));
 	Class* cls = CoerceToUserClass(arrayClass);
 
 	// Define Array methods here (e.g., push, pop, length, etc.)

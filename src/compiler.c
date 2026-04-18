@@ -1,5 +1,9 @@
 #include "./compiler.h"
 
+#include "global.h"
+
+#include <string.h>
+
 #define PushArray(type, array, count, val, defaultValue)                       \
 	do {                                                                       \
 		(array)[count++] = val;                                                \
@@ -2147,6 +2151,14 @@ static void _CompileClassDeclaration(Compiler*	   compiler,
 									   compiler->Parser->Lexer->Data,
 									   nextLine,
 									   "duplicate parameter name");
+						}
+
+						if (strcmp(fnName->Value, DESTRUCTOR_NAME) == 0
+							&& paramc + 1 > 1 && !isStatic) {
+							ThrowError(compiler->Parser->Lexer->Path,
+									   compiler->Parser->Lexer->Data,
+									   nextLine,
+									   "destructor cannot have parameters");
 						}
 
 						int offset = UserFunctionEmitLocal(fn);

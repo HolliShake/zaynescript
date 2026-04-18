@@ -1,7 +1,18 @@
 #include "./object.h"
 
 static Value* _ObjectInit(Interpreter* interp, int argc, Value** args) {
-	return NewObjectValue(interp);
+	if (argc != 1) {
+		return NewErrorValue(interp, "Object constructor expects 0 arguments");
+	}
+	return interp->Null;
+}
+
+static Value* _ObjectDestroy(Interpreter* interp, int argc, Value** args) {
+	if (argc != 0) {
+		return NewErrorValue(interp, "Object destructor expects 0 arguments");
+	}
+	// Do nothing!!
+	return interp->Null;
 }
 
 static Value* _ObjectKeys(Interpreter* interp, int argc, Value** args) {
@@ -65,10 +76,21 @@ static ModuleFunction _ObjectClassMethods[] = {
 	  .Argc		 = 1,
 	  .CFunction = (NativeFunctionCallback) _ObjectInit,
 	  .Value	 = NULL },
+	{ .Name		 = DESTRUCTOR_NAME,
+	  .Argc		 = 0,
+	  .CFunction = (NativeFunctionCallback) _ObjectDestroy,
+	  .Value	 = NULL },
 	{ .Name = NULL }
 };
 
 static ModuleFunction _ObjectClassStatic[] = {
+	// Members
+	{
+		.Name	   = "constructor",
+		.Argc	   = 0,
+		.CFunction = (NativeFunctionCallback) _ObjectInit,
+		.Value	   = NULL,
+	},
 	// Static
 	{
 		.Name	   = "keys",

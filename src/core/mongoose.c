@@ -102,12 +102,15 @@ static const MimeEntry _MimeTable[] = {
  * Internal binding property keys
  * ----------------------------------------------------------------------- */
 
-#define PROP_APP_PTR	"__ptr"
+#define PROP_APP_PTR "__ptr"
+#define PROP_MG_GC_ROOTS                                                       \
+	"__mg_gc_roots" /**< Keeps route/middleware Values visible                 \
+					   to the GC (see AppState). */
 #define PROP_RES_CTX	"__ctx"
 #define PROP_RES_STATUS "__status"
 #define PROP_RES_HDRSTR "__hdrstr"
-#define PROP_REQ_CLASS	"__ReqClass"
-#define PROP_RES_CLASS	"__ResClass"
+#define PROP_REQ_CLASS	"__RequestClass"
+#define PROP_RES_CLASS	"__ResponseClass"
 
 /* -----------------------------------------------------------------------
  * Forward declarations
@@ -136,7 +139,7 @@ extern Value* Popp(Interpreter* interpreter);
  * @param argc The number of arguments.
  * @param withThis Whether the call includes a 'this' context.
  * @return The return value of the function call.
- * @origin src/operation.c:774
+ * @origin src/operation.c:775
  */
 extern Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
 
@@ -419,10 +422,17 @@ static void _AppStateFree(AppState* app) {
 	free(app);
 }
 
-static void _AppAddRoute(AppState*	  app,
-						 const String method,
-						 const String path,
-						 Value*		  handler) {
+static void _PushMgGcRoot(ClassInstance* cls, Value* handler) {
+	Value* rootsVal = (Value*) HashMapGet(cls->Members, PROP_MG_GC_ROOTS);
+	if (rootsVal != NULL && ValueIsArray(rootsVal))
+		ArrayPush(CoerceToArray(rootsVal), handler);
+}
+
+static void _AppAddRoute(ClassInstance* cls,
+						 AppState*		app,
+						 const String	method,
+						 const String	path,
+						 Value*			handler) {
 	if (app->Count >= app->Capacity) {
 		app->Capacity += ROUTE_GROW;
 		app->Routes	   = realloc(app->Routes, sizeof(Route) * app->Capacity);
@@ -431,6 +441,7 @@ static void _AppAddRoute(AppState*	  app,
 	app->Routes[app->Count].Path	= strdup(path);
 	app->Routes[app->Count].Handler = handler;
 	app->Count++;
+	_PushMgGcRoot(cls, handler);
 }
 
 /* -----------------------------------------------------------------------
@@ -1062,6 +1073,7 @@ static Value* _ServerInit(Interpreter* interp, int argc, Value** args) {
 	app->ReqClass = reqClass;
 	app->ResClass = resClass;
 
+	HashMapSet(cls->Members, PROP_MG_GC_ROOTS, NewArrayValue(interp));
 	HashMapSet(cls->Members, PROP_APP_PTR, NewOpquePtrValue(interp, app));
 	return interp->Null;
 }
@@ -1077,7 +1089,7 @@ static Value* _ServerInit(Interpreter* interp, int argc, Value** args) {
 			return NewErrorValue(interp,                                       \
 								 #ZsName "(): server not initialised");        \
 		String path = ValueToString(args[1]);                                  \
-		_AppAddRoute(app, HttpMethod, path, args[2]);                          \
+		_AppAddRoute(cls, app, HttpMethod, path, args[2]);                     \
 		free(path);                                                            \
 		return args[0];                                                        \
 	}
@@ -1099,6 +1111,7 @@ static Value* _AppUse(Interpreter* interp, int argc, Value** args) {
 	if (app->MwCount >= MAX_MIDDLEWARE)
 		return NewErrorValue(interp, "use(): maximum middleware count reached");
 	app->Middleware[app->MwCount++] = args[1];
+	_PushMgGcRoot(cls, args[1]);
 	return args[0];
 }
 
@@ -1211,7 +1224,7 @@ static ModuleFunction _ServerClassMethods[] = {
 static Value*
 _BuildClass(Interpreter* interp, const String name, ModuleFunction methods[]) {
 	Value* classVal =
-		NewClassValue(interp, CreateUserClass((String) name, NULL));
+		NewClassValue(interp, CreateUserClass((String) name, interp->Object));
 	Class* cls = CoerceToUserClass(classVal);
 
 	for (int i = 0; methods[i].Name != NULL; i++) {
