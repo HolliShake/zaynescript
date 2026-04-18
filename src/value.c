@@ -17,7 +17,6 @@ static Value* _CreateValue(Interpreter* interpreter, ValueType type) {
 	Value* v			= Allocate(sizeof(Value));
 	v->Type				= type;
 	v->Marked			= 0;
-	v->Next				= NULL;
 	v->Next				= interpreter->GcRoot;
 	v->Destroyer		= (DestroyCallback) DefaultDestroyer;
 	interpreter->GcRoot = v;
