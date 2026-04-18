@@ -416,6 +416,8 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 
 	while (ip != uf->CodeC) {
 		if (interpreter->Allocated >= interpreter->GcThreshold) {
+			Mark(fn);
+			Mark(fnOrSm);
 			GarbageCollect(interpreter);
 		}
 
@@ -671,8 +673,9 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 			case OP_CLASS_MAKE:
 				{
 					str = ReadString(uf->Codes, ip);
-					obj =
-						NewClassValue(interpreter, CreateUserClass(str, NULL));
+					obj = NewClassValue(
+						interpreter,
+						CreateUserClass(str, interpreter->Object));
 					Push(interpreter, obj);
 					Forward(strlen(str) + 1);
 					free(str);

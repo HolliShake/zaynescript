@@ -2,14 +2,15 @@
 #include "./loader.h"
 
 CoreMapper _CoreModuleMappers[] = {
-	{ .Name = "io", .Loader = LoadCoreIo },
-	{ .Name = "os", .Loader = LoadCoreOs },
-	{ .Name = "math", .Loader = LoadCoreMath },
-	{ .Name = "date", .Loader = LoadCoreDate },
-	{ .Name = "object", .Loader = LoadCoreObject },
 	{ .Name = "array", .Loader = LoadCoreArray },
-	{ .Name = "promise", .Loader = LoadCorePromise },
+	{ .Name = "blob", .Loader = LoadCoreBlob },
+	{ .Name = "date", .Loader = LoadCoreDate },
+	{ .Name = "io", .Loader = LoadCoreIo },
+	{ .Name = "math", .Loader = LoadCoreMath },
 	{ .Name = "mongoose", .Loader = LoadCoreMongoose },
+	{ .Name = "object", .Loader = LoadCoreObject },
+	{ .Name = "os", .Loader = LoadCoreOs },
+	{ .Name = "promise", .Loader = LoadCorePromise },
 	{ .Name = "sqlite", .Loader = LoadCoreSqlite },
 	{ .Name = "utf8", .Loader = LoadCoreUtf8 },
 	// End marker

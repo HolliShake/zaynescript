@@ -60,36 +60,11 @@ typedef pthread_t Thread;
 #define GC_GROWTH_FACTOR 2
 
 /**
- * @def JIT_TRIGGER_MAX_CODEC
- * @brief Maximum bytecode instruction count to trigger JIT compilation.
- * If a function's bytecode length is above or below this threshold,
- * it will be compiled to native code if it's too large (to avoid
- * interpreter overhead) or too small (to avoid frequent interpretation).
- */
-#define JIT_TRIGGER_MAX_CODE 2500
-
-/**
- * @def JIT_TRIGGER_MIN_CODE
- * @brief Minimum bytecode instruction count to trigger JIT compilation.
- * Functions below this threshold may also be compiled to native code,
- * to avoid frequent interpretation overhead.
- */
-#define JIT_TRIGGER_MIN_CODE 20
-
-/**
- * @def JIT_CALL_TRIGGER
- * @brief Number of invocations required to trigger JIT compilation for a
- * function. If a function is called more than this number, the JIT compiler may
- * attempt to compile it.
- */
-#define JIT_CALL_TRIGGER 15
-
-/**
  * @def GC_THRESHOLD
  * @brief The allocation threshold for triggering garbage
  * collection on the old generation (major GC).
  */
-#define GC_THRESHOLD 10
+#define GC_THRESHOLD 2048
 
 /**
  * @def VARARG
@@ -109,6 +84,12 @@ typedef pthread_t Thread;
  * @brief The reserved name for class constructor methods.
  */
 #define CONSTRUCTOR_NAME "init"
+
+/**
+ * @def DESTRUCTOR_NAME
+ * @brief The reserved name for class destructor methods.
+ */
+#define DESTRUCTOR_NAME "destroy"
 
 /**
  * @def PREC_INT
@@ -480,6 +461,18 @@ typedef enum value_type_enum {
  */
 typedef struct value_struct Value;
 
+/**
+ * @typedef DestroyCallback
+ * @brief Function pointer type for value destruction callbacks.
+ *
+ * Used to define custom cleanup logic for heap-allocated values
+ * when they are garbage collected. The callback receives a
+ * pointer to the Value being destroyed.
+ *
+ * @param value Pointer to the Value being destroyed.
+ */
+typedef void (*DestroyCallback)(Value*);
+
 struct value_struct {
 	ValueType Type; /**< The type of the value */
 
@@ -491,8 +484,9 @@ struct value_struct {
 	} Value;
 
 	// GC
-	Value* Next;   /**< Next value in the GC tracking list */
-	int	   Marked; /**< GC mark flag (0 = unmarked, 1 = marked) */
+	Value*			Next;	   /**< Next value in the GC tracking list */
+	int				Marked;	   /**< GC mark flag (0 = unmarked, 1 = marked) */
+	DestroyCallback Destroyer; /**< Callback for destroying the value */
 };
 
 // -----------------------------------------------------------------------------

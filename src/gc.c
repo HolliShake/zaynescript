@@ -4,7 +4,7 @@
  * @brief Converts a Value to its string representation.
  * @param value The value to convert.
  * @return A newly allocated string (caller must free).
- * @origin src/value.c:152
+ * @origin src/value.c:154
  */
 extern String ValueToString(Value* value);
 
@@ -124,6 +124,10 @@ static void _Free(Interpreter* interp, Value* value) {
 						free(blob->Data);
 						blob->Data = NULL;
 					}
+					if (blob->MimeType != NULL) {
+						free(blob->MimeType);
+						blob->MimeType = NULL;
+					}
 					free(blob);
 					value->Value.Opaque = NULL;
 				}
@@ -138,6 +142,7 @@ static void _Free(Interpreter* interp, Value* value) {
 		default:
 			break;
 	}
+	value->Destroyer(value);
 	free(value);
 }
 
