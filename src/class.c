@@ -17,7 +17,7 @@ void ClassExtend(Class* cls, Value* base) {
  * @brief Converts a Value to its string representation.
  * @param value The value to convert.
  * @return A newly allocated string (caller must free).
- * @origin src/value.c:154
+ * @origin src/value.c:159
  */
 extern String ValueToString(Value* value);
 
@@ -46,7 +46,7 @@ void ClassDefineMemberByString(Class* cls,
  * @brief Checks whether a Value is callable (i.e., a function).
  * @param value The value to check.
  * @return true if the value is callable, false otherwise.
- * @origin src/value.c:372
+ * @origin src/value.c:377
  */
 extern bool ValueIsCallable(Value* value);
 

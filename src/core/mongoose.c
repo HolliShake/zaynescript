@@ -120,7 +120,7 @@ static const MimeEntry _MimeTable[] = {
  * @brief Pushes a value onto the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @param value The value to push.
- * @origin src/interpreter.c:126
+ * @origin src/interpreter.c:127
  */
 extern void Push(Interpreter* interpreter, Value* value);
 
@@ -128,7 +128,7 @@ extern void Push(Interpreter* interpreter, Value* value);
  * @brief Pops and returns the top value from the interpreter's stack.
  * @param interpreter The interpreter instance.
  * @return The popped value.
- * @origin src/interpreter.c:130
+ * @origin src/interpreter.c:131
  */
 extern Value* Popp(Interpreter* interpreter);
 
@@ -139,7 +139,7 @@ extern Value* Popp(Interpreter* interpreter);
  * @param argc The number of arguments.
  * @param withThis Whether the call includes a 'this' context.
  * @return The return value of the function call.
- * @origin src/operation.c:775
+ * @origin src/operation.c:771
  */
 extern Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
 
@@ -148,7 +148,7 @@ extern Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
  * loop.
  * @param interpreter The interpreter instance.
  * @param task The promise value to enqueue.
- * @origin src/interpreter.c:162
+ * @origin src/interpreter.c:163
  */
 extern void EnqueueTask(Interpreter* interpreter, Value* task);
 
