@@ -52,8 +52,7 @@ fn callMeMaybe() async {
     return 1;
 }
 
-var cop = null;
-const rej = callMeMaybe()
+callMeMaybe()
     .then(fn (v) {
         v + "xx";
     })

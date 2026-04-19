@@ -67,7 +67,6 @@ for (frame := 0; frame < 1000; frame++) {
                 local z1 = x * (-cosA * sinB * cosC + sinA * sinC) + y * (cosA * sinB * sinC + sinA * cosC) + zc * cosA * cosB;
 
                 local z_coord = z1 + 5.0;
-                if (z_coord <= 0.0) { x = x; } // near-plane guard: skip degenerate points
                 if (z_coord > 0.0) {
                     local ooz = 1.0 / z_coord;
 

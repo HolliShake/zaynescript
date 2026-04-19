@@ -1,5 +1,6 @@
-
-import { println} from "core:io";
+import { println } from "core:io";
+import { Object } from "core:object";
+import { Array } from "core:array";
 
 class Animal {
     fn greet() {
@@ -25,12 +26,8 @@ const a = [18];
 a.push(19);
 
 const ob = {
-    cls:  Dog
+    cls: Dog
 };
-
-
-import { Object } from "core:object";
-import { Array } from "core:array";
 
 println(a, dg.t(), new Dog, new ob.cls, new Object, new Array);
 

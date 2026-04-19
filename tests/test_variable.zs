@@ -1,4 +1,3 @@
-// filepath: d:\language-x\tests\test_variable.zs
 import { println } from "core:io";
 
 // Test var - global scope only

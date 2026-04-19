@@ -851,7 +851,6 @@ fn asyncFail() async {
 }
 // Fix: Assert inside the callback to prevent synchronous race condition crash
 asyncFail().error(fn(e) { 
-    println(">>>>>>>", e);
     asyncErrCaught = true; 
     assert asyncErrCaught, "async: .error fires on raise";
 });
@@ -1095,7 +1094,6 @@ fn hanoi(n, src, dst, aux) {
     hanoiMoves++;
     hanoi(n - 1, aux, dst, src);
 }
-println("Done!!!!!");
 hanoi(5, "A", "C", "B");
 assert hanoiMoves == 31, "hanoi: 5 discs = 31 moves";
 

@@ -1,15 +1,14 @@
+import { println, format } from "core:io";
 
-import {println, scan, parseNum} from "core:io";
+const a = "Hello";
+const b = "World";
+assert a + ", " + b == "Hello, World", "str: concat";
 
-"A";
-"B";
-"C";
-1;
-2;
-3;
-4;
+var buf = "";
+buf += "foo";
+buf += "bar";
+assert buf == "foobar", "str: +=";
 
+assert format("{}={}", "x", 42) == "x=42", "str: format";
 
-var x = scan("input num 1");
-
-println(x, -1);
+println("str tests ok");
