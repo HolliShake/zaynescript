@@ -215,6 +215,21 @@ static void _EmitConst(Compiler*	 compiler,
 	uf->Codes[uf->CodeC++] = b4;
 }
 
+static void
+_EmitInt(Compiler* compiler, UserFunction* uf, OpcodeEnum opcode, int value) {
+	uint8_t b1, b2, b3, b4;
+	uf->Codes[uf->CodeC++] = opcode;
+	uf->Codes = Reallocate(uf->Codes, sizeof(uint8_t) * (uf->CodeC + 5));
+	b1		  = (value >> 24) & 0xFF;
+	b2		  = (value >> 16) & 0xFF;
+	b3		  = (value >> 8) & 0xFF;
+	b4		  = (value >> 0) & 0xFF;
+	uf->Codes[uf->CodeC++] = b1;
+	uf->Codes[uf->CodeC++] = b2;
+	uf->Codes[uf->CodeC++] = b3;
+	uf->Codes[uf->CodeC++] = b4;
+}
+
 static void _EmitString(Compiler*	  compiler,
 						UserFunction* uf,
 						OpcodeEnum	  opcode,
@@ -289,16 +304,19 @@ static void _CompileStatement(Compiler*		compiler,
 
 static void
 _CompileAssignOp(Compiler* compiler, UserFunction* uf, Scope* scope, Ast* exp);
+
 static void _CompileAugmentedAssignOp(Compiler*		compiler,
 									  UserFunction* uf,
 									  Scope*		scope,
 									  Ast*			exp,
 									  OpcodeEnum	opcode);
+
 static void _CompileAssignOpRhs(Compiler*	  compiler,
 								UserFunction* uf,
 								Scope*		  scope,
 								Ast*		  lhs,
 								bool		  postfix);
+
 static void _CompileAssignOpLhs(Compiler*	  compiler,
 								UserFunction* uf,
 								Scope*		  scope,
@@ -310,6 +328,31 @@ static void _CompileIdentifier(Compiler*	 compiler,
 							   Scope*		 scope,
 							   String		 name,
 							   Position		 pos) {
+#pragma region MACROLIKE
+	if (strcmp(name, "__dir") == 0) {
+		String dir = Dirname(_GetModule(compiler));
+		_EmitLine(compiler, uf, pos);
+		_EmitString(compiler, uf, OP_LOAD_STRING, dir);
+		free(dir);
+		return;
+	} else if (strcmp(name, "__file") == 0) {
+		String file = _GetModule(compiler);
+		_EmitLine(compiler, uf, pos);
+		_EmitString(compiler, uf, OP_LOAD_STRING, _GetModule(compiler));
+		return;
+	} else if (strcmp(name, "__line") == 0) {
+		_EmitLine(compiler, uf, pos);
+		_EmitInt(compiler, uf, OP_LOAD_INT, pos.LineStart);
+		return;
+	} else if (strcmp(name, "__func") == 0) {
+		_EmitLine(compiler, uf, pos);
+		_EmitString(compiler,
+					uf,
+					OP_LOAD_STRING,
+					uf->Name != NULL ? uf->Name : "<anonymous>");
+		return;
+	}
+#pragma endregion
 	if (!ScopeHasName(scope, name)) {
 		ThrowError(compiler->Parser->Lexer->Path,
 				   compiler->Parser->Lexer->Data,
@@ -631,6 +674,11 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 
 				fn->Argc = paramc;
 
+				if (node->Immediate) {
+					_CompileExpression(compiler, fn, fnScope, body);
+					goto REG;
+				}
+
 				while (body != NULL) {
 					_CompileStatement(compiler, fn, fnScope, body);
 					body = body->Next;
@@ -638,6 +686,8 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 
 				_EmitLine(compiler, fn, lastLine);
 				_Emit(compiler, fn, OP_LOAD_NULL);
+
+			REG:;
 				_EmitLine(compiler, fn, lastLine);
 				_Emit(compiler, fn, OP_RETURN);
 

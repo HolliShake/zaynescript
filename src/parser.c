@@ -329,6 +329,23 @@ static Ast* _ParseFunctionExpression(Parser* parser) {
 	if (async) {
 		ACCEPTV_FREE(KEY_ASYNC);
 	}
+	if (CHECKTV("=>")) {
+		// immediate function
+		ACCEPTV_FREE("=>");
+		body = _ParseExpression(parser);
+		if (body == NULL) {
+			ThrowError(parser->Lexer->Path,
+					   parser->Lexer->Data,
+					   parser->Next.Position,
+					   "expected an expression");
+		}
+		ended = body->Position;
+		return AstImmediateFunction(NULL,
+									parameters,
+									body,
+									async,
+									MergePositions(start, ended));
+	}
 	ACCEPTV_FREE("{");
 	body  = _ParseListOfStatements(parser);
 	ended = parser->Next.Position;

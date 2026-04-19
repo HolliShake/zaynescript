@@ -529,6 +529,13 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 					Forward(4);
 					break;
 				}
+			case OP_LOAD_INT:
+				{
+					offset = ReadInt32(uf->Codes, ip);
+					Push(interpreter, NewIntValue(interpreter, offset));
+					Forward(4);
+					break;
+				}
 			case OP_LOAD_BOOL:
 				{
 					offset = ReadInt32(uf->Codes, ip);

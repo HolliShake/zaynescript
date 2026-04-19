@@ -410,6 +410,7 @@ struct ast_struct {
 	bool Flag;		   /**< Generic boolean flag for various uses (e.g.
 						* async functions)
 						*/
+	bool Immediate;	   /**< True if the function is an immediate function */
 	Ast* A;			   /**< First child node (usage depends on Type) */
 	Ast* B;			   /**< Second child node (usage depends on Type) */
 	Ast* C;			   /**< Third child node (usage depends on Type) */
@@ -512,6 +513,7 @@ typedef enum opcode_enum {
 	OP_LOAD_LOCAL,			   /**< Load a local variable */
 	OP_LOAD_CONST,			   /**< Load a constant value (takes 4 byte arg)
 								*/
+	OP_LOAD_INT,			   /**< Load an integer value (takes 4 byte arg) */
 	OP_LOAD_BOOL,			   /**< Load a boolean value (takes 4 byte arg) */
 	OP_LOAD_NULL,			   /**< Load null value */
 	OP_LOAD_STRING,			   /**< Load a string literal */

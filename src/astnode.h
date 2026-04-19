@@ -437,6 +437,26 @@ Ast* AstFunction(Ast*	  fnName,
 				 Position position);
 
 /**
+ * @brief Creates an AST node representing an immediate function.
+ *
+ * Allocates and initializes an AST_FUNCTION node that represents
+ * an immediate function declaration with parameters and body.
+ *
+ * @param fnName Pointer to AST node containing the function name.
+ * @param parameters Pointer to AST node containing the function parameters.
+ * @param body Pointer to AST node containing the function body.
+ * @param async Boolean indicating if the function is asynchronous.
+ * @param position Source code location information.
+ * @return Pointer to newly allocated AST_FUNCTION node, or NULL on
+ * allocation failure.
+ */
+Ast* AstImmediateFunction(Ast*	   fnName,
+						  Ast*	   parameters,
+						  Ast*	   body,
+						  bool	   async,
+						  Position position);
+
+/**
  * @brief Creates an AST node representing an import statement.
  *
  * Allocates and initializes an AST_IMPORT node that represents
