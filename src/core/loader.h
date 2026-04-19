@@ -16,6 +16,7 @@
 #include "./mongoose.h"
 #include "./object.h"
 #include "./os.h"
+#include "./path.h"
 #include "./promise.h"
 #include "./sqlite.h"
 #include "./utf8.h"
