@@ -13,6 +13,13 @@ arr.each(fn(e, i) => e(i));
 
 println("Done!");
 
-const add = fn(a,b) => a + b;
+const add = fn(a, b) => a + b;
 
-println(add(5,10));
+println(add(5, 10), __dir, __file, __line);
+
+fn getName() {
+    return __func;
+}
+
+println(getName());
+
