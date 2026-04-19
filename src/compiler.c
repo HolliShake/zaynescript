@@ -1,10 +1,5 @@
 #include "./compiler.h"
 
-#include "global.h"
-
-#include <alloca.h>
-#include <sched.h>
-#include <string.h>
 
 #define PushArray(type, array, count, val, defaultValue)                       \
 	do {                                                                       \
