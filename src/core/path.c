@@ -7,9 +7,6 @@
 #	define PATH_SEPARATOR "/"
 #endif
 
-/* Defined in global.c; used for path.isAbsolute */
-extern bool IsAbsolutePath(String path);
-
 static Value*
 _PathNormalize(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1) {

@@ -6,7 +6,7 @@
     <title>Standard Library — ZayneScript</title>
     <meta
       name="description"
-      content="ZayneScript standard library reference: core:io, core:math, core:os (including args for scripts), core:object, core:array, core:date, core:promise, core:sqlite, core:utf8 (Unicode), core:mongoose (HTTP server and client), plus user libraries lib:http and lib:argparser."
+      content="ZayneScript standard library reference: core:io, core:math, core:os (including args for scripts), core:path (cross-platform file paths), core:object, core:array, core:date, core:promise, core:sqlite, core:utf8 (Unicode), core:mongoose (HTTP server and client), plus user libraries lib:http and lib:argparser."
     />
     <link rel="stylesheet" href="style.css" />
     <link rel="icon" type="image/x-icon" href="zs.ico" />
@@ -72,6 +72,7 @@
             <li><a href="#io">core:io</a></li>
             <li><a href="#math">core:math</a></li>
             <li><a href="#os">core:os</a></li>
+            <li><a href="#path">core:path</a></li>
             <li><a href="#object">core:object</a></li>
             <li><a href="#array">core:array</a></li>
             <li><a href="#date">core:date</a></li>
@@ -113,6 +114,23 @@
             <li><a href="#os-gettype">getType</a></li>
             <li><a href="#os-system">system</a></li>
             <li><a href="#os-args">args</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-group">
+          <div class="sidebar-group-title">core:path</div>
+          <ul>
+            <li><a href="#path-overview">Overview</a></li>
+            <li><a href="#path-normalize">normalize</a></li>
+            <li><a href="#path-basename">basename</a></li>
+            <li><a href="#path-dirname">dirname</a></li>
+            <li><a href="#path-abs">absolutePath</a></li>
+            <li><a href="#path-absbase">absolutePathFromBase</a></li>
+            <li><a href="#path-join">join</a></li>
+            <li><a href="#path-exists">exists</a></li>
+            <li><a href="#path-isdir">isDirectory</a></li>
+            <li><a href="#path-isfile">isFile</a></li>
+            <li><a href="#path-isabs">isAbsolute</a></li>
+            <li><a href="#path-sep">separator</a></li>
           </ul>
         </div>
         <div class="sidebar-group">
@@ -216,7 +234,7 @@
       <main class="docs-main">
         <h1>Standard Library</h1>
         <p class="page-intro">
-          ZayneScript registers ten built-in modules under the
+          ZayneScript registers twelve built-in modules under the
           <code>core:</code> import prefix (names are case-sensitive:
           <code>core:date</code>, <code>core:array</code>, …). They load on
           demand — import only what you need. The repo
@@ -573,6 +591,147 @@ import { println } from "core:io";
 
 // zscript --run ./app.zs input.txt --verbose --out=out.txt
 println(args()); // e.g. [input.txt, --verbose, --out=out.txt]</code></pre>
+
+        <!-- ==============================================================
+         core:path
+         ============================================================== -->
+        <h2 id="path">core:path — File paths</h2>
+        <p>Import with:</p>
+        <pre><code class="language-javascript">import {
+    normalize, basename, dirname,
+    absolutePath, absolutePathFromBase, join,
+    exists, isDirectory, isFile, isAbsolute, separator
+} from "core:path";</code></pre>
+
+        <hr />
+
+        <h3 id="path-overview">Overview</h3>
+        <p id="path-overview-text">
+          <code>core:path</code> helps you work with file and directory paths in
+          a way that is consistent on both POSIX and Windows: both
+          <code>/</code> and <code>\</code> are accepted as separators in
+          input, and results use the host’s native separator. Functions that
+          return a boolean (<code>exists</code>, <code>isDirectory</code>,
+          <code>isFile</code>, <code>isAbsolute</code>) use the interpreter’s
+          canonical <code>true</code> and <code>false</code> values, not new
+          boolean allocations.
+        </p>
+
+        <h3 id="path-normalize">normalize</h3>
+        <div class="method">
+          <div class="method-sig">normalize(p: string) → string</div>
+          <p class="method-desc">
+            Returns a normalized path: redundant separators are removed,
+            <code>.</code> and <code>..</code> components are resolved, and
+            separators are converted to the native form.
+          </p>
+        </div>
+        <pre><code class="language-javascript">println(normalize("foo//bar/../baz")); // foo/baz (POSIX) or foo\baz (Windows)</code></pre>
+
+        <h3 id="path-basename">basename</h3>
+        <div class="method">
+          <div class="method-sig">basename(p: string) → string</div>
+          <p class="method-desc">
+            Returns the last path segment (file name). If the name contains a
+            <code>.</code> and the dot is not the first character, the suffix
+            after the last dot is stripped (extension removed).
+          </p>
+        </div>
+        <pre><code class="language-javascript">println(basename("/home/user/readme.txt")); // readme</code></pre>
+
+        <h3 id="path-dirname">dirname</h3>
+        <div class="method">
+          <div class="method-sig">dirname(p: string) → string</div>
+          <p class="method-desc">
+            Returns the directory portion of <code>p</code>, or
+            <code>"."</code> when there is no directory separator.
+          </p>
+        </div>
+        <pre><code class="language-javascript">println(dirname("/tmp/data.json")); // /tmp</code></pre>
+
+        <h3 id="path-abs">absolutePath</h3>
+        <div class="method">
+          <div class="method-sig">absolutePath(p: string) → string</div>
+          <p class="method-desc">
+            If <code>p</code> is already absolute, returns a normalized absolute
+            path. Otherwise resolves it against the current working directory.
+            Returns an <strong>error</strong> if the path cannot be resolved
+            (for example when the working directory is unavailable).
+          </p>
+        </div>
+        <pre><code class="language-javascript">import { getCwd } from "core:os";
+import { absolutePath, join } from "core:path";
+
+println(absolutePath(join(getCwd(), "README.md")));</code></pre>
+
+        <h3 id="path-absbase">absolutePathFromBase</h3>
+        <div class="method">
+          <div class="method-sig">
+            absolutePathFromBase(base: string, p: string) → string
+          </div>
+          <p class="method-desc">
+            If <code>p</code> is absolute, returns it normalized. Otherwise
+            combines <code>p</code> with <code>base</code> (intended to be an
+            absolute directory) and normalizes. Returns an <strong>error</strong>
+            if resolution fails.
+          </p>
+        </div>
+
+        <h3 id="path-join">join</h3>
+        <div class="method">
+          <div class="method-sig">join(a: string, b: string) → string</div>
+          <p class="method-desc">
+            Joins two segments with the native separator and normalizes the
+            result. Treats empty segments like <code>"."</code> after
+            normalization.
+          </p>
+        </div>
+        <pre><code class="language-javascript">println(join("src", "main.zs")); // src/main.zs or src\main.zs</code></pre>
+
+        <h3 id="path-exists">exists</h3>
+        <div class="method">
+          <div class="method-sig">exists(p: string) → bool</div>
+          <p class="method-desc">
+            <code>true</code> if <code>p</code> refers to an existing file or
+            directory.
+          </p>
+        </div>
+
+        <h3 id="path-isdir">isDirectory</h3>
+        <div class="method">
+          <div class="method-sig">isDirectory(p: string) → bool</div>
+          <p class="method-desc">
+            <code>true</code> if <code>p</code> exists and is a directory.
+          </p>
+        </div>
+
+        <h3 id="path-isfile">isFile</h3>
+        <div class="method">
+          <div class="method-sig">isFile(p: string) → bool</div>
+          <p class="method-desc">
+            <code>true</code> if <code>p</code> exists and is a regular file
+            (not a directory or special node).
+          </p>
+        </div>
+
+        <h3 id="path-isabs">isAbsolute</h3>
+        <div class="method">
+          <div class="method-sig">isAbsolute(p: string) → bool</div>
+          <p class="method-desc">
+            <code>true</code> if <code>p</code> is absolute for the host OS
+            (POSIX root path, or Windows drive letter / UNC).
+          </p>
+        </div>
+
+        <h3 id="path-sep">separator</h3>
+        <div class="method">
+          <div class="method-sig">separator() → string</div>
+          <p class="method-desc">
+            Returns a one-character string: backslash on Windows and slash on
+            POSIX and macOS (for example <code>/</code> on Linux).
+          </p>
+        </div>
+        <pre><code class="language-javascript">println(separator()); // "/" on Linux and macOS</code></pre>
 
         <!-- ==============================================================
          core:object
