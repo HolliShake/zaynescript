@@ -75,7 +75,9 @@
           <h3>First-Class Functions</h3>
           <p>
             Functions are values. Pass them around, return them from other
-            functions, and capture variables in closures.
+            functions, and capture variables in closures. Anonymous functions
+            support a concise <code>=&gt;</code> expression body:
+            <code>fn(x) =&gt; x * 2</code>.
           </p>
         </div>
         <div class="feature-card">
@@ -265,6 +267,10 @@ fn makeCounter() {
 
 var tick = makeCounter();
 println(tick(), tick(), tick()); // 1 2 3
+
+// Expression-body function (implicit return)
+const triple = fn(n) => n * 3;
+println(triple(4)); // 12
 
 // ----- Classes with inheritance -----
 class Shape {

@@ -93,6 +93,7 @@
           <div class="sidebar-group-title">Functions</div>
           <ul>
             <li><a href="#functions">Functions &amp; Closures</a></li>
+            <li><a href="#fn-expr-body">Expression body (<code>=&gt;</code>)</a></li>
             <li><a href="#async">Async / Await</a></li>
             <li><a href="#promises">Promises</a></li>
           </ul>
@@ -174,6 +175,12 @@
           <li>
             Switch expressions use <code>=&gt;</code> and are written in value
             position.
+          </li>
+          <li>
+            Anonymous function expressions can use <code>=&gt;</code> for a
+            single-expression body (see
+            <a href="#fn-expr-body">Expression body</a>), distinct from
+            <code>switch</code> syntax.
           </li>
         </ul>
 
@@ -449,6 +456,31 @@ const square = fn(x) { return x * x; };
 // Higher-order function
 fn apply(f, x) { return f(x); }
 println(apply(square, 5)); // 25</code></pre>
+
+        <h3 id="fn-expr-body">Expression body (<code>=&gt;</code>)</h3>
+        <p>
+          In a <strong>function expression</strong> (after <code>fn</code>,
+          not a named <code>fn name()</code> declaration), you can write the body
+          as a single expression after <code>=&gt;</code>. The expression is
+          evaluated and returned implicitly — no <code>return</code> keyword and
+          no braces. Optional <code>async</code> sits after the closing
+          <code>)</code> and before <code>=&gt;</code>, matching named async
+          functions.
+        </p>
+        <pre><code class="language-javascript">const double = fn(x) => x * 2;
+println(double(21)); // 42
+
+// Callbacks and higher-order helpers read cleanly
+[1, 2, 3].each(fn(v, i) => println(v + i));
+
+// Async expression body
+const task = fn() async => await fetchData();</code></pre>
+
+        <div class="note">
+          <strong>Note:</strong> The same <code>=&gt;</code> token is used in
+          <a href="#switch">switch expressions</a>; there it pairs cases with
+          values, while here it introduces the body of an anonymous function.
+        </div>
 
         <h3>Closures</h3>
         <p>
