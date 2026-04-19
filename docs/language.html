@@ -128,7 +128,7 @@
           <div class="sidebar-group-title">Data Structures</div>
           <ul>
             <li><a href="#arrays">Arrays</a></li>
-            <li><a href="#destructuring">Destructuring</a></li>
+            <li><a href="#array-unpacking">Unpacking arrays</a></li>
             <li><a href="#objects">Objects</a></li>
           </ul>
         </div>
@@ -509,7 +509,10 @@ println(c()); // 3</code></pre>
     return [inc, dec, get];
 }
 
-var [inc, dec, get] = makeCounters();
+var counters = makeCounters();
+var inc = counters[0];
+var dec = counters[1];
+var get = counters[2];
 inc(); inc();
 println(get()); // 2
 dec();
@@ -921,49 +924,38 @@ nums.each(println);
 println(odds); // [1, 3, 5]</code></pre>
 
         <!-- ============================================================
-         Destructuring
+         Array unpacking (no bracket destructuring)
          ============================================================ -->
-        <h2 id="destructuring">Destructuring</h2>
+        <h2 id="array-unpacking">Unpacking arrays</h2>
         <p>
-          Array values returned from functions can be unpacked in a single
-          declaration using bracket syntax on the left-hand side. Each variable
-          is bound to the element at the corresponding index:
+          ZayneScript does <strong>not</strong> support JavaScript-style
+          bracket destructuring on the left-hand side of
+          <code>var</code>, <code>const</code>, or <code>local</code>
+          (forms such as <code>var [a, b] = arr;</code> are a parse error).
+          Declarations must begin with an identifier; use indexing or bind
+          names from separate expressions instead.
         </p>
-        <pre><code class="language-javascript">// Unpack a returned array
-fn rgb() { return [255, 128, 0]; }
-var [r, g, b] = rgb();
+        <pre><code class="language-javascript">fn rgb() { return [255, 128, 0]; }
+
+var c = rgb();
+var r = c[0];
+var g = c[1];
+var b = c[2];
 println(r, g, b); // 255 128 0
 
-// Works with var, const, and local
-const [first, second, third] = [10, 20, 30];
-println(first);   // 10
-println(second);  // 20
-
-// Closures returning multiple functions
-fn makeCounters() {
-    local shared = 0;
-    local inc = fn() { shared += 1; };
-    local dec = fn() { shared -= 1; };
-    local get = fn() { return shared; };
-    return [inc, dec, get];
-}
-
-var [inc, dec, get] = makeCounters();
-inc(); inc();
-println(get()); // 2
-dec();
-println(get()); // 1
-
-// Pair from array literal
-var [head, tail] = [1, [2, 3, 4]];
+// Or multiple names when you have one expression per slot:
+var pair = [1, [2, 3, 4]];
+var head = pair[0];
+var tail = pair[1];
 println(head);    // 1
 println(tail[0]); // 2</code></pre>
 
-        <div class="note">
-          <strong>Note:</strong> Destructuring binds variables positionally;
-          extra elements in the array are silently ignored, and missing elements
-          produce <code>null</code>.
-        </div>
+        <p>
+          In a <a href="#for"><code>for</code></a> header, the initializer can
+          use <code>:=</code> to assign several loop variables from a
+          comma-separated list of expressions (see that section). That is not
+          the same as unpacking a single array value into multiple bindings.
+        </p>
 
         <!-- ============================================================
          Objects
