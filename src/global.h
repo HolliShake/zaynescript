@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -1431,6 +1432,14 @@ String BFIntToString(bf_t* value);
  * @return String representation of the big numeric value.
  */
 String BFNumToString(bf_t* value);
+
+/**
+ * @brief Checks if a path is an absolute path.
+ *
+ * @param path The path to check.
+ * @return True if the path is an absolute path, false otherwise.
+ */
+bool IsAbsolutePath(String path);
 
 /**
  * @brief Normalizes a file path string.

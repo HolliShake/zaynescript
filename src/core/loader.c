@@ -10,6 +10,7 @@ CoreMapper _CoreModuleMappers[] = {
 	{ .Name = "mongoose", .Loader = LoadCoreMongoose },
 	{ .Name = "object", .Loader = LoadCoreObject },
 	{ .Name = "os", .Loader = LoadCoreOs },
+	{ .Name = "path", .Loader = LoadCorePath },
 	{ .Name = "promise", .Loader = LoadCorePromise },
 	{ .Name = "sqlite", .Loader = LoadCoreSqlite },
 	{ .Name = "utf8", .Loader = LoadCoreUtf8 },
