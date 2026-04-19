@@ -1,7 +1,5 @@
 #include "./lexer.h"
 
-#include "global.h"
-
 // Helper function to get current rune
 static Rune CurrentRune(Lexer* lexer) {
 	return lexer->Data[lexer->Indx];
