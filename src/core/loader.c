@@ -11,6 +11,7 @@ CoreMapper _CoreModuleMappers[] = {
 	{ .Name = "os", .Loader = LoadCoreOs },
 	{ .Name = "path", .Loader = LoadCorePath },
 	{ .Name = "promise", .Loader = LoadCorePromise },
+	{ .Name = "regex", .Loader = LoadCoreRegex },
 	{ .Name = "sqlite", .Loader = LoadCoreSqlite },
 	{ .Name = "utf8", .Loader = LoadCoreUtf8 },
 	// End marker
