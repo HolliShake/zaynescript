@@ -1,6 +1,5 @@
 #include "./value.h"
 
-
 /**
  * @brief Runs a young-generation garbage collection cycle on the interpreter
  * heap.

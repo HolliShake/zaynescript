@@ -15,12 +15,14 @@ BINDIR     ?= $(PREFIX)/bin
 LIBDIR     ?= $(PREFIX)/lib/zscript
 
 # ── Source Files ────────────────────────────────────────────
+# libbf/cutils.c omitted: one shared cutils from libregex (see libbf/cutils.h).
 ALL_SRCS   := main.c \
               $(wildcard src/*.c) \
               $(wildcard src/core/*.c) \
               $(wildcard utf/*.c) \
               $(wildcard utf/utf8proc/*.c) \
-              $(wildcard libbf/*.c) \
+              $(filter-out libbf/cutils.c,$(wildcard libbf/*.c)) \
+			  $(wildcard libregex/*.c) \
               $(wildcard mongoose/*.c)\
               $(wildcard sqlite/*.c)
 

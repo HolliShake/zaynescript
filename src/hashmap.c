@@ -1,6 +1,5 @@
 #include "./hashmap.h"
 
-
 #define LOAD_FACTOR_THRESHOLD 0.75
 
 static size_t _Hash(String key, size_t size) {
