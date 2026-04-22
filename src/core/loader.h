@@ -18,6 +18,7 @@
 #include "./os.h"
 #include "./path.h"
 #include "./promise.h"
+#include "./regex.h"
 #include "./sqlite.h"
 #include "./utf8.h"
 

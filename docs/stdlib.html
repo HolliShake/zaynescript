@@ -76,6 +76,7 @@
             <li><a href="#object">core:object</a></li>
             <li><a href="#array">core:array</a></li>
             <li><a href="#date">core:date</a></li>
+            <li><a href="#regex">core:regex</a></li>
             <li><a href="#promise">core:promise</a></li>
             <li><a href="#sqlite">core:sqlite</a></li>
             <li><a href="#utf8">core:utf8</a></li>
@@ -162,6 +163,15 @@
           </ul>
         </div>
         <div class="sidebar-group">
+          <div class="sidebar-group-title">core:regex</div>
+          <ul>
+            <li><a href="#regex-overview">Overview</a></li>
+            <li><a href="#regex-module-api">Module API</a></li>
+            <li><a href="#regex-compiled-api">Compiled Pattern API</a></li>
+            <li><a href="#regex-flags">Flags</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-group">
           <div class="sidebar-group-title">core:promise</div>
           <ul>
             <li><a href="#promise-then">then</a></li>
@@ -234,9 +244,10 @@
       <main class="docs-main">
         <h1>Standard Library</h1>
         <p class="page-intro">
-          ZayneScript registers twelve built-in modules under the
+          ZayneScript registers built-in modules under the
           <code>core:</code> import prefix (names are case-sensitive:
-          <code>core:date</code>, <code>core:array</code>, …). They load on
+          <code>core:date</code>, <code>core:array</code>,
+          <code>core:regex</code>, …). They load on
           demand — import only what you need. The repo
           also includes <code>lib/http.zs</code>, a thin wrapper re-exporting the
           HTTP client and common constants for use via <code>lib:http</code>.
@@ -995,6 +1006,116 @@ println(d.getSeconds());  // 0</code></pre>
           </p>
         </div>
         <pre><code class="language-javascript">println(new Date().toString());</code></pre>
+
+        <!-- ==============================================================
+         core:regex
+         ============================================================== -->
+        <h2 id="regex">core:regex — Python-style Regular Expressions</h2>
+        <p>Import with:</p>
+        <pre><code class="language-javascript">import {
+    compile, search, match, fullmatch, findall,
+    flags, I, M, S, U
+} from "core:regex";</code></pre>
+        <p id="regex-overview">
+          <code>core:regex</code> is powered by the embedded
+          <code>libregexp</code> engine and exposes a Python-like surface:
+          module-level helpers plus compiled pattern objects.
+        </p>
+        <p>
+          Match-returning calls use this shape:
+          <code>null</code> when no match, otherwise an array where
+          index <code>0</code> is the full match and subsequent indexes are
+          capture groups.
+        </p>
+
+        <hr />
+
+        <h3 id="regex-module-api">Module API</h3>
+        <table>
+          <thead>
+            <tr><th>Function</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>compile(pattern, flags = 0)</code></td>
+              <td>Compiles and returns a regex object (<code>Pattern</code> / <code>RegExp</code>).</td>
+            </tr>
+            <tr>
+              <td><code>search(patternOrCompiled, text, flags = 0)</code></td>
+              <td>Finds first match anywhere in <code>text</code>.</td>
+            </tr>
+            <tr>
+              <td><code>match(patternOrCompiled, text, flags = 0)</code></td>
+              <td>Requires match at start of <code>text</code>.</td>
+            </tr>
+            <tr>
+              <td><code>fullmatch(patternOrCompiled, text, flags = 0)</code></td>
+              <td>Requires the whole string to match.</td>
+            </tr>
+            <tr>
+              <td><code>findall(patternOrCompiled, text, flags = 0)</code></td>
+              <td>
+                Returns all matches. Shape mirrors Python:
+                full-match strings (no groups), one string per match (one group),
+                or arrays of groups (multiple groups).
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <pre><code class="language-javascript">import { search, match, fullmatch, findall } from "core:regex";
+
+const s = search("cat", "xxcatyy");
+println(s[0]); // cat
+
+println(match("cat", "xxcatyy"));  // null
+println(match("cat", "catyy")[0]); // cat
+
+println(fullmatch("cat", "cat")[0]); // cat
+println(fullmatch("cat", "cat!"));   // null
+
+println(findall("a.", "abac")); // [ab, ac]</code></pre>
+
+        <h3 id="regex-compiled-api">Compiled Pattern API</h3>
+        <div class="method">
+          <div class="method-sig">pattern.search(text) → array | null</div>
+          <div class="method-sig">pattern.match(text) → array | null</div>
+          <div class="method-sig">pattern.fullmatch(text) → array | null</div>
+          <div class="method-sig">pattern.findall(text) → array</div>
+        </div>
+        <p class="method-desc">
+          Compiled objects also keep compatibility aliases:
+          <code>exec(text)</code> (same as <code>search</code>) and
+          <code>test(text)</code> (boolean).
+        </p>
+
+        <pre><code class="language-javascript">import { compile, I } from "core:regex";
+
+const rx = compile("(ab)+", I);
+println(rx.search("..ABab..")[0]); // ABab
+println(rx.match("zzAB"));         // null
+println(rx.fullmatch("ABab")[0]);  // ABab</code></pre>
+
+        <h3 id="regex-flags">Flags</h3>
+        <p>
+          Use numeric bitmasks from <code>flags</code> or short aliases:
+          <code>I</code>, <code>M</code>, <code>S</code>, <code>U</code>.
+        </p>
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Meaning</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>flags.IGNORECASE</code> / <code>I</code></td><td>Case-insensitive matching</td></tr>
+            <tr><td><code>flags.MULTILINE</code> / <code>M</code></td><td>Multiline anchors</td></tr>
+            <tr><td><code>flags.DOTALL</code> / <code>S</code></td><td><code>.</code> matches newlines</td></tr>
+            <tr><td><code>flags.UNICODE</code> / <code>U</code></td><td>Unicode behavior</td></tr>
+          </tbody>
+        </table>
+
+        <pre><code class="language-javascript">import { compile, I } from "core:regex";
+const rx = compile("hello", I);
+println(rx.search("HeLLo")); // [HeLLo]</code></pre>
 
         <!-- ==============================================================
          core:promise

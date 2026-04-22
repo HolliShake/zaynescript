@@ -16,6 +16,7 @@ extern String ValueToString(Value* value);
  * @param value The value to free
  */
 static void _Free(Interpreter* interp, Value* value) {
+	value->Destroyer(value);
 	switch (value->Type) {
 		case VLT_BINT:
 		case VLT_BNUM:
@@ -142,7 +143,6 @@ static void _Free(Interpreter* interp, Value* value) {
 		default:
 			break;
 	}
-	value->Destroyer(value);
 	free(value);
 }
 
