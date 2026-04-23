@@ -1,9 +1,11 @@
 #include "./value.h"
 
 /**
- * @brief Runs a young-generation garbage collection cycle on the interpreter
- * heap.
- * @param interpreter The interpreter whose allocated values may be collected.
+ * @brief Full mark/sweep over the interpreter heap: marks every Value reachable
+ *        from built-in roots, constants, stacks, environments, the task queue,
+ *        and the call stack, frees unmarked nodes via _Free(), then sets
+ *        Allocated and GcThreshold from the survivor count.
+ * @param interpreter Interpreter whose GcRoot list and allocation accounting are updated.
  * @origin src/gc.c
  */
 extern void GarbageCollect(Interpreter* interpreter);

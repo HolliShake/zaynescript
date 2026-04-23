@@ -117,37 +117,38 @@ static const MimeEntry _MimeTable[] = {
  * --------------------------------------------------------------------- */
 
 /**
- * @brief Pushes a value onto the interpreter's stack.
- * @param interpreter The interpreter instance.
- * @param value The value to push.
+ * @brief Appends value at interpreter->Stacks[StckC++] so it becomes the new operand-stack top.
+ * @param interpreter VM whose StckC indexes the next free stack slot.
+ * @param value Pointer stored on the stack; lifetime must cover the span it remains reachable from the stack.
  * @origin src/interpreter.c
  */
 extern void Push(Interpreter* interpreter, Value* value);
 
 /**
- * @brief Pops and returns the top value from the interpreter's stack.
- * @param interpreter The interpreter instance.
- * @return The popped value.
+ * @brief Returns interpreter->Stacks[--StckC], removing one slot from the logical operand stack.
+ * @param interpreter VM whose StckC must be > 0; otherwise behaviour is undefined.
+ * @return The Value* that was previously the stack top.
  * @origin src/interpreter.c
  */
 extern Value* Popp(Interpreter* interpreter);
 
 /**
- * @brief Calls a function value with the given arguments.
- * @param interp The interpreter instance.
- * @param fn The function value to call.
- * @param argc The number of arguments.
- * @param withThis Whether the call includes a 'this' context.
- * @return The return value of the function call.
+ * @brief Dispatches fn as a callable: wires environments for user functions, unwraps async targets into
+ *        promises, validates native arity, consumes argc stack operands, and leaves the callee result
+ *        (or an Error value) per the concrete callee kind.
+ * @param interpreter Full VM state (stack, env stack, traces, active task).
+ * @param fn User function, native function, promise continuation, or related callable Value.
+ * @param argc Operand count already present on the stack for this call (see withThis for layout).
+ * @param withThis When true, the lowest logical argument on the stack is bound as the callee's this.
+ * @return Callee result, interpreter->Null for async promise bootstrap paths, or an Error Value on failure.
  * @origin src/operation.c
  */
-extern Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
+extern Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis);
 
 /**
- * @brief Enqueues a task (promise) to be processed by the interpreter event
- * loop.
- * @param interpreter The interpreter instance.
- * @param task The promise value to enqueue.
+ * @brief Appends task to the ring buffer TaskQueue[(head + count) % STACK_SIZE] and increments TaskQueueC.
+ * @param interpreter VM whose bounded queue triggers InterpreterPanic if TaskQueueC already equals STACK_SIZE.
+ * @param task Promise/task Value retained by the queue until the event loop dequeues it.
  * @origin src/interpreter.c
  */
 extern void EnqueueTask(Interpreter* interpreter, Value* task);

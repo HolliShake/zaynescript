@@ -18,51 +18,49 @@
 #define GetOffset() (interpreter->ConstantC)
 
 /**
- * @brief Sets the currently active function.
- * @param interpreter The interpreter instance.
- * @param function The function to set as active.
+ * @brief Stores function in interpreter->ActiveFunction so diagnostics and nested machinery know the current callee.
+ * @param interpreter VM state field being updated.
+ * @param function Value recorded as active; may be NULL when clearing.
  * @origin src/interpreter.c
  */
 extern void SetActiveFunction(Interpreter* interpreter, Value* function);
 
 /**
- * @brief Sets the currently active task.
- * @param interpreter The interpreter instance.
- * @param task The task to set as active.
+ * @brief Stores task in interpreter->ActiveTask while promise/async machinery runs nested work.
+ * @param interpreter VM state field being updated.
+ * @param task Promise Value (or NULL) considered the currently executing async task.
  * @origin src/interpreter.c
  */
 extern void SetActiveTask(Interpreter* interpreter, Value* task);
 
 /**
- * @brief Pushes a value onto the interpreter's stack.
- * @param interpreter The interpreter instance.
- * @param value The value to push.
+ * @brief Appends value at interpreter->Stacks[StckC++] so it becomes the new operand-stack top.
+ * @param interpreter VM whose StckC indexes the next free stack slot.
+ * @param value Pointer stored on the stack; lifetime must cover the span it remains reachable from the stack.
  * @origin src/interpreter.c
  */
 extern void Push(Interpreter* interpreter, Value* value);
 
 /**
- * @brief Pops and returns the top value from the interpreter's
- * stack.
- * @param interpreter The interpreter instance.
- * @return The popped value.
+ * @brief Returns interpreter->Stacks[--StckC], removing one slot from the logical operand stack.
+ * @param interpreter VM whose StckC must be > 0; otherwise behaviour is undefined.
+ * @return The Value* that was previously the stack top.
  * @origin src/interpreter.c
  */
 extern Value* Popp(Interpreter* interpreter);
 
 /**
- * @brief Pops N values from the interpreter's stack.
- * @param interpreter The interpreter instance.
- * @param n The number of values to pop.
+ * @brief Lowers StckC by n without clearing slots, shrinking the logical stack height after bulk operand drops.
+ * @param interpreter VM whose stack depth must be at least n; otherwise behaviour is undefined.
+ * @param n Number of operand slots to discard from the top.
  * @origin src/interpreter.c
  */
 extern void PopN(Interpreter* interpreter, int n);
 
 /**
- * @brief Peeks at the top value on the interpreter's stack
- * without removing it.
- * @param interpreter The interpreter instance.
- * @return The top value on the stack.
+ * @brief Reads interpreter->Stacks[StckC - 1] without changing StckC (non-destructive top-of-stack).
+ * @param interpreter VM whose StckC must be > 0; otherwise behaviour is undefined.
+ * @return Current top operand without popping it.
  * @origin src/interpreter.c
  */
 extern Value* Peek(Interpreter* interpreter);
@@ -95,17 +93,16 @@ static void _DupTop(Interpreter* interpreter) {
 }
 
 /**
- * @brief Runs the interpreter's main execution loop on a
- * function value.
- * @param interpreter The interpreter instance.
- * @param fnOrSm User function or state machine value to execute.
+ * @brief Main opcode dispatch loop: executes a UserFunction bytecode stream or resumes a StateMachine until
+ *        return, error, or await boundary.
+ * @param interpreter VM providing stacks, environments, and globals for opcode handlers.
+ * @param fnOrSm Either a VLT_USER_FUNCTION value or a promise StateMachine wrapper around one.
  * @origin src/interpreter.c
  */
 extern void Run(Interpreter* interpreter, Value* fnOrSm);
 
 /**
- * @brief Array of core module mappers for built-in module
- * resolution.
+ * @brief Maps canonical core module names (e.g. "io", "math") to their native Loader entry points for import.
  * @origin src/core/loader.c
  */
 extern CoreMapper _CoreModuleMappers[];
@@ -407,81 +404,81 @@ Value* DoImportCore(Interpreter* interpreter, String moduleName) {
 }
 
 /**
- * @brief Creates a new lexer for tokenizing source code.
- * @param path The path of the source file.
- * @param data The source code as a Rune array.
- * @return A new Lexer instance.
+ * @brief Allocates a Lexer over UTF-32 runes with filename attribution for diagnostics and token positions.
+ * @param path Logical source path stored on the lexer (need not be a real filesystem path).
+ * @param data NUL-terminated wide-character buffer owned by caller until lexer teardown.
+ * @return Heap Lexer ready for CreateParser(), or NULL only if allocation fails inside lexer.c.
  * @origin src/lexer.c
  */
 extern Lexer* CreateLexer(String path, Rune* data);
 
 /**
- * @brief Frees a lexer and its associated resources.
- * @param lexer The lexer to free.
+ * @brief Frees the Lexer wrapper struct; does not free the path string or the Rune buffer passed to CreateLexer().
+ * @param lexer Lexer previously returned by CreateLexer(); NULL is safe and is a no-op.
  * @origin src/lexer.c
  */
 extern void FreeLexer(Lexer* lexer);
 
 /**
- * @brief Creates a new parser from a lexer.
- * @param lexer The lexer to read tokens from.
- * @return A new Parser instance.
+ * @brief Constructs parser state that pulls lookahead tokens from the given lexer.
+ * @param lexer Live lexer positioned before the first program token.
+ * @return Parser object whose Parse() consumes lexer tokens until EOF or error.
  * @origin src/parser.c
  */
 extern Parser* CreateParser(Lexer* lexer);
 
 /**
- * @brief Parses the token stream into an AST.
- * @param parser The parser instance.
- * @return The root AST node of the parsed program.
+ * @brief Consumes the lexer-driven token stream and builds the program AST (statements, declarations, expressions).
+ * @param parser Parser previously wired to a lexer; mutates parser error state on syntax failure.
+ * @return Root Ast node for the compilation unit, or partial tree with errors recorded in parser.
  * @origin src/parser.c
  */
 extern Ast* Parse(Parser* parser);
 
 /**
- * @brief Frees a parser and its associated resources.
- * @param parser The parser to free.
+ * @brief Destroys parser scratch state; does not free the lexer (caller frees lexer separately).
+ * @param parser Parser returned from CreateParser().
  * @origin src/parser.c
  */
 extern void FreeParser(Parser* parser);
 
 /**
- * @brief Frees an AST and all its child nodes.
- * @param ast The AST to free.
+ * @brief Recursively frees an Ast subtree and every owned string/child pointer allocated during parsing.
+ * @param ast Root node returned from Parse(); NULL is safe.
  * @origin src/astnode.c
  */
 extern void FreeAst(Ast* ast);
 
 /**
- * @brief Creates a new compiler from an interpreter and parser.
- * @param interpreter The interpreter instance.
- * @param parser The parser to read AST from.
- * @return A new Compiler instance.
+ * @brief Builds a Compiler bound to interpreter constants/tables while consuming parser-produced AST metadata.
+ * @param interpreter Supplies constant pools and runtime hooks referenced during codegen.
+ * @param parser Parser whose lexer positions feed line info into emitted bytecode.
+ * @return Compiler state used for a single CompileAst() invocation.
  * @origin src/compiler.c
  */
 extern Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
 
 /**
- * @brief Compiles an AST into a callable function value
- * (bytecode).
- * @param compiler The compiler instance.
- * @param programAst The AST to compile.
- * @return The compiled function value.
+ * @brief Lowers programAst to a VLT_USER_FUNCTION Value containing bytecode, scope metadata, and debug tables.
+ * @param compiler Active compiler previously created for this interpreter/parser pair.
+ * @param programAst Root AST for the module or snippet being compiled.
+ * @return Callable Value* (user function) on success, or an Error Value when compilation aborts.
  * @origin src/compiler.c
  */
 extern Value* CompileAst(Compiler* compiler, Ast* programAst);
 
 /**
- * @brief Frees a compiler and its associated resources.
- * @param compiler The compiler to free.
+ * @brief Tears down compiler-local registries and scratch buffers after CompileAst() finishes.
+ * @param compiler Compiler instance to dispose; does not free the interpreter or parser.
  * @origin src/compiler.c
  */
 extern void FreeCompiler(Compiler* compiler);
 
 /**
- * @brief Interprets a compiled function value.
- * @param interpreter The interpreter instance.
- * @param fnValue The compiled user function value to interpret.
+ * @brief Runs _RunProgram(): seeds the module environment, executes fnValue via Run(), then drives the
+ *        combined task queue and mongoose poll loop until no pending async work or open connections remain.
+ * @param interpreter Fully initialized interpreter (built-ins, paths, GC roots, MgMgr).
+ * @param fnValue VLT_USER_FUNCTION entry compiled for this module; becomes the first Run() target.
  * @origin src/interpreter.c
  */
 extern void Interpret(Interpreter* interpreter, Value* fnValue);
@@ -753,17 +750,17 @@ Value* DoCallMethod(Interpreter* interpreter,
 }
 
 /**
- * @brief Pushes a stack trace entry for the current function call.
- * @param interpreter The interpreter instance.
- * @param line The source line information for the call.
- * @param fn The function value being called.
+ * @brief Records line/fn pair at CallStack[CallStackC++] so errors and stack dumps can cite source locations.
+ * @param interpreter VM whose call stack ring is bounded by STACK_SIZE (unchecked here).
+ * @param line Lexer/parser-derived source coordinates for the active opcode span.
+ * @param fn Callable Value associated with this activation (used only for diagnostics).
  * @origin src/interpreter.c
  */
 extern void PushTrace(Interpreter* interpreter, LineInfo line, Value* fn);
 
 /**
- * @brief Pops the top stack trace entry after a function call returns.
- * @param interpreter The interpreter instance.
+ * @brief Decrements CallStackC after unwinding one nested call frame from the diagnostic call stack.
+ * @param interpreter VM whose CallStackC must be > 0; otherwise behaviour is undefined.
  * @origin src/interpreter.c
  */
 extern void PopTrace(Interpreter* interpreter);

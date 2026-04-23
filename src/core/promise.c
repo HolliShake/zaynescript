@@ -1,9 +1,9 @@
 #include "./promise.h"
 
 /**
- * @brief Enqueues a task (callback) into the interpreter's task queue.
- * @param interpreter The interpreter instance.
- * @param task The task value to enqueue.
+ * @brief Appends task to the ring buffer TaskQueue[(head + count) % STACK_SIZE] and increments TaskQueueC.
+ * @param interpreter VM whose bounded queue triggers InterpreterPanic if TaskQueueC already equals STACK_SIZE.
+ * @param task Promise/task Value retained by the queue until the event loop dequeues it.
  * @origin src/interpreter.c
  */
 extern void EnqueueTask(Interpreter* interpreter, Value* task);

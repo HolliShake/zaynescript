@@ -1,9 +1,9 @@
 #include "./gc.h"
 
 /**
- * @brief Converts a Value to its string representation.
- * @param value The value to convert.
- * @return A newly allocated string (caller must free).
+ * @brief Builds a fresh NUL-terminated C string describing value so GC/debug paths can log or compare keys.
+ * @param value Any runtime Value; formatting matches ValueToString() in value.c.
+ * @return Newly allocated string the caller must free(), or NULL if a nested allocation failed.
  * @origin src/value.c
  */
 extern String ValueToString(Value* value);
