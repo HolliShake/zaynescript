@@ -20,10 +20,10 @@
  * This function initializes and loads the core IO module, which
  * provides input/output operations for the interpreter.
  *
- * @param  interpreter The interpreter instance to load the IO
+ * @param interpreter The interpreter instance to load the IO
  * module into
- * @return Value* Pointer to the loaded core IO module, or NULL
- * on failure
+ * @return Pointer to the loaded core IO module, or NULL on
+ * failure
  */
 Value* LoadCoreIo(Interpreter* interpreter);
 

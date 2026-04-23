@@ -21,10 +21,9 @@
  * properties. It is called during the loading of the core Date
  * module.
  *
- * @param  interpreter The interpreter instance to create the
+ * @param interpreter The interpreter instance to create the
  * Date class in
- * @return Value* Pointer to the created Date class, or NULL on
- * failure
+ * @return Pointer to the created Date class, or NULL on failure
  */
 Value* CreateDateClass(Interpreter* interpreter);
 
@@ -35,10 +34,10 @@ Value* CreateDateClass(Interpreter* interpreter);
  * which provides date and time functionalities for the
  * interpreter.
  *
- * @param  interpreter The interpreter instance to load the Date
+ * @param interpreter The interpreter instance to load the Date
  * module into
- * @return Value* Pointer to the loaded core Date module, or NULL
- * on failure
+ * @return Pointer to the loaded core Date module, or NULL on
+ * failure
  */
 Value* LoadCoreDate(Interpreter* interpreter);
 

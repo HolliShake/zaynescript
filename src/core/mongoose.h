@@ -30,9 +30,9 @@
 /**
  * @brief Loads the core Mongoose HTTP module
  *
- * @param  interpreter The interpreter instance
- * @return Value* Pointer to the loaded module object, or NULL
- * on failure
+ * @param interpreter The interpreter instance
+ * @return Pointer to the loaded module object, or NULL on
+ * failure
  */
 Value* LoadCoreMongoose(Interpreter* interpreter);
 

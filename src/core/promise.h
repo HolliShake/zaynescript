@@ -24,10 +24,10 @@
  * and properties. It is called during the loading of the core
  * Promise module.
  *
- * @param  interpreter The interpreter instance to create the
+ * @param interpreter The interpreter instance to create the
  * Promise class in
- * @return Value* Pointer to the created Promise class, or NULL
- * on failure
+ * @return Pointer to the created Promise class, or NULL on
+ * failure
  */
 Value* CreatePromiseClass(Interpreter* interpreter);
 
@@ -37,10 +37,10 @@ Value* CreatePromiseClass(Interpreter* interpreter);
  * This function initializes and loads the core Promise module,
  * which provides promise functionalities for the interpreter.
  *
- * @param  interpreter The interpreter instance to load the
+ * @param interpreter The interpreter instance to load the
  * Promise module into
- * @return Value* Pointer to the loaded core Promise module, or
- * NULL on failure
+ * @return Pointer to the loaded core Promise module, or NULL on
+ * failure
  */
 Value* LoadCorePromise(Interpreter* interpreter);
 

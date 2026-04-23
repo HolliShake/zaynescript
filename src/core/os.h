@@ -18,9 +18,9 @@
 /**
  * @brief Loads the core OS module
  *
- * @param  interpreter The interpreter instance to load the OS
+ * @param interpreter The interpreter instance to load the OS
  * module into
- * @return Value* Pointer to the loaded OS module
+ * @return Pointer to the loaded OS module
  */
 Value* LoadCoreOs(Interpreter* interpreter);
 
