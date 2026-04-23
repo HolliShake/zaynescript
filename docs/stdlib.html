@@ -6,7 +6,7 @@
     <title>Standard Library — ZayneScript</title>
     <meta
       name="description"
-      content="ZayneScript standard library reference: core:io, core:math, core:os (including args for scripts), core:path (cross-platform file paths), core:object, core:array, core:date, core:promise, core:sqlite, core:utf8 (Unicode), core:mongoose (HTTP server and client), plus user libraries lib:http and lib:argparser."
+      content="ZayneScript standard library reference: core:io (including File for disk I/O), core:math, core:os (including args for scripts), core:path (cross-platform file paths), core:object, core:array, core:date, core:promise, core:sqlite, core:utf8 (Unicode), core:mongoose (HTTP server and client), plus user libraries lib:http and lib:argparser."
     />
     <link rel="stylesheet" href="style.css" />
     <link rel="icon" type="image/x-icon" href="zs.ico" />
@@ -96,6 +96,7 @@
             <li><a href="#io-clearscreen">clearScreen</a></li>
             <li><a href="#io-setcolor">setColor</a></li>
             <li><a href="#io-decompile">decompile</a></li>
+            <li><a href="#io-file">File</a></li>
           </ul>
         </div>
         <div class="sidebar-group">
@@ -259,7 +260,7 @@
         <h2 id="io">core:io — Input / Output</h2>
         <p>Import with:</p>
         <pre><code class="language-javascript">import { print, println, scan, parseNum, format,
-         clearScreen, setColor, decompile } from "core:io";</code></pre>
+         clearScreen, setColor, decompile, File } from "core:io";</code></pre>
 
         <hr />
 
@@ -356,6 +357,118 @@ setColor();            // reset</code></pre>
         </div>
         <pre><code class="language-javascript">fn add(a, b) { return a + b; }
 println(decompile(add));</code></pre>
+
+        <h3 id="io-file">File</h3>
+        <p>
+          Text-oriented file I/O similar to Python. Construct with
+          <code>new File(path, mode?)</code> (the class constructor is
+          <code>init</code>). <code>path</code> and <code>mode</code> are strings;
+          <code>mode</code> defaults to <code>"r"</code> and follows the same
+          conventions as C <code>fopen</code> (for example <code>"w"</code>,
+          <code>"a"</code>, <code>"r+"</code>, <code>"rb"</code>).
+        </p>
+        <pre><code class="language-javascript">import { File } from "core:io";
+
+const out = new File("notes.txt", "w");
+out.writelines(["first line\n", "second\n"]);
+out.close();
+
+const inp = new File("notes.txt", "r");
+println(inp.read()); // full remainder of file
+inp.close();</code></pre>
+        <table>
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>init(path, mode?)</code></td>
+              <td>
+                Opens the file. On failure returns an error value instead of a
+                usable instance.
+              </td>
+            </tr>
+            <tr>
+              <td><code>read(size?)</code></td>
+              <td>
+                Without <code>size</code>, or with a negative size, reads until
+                EOF. With <code>size === 0</code>, returns an empty string. With
+                <code>size &gt; 0</code>, reads up to that many bytes. In text
+                mode returns a string; in binary mode (<code>"b"</code> in
+                <code>mode</code>) returns a <code>Blob</code>.
+              </td>
+            </tr>
+            <tr>
+              <td><code>readline()</code></td>
+              <td>
+                Next line including the newline when present; text modes only
+                (not <code>"rb"</code>).
+              </td>
+            </tr>
+            <tr>
+              <td><code>readlines()</code></td>
+              <td>
+                Returns an <code>Array</code> of lines; text modes only.
+              </td>
+            </tr>
+            <tr>
+              <td><code>write(value)</code></td>
+              <td>
+                A <code>Blob</code> is always written as its raw byte payload
+                (<code>fwrite</code>). Any other value is converted to a UTF-8
+                string first. In binary mode (<code>"b"</code> in
+                <code>mode</code>), only <code>string</code> or
+                <code>Blob</code> may be passed. Requires a writable mode.
+              </td>
+            </tr>
+            <tr>
+              <td><code>writelines(lines)</code></td>
+              <td>
+                Writes each array element in order with no extra separators
+                (Python-style). A <code>Blob</code> element writes its raw
+                payload; other values use string conversion. In binary mode,
+                every element must be a <code>string</code> or
+                <code>Blob</code>. Requires a writable mode.
+              </td>
+            </tr>
+            <tr>
+              <td><code>flush()</code> / <code>close()</code></td>
+              <td>
+                <code>fflush</code> / <code>fclose</code>. After
+                <code>close()</code>, other operations report a closed file.
+              </td>
+            </tr>
+            <tr>
+              <td><code>tell()</code></td>
+              <td>Current byte offset as a number.</td>
+            </tr>
+            <tr>
+              <td><code>seek(offset, whence?)</code></td>
+              <td>
+                <code>whence</code>: <code>0</code> = start of file,
+                <code>1</code> = current position, <code>2</code> = end (same as
+                C <code>SEEK_SET</code> / <code>SEEK_CUR</code> /
+                <code>SEEK_END</code>). Defaults to <code>0</code>.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <code>readable()</code> / <code>writable()</code> /
+                <code>isClosed()</code>
+              </td>
+              <td>
+                Boolean helpers derived from the open mode and handle state.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="method-desc" style="margin-top: 0.75rem">
+          Regression coverage lives in
+          <code>tests/test_fileio.zs</code>.
+        </p>
 
         <!-- ==============================================================
          core:math
