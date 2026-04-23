@@ -13,12 +13,13 @@
 #endif
 
 #if defined(__ANDROID__) || defined(TERMUX)
-static inline int getlogin_r(char *name, size_t namesize) {
-    const char *uname = "termux";
-    size_t len = strlen(uname) + 1;
-    if (namesize < len) return -1;
-    memcpy(name, uname, len);
-    return 0; // Return 0 for success
+static inline int getlogin_r(char* name, size_t namesize) {
+	const char* uname = "termux";
+	size_t		len	  = strlen(uname) + 1;
+	if (namesize < len)
+		return -1;
+	memcpy(name, uname, len);
+	return 0;  // Return 0 for success
 }
 #endif
 

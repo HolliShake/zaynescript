@@ -181,16 +181,21 @@ Value*
 DoCallMethod(Interpreter* interp, Value* obj, Value* methodName, int argc);
 
 /**
- * @brief Dispatches fn as a callable: wires environments for user functions, unwraps async targets into
- *        promises, validates native arity, consumes argc stack operands, and leaves the callee result
- *        (or an Error value) per the concrete callee kind.
+ * @brief Dispatches fn as a callable: wires environments for user functions,
+ * unwraps async targets into promises, validates native arity, consumes argc
+ * stack operands, and leaves the callee result (or an Error value) per the
+ * concrete callee kind.
  *
  * @param interpreter Full VM state (stack, env stack, traces, active task).
- * @param fn          User function, native function, promise continuation, or related callable Value.
- * @param argc        Operand count already present on the stack for this call (see withThis for layout).
- * @param withThis    When true, the lowest logical argument on the stack is bound as the callee's this.
+ * @param fn          User function, native function, promise continuation, or
+ * related callable Value.
+ * @param argc        Operand count already present on the stack for this call
+ * (see withThis for layout).
+ * @param withThis    When true, the lowest logical argument on the stack is
+ * bound as the callee's this.
  *
- * @return Callee result, interpreter->Null for async promise bootstrap paths, or an Error Value on failure.
+ * @return Callee result, interpreter->Null for async promise bootstrap paths,
+ * or an Error Value on failure.
  */
 Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis);
 

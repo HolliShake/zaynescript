@@ -266,7 +266,8 @@ int HashMapContains(HashMap* hashmap, String key) {
 }
 
 /**
- * @brief True when value carries the VLT_STR tag (UTF-8 text stored as a Rune array).
+ * @brief True when value carries the VLT_STR tag (UTF-8 text stored as a Rune
+ * array).
  * @param value Runtime value to inspect.
  * @return Non-zero for VLT_STR, zero otherwise.
  * @origin src/value.c
@@ -274,10 +275,13 @@ int HashMapContains(HashMap* hashmap, String key) {
 extern bool ValueIsStr(Value* value);
 
 /**
- * @brief Builds a fresh NUL-terminated C string describing value for display or map keys:
- *        numbers via snprintf, strings by UTF-8-encoding runes, aggregates by recursive formatting.
- * @param value Any runtime Value; each branch allocates its own buffers where needed.
- * @return Newly allocated string the caller must free(), or NULL if a nested allocation failed.
+ * @brief Builds a fresh NUL-terminated C string describing value for display or
+ * map keys: numbers via snprintf, strings by UTF-8-encoding runes, aggregates
+ * by recursive formatting.
+ * @param value Any runtime Value; each branch allocates its own buffers where
+ * needed.
+ * @return Newly allocated string the caller must free(), or NULL if a nested
+ * allocation failed.
  * @origin src/value.c
  */
 extern String ValueToString(Value* value);

@@ -14,10 +14,13 @@ void ClassExtend(Class* cls, Value* base) {
 }
 
 /**
- * @brief Builds a fresh NUL-terminated C string describing value for display or map keys:
- *        numbers via snprintf, strings by UTF-8-encoding runes, aggregates by recursive formatting.
- * @param value Any runtime Value; each branch allocates its own buffers where needed.
- * @return Newly allocated string the caller must free(), or NULL if a nested allocation failed.
+ * @brief Builds a fresh NUL-terminated C string describing value for display or
+ * map keys: numbers via snprintf, strings by UTF-8-encoding runes, aggregates
+ * by recursive formatting.
+ * @param value Any runtime Value; each branch allocates its own buffers where
+ * needed.
+ * @return Newly allocated string the caller must free(), or NULL if a nested
+ * allocation failed.
  * @origin src/value.c
  */
 extern String ValueToString(Value* value);
@@ -44,9 +47,11 @@ void ClassDefineMemberByString(Class* cls,
 }
 
 /**
- * @brief True when value is a user bytecode function or a native function binding (what DoCall accepts).
+ * @brief True when value is a user bytecode function or a native function
+ * binding (what DoCall accepts).
  * @param value Runtime value to classify.
- * @return Non-zero for VLT_USER_FUNCTION or VLT_NATV_FUNCTION, zero for all other tags.
+ * @return Non-zero for VLT_USER_FUNCTION or VLT_NATV_FUNCTION, zero for all
+ * other tags.
  * @origin src/value.c
  */
 extern bool ValueIsCallable(Value* value);

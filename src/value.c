@@ -5,7 +5,8 @@
  *        from built-in roots, constants, stacks, environments, the task queue,
  *        and the call stack, frees unmarked nodes via _Free(), then sets
  *        Allocated and GcThreshold from the survivor count.
- * @param interpreter Interpreter whose GcRoot list and allocation accounting are updated.
+ * @param interpreter Interpreter whose GcRoot list and allocation accounting
+ * are updated.
  * @origin src/gc.c
  */
 extern void GarbageCollect(Interpreter* interpreter);

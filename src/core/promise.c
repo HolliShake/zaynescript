@@ -1,9 +1,12 @@
 #include "./promise.h"
 
 /**
- * @brief Appends task to the ring buffer TaskQueue[(head + count) % STACK_SIZE] and increments TaskQueueC.
- * @param interpreter VM whose bounded queue triggers InterpreterPanic if TaskQueueC already equals STACK_SIZE.
- * @param task Promise/task Value retained by the queue until the event loop dequeues it.
+ * @brief Appends task to the ring buffer TaskQueue[(head + count) % STACK_SIZE]
+ * and increments TaskQueueC.
+ * @param interpreter VM whose bounded queue triggers InterpreterPanic if
+ * TaskQueueC already equals STACK_SIZE.
+ * @param task Promise/task Value retained by the queue until the event loop
+ * dequeues it.
  * @origin src/interpreter.c
  */
 extern void EnqueueTask(Interpreter* interpreter, Value* task);

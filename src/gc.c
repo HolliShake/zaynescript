@@ -1,9 +1,12 @@
 #include "./gc.h"
 
 /**
- * @brief Builds a fresh NUL-terminated C string describing value so GC/debug paths can log or compare keys.
- * @param value Any runtime Value; formatting matches ValueToString() in value.c.
- * @return Newly allocated string the caller must free(), or NULL if a nested allocation failed.
+ * @brief Builds a fresh NUL-terminated C string describing value so GC/debug
+ * paths can log or compare keys.
+ * @param value Any runtime Value; formatting matches ValueToString() in
+ * value.c.
+ * @return Newly allocated string the caller must free(), or NULL if a nested
+ * allocation failed.
  * @origin src/value.c
  */
 extern String ValueToString(Value* value);
