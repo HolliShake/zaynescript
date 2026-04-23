@@ -97,6 +97,11 @@
             <li><a href="#io-setcolor">setColor</a></li>
             <li><a href="#io-decompile">decompile</a></li>
             <li><a href="#io-file">File</a></li>
+            <li><a href="#io-file-read-text">File · read text</a></li>
+            <li><a href="#io-file-write-text">File · write text</a></li>
+            <li><a href="#io-file-binary">File · binary / Blob</a></li>
+            <li><a href="#io-file-seek">File · seek / tell</a></li>
+            <li><a href="#io-file-mode-helpers">File · mode flags</a></li>
           </ul>
         </div>
         <div class="sidebar-group">
@@ -376,19 +381,129 @@ out.close();
 const inp = new File("notes.txt", "r");
 println(inp.read()); // full remainder of file
 inp.close();</code></pre>
+
+        <h4 id="io-file-read-text">Reading text</h4>
+        <p>
+          <code>read()</code> with no argument (or a negative size) reads from the
+          current position until EOF. <code>read(0)</code> returns an empty string
+          without advancing. <code>read(n)</code> with <code>n &gt; 0</code> reads at
+          most that many bytes and returns a string (still text mode).
+        </p>
+        <pre><code class="language-javascript">import { File } from "core:io";
+
+const f = new File("data.txt", "r");
+const whole = f.read();   // string: rest of file
+f.close();
+
+const g = new File("data.txt", "r");
+const head = g.read(4);   // first four bytes as text
+const line = g.readline(); // next line, including "\n" if present
+g.close();
+
+const h = new File("data.txt", "r");
+const lines = h.readlines(); // Array of strings, one per line
+h.close();</code></pre>
+
+        <h4 id="io-file-write-text">Writing text</h4>
+        <p>
+          In text mode, <code>write</code> accepts any value: non-strings are turned
+          into UTF-8 text before writing. <code>writelines</code> takes an array and
+          writes each element in order with no extra separators between elements.
+        </p>
+        <pre><code class="language-javascript">import { File } from "core:io";
+
+const w = new File("out.txt", "w");
+w.write("Hello\n");
+w.writelines(["line2\n", "line3\n"]);
+w.flush();
+w.close();</code></pre>
+
+        <h4 id="io-file-binary">Binary mode and <code>Blob</code></h4>
+        <p>
+          Open with a <code>fopen</code>-style mode that includes
+          <code>"b"</code> (for example <code>"rb"</code>, <code>"wb"</code>,
+          <code>"ab"</code>). Then <code>read()</code> / <code>read(n)</code> return
+          a <code>Blob</code> instead of a string. <code>readline</code> and
+          <code>readlines</code> are not available on binary files. Use
+          <code>import { Blob } from "core:blob"</code> to build byte payloads.
+        </p>
+        <pre><code class="language-javascript">import { File } from "core:io";
+import { Blob } from "core:blob";
+
+const bin = new File("app.bin", "wb");
+bin.write(new Blob([0x48, 0x69])); // raw bytes, not "Hi" as text
+bin.close();
+
+const r = new File("app.bin", "rb");
+const b = r.read(); // Blob
+r.close();
+
+// Optional: reopen as text to decode the same bytes as UTF-8
+const t = new File("app.bin", "r");
+println(t.read()); // "Hi"
+t.close();</code></pre>
+        <p>
+          In binary mode, <code>write</code> and <code>writelines</code> only accept
+          <code>string</code> or <code>Blob</code> (each array element must be one of
+          those in <code>writelines</code>).
+        </p>
+        <pre><code class="language-javascript">import { File } from "core:io";
+import { Blob } from "core:blob";
+
+const w = new File("parts.bin", "wb");
+w.writelines([new Blob([0x01, 0x02]), new Blob([0x03])]);
+w.close();</code></pre>
+
+        <h4 id="io-file-seek">Position: <code>tell</code> and <code>seek</code></h4>
+        <p>
+          Use a read/write mode such as <code>"r+"</code> when you need both
+          <code>read</code> and <code>write</code> on the same handle.
+          <code>seek(offset, whence)</code> uses <code>whence</code>
+          <code>0</code> = start of file, <code>1</code> = current position,
+          <code>2</code> = end; omit <code>whence</code> to seek from the start.
+        </p>
+        <pre><code class="language-javascript">import { File } from "core:io";
+
+const f = new File("notes.txt", "r+");
+println(f.tell());   // 0
+f.seek(6, 0);        // six bytes from start
+println(f.read(1));  // one character at that offset
+f.seek(0, 2);        // end of file
+println(f.tell());   // file length in bytes
+f.close();</code></pre>
+
+        <h4 id="io-file-mode-helpers">Mode helpers</h4>
+        <p>
+          After <code>new File(...)</code>, <code>readable()</code> and
+          <code>writable()</code> reflect whether the mode allows reading or writing
+          (for example <code>"w"</code> is writable but not readable;
+          <code>"r+"</code> is both).           <code>isClosed()</code> becomes true after
+          <code>close()</code>. If <code>fopen</code> fails (missing path, permission
+          denied, and so on), the constructor raises an error.
+        </p>
+        <pre><code class="language-javascript">import { File } from "core:io";
+
+const w = new File("tmp.txt", "w");
+println(w.writable(), w.readable()); // true, false
+w.close();
+println(w.isClosed()); // true</code></pre>
+
         <table>
           <thead>
             <tr>
-              <th>Method</th>
+              <th>Constructor / methods</th>
               <th>Description</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td><code>init(path, mode?)</code></td>
               <td>
-                Opens the file. On failure returns an error value instead of a
-                usable instance.
+                Constructor: <code>init(path, mode?)</code> (invoked by
+                <code>new File(path, mode?)</code>)
+              </td>
+              <td>
+                Opens the file. On failure raises an error (for example
+                <code>fopen: …</code> from the host C library).
               </td>
             </tr>
             <tr>

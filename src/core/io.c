@@ -320,6 +320,7 @@ static inline FILE* _GetFilePtr(ClassInstance* inst) {
 	return NULL;
 }
 
+/* File class constructor (`init`); invoked for `new File(...)`, not as an instance method. */
 static Value* _FileInit(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc < 2) {
 		return NewErrorValue(
