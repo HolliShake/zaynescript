@@ -6,7 +6,7 @@
     <title>Standard Library — ZayneScript</title>
     <meta
       name="description"
-      content="ZayneScript standard library reference: core:io (including File for disk I/O), core:math, core:os (including args for scripts), core:path (cross-platform file paths), core:object, core:array, core:date, core:promise, core:sqlite, core:mysql, core:utf8 (Unicode), core:mongoose (HTTP server and client), plus user libraries lib:http and lib:argparser."
+      content="ZayneScript standard library reference: core:io (including File for disk I/O), core:math, core:os (including args for scripts), core:path (cross-platform file paths), core:object, core:array, core:date, core:promise, core:sqlite, core:mysql, core:utf8 (Unicode), core:string (text helpers), core:mongoose (HTTP server and client), plus user libraries lib:http and lib:argparser."
     />
     <link rel="stylesheet" href="style.css" />
     <link rel="icon" type="image/x-icon" href="zs.ico" />
@@ -150,6 +150,7 @@
             <li><a href="#regex">core:regex</a></li>
             <li><a href="#promise">core:promise</a></li>
             <li><a href="#utf8">core:utf8</a></li>
+            <li><a href="#string">core:string</a></li>
             <li><a href="#sqlite">core:sqlite</a></li>
             <li><a href="#mysql">core:mysql</a></li>
             <li><a href="#mongoose">core:mongoose</a></li>
@@ -267,6 +268,14 @@
           </ul>
         </div>
         <div class="sidebar-group">
+          <div class="sidebar-group-title">core:string</div>
+          <ul>
+            <li><a href="#string-overview">Overview</a></li>
+            <li><a href="#string-example">Quick example</a></li>
+            <li><a href="#string-api">Functions</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-group">
           <div class="sidebar-group-title">core:sqlite</div>
           <ul>
             <li><a href="#sqlite-overview">Overview</a></li>
@@ -337,7 +346,7 @@
           ZayneScript registers built-in modules under the
           <code>core:</code> import prefix (names are case-sensitive:
           <code>core:date</code>, <code>core:array</code>,
-          <code>core:regex</code>, …). They load on
+          <code>core:regex</code>, <code>core:string</code>, …). They load on
           demand — import only what you need. The repo
           also includes <code>lib/http.zs</code>, a thin wrapper re-exporting the
           HTTP client and common constants for use via <code>lib:http</code>.
@@ -1655,6 +1664,178 @@ println(validCodepoint(65)); // true</code></pre>
         </div>
         <pre><code class="language-javascript">import { version } from "core:utf8";
 println(version());</code></pre>
+
+        <!-- ==============================================================
+         core:string
+         ============================================================== -->
+        <h2 id="string">core:string — text helpers</h2>
+        <p>Import with:</p>
+        <pre><code class="language-javascript">import {
+    toUpper, toLower, capitalize,
+    isIdentifier, isAlpha, isDigit, isAlnum,
+    split, ord, chr, bytes, codepoints,
+    strip, join, repeat, reverse,
+    contains, startsWith, endsWith,
+    replace, byteLength, encode, decode
+} from "core:string";</code></pre>
+        <p class="page-intro" style="margin-top: 0.75rem">
+          <code>core:string</code> complements
+          <a href="#utf8"><code>core:utf8</code></a
+          >: higher-level helpers on script strings (Unicode scalar / rune
+          strings at runtime). Case mapping and classification use
+          <a href="https://github.com/JuliaStrings/utf8proc" target="_blank" rel="noopener"
+            >utf8proc</a
+          >. Normalization and case <em>folding</em> stay in
+          <code>core:utf8</code> (<code>nfc</code>, <code>casefold</code>, …).
+        </p>
+
+        <hr />
+
+        <h3 id="string-overview">Overview</h3>
+        <ul style="margin: 0.75rem 0 0.75rem 1.5rem">
+          <li>
+            <strong>Case</strong> — <code>toUpper</code>, <code>toLower</code>,
+            <code>capitalize</code> (first codepoint title-case, rest lower).
+          </li>
+          <li>
+            <strong>Predicates</strong> — <code>isIdentifier</code>,
+            <code>isAlpha</code>, <code>isDigit</code> (Unicode
+            <code>Nd</code> only, whole string), <code>isAlnum</code> (letters and
+            number categories for every codepoint; empty string is false).
+          </li>
+          <li>
+            <strong><code>split</code></strong> — one argument: split on Unicode
+            whitespace (<code>Zs</code>, <code>Zl</code>, <code>Zp</code>); two
+            arguments: split on a non-empty UTF-8 delimiter substring (may
+            yield empty segments, like many languages).
+          </li>
+          <li>
+            <strong>Encoding</strong> — <code>ord</code> / <code>chr</code> for a
+            single codepoint; <code>bytes</code> (UTF-8 byte values as an array of
+            ints), <code>codepoints</code> (rune values as ints),
+            <code>byteLength</code> (UTF-8 byte count).
+          </li>
+          <li>
+            <strong>Base64 (RFC 4648)</strong> — <code>encode(s)</code> from UTF-8
+            text, or <code>encode(byteArray)</code> from integers
+            <code>0..255</code>; <code>decode(s)</code> ignores ASCII whitespace in
+            <code>s</code>, decodes standard Base64 with <code>=</code> padding,
+            and returns a string only when the decoded bytes are valid UTF-8
+            (otherwise an error value).
+          </li>
+          <li>
+            <strong>Other</strong> — <code>strip</code>, <code>join</code>
+            (array of strings + separator), <code>repeat</code>,
+            <code>reverse</code> (by codepoint), <code>contains</code> /
+            <code>startsWith</code> / <code>endsWith</code>, <code>replace</code>
+            (all occurrences; second argument must be non-empty).
+          </li>
+        </ul>
+
+        <h3 id="string-example">Quick example</h3>
+        <pre><code class="language-javascript">import { println } from "core:io";
+import {
+    toUpper, toLower, capitalize,
+    isIdentifier, isAlpha, isDigit, isAlnum,
+    split, join, strip, replace,
+    ord, chr, byteLength, bytes, encode, decode
+} from "core:string";
+
+println(toUpper("ab"));                         // AB
+println(toLower("AB"));                         // ab
+println(capitalize("hello WORLD"));             // Hello world
+println(isIdentifier("_x9"));                   // true
+println(isAlpha("abc"));                        // true
+println(isDigit("42"));                         // true
+println(isAlnum("a1"));                        // true
+println(join(split("a,b,c", ","), "-"));       // a-b-c
+println(strip("  x  "));                        // x
+println(replace("one one", "one", "two"));      // two two
+println(ord("X"));                              // 88
+println(ord(chr(65)));                          // 65
+println(byteLength("hello"));                 // 5
+println(split("  a  b  ").length());           // 2 (whitespace split)
+println(bytes("AB").length());                // 2 (UTF-8 byte count)
+println(decode(encode("hello")));             // hello (UTF-8 roundtrip)
+println(encode(bytes("AB")));                 // QUI=</code></pre>
+
+        <h3 id="string-api">Functions (reference)</h3>
+        <p style="margin-bottom: 0.75rem">
+          Native bindings are implemented in
+          <code>src/core/string.c</code> and declared for the host from
+          <code>src/core/string.h</code> (<code>LoadCoreString</code>). Errors
+          use the usual <code>Error</code> value pattern (wrong arity or type).
+        </p>
+        <div class="method">
+          <div class="method-sig">toUpper(s) / toLower(s) / capitalize(s) → string</div>
+          <p class="method-desc">Per-codepoint case mapping (capitalize: title + lower rest).</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">isIdentifier(s) / isAlpha(s) / isDigit(s) / isAlnum(s) → bool</div>
+          <p class="method-desc">Whole-string predicates; empty string is false for the <code>is*</code> checks.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">split(s) / split(s, delim) → array</div>
+          <p class="method-desc">
+            One-arg whitespace split; two-arg delimiter split (<code>delim</code>
+            non-empty UTF-8 substring).
+          </p>
+        </div>
+        <div class="method">
+          <div class="method-sig">ord(s) → int</div>
+          <p class="method-desc">Exactly one codepoint required.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">chr(cp) → string</div>
+          <p class="method-desc">One Unicode scalar; invalid codepoint is an error.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">bytes(s) / codepoints(s) → array</div>
+          <p class="method-desc">UTF-8 byte values vs UTF-32 code units as integers.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">byteLength(s) → int</div>
+          <p class="method-desc"><code>strlen</code> of the UTF-8 encoding.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">strip(s) → string</div>
+          <p class="method-desc">Trim leading/trailing Unicode whitespace (same categories as one-arg split).</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">join(parts, sep) → string</div>
+          <p class="method-desc"><code>parts</code> must be an array of strings.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">repeat(s, n) → string</div>
+          <p class="method-desc"><code>n</code> non-negative integer.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">reverse(s) → string</div>
+          <p class="method-desc">Reverses codepoint order (not full grapheme clusters).</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">contains(s, sub) / startsWith(s, p) / endsWith(s, p) → bool</div>
+          <p class="method-desc">UTF-8 substring / prefix / suffix tests.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">replace(haystack, from, to) → string</div>
+          <p class="method-desc">Non-overlapping replacements; <code>from</code> must be non-empty.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">encode(s) / encode(byteArray) → string</div>
+          <p class="method-desc">
+            Standard Base64 (no line breaks). <code>s</code> is UTF-8 text;
+            <code>byteArray</code> is an array of byte values <code>0..255</code>.
+          </p>
+        </div>
+        <div class="method">
+          <div class="method-sig">decode(s) → string</div>
+          <p class="method-desc">
+            Decodes Base64; skips spaces, tabs, CR, LF in <code>s</code>. Result
+            must be well-formed UTF-8 or callers receive an error value (binary
+            payloads are not returned as raw strings).
+          </p>
+        </div>
 
         <!-- ==============================================================
          core:sqlite

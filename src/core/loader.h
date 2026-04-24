@@ -21,6 +21,7 @@
 #include "./promise.h"
 #include "./regex.h"
 #include "./sqlite.h"
+#include "./string.h"
 #include "./utf8.h"
 
 #ifndef CORE_LOADER_H

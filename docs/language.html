@@ -6,7 +6,7 @@
     <title>Language Guide — ZayneScript</title>
     <meta
       name="description"
-      content="Complete language reference for ZayneScript: variables, functions, async/await, classes, control flow, operators, and modules."
+      content="Complete language reference for ZayneScript: variables, functions, async/await, classes, control flow, operators (including typeof and bitwise ~), and modules."
     />
     <link rel="stylesheet" href="style.css" />
     <link rel="icon" type="image/x-icon" href="zs.ico" />
@@ -154,6 +154,8 @@
           <div class="sidebar-group-title">Operators</div>
           <ul>
             <li><a href="#operators">Operators</a></li>
+            <li><a href="#typeof-op"><code>typeof</code></a></li>
+            <li><a href="#bitwise-not">Bitwise NOT (<code>~</code>)</a></li>
             <li><a href="#ternary">Ternary Expressions</a></li>
             <li><a href="#spread">Spread Operator</a></li>
             <li><a href="#bigint">BigInt Literals</a></li>
@@ -400,8 +402,15 @@ fn example() {
             <tr>
               <td>Bitwise</td>
               <td>
-                <code>&amp;</code> <code>|</code> <code>^</code>
+                <code>~</code> <code>&amp;</code> <code>|</code> <code>^</code>
                 <code>&lt;&lt;</code> <code>&gt;&gt;</code>
+              </td>
+            </tr>
+            <tr>
+              <td>Type introspection</td>
+              <td>
+                <code>typeof</code> (unary; see
+                <a href="#typeof-op">below</a>)
               </td>
             </tr>
             <tr>
@@ -439,6 +448,66 @@ fn example() {
             </tr>
           </tbody>
         </table>
+
+        <h3 id="typeof-op"><code>typeof</code></h3>
+        <p>
+          Unary <code>typeof</code> has the same precedence as other unary
+          operators. It <strong>evaluates its operand</strong> (for side effects)
+          and yields a <strong>string</strong> naming the runtime tag of the
+          resulting value — it does not short-circuit like
+          <code>&amp;&amp;</code> / <code>||</code>.
+        </p>
+        <p>Possible results include (non-exhaustive):</p>
+        <ul style="margin: 0.75rem 0 0.75rem 1.5rem">
+          <li>
+            <code>"Int"</code>, <code>"Number"</code>, <code>"BigInt"</code>,
+            <code>"BigNum"</code>
+          </li>
+          <li><code>"String"</code>, <code>"Bool"</code>, <code>"Null"</code></li>
+          <li>
+            <code>"Array"</code>, <code>"Object"</code>, <code>"Function"</code>,
+            <code>"Native Function"</code>, <code>"Class"</code>,
+            <code>"Promise"</code>, <code>"Blob"</code>, …
+          </li>
+          <li>
+            For class <strong>instances</strong>, the string is the
+            <strong>class name</strong> taken from the instance prototype (not the
+            literal <code>"Class"</code>).
+          </li>
+        </ul>
+        <pre><code class="language-javascript">println(typeof 0);       // Int
+println(typeof 3.14);    // Number
+println(typeof 5n);    // BigInt
+println(typeof []);    // Array
+
+// Parentheses optional; operand is a unary expression
+println(typeof (1 + 1));</code></pre>
+
+        <h3 id="bitwise-not">Bitwise NOT (<code>~</code>)</h3>
+        <p>
+          Prefix <code>~</code> applies a two’s-complement bitwise inversion to
+          <strong>numeric</strong> values only. Non-numeric operands produce a
+          type error.
+        </p>
+        <ul style="margin: 0.75rem 0 0.75rem 1.5rem">
+          <li>
+            <strong><code>int</code></strong> — result is <code>int</code> with
+            all 32 bits of <code>CoerceToI32</code> flipped.
+          </li>
+          <li>
+            <strong><code>Number</code> (<code>double</code>)</strong> — the value
+            is coerced to a 64-bit integer (<code>long</code>) first, then inverted;
+            the result is a <code>Number</code>.
+          </li>
+          <li>
+            <strong><code>BigInt</code> / <code>BigNum</code></strong> — inversion
+            uses arbitrary-precision integer math (<code>-n - 1</code> in the
+            libbf pipeline), preserving integer vs decimal precision of the
+            operand where applicable.
+          </li>
+        </ul>
+        <pre><code class="language-javascript">println(~0);    // -1
+println(~4);    // -5</code></pre>
 
         <!-- ============================================================
          Ternary

@@ -7,7 +7,9 @@
  * codes+alignStart.
  * @param alignStart Byte offset of the first character (must point at a valid C
  * string within codes).
- * @return malloc'd duplicate of that string, or NULL if Allocate fails.
+ * @return A new buffer allocated with Allocate() containing a copy of the
+ *         embedded string; this project’s allocator exits the process on OOM,
+ *         so a NULL return does not occur in practice.
  * @origin src/interpreter.c
  */
 extern String ReadString(uint8_t* codes, int alignStart);
