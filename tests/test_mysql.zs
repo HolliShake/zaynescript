@@ -1,6 +1,6 @@
 import { Database } from "core:mysql";
 import { args, getPid } from "core:os";
-import { println } from "core:io";
+import { println,  format } from "core:io";
 
 /*
   MySQL CRUD integration test.
@@ -21,7 +21,8 @@ if (argv.length() < 4) {
     const user = argv[1];
     const password = argv[2];
     const database = argv[3];
-    var port = 3306;
+    println(host,user,password,database)
+    local port = 3306;
     if (argv.length() > 4) {
         port = argv[4];
     }
@@ -34,7 +35,7 @@ if (argv.length() < 4) {
         port: port
     });
 
-    const suffix = "" + getPid();
+    const suffix = format("{}", getPid());
     const table = "zscript_mysql_crud_" + suffix;
     const nameA = "alice_" + suffix;
     const nameB = "alice_updated_" + suffix;

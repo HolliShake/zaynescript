@@ -152,6 +152,7 @@ debug: $(SQLITE_LIB) $(MARIADB_LIB) copy_assets | $(DIST_DIR)
 	    -o $(TARGET) \
 	    $(LDFLAGS_COMMON) \
 	    $(RPATH_ORIGIN)
+	@rm -rf "$(MARIADB_BUILD_DIR)"
 	@echo "[zscript] Debug build → $(TARGET)"
 
 # ── Release (run from dist/, RPATH = $ORIGIN) ────────────────
@@ -161,6 +162,7 @@ release: $(SQLITE_LIB) $(MARIADB_LIB) copy_assets | $(DIST_DIR)
 	    -o $(TARGET) \
 	    $(LDFLAGS_COMMON) $(LDFLAGS_RELEASE) \
 	    $(RPATH_ORIGIN)
+	@rm -rf "$(MARIADB_BUILD_DIR)"
 	@echo "[zscript] Release build → $(TARGET)"
 
 # ── Release-install (RPATH baked to $(LIBDIR)) ───────────────
@@ -170,6 +172,7 @@ release-install: $(SQLITE_LIB) $(MARIADB_LIB) copy_assets | $(DIST_DIR)
 	    -o $(TARGET) \
 	    $(LDFLAGS_COMMON) $(LDFLAGS_RELEASE) \
 	    $(RPATH_INSTALL)
+	@rm -rf "$(MARIADB_BUILD_DIR)"
 	@echo "[zscript] Release-install build → $(TARGET)"
 
 # ============================================================
