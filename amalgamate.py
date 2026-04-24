@@ -19,13 +19,13 @@ MAIN_C = os.path.join(ROOT, "main.c")
 # each file only depends on things already emitted above it.
 EXT_HEADER_ORDER = [
     # libbf
-    "libbf/cutils.h",
-    "libbf/libbf.h",
+    "thirdparty/libbf/cutils.h",
+    "thirdparty/libbf/libbf.h",
     # Mongoose (struct mg_mgr is embedded in interpreter_struct in global.h;
     # global.h's quoted include is stripped, so the full header must appear here.)
-    "mongoose/mongoose.h",
+    "thirdparty/mongoose/mongoose.h",
     # sqlite3 (used by core/sqlite.c)
-    "sqlite/sqlite3.h",
+    "thirdparty/sqlite/sqlite3.h",
     # utf8proc (low-level)
     "utf/utf8proc/utf8proc.h",
     # utf wrapper
@@ -38,8 +38,8 @@ EXT_HEADER_ORDER = [
 # it defines internal typedefs (Parse, Token, etc.) that conflict with the
 # project's own symbols when included in the same compilation unit.
 EXT_SOURCE_ORDER = [
-    "libbf/cutils.c",
-    "libbf/libbf.c",
+    "thirdparty/libbf/cutils.c",
+    "thirdparty/libbf/libbf.c",
     "utf/utf8proc/utf8proc_data.h",
     "utf/utf8proc/utf8proc.c",
     "utf/utf.c",
@@ -72,11 +72,15 @@ HEADER_ORDER = [
     "src/gc.h",
     # Layer 4: core module headers
     "src/core/array.h",
+    "src/core/blob.h",
     "src/core/date.h",
     "src/core/io.h",
     "src/core/math.h",
+    "src/core/mysql.h",
     "src/core/os.h",
+    "src/core/path.h",
     "src/core/promise.h",
+    "src/core/regex.h",
     "src/core/sqlite.h",
     "src/core/object.h",
     "src/core/mongoose.h",
@@ -420,7 +424,7 @@ def build_source(out_path):
 
         # libbf.c #defines malloc/free/realloc as forbidden — undo that
         # so subsequent code (utf8proc, etc.) can use standard allocators.
-        if rel_path == "libbf/libbf.c":
+        if rel_path == "thirdparty/libbf/libbf.c":
             parts.append("/* undo libbf.c malloc/free/realloc poison */")
             parts.append("#undef malloc")
             parts.append("#undef free")
