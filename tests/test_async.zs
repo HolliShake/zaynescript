@@ -64,7 +64,7 @@ callMeMaybe();
 
 const fun = fn() {
     while (1) {
-        try  {
+        try {
             (fn() {
                 try {
                     const x = 2;
