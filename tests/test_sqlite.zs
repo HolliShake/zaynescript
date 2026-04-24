@@ -2,7 +2,7 @@ import { Database } from "core:sqlite";
 import { println } from "core:io";
 
 // ── Open / schema ────────────────────────────────────────────────────────────
-const db = new Database("mydb.sqlite"); // file; use ":memory:" for in-memory
+const db = new Database(":memory:"); // file; use ":memory:" for in-memory
 db.exec("CREATE TABLE IF NOT EXISTS t (id INTEGER PRIMARY KEY, name TEXT)");
 
 // ── DML via stmt.run() ───────────────────────────────────────────────────────
