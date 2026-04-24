@@ -2,128 +2,221 @@
 #  Makefile for zscript
 # ============================================================
 
+# ── Toolchain ───────────────────────────────────────────────
+# Forced to clang to prevent GCC cc1 errors with -flto=thin
+CC  := clang
+LLD := lld
+
+# ── Output ──────────────────────────────────────────────────
 DIST_DIR   := dist
 TARGET     := $(DIST_DIR)/zscript.exe
 SQLITE_LIB := $(DIST_DIR)/libsqlite3.so
+MARIADB_LIB := $(DIST_DIR)/libmariadb.so
 
-# Forced to clang to prevent GCC cc1 errors with -flto=thin
-CC         := clang
+# ── MariaDB connector build dir ─────────────────────────────
+MARIADB_SRC       := mariadb-connector-c
+MARIADB_BUILD_DIR := $(MARIADB_SRC)/build-zscript
 
-# ── Directories ─────────────────────────────────────────────
-PREFIX     ?= /usr/local
-BINDIR     ?= $(PREFIX)/bin
-LIBDIR     ?= $(PREFIX)/lib/zscript
+# ── Install paths ────────────────────────────────────────────
+PREFIX ?= /usr/local
+BINDIR ?= $(PREFIX)/bin
+LIBDIR ?= $(PREFIX)/lib/zscript
 
-# ── Source Files ────────────────────────────────────────────
+# ── Sources ──────────────────────────────────────────────────
 # libbf/cutils.c omitted: one shared cutils from libregex (see libbf/cutils.h).
-ALL_SRCS   := main.c \
-              $(wildcard src/*.c) \
-              $(wildcard src/core/*.c) \
-              $(wildcard utf/*.c) \
-              $(wildcard utf/utf8proc/*.c) \
-              $(filter-out libbf/cutils.c,$(wildcard libbf/*.c)) \
-			  $(wildcard libregex/*.c) \
-              $(wildcard mongoose/*.c)\
-              $(wildcard sqlite/*.c)
+ALL_SRCS := \
+	main.c \
+	$(wildcard src/*.c) \
+	$(wildcard src/core/*.c) \
+	$(wildcard utf/*.c) \
+	$(wildcard utf/utf8proc/*.c) \
+	$(filter-out libbf/cutils.c, $(wildcard libbf/*.c)) \
+	$(wildcard libregex/*.c) \
+	$(wildcard mongoose/*.c)
 
-# Exclude SQLite for dynamic builds (link ``dist/libsqlite3.so`` instead).
-DYN_EXCLUDES := sqlite/%
+# sqlite/ is excluded for all builds — linked dynamically via dist/libsqlite3.so
+SRCS := $(filter-out sqlite/%, $(ALL_SRCS))
 
-# Filter sources based on target
-ifeq ($(MAKECMDGOALS),release)
-    SRCS := $(filter-out $(DYN_EXCLUDES),$(ALL_SRCS))
-else ifeq ($(MAKECMDGOALS),debug)
-    SRCS := $(filter-out $(DYN_EXCLUDES),$(ALL_SRCS))
-else
-    SRCS := $(ALL_SRCS)
-endif
-
+# ── Build metadata ───────────────────────────────────────────
 BUILD_DATE := $(shell date '+%Y-%m-%d %H:%M:%S')
 
-# ── Base Flags (Applied to all targets) ─────────────────────
-CFLAGS_BASE := -Wno-pointer-sign -DBUILD_DATE='"$(BUILD_DATE)"'
-LDFLAGS     := -lm -ldl -lpthread
+# ── Shared flags (all targets) ───────────────────────────────
+CFLAGS_COMMON := \
+	-Wno-pointer-sign \
+	-DBUILD_DATE='"$(BUILD_DATE)"' \
+	-I$(MARIADB_SRC)/include
 
-# Default RPATH points to the directory containing the executable ($ORIGIN)
-RPATH_FLAG  := -Wl,-rpath,'$$ORIGIN'
+LDFLAGS_COMMON := \
+	-lm -ldl -lpthread \
+	-L$(DIST_DIR) -lsqlite3 -lmariadb
 
-# ── Debug Flags ─────────────────────────────────────────────
-CFLAGS_DBG  := -g3 -O0 -fsanitize=address,leak -fno-omit-frame-pointer -fno-optimize-sibling-calls
+# RPATH: $ORIGIN → look beside the binary at runtime (dev/release builds)
+RPATH_ORIGIN  := -Wl,-rpath,'$$ORIGIN'
+# RPATH: fixed install path (used by release-install / install)
+RPATH_INSTALL := -Wl,-rpath,'$(LIBDIR)'
 
-# ── Release Flags (Super-optimized for speed) ───────────────
-CFLAGS_REL  := -O3 -march=native -mtune=native \
-               -flto=thin -fomit-frame-pointer -funroll-loops -fno-plt \
-               -ffunction-sections -fdata-sections \
-               -fmerge-all-constants -fno-semantic-interposition \
-               -fno-math-errno -fno-trapping-math \
-               -fstrict-aliasing -fvectorize -fslp-vectorize \
-               -pipe -DNDEBUG -DMG_ENABLE_LOG=0
-LDFLAGS_REL := -flto=thin -fuse-ld=lld -Wl,--gc-sections -Wl,-O2 -Wl,--strip-all
+# ── Debug flags ──────────────────────────────────────────────
+CFLAGS_DEBUG := \
+	-g3 -O0 \
+	-fsanitize=address,leak \
+	-fno-omit-frame-pointer \
+	-fno-optimize-sibling-calls
+
+# ── Release flags ────────────────────────────────────────────
+CFLAGS_RELEASE := \
+	-O3 -march=native -mtune=native \
+	-flto=thin \
+	-fomit-frame-pointer \
+	-funroll-loops \
+	-fno-plt \
+	-ffunction-sections -fdata-sections \
+	-fmerge-all-constants \
+	-fno-semantic-interposition \
+	-fno-math-errno -fno-trapping-math \
+	-fstrict-aliasing \
+	-fvectorize -fslp-vectorize \
+	-pipe \
+	-DNDEBUG \
+	-DMG_ENABLE_LOG=0
+
+LDFLAGS_RELEASE := \
+	-flto=thin \
+	-fuse-ld=$(LLD) \
+	-Wl,--gc-sections \
+	-Wl,-O2 \
+	-Wl,--strip-all
 
 # ============================================================
-#  Targets
+#  Phony targets
 # ============================================================
-
-.PHONY: all release release-install debug clean run install uninstall amalgamate copy_assets
+.PHONY: all debug release release-install install uninstall clean run amalgamate
 
 all: debug
 
-$(DIST_DIR):
-	mkdir -p $(DIST_DIR)
+# ============================================================
+#  Shared libraries
+# ============================================================
 
+$(DIST_DIR):
+	mkdir -p $@
+
+# ── SQLite ───────────────────────────────────────────────────
+$(SQLITE_LIB): sqlite/sqlite3.c | $(DIST_DIR)
+	@echo "[sqlite] Building shared library..."
+	$(CC) -fPIC -shared -O2 -o $@ $<
+	@echo "[sqlite] → $@"
+
+# ── MariaDB ──────────────────────────────────────────────────
+$(MARIADB_LIB): $(MARIADB_SRC)/CMakeLists.txt | $(DIST_DIR)
+	@echo "[mariadb] Building shared library..."
+	@command -v cmake >/dev/null 2>&1 || { \
+		echo "Error: cmake is required to build mariadb-connector-c."; \
+		echo "       Install cmake, or place a pre-built libmariadb.so in $(DIST_DIR)."; \
+		exit 1; \
+	}
+	cmake -S $(MARIADB_SRC) -B $(MARIADB_BUILD_DIR) \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_COMPILE_WARNING_AS_ERROR=OFF
+	cmake --build $(MARIADB_BUILD_DIR) --parallel
+	@for candidate in \
+		"$(MARIADB_BUILD_DIR)/libmariadb/libmariadb.so" \
+		"/usr/lib/libmariadb.so" \
+		"/usr/lib64/libmariadb.so" \
+		"/usr/lib/x86_64-linux-gnu/libmariadb.so"; do \
+		if [ -f "$$candidate" ]; then \
+			cp -f "$$candidate" "$@"; \
+			echo "[mariadb] → $@ (from $$candidate)"; \
+			exit 0; \
+		fi; \
+	done; \
+	echo "Error: could not locate libmariadb.so. Install MariaDB Connector/C or cmake."; \
+	exit 1
+
+# ============================================================
+#  Asset copy
+# ============================================================
+.PHONY: copy_assets
 copy_assets: | $(DIST_DIR)
-	@cp -rf lib $(DIST_DIR)/ 2>/dev/null || true
+	@cp -rf lib   $(DIST_DIR)/ 2>/dev/null || true
 	@cp -rf tests $(DIST_DIR)/ 2>/dev/null || true
 
-# ── SQLite shared library ────────────────────────────────────
-$(SQLITE_LIB): sqlite/sqlite3.c | $(DIST_DIR)
-	@echo "Building SQLite shared library..."
-	$(CC) -fPIC -shared -O2 -o $@ $<
+# ============================================================
+#  Build targets
+# ============================================================
 
-release: $(SQLITE_LIB) copy_assets | $(DIST_DIR)
-	@echo "Building in release mode (clang, super-optimized, sqlite dynamic)..."
-	$(CC) $(CFLAGS_BASE) $(CFLAGS_REL) $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_REL) -L$(DIST_DIR) -lsqlite3 $(RPATH_FLAG)
-	@echo "Build successful → $(TARGET)"
+# ── Debug ────────────────────────────────────────────────────
+debug: $(SQLITE_LIB) $(MARIADB_LIB) copy_assets | $(DIST_DIR)
+	@echo "[zscript] Building debug..."
+	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) $(SRCS) \
+	    -o $(TARGET) \
+	    $(LDFLAGS_COMMON) \
+	    $(RPATH_ORIGIN)
+	@echo "[zscript] Debug build → $(TARGET)"
 
-# Override RPATH for installation so the binary knows to look in $(LIBDIR) at runtime
-release-install: RPATH_FLAG := -Wl,-rpath,'$(LIBDIR)'
-release-install: $(SQLITE_LIB) copy_assets | $(DIST_DIR)
-	@echo "Building in release mode (install RPATH, sqlite dynamic)..."
-	$(CC) $(CFLAGS_BASE) $(CFLAGS_REL) $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDFLAGS_REL) -L$(DIST_DIR) -lsqlite3 $(RPATH_FLAG)
-	@echo "Build successful → $(TARGET)"
+# ── Release (run from dist/, RPATH = $ORIGIN) ────────────────
+release: $(SQLITE_LIB) $(MARIADB_LIB) copy_assets | $(DIST_DIR)
+	@echo "[zscript] Building release..."
+	$(CC) $(CFLAGS_COMMON) $(CFLAGS_RELEASE) $(SRCS) \
+	    -o $(TARGET) \
+	    $(LDFLAGS_COMMON) $(LDFLAGS_RELEASE) \
+	    $(RPATH_ORIGIN)
+	@echo "[zscript] Release build → $(TARGET)"
 
-debug: $(SQLITE_LIB) copy_assets | $(DIST_DIR)
-	@echo "Building in debug mode (sqlite dynamic)..."
-	$(CC) $(CFLAGS_BASE) $(CFLAGS_DBG) $(SRCS) -o $(TARGET) $(LDFLAGS) -L$(DIST_DIR) -lsqlite3 $(RPATH_FLAG)
-	@echo "Build successful → $(TARGET)"
+# ── Release-install (RPATH baked to $(LIBDIR)) ───────────────
+release-install: $(SQLITE_LIB) $(MARIADB_LIB) copy_assets | $(DIST_DIR)
+	@echo "[zscript] Building release (install RPATH=$(LIBDIR))..."
+	$(CC) $(CFLAGS_COMMON) $(CFLAGS_RELEASE) $(SRCS) \
+	    -o $(TARGET) \
+	    $(LDFLAGS_COMMON) $(LDFLAGS_RELEASE) \
+	    $(RPATH_INSTALL)
+	@echo "[zscript] Release-install build → $(TARGET)"
 
-clean:
-	rm -rf $(DIST_DIR)
+# ============================================================
+#  Install / Uninstall
+# ============================================================
 
 install: release-install
-	@echo "Installing $(TARGET) → $(BINDIR)/zscript"
+	@echo "[install] $(TARGET) → $(BINDIR)/zscript"
 	install -d $(BINDIR)
 	install -m 755 $(TARGET) $(BINDIR)/zscript
-	install -d $(LIBDIR)
-	@echo "Installing lib → $(LIBDIR)/lib/"
+
+	@echo "[install] lib/ → $(LIBDIR)/lib/"
+	install -d $(LIBDIR)/lib
 	cd lib && find . -type d -exec install -d $(LIBDIR)/lib/{} \; \
-           && find . -type f -exec install -m 644 {} $(LIBDIR)/lib/{} \;
-	@echo "Installing tests → $(LIBDIR)/tests/"
+	       && find . -type f -exec install -m 644 {} $(LIBDIR)/lib/{} \;
+
+	@echo "[install] tests/ → $(LIBDIR)/tests/"
+	install -d $(LIBDIR)/tests
 	cd tests && find . -type d -exec install -d $(LIBDIR)/tests/{} \; \
-             && find . -type f -exec install -m 644 {} $(LIBDIR)/tests/{} \;
-	@echo "Installing sqlite/libsqlite3.so → $(LIBDIR)/libsqlite3.so"
+	         && find . -type f -exec install -m 644 {} $(LIBDIR)/tests/{} \;
+
+	@echo "[install] $(SQLITE_LIB) → $(LIBDIR)/libsqlite3.so"
 	install -m 755 $(SQLITE_LIB) $(LIBDIR)/libsqlite3.so
 
+	@echo "[install] $(MARIADB_LIB) → $(LIBDIR)/libmariadb.so"
+	install -m 755 $(MARIADB_LIB) $(LIBDIR)/libmariadb.so
+
+	@echo "[install] Done. Run: zscript"
+
 uninstall:
-	@echo "Removing $(BINDIR)/zscript"
+	@echo "[uninstall] Removing $(BINDIR)/zscript"
 	rm -f $(BINDIR)/zscript
-	@echo "Removing $(LIBDIR)/"
+	@echo "[uninstall] Removing $(LIBDIR)/"
 	rm -rf $(LIBDIR)
 
+# ============================================================
+#  Utility
+# ============================================================
+
+clean:
+	rm -rf $(DIST_DIR) $(MARIADB_BUILD_DIR)
+
 run: debug
-	ASAN_OPTIONS=fast_unwind_on_malloc=0:malloc_context_size=30 LC_ALL=en_US.UTF-8 ./$(TARGET)
+	ASAN_OPTIONS=fast_unwind_on_malloc=0:malloc_context_size=30 \
+	LC_ALL=en_US.UTF-8 \
+	./$(TARGET)
 
 amalgamate:
-	@echo "Running amalgamation..."
+	@echo "[amalgamate] Running amalgamation..."
 	python3 amalgamate.py
-	@echo "Amalgamated files in dist/"
+	@echo "[amalgamate] Done. Output in dist/"

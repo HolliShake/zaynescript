@@ -13,6 +13,7 @@
 #include "./date.h"
 #include "./io.h"
 #include "./math.h"
+#include "./mysql.h"
 #include "./mongoose.h"
 #include "./object.h"
 #include "./os.h"
