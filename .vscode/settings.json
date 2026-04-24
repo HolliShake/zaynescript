@@ -5,5 +5,23 @@
     },
     "[cpp]": {
         "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
-    }
+    },
+    "C_Cpp.default.includePath": [
+        "${workspaceFolder}/**",
+        "${workspaceFolder}/src/**",
+        "${workspaceFolder}/src/core/**",
+        "${workspaceFolder}/thirdparty/**",
+        "${workspaceFolder}/thirdparty/**/include"
+    ],
+    "clangd.fallbackFlags": [
+        "-std=c11",
+        "-I${workspaceFolder}/src",
+        "-I${workspaceFolder}/src/core",
+        "-I${workspaceFolder}/thirdparty",
+        "-I${workspaceFolder}/thirdparty/include"
+    ],
+    "C_Cpp.default.browse.path": [
+        "${workspaceFolder}/src",
+        "${workspaceFolder}/thirdparty"
+    ]
 }

@@ -573,11 +573,13 @@ _FileReadlines(Interpreter* interpreter, int argc, Value** arguments) {
 }
 
 /**
- * @brief Writes one value as raw bytes: Blob as its payload, anything else
- * via ValueToString (UTF-8 for strings).
- * @return null on success, error Value on failure.
+ * @brief Writes one value to an open FILE*: Blob values are written as raw
+ * bytes, while all other values are stringified first.
+ * @param interpreter Used to allocate an Error value when fwrite fails.
+ * @param fp Destination stream already opened by the File wrapper.
+ * @param v Value to serialize and write.
+ * @return NULL on success, or an Error Value describing the write failure.
  */
-/** @return NULL on success, error Value on failure. */
 static Value* _FileWriteOne(Interpreter* interpreter, FILE* fp, Value* v) {
 	if (ValueIsBlob(v)) {
 		Blob*		b = CoerceToBlob(v);
