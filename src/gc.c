@@ -12,11 +12,15 @@
 extern String ValueToString(Value* value);
 
 /**
- * @brief Frees a value and its associated memory
- *
- * @param interp The interpreter instance (used for big-number
- * context cleanup)
- * @param value The value to free
+ * @brief Deallocates @a value after its destroy callback: recurses
+ *        type-specific teardown (arbitrary-precision floats via @a interp
+ *        libbf context, string/error buffers, array/object hash maps, classes,
+ *        instances, envs, user/native functions, promises, blobs), leaves
+ *        @c VLT_OPAQUE storage untouched, then frees the @c Value struct.
+ * @param interp Interpreter whose @c BfContext backs @c bf_free for @c
+ *        VLT_BINT / @c VLT_BNUM.
+ * @param value GC heap node to strip and deallocate; must not be NULL at call
+ *        sites in this file.
  */
 static void _Free(Interpreter* interp, Value* value) {
 	value->Destroyer(value);

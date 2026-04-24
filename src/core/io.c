@@ -260,13 +260,16 @@ _IoSetColor(Interpreter* interpreter, int argc, Value** arguments) {
 // Decompiler
 // ----------------------------------------------------------------
 /**
- * @brief Decompiles a compiled user function back into readable
- * source text.
- * @param interpreter Pointer to the interpreter instance.
- * @param uf Pointer to the UserFunction whose bytecode will be
- * decompiled.
- * @return Newly allocated string containing the decompiled text.
- * Caller must free.
+ * @brief Renders a text disassembly of @a uf: prints name/argc/locals, then
+ *        one line per instruction with offset and opcode operands (string
+ *        operands via @c ReadString, immediates via @c ReadInt32; @c
+ *        OP_LOAD_CONST also shows @c ValueToString of @a
+ *        interpreter->Constants when the offset is in range).
+ * @param interpreter Constant pool and formatting context; may be NULL, in
+ *        which case @c OP_LOAD_CONST lines omit the parenthesized value.
+ * @param uf Bytecode image to walk from IP 0 to @a uf->CodeC.
+ * @return Newly allocated multiline C string, or NULL if an append failed;
+ *        caller must @c free() on success.
  * @origin src/decompiler.c
  */
 extern String DecompileFunction(Interpreter* interpreter, UserFunction* uf);

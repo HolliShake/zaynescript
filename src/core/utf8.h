@@ -19,7 +19,17 @@
 #ifndef CORE_UTF8_H
 #	define CORE_UTF8_H
 
-/** Loads the @c core:utf8 built-in module (unicode helpers). */
+/**
+ * @brief Builds the @c core:utf8 import object: native functions for Unicode
+ *        normalization (NFC, NFD, NFKC, NFKD), case mapping and case-folding,
+ *        UTF-8 @c len, @c charWidth, category string, @c validCodepoint, @c
+ *        graphemeBreak, and @c version, implemented with utf8proc.
+ * @param interpreter Runtime used to allocate the module object and each
+ *        native function value.
+ * @return VLT_OBJECT map of native utf8proc-backed callables, keyed by the
+ *        @c Name strings in the static @c _Utf8ModuleFunctions table.
+ * @origin src/core/utf8.c
+ */
 Value* LoadCoreUtf8(Interpreter* interpreter);
 
 #endif
