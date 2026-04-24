@@ -91,3 +91,37 @@ const fun = fn() {
 
 println(decompile(fun));
 
+fn asyncReject() async {
+    raise "awaited-error";
+}
+
+var awaitErrCaughtCount = 0;
+var awaitErrSuccessCount = 0;
+var awaitErrLastValue = "";
+
+fn awaitErrorInTryCatchStress() async {
+    awaitErrCaughtCount = 0;
+    awaitErrSuccessCount = 0;
+    awaitErrLastValue = "";
+
+    // JS-like behavior: awaiting a rejected async should throw into catch.
+    for (i := 0; i < 200; i++) {
+        try {
+            await asyncReject();
+            awaitErrSuccessCount++;
+        } catch (e) {
+            awaitErrCaughtCount++;
+            awaitErrLastValue = e;
+        }
+    }
+
+    assert awaitErrCaughtCount == 200, "async/await try-catch: all awaited errors are caught";
+    assert awaitErrSuccessCount == 0, "async/await try-catch: no success path after await reject";
+    assert awaitErrLastValue != "", "async/await try-catch: caught error value is present";
+
+    return true;
+}
+
+awaitErrorInTryCatchStress().then(fn(v) {
+    assert v, "async/await try-catch stress completed";
+});
