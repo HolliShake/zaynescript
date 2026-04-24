@@ -18,6 +18,10 @@
     --warning: #d29922;
     --sidebar-width: 260px;
     --header-height: 56px;
+    --scrollbar-track: var(--bg-secondary);
+    --scrollbar-thumb: #30363d;
+    --scrollbar-thumb-hover: #3f4853;
+    color-scheme: dark;
 }
 
 * {
@@ -38,6 +42,39 @@ body {
     color: var(--text);
     line-height: 1.65;
     font-size: 15px;
+}
+
+/* ----------------------------------------------------------------
+   Themed scrollbars
+   ---------------------------------------------------------------- */
+html,
+body,
+.docs-sidebar,
+pre,
+.method-sig,
+.docs-main table,
+.page-content table {
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border: 2px solid var(--scrollbar-track);
+    border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
 }
 
 a {
