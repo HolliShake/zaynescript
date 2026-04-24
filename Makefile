@@ -126,6 +126,7 @@ $(MARIADB_LIB): $(MARIADB_SRC)/CMakeLists.txt | $(DIST_DIR)
 		if [ -f "$$candidate" ]; then \
 			cp -f "$$candidate" "$@"; \
 			echo "[mariadb] → $@ (from $$candidate)"; \
+			rm -rf "$(MARIADB_BUILD_DIR)"; \
 			exit 0; \
 		fi; \
 	done; \
