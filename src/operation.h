@@ -181,19 +181,23 @@ Value*
 DoCallMethod(Interpreter* interp, Value* obj, Value* methodName, int argc);
 
 /**
- * @brief Performs function call operation.
- * Handles both native functions and user-defined functions.
- * Validates argument count and creates appropriate environment
- * for execution.
+ * @brief Dispatches fn as a callable: wires environments for user functions,
+ * unwraps async targets into promises, validates native arity, consumes argc
+ * stack operands, and leaves the callee result (or an Error value) per the
+ * concrete callee kind.
  *
- * @param interp      The interpreter instance
- * @param fn          The function to call
- * @param argc        Number of arguments
- * @param withThis    Whether to include 'this' in the arguments
+ * @param interpreter Full VM state (stack, env stack, traces, active task).
+ * @param fn          User function, native function, promise continuation, or
+ * related callable Value.
+ * @param argc        Operand count already present on the stack for this call
+ * (see withThis for layout).
+ * @param withThis    When true, the lowest logical argument on the stack is
+ * bound as the callee's this.
  *
- * @return Null value on success, or error value on failure
+ * @return Callee result, interpreter->Null for async promise bootstrap paths,
+ * or an Error Value on failure.
  */
-Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
+Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis);
 
 /**
  * @brief Performs logical NOT operation on a value.

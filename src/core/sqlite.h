@@ -30,6 +30,7 @@
  */
 
 #include "../../sqlite/sqlite3.h"
+#include "../error.h"
 #include "../function.h"
 #include "../global.h"
 #include "../value.h"
@@ -44,8 +45,8 @@
  *   - "Database"  – the Database class constructor
  *   - "Statement" – the Statement class constructor
  *
- * @param  interpreter The interpreter instance
- * @return Value* Pointer to the module object, or NULL on failure
+ * @param interpreter The interpreter instance
+ * @return Pointer to the module object, or NULL on failure
  */
 Value* LoadCoreSqlite(Interpreter* interpreter);
 

@@ -266,17 +266,22 @@ int HashMapContains(HashMap* hashmap, String key) {
 }
 
 /**
- * @brief Checks if a Value is a string.
- * @param value The value to check.
- * @return true if the value is a string, false otherwise.
+ * @brief True when value carries the VLT_STR tag (UTF-8 text stored as a Rune
+ * array).
+ * @param value Runtime value to inspect.
+ * @return Non-zero for VLT_STR, zero otherwise.
  * @origin src/value.c
  */
 extern bool ValueIsStr(Value* value);
 
 /**
- * @brief Converts a Value to its string representation.
- * @param value The value to convert.
- * @return A newly allocated string (caller must free).
+ * @brief Builds a fresh NUL-terminated C string describing value for display or
+ * map keys: numbers via snprintf, strings by UTF-8-encoding runes, aggregates
+ * by recursive formatting.
+ * @param value Any runtime Value; each branch allocates its own buffers where
+ * needed.
+ * @return Newly allocated string the caller must free(), or NULL if a nested
+ * allocation failed.
  * @origin src/value.c
  */
 extern String ValueToString(Value* value);

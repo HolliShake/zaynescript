@@ -8,6 +8,7 @@
  */
 
 #include "../class.h"
+#include "../error.h"
 #include "../function.h"
 #include "../global.h"
 #include "../value.h"
@@ -24,7 +25,7 @@
  *
  * @param interpreter The interpreter instance to create the
  * class in
- * @return Value* Pointer to the Object class value
+ * @return Pointer to the Object class value
  */
 Value* CreateObjectClass(Interpreter* interpreter);
 
@@ -39,8 +40,8 @@ Value* CreateObjectClass(Interpreter* interpreter);
  * @param interpreter Pointer to the Interpreter instance where
  * the module will be loaded. Must not be NULL.
  *
- * @return Value* A pointer to the newly created Object module
- * Value object. Returns NULL if module creation fails.
+ * @return A pointer to the newly created Object module Value
+ * object. Returns NULL if module creation fails.
  *
  * @note The returned Value should be managed by the
  * interpreter's memory management system.

@@ -22,7 +22,9 @@ static Value* _BlobBufAppend(_BlobBuf*		buf,
 			nc *= 2;
 		uint8_t* nd = Reallocate(buf->data, nc);
 		if (nd == NULL)
-			return NewErrorFValue(interpreter, "Blob: out of memory");
+			return NewErrorFValue(interpreter,
+								  "%s: Blob: out of memory",
+								  MEMORY_ERROR);
 		buf->data = nd;
 		buf->cap  = nc;
 	}
@@ -114,7 +116,9 @@ _BlobAppendPart(_BlobBuf* buf, Interpreter* interpreter, Value* part) {
 	if (ValueIsArray(part)) {
 		String s = _BlobArrayJoinString(CoerceToArray(part), interpreter);
 		if (s == NULL)
-			return NewErrorFValue(interpreter, "Blob: out of memory");
+			return NewErrorFValue(interpreter,
+								  "%s: Blob: out of memory",
+								  MEMORY_ERROR);
 		Value* err = _BlobBufAppendUtf8(buf, interpreter, s);
 		free(s);
 		return err;
@@ -123,7 +127,9 @@ _BlobAppendPart(_BlobBuf* buf, Interpreter* interpreter, Value* part) {
 	if (ValueIsStr(part)) {
 		String s = RunesStrToString((Rune*) part->Value.Opaque);
 		if (s == NULL)
-			return NewErrorFValue(interpreter, "Blob: out of memory");
+			return NewErrorFValue(interpreter,
+								  "%s: Blob: out of memory",
+								  MEMORY_ERROR);
 		Value* err = _BlobBufAppendUtf8(buf, interpreter, s);
 		free(s);
 		return err;
@@ -131,7 +137,9 @@ _BlobAppendPart(_BlobBuf* buf, Interpreter* interpreter, Value* part) {
 
 	String s = ValueToString(part);
 	if (s == NULL)
-		return NewErrorFValue(interpreter, "Blob: out of memory");
+		return NewErrorFValue(interpreter,
+							  "%s: Blob: out of memory",
+							  MEMORY_ERROR);
 	Value* err = _BlobBufAppendUtf8(buf, interpreter, s);
 	free(s);
 	return err;
@@ -150,23 +158,28 @@ static String _BlobReadTypeOption(HashMap* options) {
 
 static Value* _BlobInit(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc < 1) {
-		return NewErrorFValue(interpreter,
-							  "Blob constructor requires at least 1 argument");
+		return NewErrorFValue(
+			interpreter,
+			"%s: Blob constructor requires at least 1 argument",
+			ARGUMENT_ERROR);
 	}
 
 	Value* thisArg = arguments[0];
 	if (!ValueIsBlob(thisArg)) {
-		return NewErrorFValue(
-			interpreter,
-			"Blob constructor requires a Blob argument as the first argument");
+		return NewErrorFValue(interpreter,
+							  "%s: Blob constructor requires a Blob argument "
+							  "as the first argument",
+							  TYPE_ERROR);
 	}
 
 	Value* data = argc >= 2 ? arguments[1] : NULL;
 	if (data != NULL && !ValueIsNull(data) && !ValueIsStr(data)
 		&& !ValueIsArray(data) && !ValueIsBlob(data)) {
-		return NewErrorFValue(interpreter,
-							  "Blob constructor: blobParts must be a string, "
-							  "Array, Blob, or null");
+		return NewErrorFValue(
+			interpreter,
+			"%s: Blob constructor: blobParts must be a string, Array, Blob, or "
+			"null",
+			TYPE_ERROR);
 	}
 
 	Value* optionsObj = argc >= 3 ? arguments[2] : NULL;
@@ -174,7 +187,8 @@ static Value* _BlobInit(Interpreter* interpreter, int argc, Value** arguments) {
 		&& !ValueIsObject(optionsObj)) {
 		return NewErrorFValue(
 			interpreter,
-			"Blob constructor: options must be an object or null");
+			"%s: Blob constructor: options must be an object or null",
+			TYPE_ERROR);
 	}
 
 	HashMap* options = (optionsObj != NULL && !ValueIsNull(optionsObj))
@@ -208,7 +222,9 @@ static Value* _BlobInit(Interpreter* interpreter, int argc, Value** arguments) {
 	String mime = _BlobReadTypeOption(options);
 	if (mime == NULL) {
 		free(buf.data);
-		return NewErrorFValue(interpreter, "Blob: out of memory");
+		return NewErrorFValue(interpreter,
+							  "%s: Blob: out of memory",
+							  MEMORY_ERROR);
 	}
 
 	if (blob->Data != NULL) {

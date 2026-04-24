@@ -16,8 +16,10 @@ const stmtDelete    = db.prepare("DELETE FROM todos WHERE id = ?");
 // ── HTTP server ───────────────────────────────────────────────────────────────
 const app = new Server();
 
-app.use(fn (req, res) {
+app.use(fn (req, res) async {
     /* middleware – runs before every route */
+    raise "Some Error!";
+    
 });
 
 // GET /todos – list all todos

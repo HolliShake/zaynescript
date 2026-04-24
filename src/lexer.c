@@ -140,6 +140,24 @@ static Token TokenizeNumber(Lexer* lexer) {
 	return MakeToken(kind, value, pos);
 }
 
+// Append one codepoint as UTF-8 to a growable buffer (avoids a full Rune[]
+// scratch buffer for large string literals).
+static bool LexerAppendUtf8(String* out, size_t* cap, size_t* off, Rune r) {
+	unsigned char buf[5];
+	int			  sz = utf_encode_char((int) r, buf);
+	if (sz <= 0) {
+		return false;
+	}
+	if (*off + (size_t) sz + 1 > *cap) {
+		size_t newCap = (*cap + (size_t) sz + 1) * 2;
+		*out		  = Reallocate(*out, newCap);
+		*cap		  = newCap;
+	}
+	memcpy(*out + *off, buf, (size_t) sz);
+	*off += (size_t) sz;
+	return true;
+}
+
 // Tokenize string literal
 static Token TokenizeString(Lexer* lexer) {
 	Position pos   = PositionFromLineAndColm(lexer->Line, lexer->Colm);
@@ -163,41 +181,61 @@ static Token TokenizeString(Lexer* lexer) {
 		}
 	}
 
-	int	  maxPossibleLength = scan - lexer->Indx;
-	Rune* decoded			= Allocate(sizeof(Rune) * (maxPossibleLength + 1));
-	int	  decodedLength		= 0;
+	size_t srcSpan = (size_t) (scan - lexer->Indx);
+	size_t cap	   = srcSpan * 4 + 64;
+	if (cap < 256) {
+		cap = 256;
+	}
+	String utf8	   = Allocate(cap);
+	size_t utf8Len = 0;
 
-	// 2. SINGLE-PASS DECODING
 	while (CurrentRune(lexer) != 0 && CurrentRune(lexer) != quote) {
-		if (CurrentRune(lexer) == '\n')
+		if (CurrentRune(lexer) == '\n') {
 			break;
+		}
 		if (CurrentRune(lexer) == '\\') {
 			Advance(lexer);	 // Skip escape character '\'
 
 			switch (CurrentRune(lexer)) {
 				case 'b':
-					decoded[decodedLength++] = '\b';
+					if (!LexerAppendUtf8(&utf8, &cap, &utf8Len, '\b')) {
+						goto encode_fail;
+					}
 					break;
 				case 'n':
-					decoded[decodedLength++] = '\n';
+					if (!LexerAppendUtf8(&utf8, &cap, &utf8Len, '\n')) {
+						goto encode_fail;
+					}
 					break;
 				case 't':
-					decoded[decodedLength++] = '\t';
+					if (!LexerAppendUtf8(&utf8, &cap, &utf8Len, '\t')) {
+						goto encode_fail;
+					}
 					break;
 				case 'r':
-					decoded[decodedLength++] = '\r';
+					if (!LexerAppendUtf8(&utf8, &cap, &utf8Len, '\r')) {
+						goto encode_fail;
+					}
 					break;
 				case 'e':
-					decoded[decodedLength++] = '\033';
+					if (!LexerAppendUtf8(&utf8, &cap, &utf8Len, '\033')) {
+						goto encode_fail;
+					}
 					break;	// The ANSI Escape!
 				case '\\':
-					decoded[decodedLength++] = '\\';
+					if (!LexerAppendUtf8(&utf8, &cap, &utf8Len, '\\')) {
+						goto encode_fail;
+					}
 					break;
 				case '\'':
-					decoded[decodedLength++] = '\'';
+					if (!LexerAppendUtf8(&utf8, &cap, &utf8Len, '\'')) {
+						goto encode_fail;
+					}
 					break;
 				case '"':
-					decoded[decodedLength++] = '"';
+					if (!LexerAppendUtf8(&utf8, &cap, &utf8Len, '"')) {
+						goto encode_fail;
+					}
 					break;
 				case 'x':
 					{
@@ -218,7 +256,9 @@ static Token TokenizeString(Lexer* lexer) {
 								break;
 							Advance(lexer);
 						}
-						decoded[decodedLength++] = value;
+						if (!LexerAppendUtf8(&utf8, &cap, &utf8Len, value)) {
+							goto encode_fail;
+						}
 						continue;  // Skip the Advance() at the bottom of the
 								   // outer block
 					}
@@ -241,7 +281,9 @@ static Token TokenizeString(Lexer* lexer) {
 								break;
 							Advance(lexer);
 						}
-						decoded[decodedLength++] = value;
+						if (!LexerAppendUtf8(&utf8, &cap, &utf8Len, value)) {
+							goto encode_fail;
+						}
 						continue;
 					}
 				case 'U':
@@ -263,13 +305,20 @@ static Token TokenizeString(Lexer* lexer) {
 								break;
 							Advance(lexer);
 						}
-						decoded[decodedLength++] = value;
+						if (!LexerAppendUtf8(&utf8, &cap, &utf8Len, value)) {
+							goto encode_fail;
+						}
 						continue;
 					}
 				default:
 					// Keep unknown escape content without the backslash
 					if (CurrentRune(lexer) != 0) {
-						decoded[decodedLength++] = CurrentRune(lexer);
+						if (!LexerAppendUtf8(&utf8,
+											 &cap,
+											 &utf8Len,
+											 CurrentRune(lexer))) {
+							goto encode_fail;
+						}
 					}
 					break;
 			}
@@ -277,29 +326,38 @@ static Token TokenizeString(Lexer* lexer) {
 				Advance(lexer);	 // Skip the resolved escape character
 			}
 		} else {
-			decoded[decodedLength++] = CurrentRune(lexer);
+			if (!LexerAppendUtf8(&utf8, &cap, &utf8Len, CurrentRune(lexer))) {
+				goto encode_fail;
+			}
 			Advance(lexer);
 		}
 	}
 
-	decoded[decodedLength] = 0;
+	utf8[utf8Len] = '\0';
+	if (utf8Len + 1 < cap) {
+		utf8 = Reallocate(utf8, utf8Len + 1);
+	}
 
-	String value = RunesToString(decoded, 0, decodedLength);
-	free(decoded);
+	String value = utf8;
 
 	if (closed && CurrentRune(lexer) == quote) {
 		Advance(lexer);	 // Skip closing quote
 		pos.LineEnded = lexer->Line;
 		pos.ColmEnded = lexer->Colm;
 		return MakeToken(TK_STR, value, pos);
-	} else {
-		pos.LineEnded = lexer->Line;
-		pos.ColmEnded = lexer->Colm;
-		ThrowError(lexer->Path, lexer->Data, pos, "Unclosed string literal");
-		return MakeToken(TK_STR,
-						 AllocateString("Unclosed string literal"),
-						 pos);
 	}
+	free(value);
+	pos.LineEnded = lexer->Line;
+	pos.ColmEnded = lexer->Colm;
+	ThrowError(lexer->Path, lexer->Data, pos, "Unclosed string literal");
+	return MakeToken(TK_STR, AllocateString("Unclosed string literal"), pos);
+
+encode_fail:
+	free(utf8);
+	pos.LineEnded = lexer->Line;
+	pos.ColmEnded = lexer->Colm;
+	ThrowError(lexer->Path, lexer->Data, pos, "Invalid string literal");
+	return MakeToken(TK_STR, AllocateString("Invalid string literal"), pos);
 }
 
 // Tokenize symbol

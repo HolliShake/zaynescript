@@ -8,6 +8,7 @@
 
 #include "../array.h"
 #include "../class.h"
+#include "../error.h"
 #include "../function.h"
 #include "../value.h"
 

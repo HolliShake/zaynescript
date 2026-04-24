@@ -1,9 +1,13 @@
 #include "./promise.h"
 
+
 /**
- * @brief Enqueues a task (callback) into the interpreter's task queue.
- * @param interpreter The interpreter instance.
- * @param task The task value to enqueue.
+ * @brief Appends task to the ring buffer TaskQueue[(head + count) % STACK_SIZE]
+ * and increments TaskQueueC.
+ * @param interpreter VM whose bounded queue triggers InterpreterPanic if
+ * TaskQueueC already equals STACK_SIZE.
+ * @param task Promise/task Value retained by the queue until the event loop
+ * dequeues it.
  * @origin src/interpreter.c
  */
 extern void EnqueueTask(Interpreter* interpreter, Value* task);
@@ -11,22 +15,26 @@ extern void EnqueueTask(Interpreter* interpreter, Value* task);
 static Value*
 _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 2) {
-		return NewErrorValue(interpreter, "Promise.then expects 2 arguments");
+		return NewErrorFValue(interpreter,
+							  "%s: Promise.then expects 2 arguments",
+							  ARGUMENT_ERROR);
 	}
 
 	Value* thisArg		= arguments[0];
 	Value* thenCallback = arguments[1];
 
 	if (!ValueIsPromise(thisArg)) {
-		return NewErrorValue(
+		return NewErrorFValue(
 			interpreter,
-			"First argument to Promise.then must be a promise");
+			"%s: first argument to Promise.then must be a promise",
+			TYPE_ERROR);
 	}
 
 	if (!ValueIsCallable(thenCallback)) {
-		return NewErrorValue(interpreter,
-							 "Second argument to Promise.then "
-							 "must be a function");
+		return NewErrorFValue(
+			interpreter,
+			"%s: second argument to Promise.then must be a function",
+			TYPE_ERROR);
 	}
 
 	int argNeeded = ValueIsNativeFunction(thenCallback)
@@ -34,9 +42,11 @@ _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
 						: CoerceToUserFunction(thenCallback)->Argc;
 
 	if (argNeeded != 1 && argNeeded != VARARG) {
-		return NewErrorValue(interpreter,
-							 "Callback function for Promise.then must take "
-							 "exactly 1 argument (value)");
+		return NewErrorFValue(
+			interpreter,
+			"%s: callback function for Promise.then must take exactly 1 "
+			"argument (value)",
+			ARGUMENT_ERROR);
 	}
 
 	StateMachine* originalSM = CoerceToStateMachine(thisArg);
@@ -64,22 +74,26 @@ _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _PromiseError(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 2) {
-		return NewErrorValue(interpreter, "Promise.error expects 2 arguments");
+		return NewErrorFValue(interpreter,
+							  "%s: Promise.error expects 2 arguments",
+							  ARGUMENT_ERROR);
 	}
 
 	Value* thisArg		 = arguments[0];
 	Value* catchCallback = arguments[1];
 
 	if (!ValueIsPromise(thisArg)) {
-		return NewErrorValue(
+		return NewErrorFValue(
 			interpreter,
-			"First argument to Promise.error must be a promise");
+			"%s: first argument to Promise.error must be a promise",
+			TYPE_ERROR);
 	}
 
 	if (!ValueIsCallable(catchCallback)) {
-		return NewErrorValue(interpreter,
-							 "Second argument to Promise.error "
-							 "must be a function");
+		return NewErrorFValue(
+			interpreter,
+			"%s: second argument to Promise.error must be a function",
+			TYPE_ERROR);
 	}
 
 	int argNeeded = ValueIsNativeFunction(catchCallback)
@@ -87,9 +101,11 @@ _PromiseError(Interpreter* interpreter, int argc, Value** arguments) {
 						: CoerceToUserFunction(catchCallback)->Argc;
 
 	if (argNeeded != 1 && argNeeded != VARARG) {
-		return NewErrorValue(interpreter,
-							 "Callback function for Promise.error must take "
-							 "exactly 1 argument (error)");
+		return NewErrorFValue(
+			interpreter,
+			"%s: callback function for Promise.error must take exactly 1 "
+			"argument (error)",
+			ARGUMENT_ERROR);
 	}
 
 	StateMachine* originalSM = CoerceToStateMachine(thisArg);

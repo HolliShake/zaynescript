@@ -49,8 +49,8 @@ typedef struct core_module_mapping_struct {
  *
  * @param interpreter The interpreter instance
  * @param moduleName  The name of the core module to load
- * @return Value* Pointer to the loaded core module, or NULL if
- * not found
+ * @return Pointer to the loaded core module, or NULL if not
+ * found
  */
 Value* LoadCoreModule(Interpreter* interpreter, String moduleName);
 

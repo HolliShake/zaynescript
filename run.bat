@@ -8,9 +8,9 @@ chcp 65001 >nul
 
 set "OUT_DIR=dist"
 set "EXE=%OUT_DIR%\zscript.exe"
-set "SQLITE_DLL=%OUT_DIR%\sqlite3.dll"
+set "SQLITE_DLL=%OUT_DIR%\libsqlite3.dll"
 
-for /f "usebackq delims=" %%I in (`powershell -NoProfile -Command "(Get-Date).ToString('yyyy-MM-ddTHH:mm:ss')"`) do set "BUILD_DATE=%%I"
+for /f "usebackq delims=" %%I in (`powershell -NoProfile -Command "(Get-Date).ToString('yyyy-MM-dd HH:mm:ss')"`) do set "BUILD_DATE=%%I"
 
 if not exist "%OUT_DIR%" mkdir "%OUT_DIR%"
 
@@ -42,15 +42,16 @@ if "%1"=="--release" (
 		exit /b 1
 	)
 	rem Matches Makefile release: CFLAGS_REL + LDFLAGS_REL ^(gcc/MinGW; no lld requirement^)
+	rem Sources match Makefile ALL_SRCS minus sqlite/* (dynamic) and minus libbf/cutils.c (cutils from libregex).
 	gcc %CFLAGS_BASE% -O3 -march=native -mtune=native -flto=thin -fomit-frame-pointer -funroll-loops -fno-plt -ffunction-sections -fdata-sections -fmerge-all-constants -fno-semantic-interposition -fno-math-errno -fno-trapping-math -fstrict-aliasing -fvectorize -fslp-vectorize -pipe -DNDEBUG -DMG_ENABLE_LOG=0 ^
-		main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c mongoose\*.c "%OUT_DIR%\zscript-icon.o" ^
-		-o "%EXE%" "%SQLITE_DLL%" -lm -flto=thin -Wl,--gc-sections -Wl,-O2 -Wl,--strip-all
+		main.c src\*.c src\core\*.c utf\*.c utf\utf8proc\*.c libbf\libbf.c libregex\*.c mongoose\*.c "%OUT_DIR%\zscript-icon.o" ^
+		-o "%EXE%" -L"%OUT_DIR%" -lsqlite3 -lm -flto=thin -Wl,--gc-sections -Wl,-O2 -Wl,--strip-all
 ) else (
 	echo Building in debug mode...
-	rem Matches Makefile debug: CFLAGS_BASE + CFLAGS_DBG ^(ASAN where supported^)
+	rem Matches Makefile debug: CFLAGS_BASE + CFLAGS_DBG; same source set as release ^(no sqlite/*.c in link^).
 	gcc %CFLAGS_BASE% -g3 -O0 -fsanitize=address,leak -fno-omit-frame-pointer -fno-optimize-sibling-calls ^
-		main.c src\core\*.c src\*.c utf\*.c utf\utf8proc\*.c libbf\*.c mongoose\*.c ^
-		-o "%EXE%" "%SQLITE_DLL%" -lm
+		main.c src\*.c src\core\*.c utf\*.c utf\utf8proc\*.c libbf\libbf.c libregex\*.c mongoose\*.c ^
+		-o "%EXE%" -L"%OUT_DIR%" -lsqlite3 -lm
 )
 
 if not exist "%EXE%" (

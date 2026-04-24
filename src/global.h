@@ -788,7 +788,7 @@ typedef struct interpreter_struct Interpreter;
  * @param interpreter Pointer to the interpreter instance.
  * @param argc Number of arguments.
  * @param arguments Array of argument values.
- * @return Value* The return value of the function.
+ * @return The Value result of the native call.
  */
 typedef Value* (*NativeFunctionCallback)(Interpreter* interpreter,
 										 int		  argc,

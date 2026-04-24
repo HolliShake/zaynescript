@@ -193,14 +193,18 @@ static Rune* _Utf8RunesFromValue(Value* v) {
 static Value*
 _Utf8StrFromRunes(Interpreter* interpreter, Rune* runes, const char* what) {
 	if (runes == NULL) {
-		return NewErrorFValue(interpreter,
-							  "utf8: %s failed (invalid text or out of memory)",
-							  what);
+		return NewErrorFValue(
+			interpreter,
+			"%s: utf8: %s failed (invalid text or out of memory)",
+			RUNTIME_ERROR,
+			what);
 	}
 	String utf8 = RunesStrToString(runes);
 	free(runes);
 	if (utf8 == NULL) {
-		return NewErrorValue(interpreter, "utf8: UTF-8 encode failed");
+		return NewErrorFValue(interpreter,
+							  "%s: utf8: UTF-8 encode failed",
+							  RUNTIME_ERROR);
 	}
 	Value* out = NewStrValue(interpreter, utf8);
 	free(utf8);
@@ -209,7 +213,9 @@ _Utf8StrFromRunes(Interpreter* interpreter, Rune* runes, const char* what) {
 
 static Value* _Utf8Nfc(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1 || !ValueIsStr(arguments[0])) {
-		return NewErrorValue(interpreter, "nfc() expects 1 string");
+		return NewErrorFValue(interpreter,
+							  "%s: nfc() expects 1 string",
+							  TYPE_ERROR);
 	}
 	return _Utf8StrFromRunes(
 		interpreter,
@@ -219,7 +225,9 @@ static Value* _Utf8Nfc(Interpreter* interpreter, int argc, Value** arguments) {
 
 static Value* _Utf8Nfd(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1 || !ValueIsStr(arguments[0])) {
-		return NewErrorValue(interpreter, "nfd() expects 1 string");
+		return NewErrorFValue(interpreter,
+							  "%s: nfd() expects 1 string",
+							  TYPE_ERROR);
 	}
 	return _Utf8StrFromRunes(
 		interpreter,
@@ -229,7 +237,9 @@ static Value* _Utf8Nfd(Interpreter* interpreter, int argc, Value** arguments) {
 
 static Value* _Utf8Nfkc(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1 || !ValueIsStr(arguments[0])) {
-		return NewErrorValue(interpreter, "nfkc() expects 1 string");
+		return NewErrorFValue(interpreter,
+							  "%s: nfkc() expects 1 string",
+							  TYPE_ERROR);
 	}
 	return _Utf8StrFromRunes(
 		interpreter,
@@ -239,7 +249,9 @@ static Value* _Utf8Nfkc(Interpreter* interpreter, int argc, Value** arguments) {
 
 static Value* _Utf8Nfkd(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1 || !ValueIsStr(arguments[0])) {
-		return NewErrorValue(interpreter, "nfkd() expects 1 string");
+		return NewErrorFValue(interpreter,
+							  "%s: nfkd() expects 1 string",
+							  TYPE_ERROR);
 	}
 	return _Utf8StrFromRunes(
 		interpreter,
@@ -250,7 +262,9 @@ static Value* _Utf8Nfkd(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _Utf8Casefold(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1 || !ValueIsStr(arguments[0])) {
-		return NewErrorValue(interpreter, "casefold() expects 1 string");
+		return NewErrorFValue(interpreter,
+							  "%s: casefold() expects 1 string",
+							  TYPE_ERROR);
 	}
 	return _Utf8StrFromRunes(
 		interpreter,
@@ -261,7 +275,9 @@ _Utf8Casefold(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _Utf8ToLower(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1 || !ValueIsStr(arguments[0])) {
-		return NewErrorValue(interpreter, "toLower() expects 1 string");
+		return NewErrorFValue(interpreter,
+							  "%s: toLower() expects 1 string",
+							  TYPE_ERROR);
 	}
 	Rune*  runes = _Utf8RunesFromValue(arguments[0]);
 	size_t n	 = Utf8Core_RuneLen(runes);
@@ -276,7 +292,9 @@ _Utf8ToLower(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _Utf8ToUpper(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1 || !ValueIsStr(arguments[0])) {
-		return NewErrorValue(interpreter, "toUpper() expects 1 string");
+		return NewErrorFValue(interpreter,
+							  "%s: toUpper() expects 1 string",
+							  TYPE_ERROR);
 	}
 	Rune*  runes = _Utf8RunesFromValue(arguments[0]);
 	size_t n	 = Utf8Core_RuneLen(runes);
@@ -291,7 +309,9 @@ _Utf8ToUpper(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _Utf8ToTitle(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1 || !ValueIsStr(arguments[0])) {
-		return NewErrorValue(interpreter, "toTitle() expects 1 string");
+		return NewErrorFValue(interpreter,
+							  "%s: toTitle() expects 1 string",
+							  TYPE_ERROR);
 	}
 	Rune*  runes = _Utf8RunesFromValue(arguments[0]);
 	size_t n	 = Utf8Core_RuneLen(runes);
@@ -305,7 +325,9 @@ _Utf8ToTitle(Interpreter* interpreter, int argc, Value** arguments) {
 
 static Value* _Utf8Len(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1 || !ValueIsStr(arguments[0])) {
-		return NewErrorValue(interpreter, "len() expects 1 string");
+		return NewErrorFValue(interpreter,
+							  "%s: len() expects 1 string",
+							  TYPE_ERROR);
 	}
 	return NewIntValue(
 		interpreter,
@@ -315,11 +337,14 @@ static Value* _Utf8Len(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _Utf8CharWidth(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1) {
-		return NewErrorValue(interpreter, "charWidth() expects 1 number");
+		return NewErrorFValue(interpreter,
+							  "%s: charWidth() expects 1 number",
+							  ARGUMENT_ERROR);
 	}
 	if (!ValueIsNum(arguments[0]) && !ValueIsInt(arguments[0])) {
-		return NewErrorValue(interpreter,
-							 "charWidth() expects a number (codepoint)");
+		return NewErrorFValue(interpreter,
+							  "%s: charWidth() expects a number (codepoint)",
+							  TYPE_ERROR);
 	}
 	int cp = CoerceToI32(arguments[0]);
 	return NewIntValue(interpreter, Utf8Core_RuneCharWidth((Rune) cp));
@@ -328,11 +353,15 @@ _Utf8CharWidth(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _Utf8CategoryString(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1) {
-		return NewErrorValue(interpreter, "categoryString() expects 1 number");
+		return NewErrorFValue(interpreter,
+							  "%s: categoryString() expects 1 number",
+							  ARGUMENT_ERROR);
 	}
 	if (!ValueIsNum(arguments[0]) && !ValueIsInt(arguments[0])) {
-		return NewErrorValue(interpreter,
-							 "categoryString() expects a number (codepoint)");
+		return NewErrorFValue(
+			interpreter,
+			"%s: categoryString() expects a number (codepoint)",
+			TYPE_ERROR);
 	}
 	int			cp	= CoerceToI32(arguments[0]);
 	const char* cat = utf8proc_category_string((utf8proc_int32_t) cp);
@@ -345,11 +374,15 @@ _Utf8CategoryString(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _Utf8ValidCodepoint(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1) {
-		return NewErrorValue(interpreter, "validCodepoint() expects 1 number");
+		return NewErrorFValue(interpreter,
+							  "%s: validCodepoint() expects 1 number",
+							  ARGUMENT_ERROR);
 	}
 	if (!ValueIsNum(arguments[0]) && !ValueIsInt(arguments[0])) {
-		return NewErrorValue(interpreter,
-							 "validCodepoint() expects a number (codepoint)");
+		return NewErrorFValue(
+			interpreter,
+			"%s: validCodepoint() expects a number (codepoint)",
+			TYPE_ERROR);
 	}
 	int cp = CoerceToI32(arguments[0]);
 	return NewBoolValue(interpreter, Utf8Core_RuneValid((Rune) cp) ? 1 : 0);
@@ -358,13 +391,17 @@ _Utf8ValidCodepoint(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _Utf8GraphemeBreak(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 2) {
-		return NewErrorValue(interpreter,
-							 "graphemeBreak() expects 2 numbers (codepoints)");
+		return NewErrorFValue(
+			interpreter,
+			"%s: graphemeBreak() expects 2 numbers (codepoints)",
+			ARGUMENT_ERROR);
 	}
 	if ((!ValueIsNum(arguments[0]) && !ValueIsInt(arguments[0]))
 		|| (!ValueIsNum(arguments[1]) && !ValueIsInt(arguments[1]))) {
-		return NewErrorValue(interpreter,
-							 "graphemeBreak() expects numbers (codepoints)");
+		return NewErrorFValue(
+			interpreter,
+			"%s: graphemeBreak() expects numbers (codepoints)",
+			TYPE_ERROR);
 	}
 	Rune a = (Rune) CoerceToI32(arguments[0]);
 	Rune b = (Rune) CoerceToI32(arguments[1]);
@@ -374,7 +411,9 @@ _Utf8GraphemeBreak(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _Utf8Version(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 0) {
-		return NewErrorValue(interpreter, "version() expects 0 arguments");
+		return NewErrorFValue(interpreter,
+							  "%s: version() expects 0 arguments",
+							  ARGUMENT_ERROR);
 	}
 	String ver = AllocateString((String) utf8proc_version());
 	Value* out = NewStrValue(interpreter, ver);

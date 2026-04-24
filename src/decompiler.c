@@ -1,29 +1,33 @@
 #include "./decompiler.h"
 
 /**
- * @brief Reads a string from a bytecode array at the given
- * offset.
- * @param codes The bytecode array.
- * @param alignStart The byte offset to start reading from.
- * @return The decoded string.
+ * @brief Copies the embedded NUL-terminated string stored in the bytecode image
+ * at byte index alignStart.
+ * @param codes Contiguous bytecode buffer; the string begins exactly at
+ * codes+alignStart.
+ * @param alignStart Byte offset of the first character (must point at a valid C
+ * string within codes).
+ * @return malloc'd duplicate of that string, or NULL if Allocate fails.
  * @origin src/interpreter.c
  */
 extern String ReadString(uint8_t* codes, int alignStart);
 
 /**
- * @brief Reads a 32-bit integer from a bytecode array at the given
- * offset.
- * @param codes The bytecode array.
- * @param alignStart The byte offset to start reading from.
- * @return The decoded integer.
+ * @brief Decodes a big-endian 32-bit integer from the four bytes
+ * codes[alignStart..alignStart+3].
+ * @param codes Bytecode buffer large enough to hold the word at alignStart.
+ * @param alignStart Index of the most significant byte of the word.
+ * @return Signed integer reconstructed from the big-endian bytes.
  * @origin src/interpreter.c
  */
 extern int ReadInt32(uint8_t* codes, int alignStart);
 
 /**
- * @brief Converts a Value to its string representation.
- * @param value The value to convert.
- * @return A newly allocated string (caller must free).
+ * @brief Same as ValueToString() in value.c: human-readable text for any Value
+ * tag, newly allocated.
+ * @param value Runtime value being stringified for decompiler output.
+ * @return New NUL-terminated heap string; each call site in this file frees()
+ * once the text is appended.
  * @origin src/value.c
  */
 extern String ValueToString(Value* value);
@@ -132,6 +136,13 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
 					ip += 4;
 					break;
 				}
+			case OP_LOAD_INT:
+				{
+					int offset = ReadInt32(uf->Codes, ip);
+					_AppendFmt(&result, "OP_LOAD_INT %d\n", offset);
+					ip += 4;
+					break;
+				}
 			case OP_LOAD_BOOL:
 				{
 					int offset = ReadInt32(uf->Codes, ip);
@@ -171,7 +182,9 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
 			case OP_OBJECT_PLUCK_ATTRIBUTE:
 				{
 					String str = ReadString(uf->Codes, ip);
-					_AppendFmt(&result, "OP_PLUCK_ATTRIBUTE \"%s\"\n", str);
+					_AppendFmt(&result,
+							   "OP_OBJECT_PLUCK_ATTRIBUTE \"%s\"\n",
+							   str);
 					ip += strlen(str) + 1;
 					free(str);
 					break;
@@ -339,6 +352,13 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
 					ip += 4;
 					break;
 				}
+			case OP_LOCK_VAR:
+				{
+					int offset = ReadInt32(uf->Codes, ip);
+					_AppendFmt(&result, "OP_LOCK_VAR %d\n", offset);
+					ip += 4;
+					break;
+				}
 			case OP_DUPTOP:
 				_Append(&result, "OP_DUPTOP\n");
 				break;
@@ -416,6 +436,9 @@ String DecompileFunction(Interpreter* interpreter, UserFunction* uf) {
 					ip += 4;
 					break;
 				}
+			case OP_RAISE:
+				_Append(&result, "OP_RAISE\n");
+				break;
 			case OP_RETURN:
 				_Append(&result, "OP_RETURN\n");
 				break;

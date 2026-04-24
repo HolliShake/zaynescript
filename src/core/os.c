@@ -1,5 +1,6 @@
 #include "./os.h"
 
+
 // --- Platform Compatibility Layer ---
 #ifdef _WIN32
 #	include <direct.h>	  // for _getcwd
@@ -13,33 +14,37 @@
 #endif
 
 #if defined(__ANDROID__) || defined(TERMUX)
-static inline int getlogin_r(char *name, size_t namesize) {
-    const char *uname = "termux";
-    size_t len = strlen(uname) + 1;
-    if (namesize < len) return -1;
-    memcpy(name, uname, len);
-    return 0; // Return 0 for success
+static inline int getlogin_r(char* name, size_t namesize) {
+	const char* uname = "termux";
+	size_t		len	  = strlen(uname) + 1;
+	if (namesize < len)
+		return -1;
+	memcpy(name, uname, len);
+	return 0;  // Return 0 for success
 }
 #endif
 
 static Value* _OsGetCwd(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 0) {
-		return NewErrorValue(interpreter,
-							 "getCwd() expects exactly 0 arguments");
+		return NewErrorFValue(interpreter,
+							  "%s: getCwd() expects exactly 0 arguments",
+							  ARGUMENT_ERROR);
 	}
 
 	char cwd[1024];
 	if (getcwd(cwd, sizeof(cwd)) != NULL) {
 		return NewStrValue(interpreter, cwd);
 	}
-	return NewErrorValue(interpreter,
-						 "Failed to get current working directory");
+	return NewErrorFValue(interpreter,
+						  "%s: failed to get current working directory",
+						  RUNTIME_ERROR);
 }
 
 static Value* _OsGetPid(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 0) {
-		return NewErrorValue(interpreter,
-							 "getPid() expects exactly 0 arguments");
+		return NewErrorFValue(interpreter,
+							  "%s: getPid() expects exactly 0 arguments",
+							  ARGUMENT_ERROR);
 	}
 
 	return NewIntValue(interpreter, (int) getpid());
@@ -48,8 +53,9 @@ static Value* _OsGetPid(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _OsGetUser(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 0) {
-		return NewErrorValue(interpreter,
-							 "getUser() expects exactly 0 arguments");
+		return NewErrorFValue(interpreter,
+							  "%s: getUser() expects exactly 0 arguments",
+							  ARGUMENT_ERROR);
 	}
 
 	char username[256];
@@ -70,17 +76,21 @@ _OsGetUser(Interpreter* interpreter, int argc, Value** arguments) {
 		return NewStrValue(interpreter, login);
 #endif
 
-	return NewErrorValue(interpreter, "Failed to get username");
+	return NewErrorFValue(interpreter,
+						  "%s: failed to get username",
+						  RUNTIME_ERROR);
 }
 
 static Value* _OsSystem(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1) {
-		return NewErrorValue(interpreter,
-							 "system() expects exactly 1 argument");
+		return NewErrorFValue(interpreter,
+							  "%s: system() expects exactly 1 argument",
+							  ARGUMENT_ERROR);
 	}
 	if (!ValueIsStr(arguments[0])) {
-		return NewErrorValue(interpreter,
-							 "system() expects a string as its argument");
+		return NewErrorFValue(interpreter,
+							  "%s: system() expects a string as its argument",
+							  TYPE_ERROR);
 	}
 
 	String cmd	  = ValueToString(arguments[0]);
@@ -97,8 +107,9 @@ static Value* _OsSystem(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _OsGetType(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 0) {
-		return NewErrorValue(interpreter,
-							 "getType() expects exactly 0 arguments");
+		return NewErrorFValue(interpreter,
+							  "%s: getType() expects exactly 0 arguments",
+							  ARGUMENT_ERROR);
 	}
 #if defined(_WIN32)
 	return NewStrValue(interpreter, "win32");
@@ -113,7 +124,9 @@ _OsGetType(Interpreter* interpreter, int argc, Value** arguments) {
 
 static Value* _OsArgs(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 0) {
-		return NewErrorValue(interpreter, "args() expects exactly 0 arguments");
+		return NewErrorFValue(interpreter,
+							  "%s: args() expects exactly 0 arguments",
+							  ARGUMENT_ERROR);
 	}
 
 	Value* array = NewArrayValue(interpreter);

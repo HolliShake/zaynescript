@@ -80,12 +80,15 @@ _IoPrintln(Interpreter* interpreter, int argc, Value** arguments) {
 
 static Value* _IoScan(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc > 1) {
-		return NewErrorValue(interpreter, "scan() expects 0 or 1 argument");
+		return NewErrorFValue(interpreter,
+							  "%s: scan() expects 0 or 1 argument",
+							  ARGUMENT_ERROR);
 	}
 
 	if (argc == 1 && !ValueIsStr(arguments[0])) {
-		return NewErrorValue(interpreter,
-							 "scan() expects a string as its argument");
+		return NewErrorFValue(interpreter,
+							  "%s: scan() expects a string as its argument",
+							  TYPE_ERROR);
 	}
 
 	// Print the prompt message if provided
@@ -137,12 +140,14 @@ static Value* _IoScan(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _IoParseNum(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1) {
-		return NewErrorValue(interpreter,
-							 "parseNum() expects exactly 1 argument");
+		return NewErrorFValue(interpreter,
+							  "%s: parseNum() expects exactly 1 argument",
+							  ARGUMENT_ERROR);
 	}
 	if (!ValueIsStr(arguments[0])) {
-		return NewErrorValue(interpreter,
-							 "parseNum() expects a string as its argument");
+		return NewErrorFValue(interpreter,
+							  "%s: parseNum() expects a string as its argument",
+							  TYPE_ERROR);
 	}
 	String str = ValueToString(arguments[0]);
 	String endptr;
@@ -158,13 +163,15 @@ _IoParseNum(Interpreter* interpreter, int argc, Value** arguments) {
 
 static Value* _IoFormat(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc < 1) {
-		return NewErrorValue(interpreter,
-							 "format() expects at least 1 argument");
+		return NewErrorFValue(interpreter,
+							  "%s: format() expects at least 1 argument",
+							  ARGUMENT_ERROR);
 	}
 	if (!ValueIsStr(arguments[0])) {
-		return NewErrorValue(interpreter,
-							 "format() expects the first "
-							 "argument to be a string");
+		return NewErrorFValue(
+			interpreter,
+			"%s: format() expects the first argument to be a string",
+			TYPE_ERROR);
 	}
 
 	String formatStr = ValueToString(arguments[0]);
@@ -213,7 +220,9 @@ static Value* _IoFormat(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _IoClearScreen(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 0) {
-		return NewErrorValue(interpreter, "clearScreen() expects 0 arguments");
+		return NewErrorFValue(interpreter,
+							  "%s: clearScreen() expects 0 arguments",
+							  ARGUMENT_ERROR);
 	}
 	printf("\x1B[2J\x1B[H");
 	fflush(stdout);
@@ -223,9 +232,10 @@ _IoClearScreen(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _IoSetColor(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc > 2) {
-		return NewErrorValue(
+		return NewErrorFValue(
 			interpreter,
-			"setColor() expects 0, 1, or 2 arguments (fg, bg)");
+			"%s: setColor() expects 0, 1, or 2 arguments (fg, bg)",
+			ARGUMENT_ERROR);
 	}
 
 	if (argc == 0) {
@@ -250,13 +260,16 @@ _IoSetColor(Interpreter* interpreter, int argc, Value** arguments) {
 // Decompiler
 // ----------------------------------------------------------------
 /**
- * @brief Decompiles a compiled user function back into readable
- * source text.
- * @param interpreter Pointer to the interpreter instance.
- * @param uf Pointer to the UserFunction whose bytecode will be
- * decompiled.
- * @return Newly allocated string containing the decompiled text.
- * Caller must free.
+ * @brief Renders a text disassembly of @a uf: prints name/argc/locals, then
+ *        one line per instruction with offset and opcode operands (string
+ *        operands via @c ReadString, immediates via @c ReadInt32; @c
+ *        OP_LOAD_CONST also shows @c ValueToString of @a
+ *        interpreter->Constants when the offset is in range).
+ * @param interpreter Constant pool and formatting context; may be NULL, in
+ *        which case @c OP_LOAD_CONST lines omit the parenthesized value.
+ * @param uf Bytecode image to walk from IP 0 to @a uf->CodeC.
+ * @return Newly allocated multiline C string, or NULL if an append failed;
+ *        caller must @c free() on success.
  * @origin src/decompiler.c
  */
 extern String DecompileFunction(Interpreter* interpreter, UserFunction* uf);
@@ -264,12 +277,15 @@ extern String DecompileFunction(Interpreter* interpreter, UserFunction* uf);
 static Value*
 _IoDecompile(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1) {
-		return NewErrorValue(interpreter,
-							 "decompile() expects exactly 1 argument");
+		return NewErrorFValue(interpreter,
+							  "%s: decompile() expects exactly 1 argument",
+							  ARGUMENT_ERROR);
 	}
 	if (!ValueIsUserFunction(arguments[0])) {
-		return NewErrorValue(interpreter,
-							 "decompile() expects a function as its argument");
+		return NewErrorFValue(
+			interpreter,
+			"%s: decompile() expects a function as its argument",
+			TYPE_ERROR);
 	}
 
 	UserFunction* uf	 = CoerceToUserFunction(arguments[0]);
@@ -320,15 +336,19 @@ static inline FILE* _GetFilePtr(ClassInstance* inst) {
 	return NULL;
 }
 
-/* File class constructor (`init`); invoked for `new File(...)`, not as an instance method. */
+/* File class constructor (`init`); invoked for `new File(...)`, not as an
+ * instance method. */
 static Value* _FileInit(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc < 2) {
-		return NewErrorValue(
+		return NewErrorFValue(
 			interpreter,
-			"File init expects at least 1 argument: (path, [mode])");
+			"%s: File init expects at least 1 argument: (path, [mode])",
+			ARGUMENT_ERROR);
 	}
 	if (!ValueIsStr(arguments[1])) {
-		return NewErrorValue(interpreter, "File path must be a string");
+		return NewErrorFValue(interpreter,
+							  "%s: File path must be a string",
+							  TYPE_ERROR);
 	}
 	ClassInstance* inst	 = CoerceToClassInstance(arguments[0]);
 	Rune*		   runes = (Rune*) arguments[1]->Value.Opaque;
@@ -339,7 +359,9 @@ static Value* _FileInit(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc >= 3) {
 		if (!ValueIsStr(arguments[2])) {
 			free(path);
-			return NewErrorValue(interpreter, "File mode must be a string");
+			return NewErrorFValue(interpreter,
+								  "%s: File mode must be a string",
+								  TYPE_ERROR);
 		}
 		runes	= (Rune*) arguments[2]->Value.Opaque;
 		modeBuf = RunesStrToString(runes);
@@ -352,7 +374,10 @@ static Value* _FileInit(Interpreter* interpreter, int argc, Value** arguments) {
 	if (!fp) {
 		if (modeBuf)
 			free(modeBuf);
-		return NewErrorFValue(interpreter, "fopen: %s", strerror(errno));
+		return NewErrorFValue(interpreter,
+							  "%s: fopen: %s",
+							  IO_ERROR,
+							  strerror(errno));
 	}
 
 	bool rd, wr;
@@ -383,7 +408,9 @@ static Value* _FileRead(Interpreter* interpreter, int argc, Value** arguments) {
 	ClassInstance* inst = CoerceToClassInstance(arguments[0]);
 	FILE*		   fp	= _GetFilePtr(inst);
 	if (!fp) {
-		return NewErrorValue(interpreter, "I/O operation on closed file");
+		return NewErrorFValue(interpreter,
+							  "%s: I/O operation on closed file",
+							  IO_ERROR);
 	}
 
 	bool	  binary = _FileIsBinary(inst);
@@ -452,12 +479,15 @@ _FileReadline(Interpreter* interpreter, int argc, Value** arguments) {
 	ClassInstance* inst = CoerceToClassInstance(arguments[0]);
 	FILE*		   fp	= _GetFilePtr(inst);
 	if (!fp) {
-		return NewErrorValue(interpreter, "I/O operation on closed file");
+		return NewErrorFValue(interpreter,
+							  "%s: I/O operation on closed file",
+							  IO_ERROR);
 	}
 
 	if (_FileIsBinary(inst)) {
-		return NewErrorValue(interpreter,
-							 "readline() is not available in binary mode");
+		return NewErrorFValue(interpreter,
+							  "%s: readline() is not available in binary mode",
+							  IO_ERROR);
 	}
 
 	size_t cap = 128;
@@ -492,12 +522,15 @@ _FileReadlines(Interpreter* interpreter, int argc, Value** arguments) {
 	ClassInstance* inst = CoerceToClassInstance(arguments[0]);
 	FILE*		   fp	= _GetFilePtr(inst);
 	if (!fp) {
-		return NewErrorValue(interpreter, "I/O operation on closed file");
+		return NewErrorFValue(interpreter,
+							  "%s: I/O operation on closed file",
+							  IO_ERROR);
 	}
 
 	if (_FileIsBinary(inst)) {
-		return NewErrorValue(interpreter,
-							 "readlines() is not available in binary mode");
+		return NewErrorFValue(interpreter,
+							  "%s: readlines() is not available in binary mode",
+							  IO_ERROR);
 	}
 
 	Value* arrayVal = NewArrayValue(interpreter);
@@ -550,7 +583,10 @@ static Value* _FileWriteOne(Interpreter* interpreter, FILE* fp, Value* v) {
 		Blob*		b = CoerceToBlob(v);
 		const void* p = b->Size > 0 ? (const void*) b->Data : "";
 		if (fwrite(p, 1, b->Size, fp) != b->Size) {
-			return NewErrorFValue(interpreter, "fwrite: %s", strerror(errno));
+			return NewErrorFValue(interpreter,
+								  "%s: fwrite: %s",
+								  IO_ERROR,
+								  strerror(errno));
 		}
 		return NULL;
 	}
@@ -560,7 +596,10 @@ static Value* _FileWriteOne(Interpreter* interpreter, FILE* fp, Value* v) {
 	size_t w = fwrite(s, 1, n, fp);
 	free(s);
 	if (w != n) {
-		return NewErrorFValue(interpreter, "fwrite: %s", strerror(errno));
+		return NewErrorFValue(interpreter,
+							  "%s: fwrite: %s",
+							  IO_ERROR,
+							  strerror(errno));
 	}
 	return NULL;
 }
@@ -568,22 +607,30 @@ static Value* _FileWriteOne(Interpreter* interpreter, FILE* fp, Value* v) {
 static Value*
 _FileWrite(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc < 2) {
-		return NewErrorValue(interpreter, "File.write expects 1 argument");
+		return NewErrorFValue(interpreter,
+							  "%s: File.write expects 1 argument",
+							  ARGUMENT_ERROR);
 	}
 	ClassInstance* inst = CoerceToClassInstance(arguments[0]);
 	FILE*		   fp	= _GetFilePtr(inst);
 	if (!fp) {
-		return NewErrorValue(interpreter, "I/O operation on closed file");
+		return NewErrorFValue(interpreter,
+							  "%s: I/O operation on closed file",
+							  IO_ERROR);
 	}
 	Value* wv = (Value*) HashMapGet(inst->Members, PROP_FILE_WRITABLE);
 	if (!wv || !ValueIsBool(wv) || !wv->Value.I32) {
-		return NewErrorValue(interpreter, "File is not writable");
+		return NewErrorFValue(interpreter,
+							  "%s: File is not writable",
+							  IO_ERROR);
 	}
 
 	Value* v = arguments[1];
 	if (_FileIsBinary(inst) && !ValueIsStr(v) && !ValueIsBlob(v)) {
-		return NewErrorValue(interpreter,
-							 "write() in binary mode expects a string or blob");
+		return NewErrorFValue(
+			interpreter,
+			"%s: write() in binary mode expects a string or blob",
+			TYPE_ERROR);
 	}
 
 	Value* err = _FileWriteOne(interpreter, fp, v);
@@ -593,30 +640,38 @@ _FileWrite(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _FileWritelines(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc < 2) {
-		return NewErrorValue(
+		return NewErrorFValue(
 			interpreter,
-			"File.writelines expects 1 argument (array of lines)");
+			"%s: File.writelines expects 1 argument (array of lines)",
+			ARGUMENT_ERROR);
 	}
 	ClassInstance* inst = CoerceToClassInstance(arguments[0]);
 	FILE*		   fp	= _GetFilePtr(inst);
 	if (!fp) {
-		return NewErrorValue(interpreter, "I/O operation on closed file");
+		return NewErrorFValue(interpreter,
+							  "%s: I/O operation on closed file",
+							  IO_ERROR);
 	}
 	Value* wv = (Value*) HashMapGet(inst->Members, PROP_FILE_WRITABLE);
 	if (!wv || !ValueIsBool(wv) || !wv->Value.I32) {
-		return NewErrorValue(interpreter, "File is not writable");
+		return NewErrorFValue(interpreter,
+							  "%s: File is not writable",
+							  IO_ERROR);
 	}
 	if (!ValueIsArray(arguments[1])) {
-		return NewErrorValue(interpreter, "writelines() expects an array");
+		return NewErrorFValue(interpreter,
+							  "%s: writelines() expects an array",
+							  TYPE_ERROR);
 	}
 	Array* arr = CoerceToArray(arguments[1]);
 	for (size_t i = 0; i < ArrayLength(arr); i++) {
 		Value* line = ArrayGet(arr, i);
 		if (_FileIsBinary(inst) && !ValueIsStr(line) && !ValueIsBlob(line)) {
-			return NewErrorValue(
-				interpreter,
-				"writelines() in binary mode: each element must be a string "
-				"or blob");
+			return NewErrorFValue(interpreter,
+								  "%s: writelines() in binary mode: each "
+								  "element must be a string "
+								  "or blob",
+								  TYPE_ERROR);
 		}
 		Value* err = _FileWriteOne(interpreter, fp, line);
 		if (err != NULL) {
@@ -632,10 +687,15 @@ _FileFlush(Interpreter* interpreter, int argc, Value** arguments) {
 	ClassInstance* inst = CoerceToClassInstance(arguments[0]);
 	FILE*		   fp	= _GetFilePtr(inst);
 	if (!fp) {
-		return NewErrorValue(interpreter, "I/O operation on closed file");
+		return NewErrorFValue(interpreter,
+							  "%s: I/O operation on closed file",
+							  IO_ERROR);
 	}
 	if (fflush(fp) != 0) {
-		return NewErrorFValue(interpreter, "fflush: %s", strerror(errno));
+		return NewErrorFValue(interpreter,
+							  "%s: fflush: %s",
+							  IO_ERROR,
+							  strerror(errno));
 	}
 	return interpreter->Null;
 }
@@ -647,7 +707,10 @@ _FileClose(Interpreter* interpreter, int argc, Value** arguments) {
 	FILE*		   fp	= _GetFilePtr(inst);
 	if (fp) {
 		if (fclose(fp) == EOF) {
-			return NewErrorFValue(interpreter, "fclose: %s", strerror(errno));
+			return NewErrorFValue(interpreter,
+								  "%s: fclose: %s",
+								  IO_ERROR,
+								  strerror(errno));
 		}
 		HashMapSet(inst->Members,
 				   PROP_FILE_PTR,
@@ -661,25 +724,33 @@ static Value* _FileTell(Interpreter* interpreter, int argc, Value** arguments) {
 	ClassInstance* inst = CoerceToClassInstance(arguments[0]);
 	FILE*		   fp	= _GetFilePtr(inst);
 	if (!fp) {
-		return NewErrorValue(interpreter, "I/O operation on closed file");
+		return NewErrorFValue(interpreter,
+							  "%s: I/O operation on closed file",
+							  IO_ERROR);
 	}
 	long pos = ftell(fp);
 	if (pos < 0) {
-		return NewErrorFValue(interpreter, "ftell: %s", strerror(errno));
+		return NewErrorFValue(interpreter,
+							  "%s: ftell: %s",
+							  IO_ERROR,
+							  strerror(errno));
 	}
 	return NewNumValue(interpreter, (double) pos);
 }
 
 static Value* _FileSeek(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc < 2) {
-		return NewErrorValue(
+		return NewErrorFValue(
 			interpreter,
-			"File.seek expects at least 1 argument (offset, [whence])");
+			"%s: File.seek expects at least 1 argument (offset, [whence])",
+			ARGUMENT_ERROR);
 	}
 	ClassInstance* inst = CoerceToClassInstance(arguments[0]);
 	FILE*		   fp	= _GetFilePtr(inst);
 	if (!fp) {
-		return NewErrorValue(interpreter, "I/O operation on closed file");
+		return NewErrorFValue(interpreter,
+							  "%s: I/O operation on closed file",
+							  IO_ERROR);
 	}
 	long offset = (long) CoerceToNum(arguments[1]);
 	int	 whence = SEEK_SET;
@@ -692,14 +763,18 @@ static Value* _FileSeek(Interpreter* interpreter, int argc, Value** arguments) {
 		else if (w == 2)
 			whence = SEEK_END;
 		else {
-			return NewErrorValue(
+			return NewErrorFValue(
 				interpreter,
-				"seek: whence must be 0 (SEEK_SET), 1 (SEEK_CUR), or 2 "
-				"(SEEK_END)");
+				"%s: seek: whence must be 0 (SEEK_SET), 1 (SEEK_CUR), or 2 "
+				"(SEEK_END)",
+				ARGUMENT_ERROR);
 		}
 	}
 	if (fseek(fp, offset, whence) != 0) {
-		return NewErrorFValue(interpreter, "fseek: %s", strerror(errno));
+		return NewErrorFValue(interpreter,
+							  "%s: fseek: %s",
+							  IO_ERROR,
+							  strerror(errno));
 	}
 	return interpreter->Null;
 }

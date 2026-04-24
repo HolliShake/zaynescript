@@ -117,37 +117,51 @@ static const MimeEntry _MimeTable[] = {
  * --------------------------------------------------------------------- */
 
 /**
- * @brief Pushes a value onto the interpreter's stack.
- * @param interpreter The interpreter instance.
- * @param value The value to push.
+ * @brief Appends value at interpreter->Stacks[StckC++] so it becomes the new
+ * operand-stack top.
+ * @param interpreter VM whose StckC indexes the next free stack slot.
+ * @param value Pointer stored on the stack; lifetime must cover the span it
+ * remains reachable from the stack.
  * @origin src/interpreter.c
  */
 extern void Push(Interpreter* interpreter, Value* value);
 
 /**
- * @brief Pops and returns the top value from the interpreter's stack.
- * @param interpreter The interpreter instance.
- * @return The popped value.
+ * @brief Returns interpreter->Stacks[--StckC], removing one slot from the
+ * logical operand stack.
+ * @param interpreter VM whose StckC must be > 0; otherwise behaviour is
+ * undefined.
+ * @return The Value* that was previously the stack top.
  * @origin src/interpreter.c
  */
 extern Value* Popp(Interpreter* interpreter);
 
 /**
- * @brief Calls a function value with the given arguments.
- * @param interp The interpreter instance.
- * @param fn The function value to call.
- * @param argc The number of arguments.
- * @param withThis Whether the call includes a 'this' context.
- * @return The return value of the function call.
+ * @brief Dispatches fn as a callable: wires environments for user functions,
+ * unwraps async targets into promises, validates native arity, consumes argc
+ * stack operands, and leaves the callee result (or an Error value) per the
+ * concrete callee kind.
+ * @param interpreter Full VM state (stack, env stack, traces, active task).
+ * @param fn User function, native function, promise continuation, or related
+ * callable Value.
+ * @param argc Operand count already present on the stack for this call (see
+ * withThis for layout).
+ * @param withThis When true, the lowest logical argument on the stack is bound
+ * as the callee's this.
+ * @return Callee result, interpreter->Null for async promise bootstrap paths,
+ * or an Error Value on failure.
  * @origin src/operation.c
  */
-extern Value* DoCall(Interpreter* interp, Value* fn, int argc, bool withThis);
+extern Value*
+DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis);
 
 /**
- * @brief Enqueues a task (promise) to be processed by the interpreter event
- * loop.
- * @param interpreter The interpreter instance.
- * @param task The promise value to enqueue.
+ * @brief Appends task to the ring buffer TaskQueue[(head + count) % STACK_SIZE]
+ * and increments TaskQueueC.
+ * @param interpreter VM whose bounded queue triggers InterpreterPanic if
+ * TaskQueueC already equals STACK_SIZE.
+ * @param task Promise/task Value retained by the queue until the event loop
+ * dequeues it.
  * @origin src/interpreter.c
  */
 extern void EnqueueTask(Interpreter* interpreter, Value* task);
@@ -462,7 +476,9 @@ static ReqResCtx* _GetCtx(ClassInstance* cls) {
 static Value* _ResInit(Interpreter* interp, int argc, Value** args) {
 	(void) argc;
 	(void) args;
-	return NewErrorValue(interp, "Response cannot be constructed directly");
+	return NewErrorFValue(interp,
+						  "%s: Response cannot be constructed directly",
+						  RUNTIME_ERROR);
 }
 
 /* res.send(body) */
@@ -470,7 +486,9 @@ static Value* _ResSend(Interpreter* interp, int argc, Value** args) {
 	ClassInstance* cls = CoerceToClassInstance(args[0]);
 	ReqResCtx*	   ctx = _GetCtx(cls);
 	if (!ctx)
-		return NewErrorValue(interp, "res.send(): invalid context");
+		return NewErrorFValue(interp,
+							  "%s: res.send(): invalid context",
+							  RUNTIME_ERROR);
 	if (ctx->Responded)
 		return interp->Null;
 
@@ -508,12 +526,16 @@ static Value* _ResSend(Interpreter* interp, int argc, Value** args) {
 /* res.json(obj) */
 static Value* _ResJson(Interpreter* interp, int argc, Value** args) {
 	if (argc < 2)
-		return NewErrorValue(interp, "res.json() requires a body argument");
+		return NewErrorFValue(interp,
+							  "%s: res.json() requires a body argument",
+							  ARGUMENT_ERROR);
 
 	ClassInstance* cls = CoerceToClassInstance(args[0]);
 	ReqResCtx*	   ctx = _GetCtx(cls);
 	if (!ctx)
-		return NewErrorValue(interp, "res.json(): invalid context");
+		return NewErrorFValue(interp,
+							  "%s: res.json(): invalid context",
+							  RUNTIME_ERROR);
 	if (ctx->Responded)
 		return interp->Null;
 
@@ -549,8 +571,9 @@ static Value* _ResJson(Interpreter* interp, int argc, Value** args) {
 /* res.status(code) → this  (chainable) */
 static Value* _ResStatus(Interpreter* interp, int argc, Value** args) {
 	if (argc < 2 || !ValueIsAnyNum(args[1]))
-		return NewErrorValue(interp,
-							 "res.status() requires a numeric status code");
+		return NewErrorFValue(interp,
+							  "%s: res.status() requires a numeric status code",
+							  TYPE_ERROR);
 	ClassInstance* cls = CoerceToClassInstance(args[0]);
 	HashMapSet(cls->Members,
 			   PROP_RES_STATUS,
@@ -561,12 +584,16 @@ static Value* _ResStatus(Interpreter* interp, int argc, Value** args) {
 /* res.redirect(url) */
 static Value* _ResRedirect(Interpreter* interp, int argc, Value** args) {
 	if (argc < 2 || !ValueIsStr(args[1]))
-		return NewErrorValue(interp,
-							 "res.redirect() requires a URL string argument");
+		return NewErrorFValue(
+			interp,
+			"%s: res.redirect() requires a URL string argument",
+			TYPE_ERROR);
 	ClassInstance* cls = CoerceToClassInstance(args[0]);
 	ReqResCtx*	   ctx = _GetCtx(cls);
 	if (!ctx)
-		return NewErrorValue(interp, "res.redirect(): invalid context");
+		return NewErrorFValue(interp,
+							  "%s: res.redirect(): invalid context",
+							  RUNTIME_ERROR);
 	if (ctx->Responded)
 		return interp->Null;
 
@@ -592,8 +619,10 @@ static Value* _ResRedirect(Interpreter* interp, int argc, Value** args) {
 /* res.setHeader(name, value) → this */
 static Value* _ResSetHeader(Interpreter* interp, int argc, Value** args) {
 	if (argc < 3 || !ValueIsStr(args[1]) || !ValueIsStr(args[2]))
-		return NewErrorValue(interp,
-							 "res.setHeader() requires (name, value) strings");
+		return NewErrorFValue(
+			interp,
+			"%s: res.setHeader() requires (name, value) strings",
+			TYPE_ERROR);
 	ClassInstance* cls	= CoerceToClassInstance(args[0]);
 	String		   name = ValueToString(args[1]);
 	String		   val	= ValueToString(args[2]);
@@ -647,7 +676,9 @@ static ModuleFunction _ResClassMethods[] = {
 static Value* _ReqInit(Interpreter* interp, int argc, Value** args) {
 	(void) argc;
 	(void) args;
-	return NewErrorValue(interp, "Request cannot be constructed directly");
+	return NewErrorFValue(interp,
+						  "%s: Request cannot be constructed directly",
+						  RUNTIME_ERROR);
 }
 
 static ModuleFunction _ReqClassMethods[] = {
@@ -1064,8 +1095,9 @@ static Value* _ServerInit(Interpreter* interp, int argc, Value** args) {
 	Value* reqClass = ClassGetMember(serverCls, PROP_REQ_CLASS, true);
 	Value* resClass = ClassGetMember(serverCls, PROP_RES_CLASS, true);
 	if (!reqClass || !resClass)
-		return NewErrorValue(interp,
-							 "internal: Request/Response class not found");
+		return NewErrorFValue(interp,
+							  "%s: internal: Request/Response class not found",
+							  RUNTIME_ERROR);
 
 	AppState* app = (AppState*) Callocate(1, sizeof(AppState));
 	app->Interp	  = interp;
@@ -1081,13 +1113,17 @@ static Value* _ServerInit(Interpreter* interp, int argc, Value** args) {
 #define DEFINE_ROUTE_METHOD(ZsName, HttpMethod)                                \
 	static Value* _App##ZsName(Interpreter* interp, int argc, Value** args) {  \
 		if (argc != 3 || !ValueIsStr(args[1]) || !ValueIsCallable(args[2]))    \
-			return NewErrorValue(interp,                                       \
-								 #ZsName "() requires (path, handler)");       \
+			return NewErrorFValue(interp,                                      \
+								  "%s: " #ZsName                               \
+								  "() requires (path, handler): "              \
+								  "path string and callable",                  \
+								  ARGUMENT_ERROR);                             \
 		ClassInstance* cls = CoerceToClassInstance(args[0]);                   \
 		AppState*	   app = _GetApp(cls);                                     \
 		if (!app)                                                              \
-			return NewErrorValue(interp,                                       \
-								 #ZsName "(): server not initialised");        \
+			return NewErrorFValue(interp,                                      \
+								  "%s: " #ZsName "(): server not initialised", \
+								  RUNTIME_ERROR);                              \
 		String path = ValueToString(args[1]);                                  \
 		_AppAddRoute(cls, app, HttpMethod, path, args[2]);                     \
 		free(path);                                                            \
@@ -1103,13 +1139,19 @@ DEFINE_ROUTE_METHOD(All, NULL)
 
 static Value* _AppUse(Interpreter* interp, int argc, Value** args) {
 	if (argc < 2 || !ValueIsCallable(args[1]))
-		return NewErrorValue(interp, "use() requires a callback function");
+		return NewErrorFValue(interp,
+							  "%s: use() requires a callback function",
+							  TYPE_ERROR);
 	ClassInstance* cls = CoerceToClassInstance(args[0]);
 	AppState*	   app = _GetApp(cls);
 	if (!app)
-		return NewErrorValue(interp, "use(): server not initialised");
+		return NewErrorFValue(interp,
+							  "%s: use(): server not initialised",
+							  RUNTIME_ERROR);
 	if (app->MwCount >= MAX_MIDDLEWARE)
-		return NewErrorValue(interp, "use(): maximum middleware count reached");
+		return NewErrorFValue(interp,
+							  "%s: use(): maximum middleware count reached",
+							  RUNTIME_ERROR);
 	app->Middleware[app->MwCount++] = args[1];
 	_PushMgGcRoot(cls, args[1]);
 	return args[0];
@@ -1117,12 +1159,15 @@ static Value* _AppUse(Interpreter* interp, int argc, Value** args) {
 
 static Value* _AppListen(Interpreter* interp, int argc, Value** args) {
 	if (argc < 2 || !ValueIsAnyNum(args[1]))
-		return NewErrorValue(interp,
-							 "listen() requires a port number argument");
+		return NewErrorFValue(interp,
+							  "%s: listen() requires a port number argument",
+							  TYPE_ERROR);
 	ClassInstance* cls = CoerceToClassInstance(args[0]);
 	AppState*	   app = _GetApp(cls);
 	if (!app)
-		return NewErrorValue(interp, "listen(): server not initialised");
+		return NewErrorFValue(interp,
+							  "%s: listen(): server not initialised",
+							  RUNTIME_ERROR);
 
 	int	   port = (int) CoerceToNum(args[1]);
 	Value* cb	= (argc >= 3 && ValueIsCallable(args[2])) ? args[2] : NULL;
@@ -1138,7 +1183,8 @@ static Value* _AppListen(Interpreter* interp, int argc, Value** args) {
 		_AppStateFree(app);
 		HashMapSet(cls->Members, PROP_APP_PTR, NewOpquePtrValue(interp, NULL));
 		return NewErrorFValue(interp,
-							  "listen(): failed to bind on port %d",
+							  "%s: listen(): failed to bind on port %d",
+							  RUNTIME_ERROR,
 							  port);
 	}
 
@@ -1384,7 +1430,10 @@ static void _FetchEvHandler(struct mg_connection* c, int ev, void* ev_data) {
 	if (ev == MG_EV_ERROR) {
 		Interpreter* interp = ctx->interp;
 		String		 msg	= (String) ev_data;
-		Value*		 err = NewErrorValue(interp, msg ? msg : "request failed");
+		Value*		 err	= NewErrorFValue(interp,
+											 "%s: %s",
+											 RUNTIME_ERROR,
+											 msg ? msg : "request failed");
 
 		StateMachine* sm = CoerceToStateMachine(ctx->promise);
 		StateMachineReject(sm, err);
@@ -1405,7 +1454,9 @@ static void _FetchEvHandler(struct mg_connection* c, int ev, void* ev_data) {
 
 static Value* _Request(Interpreter* interp, int argc, Value** args) {
 	if (argc < 1 || !ValueIsStr(args[0]))
-		return NewErrorValue(interp, "request() requires a URL string");
+		return NewErrorFValue(interp,
+							  "%s: request() requires a URL string",
+							  TYPE_ERROR);
 
 	String url = ValueToString(args[0]);
 
@@ -1508,9 +1559,10 @@ static Value* _Request(Interpreter* interp, int argc, Value** args) {
 	free(url);
 
 	if (c == NULL) {
-		StateMachineReject(
-			sm,
-			NewErrorValue(interp, "request(): failed to connect"));
+		StateMachineReject(sm,
+						   NewErrorFValue(interp,
+										  "%s: request(): failed to connect",
+										  RUNTIME_ERROR));
 		free(ctx->host);
 		free(ctx->uri);
 		free(ctx->method);
