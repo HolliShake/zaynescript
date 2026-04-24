@@ -161,18 +161,28 @@
         <div class="steps">
           <div class="step">
             <div>
-              <strong>Build</strong> — requires GCC. Choose the method that
+              <strong>Build</strong> — choose the method that
               matches your platform.
 
               <p style="margin: 0.75rem 0 0.25rem">
-                <strong>Makefile</strong> — Linux / macOS (recommended, uses
-                <code>clang</code>):
+                <strong>Makefile</strong> — Linux / macOS (recommended):
               </p>
               <pre><code class="language-bash"># Debug build with AddressSanitizer (default)
 make
 
 # Super-optimised release build (clang + LTO)
 make release
+
+# Force architecture on native build
+make 64
+make 32
+make 32i386
+
+# Cross-compile Windows builds via MinGW
+make win32          # auto arch
+make win32-64
+make win32-32
+make win32-32i386
 
 # Build then run immediately
 make run
@@ -201,21 +211,6 @@ make clean</code></pre>
 
 # Debug a script with GDB
 ./run.sh --dbg tests/test_async.zs</code></pre>
-
-              <p style="margin: 0.75rem 0 0.25rem">
-                <strong>run.bat</strong> — Windows (MinGW / GCC):
-              </p>
-              <pre><code class="language-batch"># Debug build + run
-.\run.bat
-
-# Optimised release build + run
-.\run.bat --release
-
-# Compile only (no run)
-.\run.bat --compile
-
-# Debug a script with GDB
-.\run.bat --dbg tests\test_async.zs</code></pre>
 
               <p style="margin: 0.75rem 0 0.25rem">
                 <strong>Manual</strong> — any platform with GCC:
@@ -318,6 +313,74 @@ println(2n ** 64n); // 18446744073709551616n</code></pre>
        Building
        ================================================================ -->
       <h2>Building</h2>
+      <p>
+        The Makefile validates required programs before building and exits early
+        with install hints if tools are missing.
+      </p>
+
+      <h3>Required tools</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Build type</th>
+            <th>Required programs</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Native Linux / macOS builds</td>
+            <td>
+              <code>clang</code>, <code>lld</code>, <code>cmake</code>
+            </td>
+          </tr>
+          <tr>
+            <td>Windows cross-builds (MinGW)</td>
+            <td>
+              <code>x86_64-w64-mingw32-gcc</code> or
+              <code>i686-w64-mingw32-gcc</code>, plus a MinGW
+              <code>libmariadb.dll</code> package
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Architecture selection</h3>
+      <p>
+        By default, <code>BUILD_ARCH=auto</code> detects the current host
+        machine. You can also force an architecture explicitly.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Setting</th>
+            <th>Description</th>
+            <th>Typical command</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>auto</code> (default)</td>
+            <td>Use host machine architecture</td>
+            <td><code>make</code></td>
+          </tr>
+          <tr>
+            <td><code>64</code></td>
+            <td>64-bit x86_64</td>
+            <td><code>make 64</code></td>
+          </tr>
+          <tr>
+            <td><code>32</code></td>
+            <td>32-bit x86_64 (x32 ABI on native builds)</td>
+            <td><code>make 32</code></td>
+          </tr>
+          <tr>
+            <td><code>32i386</code></td>
+            <td>32-bit i386 / generic 32-bit</td>
+            <td><code>make 32i386</code></td>
+          </tr>
+        </tbody>
+      </table>
+
       <h3>Makefile targets</h3>
       <table>
         <thead>
@@ -349,8 +412,8 @@ println(2n ** 64n); // 18446744073709551616n</code></pre>
           <tr>
             <td><code>make clean</code></td>
             <td>
-              Remove the <code>dist/</code> build directory (including
-              <code>zscript.exe</code>)
+              Remove <code>dist/</code>, <code>win32/</code>, and temporary
+              build directories
             </td>
           </tr>
           <tr>
@@ -373,6 +436,45 @@ println(2n ** 64n); // 18446744073709551616n</code></pre>
           </tr>
         </tbody>
       </table>
+
+      <h3>Windows cross-compilation (MinGW)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Target</th>
+            <th>Description</th>
+            <th>Output directory</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>make win32</code></td>
+            <td>Cross-compile for Windows using auto architecture</td>
+            <td><code>win32/auto/</code></td>
+          </tr>
+          <tr>
+            <td><code>make win32-64</code></td>
+            <td>Cross-compile 64-bit Windows build</td>
+            <td><code>win32/64/</code></td>
+          </tr>
+          <tr>
+            <td><code>make win32-32</code></td>
+            <td>Cross-compile 32-bit Windows build (i686)</td>
+            <td><code>win32/32/</code></td>
+          </tr>
+          <tr>
+            <td><code>make win32-32i386</code></td>
+            <td>Cross-compile 32-bit Windows build (i386)</td>
+            <td><code>win32/32i386/</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        Each Windows output folder contains <code>zscript.exe</code>,
+        <code>sqlite3.dll</code>, <code>libmariadb.dll</code>, and copied
+        <code>lib/</code> and <code>tests/</code> directories.
+      </p>
 
       <h3>run.sh flags (Linux / macOS)</h3>
       <table>
@@ -400,37 +502,6 @@ println(2n ** 64n); // 18446744073709551616n</code></pre>
             <td>
               Run <code>clang-format</code> over all <code>src/</code> files
             </td>
-          </tr>
-          <tr>
-            <td><code>--dbg &lt;file.zs&gt;</code></td>
-            <td>
-              Launch <code>gdb</code> with auto <code>run</code> and
-              <code>bt</code> on the given script
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h3>run.bat flags (Windows)</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Flag</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><em>(none)</em></td>
-            <td>Debug build then run the interpreter</td>
-          </tr>
-          <tr>
-            <td><code>--release</code></td>
-            <td>Release build then run</td>
-          </tr>
-          <tr>
-            <td><code>--compile</code></td>
-            <td>Compile only, no run</td>
           </tr>
           <tr>
             <td><code>--dbg &lt;file.zs&gt;</code></td>

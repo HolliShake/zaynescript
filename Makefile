@@ -91,9 +91,123 @@ LDFLAGS_RELEASE := \
 # ============================================================
 #  Phony targets
 # ============================================================
-.PHONY: all debug release release-install install uninstall clean run amalgamate
+.PHONY: all debug release release-install install uninstall clean run amalgamate 64 32 32i386 win32 win32-64 win32-32 win32-32i386 copy_assets_win32 check-native-tools check-win32-tools
+
+# ── Architecture selection ────────────────────────────────────
+# BUILD_ARCH options:
+#   auto   -> detect from current machine (default)
+#   64     -> x86_64 64-bit
+#   32     -> x32 ABI on x86_64 toolchains (-mx32)
+#   32i386 -> 32-bit i386/generic 32-bit (-m32)
+HOST_ARCH  := $(shell uname -m)
+BUILD_ARCH ?= auto
+
+ifeq ($(BUILD_ARCH),auto)
+  ifeq ($(HOST_ARCH),x86_64)
+    ARCH_CFLAGS := -m64
+    ARCH_NAME   := 64-bit x86_64 (auto)
+  else
+    ARCH_CFLAGS :=
+    ARCH_NAME   := native ($(HOST_ARCH), auto)
+  endif
+else ifeq ($(BUILD_ARCH),64)
+  ARCH_CFLAGS := -m64
+  ARCH_NAME   := 64-bit x86_64
+else ifeq ($(BUILD_ARCH),32)
+  ARCH_CFLAGS := -mx32
+  ARCH_NAME   := 32-bit x86_64 (x32 ABI)
+else ifeq ($(BUILD_ARCH),32i386)
+  ARCH_CFLAGS := -m32 -march=i386
+  ARCH_NAME   := 32-bit i386/generic
+else
+  $(error Unsupported BUILD_ARCH='$(BUILD_ARCH)'. Use auto, 64, 32, or 32i386)
+endif
 
 all: debug
+
+# Convenience arch targets
+64:
+	@$(MAKE) BUILD_ARCH=64 debug
+
+32:
+	@$(MAKE) BUILD_ARCH=32 debug
+
+32i386:
+	@$(MAKE) BUILD_ARCH=32i386 debug
+
+# Windows (MinGW) convenience arch targets
+win32-64:
+	@$(MAKE) BUILD_ARCH=64 win32
+
+win32-32:
+	@$(MAKE) BUILD_ARCH=32 win32
+
+win32-32i386:
+	@$(MAKE) BUILD_ARCH=32i386 win32
+
+# ── Windows cross-compile selection (MinGW) ──────────────────
+# NOTE: x32 ABI (-mx32) is not used for MinGW; BUILD_ARCH=32 maps to i686-w64-mingw32.
+WIN32_DIR := win32
+WIN32_ARCH_DIR := $(WIN32_DIR)/$(BUILD_ARCH)
+WIN32_TARGET := $(WIN32_ARCH_DIR)/zscript.exe
+WIN32_SQLITE_DLL := $(WIN32_ARCH_DIR)/sqlite3.dll
+WIN32_MARIADB_DLL := $(WIN32_ARCH_DIR)/libmariadb.dll
+
+ifeq ($(BUILD_ARCH),auto)
+  ifeq ($(HOST_ARCH),x86_64)
+    WIN_MINGW_PREFIX := x86_64-w64-mingw32
+    WIN_ARCH_CFLAGS  := -m64
+    WIN_ARCH_NAME    := win64 (auto)
+  else
+    WIN_MINGW_PREFIX := i686-w64-mingw32
+    WIN_ARCH_CFLAGS  := -m32 -march=i386
+    WIN_ARCH_NAME    := win32 i386 (auto)
+  endif
+else ifeq ($(BUILD_ARCH),64)
+  WIN_MINGW_PREFIX := x86_64-w64-mingw32
+  WIN_ARCH_CFLAGS  := -m64
+  WIN_ARCH_NAME    := win64
+else ifeq ($(BUILD_ARCH),32)
+  WIN_MINGW_PREFIX := i686-w64-mingw32
+  WIN_ARCH_CFLAGS  := -m32
+  WIN_ARCH_NAME    := win32 (i686)
+else ifeq ($(BUILD_ARCH),32i386)
+  WIN_MINGW_PREFIX := i686-w64-mingw32
+  WIN_ARCH_CFLAGS  := -m32 -march=i386
+  WIN_ARCH_NAME    := win32 (i386)
+endif
+
+WINCC := $(WIN_MINGW_PREFIX)-gcc
+WIN_CFLAGS_COMMON := -DWIN32 -D_WINDOWS -I$(MARIADB_SRC)/include
+WIN_CFLAGS_RELEASE := -O2 -pipe -DNDEBUG -DMG_ENABLE_LOG=0
+WIN_LDFLAGS_COMMON := -L$(WIN32_ARCH_DIR) -lsqlite3 -lmariadb -lws2_32 -lcrypt32 -lbcrypt -liphlpapi
+
+# ============================================================
+#  Tool checks
+# ============================================================
+check-native-tools:
+	@command -v $(CC) >/dev/null 2>&1 || { \
+		echo "Error: $(CC) is required but not installed."; \
+		echo "Install it with your package manager (example: sudo pacman -S clang)."; \
+		exit 1; \
+	}
+	@command -v $(LLD) >/dev/null 2>&1 || { \
+		echo "Error: $(LLD) is required but not installed."; \
+		echo "Install it with your package manager (example: sudo pacman -S lld)."; \
+		exit 1; \
+	}
+	@command -v cmake >/dev/null 2>&1 || { \
+		echo "Error: cmake is required but not installed."; \
+		echo "Install it with your package manager (example: sudo pacman -S cmake)."; \
+		exit 1; \
+	}
+
+check-win32-tools:
+	@command -v $(WINCC) >/dev/null 2>&1 || { \
+		echo "Error: $(WINCC) is required for Win32 cross-compile but not installed."; \
+		echo "Install MinGW-w64 (example: sudo pacman -S mingw-w64-gcc)."; \
+		exit 1; \
+	}
 
 # ============================================================
 #  Shared libraries
@@ -102,10 +216,13 @@ all: debug
 $(DIST_DIR):
 	mkdir -p $@
 
+$(WIN32_ARCH_DIR):
+	mkdir -p $@
+
 # ── SQLite ───────────────────────────────────────────────────
 $(SQLITE_LIB): $(SQLITE_SRC) | $(DIST_DIR)
 	@echo "[sqlite] Building shared library..."
-	$(CC) -fPIC -shared -O2 -o $@ $<
+	$(CC) $(ARCH_CFLAGS) -fPIC -shared -O2 -o $@ $<
 	@echo "[sqlite] → $@"
 
 # ── MariaDB ──────────────────────────────────────────────────
@@ -118,7 +235,8 @@ $(MARIADB_LIB): $(MARIADB_SRC)/CMakeLists.txt | $(DIST_DIR)
 	}
 	cmake -S $(MARIADB_SRC) -B $(MARIADB_BUILD_DIR) \
 		-DCMAKE_BUILD_TYPE=Release \
-		-DCMAKE_COMPILE_WARNING_AS_ERROR=OFF
+		-DCMAKE_COMPILE_WARNING_AS_ERROR=OFF \
+		-DCMAKE_C_FLAGS="$(ARCH_CFLAGS)"
 	cmake --build $(MARIADB_BUILD_DIR) --parallel
 	@for candidate in \
 		"$(MARIADB_BUILD_DIR)/libmariadb/libmariadb.so" \
@@ -143,14 +261,18 @@ copy_assets: | $(DIST_DIR)
 	@cp -rf lib   $(DIST_DIR)/ 2>/dev/null || true
 	@cp -rf tests $(DIST_DIR)/ 2>/dev/null || true
 
+copy_assets_win32: | $(WIN32_ARCH_DIR)
+	@cp -rf lib   $(WIN32_ARCH_DIR)/ 2>/dev/null || true
+	@cp -rf tests $(WIN32_ARCH_DIR)/ 2>/dev/null || true
+
 # ============================================================
 #  Build targets
 # ============================================================
 
 # ── Debug ────────────────────────────────────────────────────
-debug: $(SQLITE_LIB) $(MARIADB_LIB) copy_assets | $(DIST_DIR)
-	@echo "[zscript] Building debug..."
-	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) $(SRCS) \
+debug: check-native-tools $(SQLITE_LIB) $(MARIADB_LIB) copy_assets | $(DIST_DIR)
+	@echo "[zscript] Building debug ($(ARCH_NAME))..."
+	$(CC) $(ARCH_CFLAGS) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) $(SRCS) \
 	    -o $(TARGET) \
 	    $(LDFLAGS_COMMON) \
 	    $(RPATH_ORIGIN)
@@ -158,9 +280,9 @@ debug: $(SQLITE_LIB) $(MARIADB_LIB) copy_assets | $(DIST_DIR)
 	@echo "[zscript] Debug build → $(TARGET)"
 
 # ── Release (run from dist/, RPATH = $ORIGIN) ────────────────
-release: $(SQLITE_LIB) $(MARIADB_LIB) copy_assets | $(DIST_DIR)
-	@echo "[zscript] Building release..."
-	$(CC) $(CFLAGS_COMMON) $(CFLAGS_RELEASE) $(SRCS) \
+release: check-native-tools $(SQLITE_LIB) $(MARIADB_LIB) copy_assets | $(DIST_DIR)
+	@echo "[zscript] Building release ($(ARCH_NAME))..."
+	$(CC) $(ARCH_CFLAGS) $(CFLAGS_COMMON) $(CFLAGS_RELEASE) $(SRCS) \
 	    -o $(TARGET) \
 	    $(LDFLAGS_COMMON) $(LDFLAGS_RELEASE) \
 	    $(RPATH_ORIGIN)
@@ -168,14 +290,51 @@ release: $(SQLITE_LIB) $(MARIADB_LIB) copy_assets | $(DIST_DIR)
 	@echo "[zscript] Release build → $(TARGET)"
 
 # ── Release-install (RPATH baked to $(LIBDIR)) ───────────────
-release-install: $(SQLITE_LIB) $(MARIADB_LIB) copy_assets | $(DIST_DIR)
-	@echo "[zscript] Building release (install RPATH=$(LIBDIR))..."
-	$(CC) $(CFLAGS_COMMON) $(CFLAGS_RELEASE) $(SRCS) \
+release-install: check-native-tools $(SQLITE_LIB) $(MARIADB_LIB) copy_assets | $(DIST_DIR)
+	@echo "[zscript] Building release ($(ARCH_NAME), install RPATH=$(LIBDIR))..."
+	$(CC) $(ARCH_CFLAGS) $(CFLAGS_COMMON) $(CFLAGS_RELEASE) $(SRCS) \
 	    -o $(TARGET) \
 	    $(LDFLAGS_COMMON) $(LDFLAGS_RELEASE) \
 	    $(RPATH_INSTALL)
 	@rm -rf "$(MARIADB_BUILD_DIR)"
 	@echo "[zscript] Release-install build → $(TARGET)"
+
+# ── Win32 cross-compile (MinGW) ──────────────────────────────
+$(WIN32_SQLITE_DLL): $(SQLITE_SRC) | $(WIN32_ARCH_DIR)
+	@echo "[sqlite] Building Windows DLL ($(WIN_ARCH_NAME))..."
+	@command -v $(WINCC) >/dev/null 2>&1 || { \
+		echo "Error: $(WINCC) not found. Install mingw-w64 toolchain."; \
+		exit 1; \
+	}
+	$(WINCC) $(WIN_ARCH_CFLAGS) -shared -O2 -o $@ $<
+	@echo "[sqlite] → $@"
+
+$(WIN32_MARIADB_DLL): | $(WIN32_ARCH_DIR)
+	@echo "[mariadb] Copying Windows DLL ($(WIN_ARCH_NAME))..."
+	@for candidate in \
+		"/usr/$(WIN_MINGW_PREFIX)/bin/libmariadb.dll" \
+		"/usr/lib/$(WIN_MINGW_PREFIX)/libmariadb.dll" \
+		"/usr/$(WIN_MINGW_PREFIX)/lib/libmariadb.dll"; do \
+		if [ -f "$$candidate" ]; then \
+			cp -f "$$candidate" "$@"; \
+			echo "[mariadb] → $@ (from $$candidate)"; \
+			exit 0; \
+		fi; \
+	done; \
+	echo "Error: could not locate Windows libmariadb.dll for $(WIN_MINGW_PREFIX)."; \
+	echo "       Install mingw-w64 mariadb connector package."; \
+	exit 1
+
+win32: check-win32-tools $(WIN32_SQLITE_DLL) $(WIN32_MARIADB_DLL) copy_assets_win32 | $(WIN32_ARCH_DIR)
+	@echo "[zscript] Cross-compiling Windows build ($(WIN_ARCH_NAME))..."
+	@command -v $(WINCC) >/dev/null 2>&1 || { \
+		echo "Error: $(WINCC) not found. Install mingw-w64 toolchain."; \
+		exit 1; \
+	}
+	$(WINCC) $(WIN_ARCH_CFLAGS) $(WIN_CFLAGS_COMMON) $(WIN_CFLAGS_RELEASE) $(SRCS) \
+	    -o $(WIN32_TARGET) \
+	    $(WIN_LDFLAGS_COMMON)
+	@echo "[zscript] Windows build → $(WIN32_TARGET)"
 
 # ============================================================
 #  Install / Uninstall
@@ -215,7 +374,7 @@ uninstall:
 # ============================================================
 
 clean:
-	rm -rf $(DIST_DIR) $(MARIADB_BUILD_DIR)
+	rm -rf $(DIST_DIR) $(WIN32_DIR) $(MARIADB_BUILD_DIR)
 
 run: debug
 	ASAN_OPTIONS=fast_unwind_on_malloc=0:malloc_context_size=30 \
