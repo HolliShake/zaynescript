@@ -60,6 +60,7 @@ callMeMaybe()
         println("Catch", e);
     });
 
+callMeMaybe();
 
 const fun = fn() {
     while (1) {
