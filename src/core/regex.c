@@ -1,5 +1,6 @@
 #include "./regex.h"
 
+#include "../error.h"
 #include "../../libregex/libregexp.h"
 #include "../array.h"
 
@@ -90,14 +91,20 @@ static Value* _RegexCompileInto(Interpreter* interpreter,
 								Value*		 patternVal,
 								int			 flags) {
 	if (!ValueIsClassInstance(rxVal))
-		return NewErrorValue(interpreter, "re: invalid regex object");
+		return NewErrorFValue(interpreter,
+							  "%s: re: invalid regex object",
+							  TYPE_ERROR);
 	if (!ValueIsStr(patternVal))
-		return NewErrorValue(interpreter, "re: pattern must be a string");
+		return NewErrorFValue(interpreter,
+							  "%s: re: pattern must be a string",
+							  TYPE_ERROR);
 
 	Rune*  patternRunes = (Rune*) patternVal->Value.Opaque;
 	String pattern8		= RunesStrToString(patternRunes);
 	if (pattern8 == NULL)
-		return NewErrorValue(interpreter, "re: out of memory");
+		return NewErrorFValue(interpreter,
+							  "%s: re: out of memory",
+							  MEMORY_ERROR);
 
 	char	 errorMsg[256] = { 0 };
 	int		 bytecodeLen   = 0;
@@ -112,7 +119,8 @@ static Value* _RegexCompileInto(Interpreter* interpreter,
 
 	if (bc == NULL)
 		return NewErrorFValue(interpreter,
-							  "re compile failed: %s",
+							  "%s: re compile failed: %s",
+							  RUNTIME_ERROR,
 							  errorMsg[0] ? errorMsg : "unknown");
 
 	ClassInstance* inst	 = CoerceToClassInstance(rxVal);
@@ -134,7 +142,9 @@ static Value* _RegexSliceToStr(Interpreter*	  interpreter,
 	size_t len = (size_t) (end - start);
 	String tmp = Allocate(len + 1);
 	if (tmp == NULL)
-		return NewErrorValue(interpreter, "re: out of memory");
+		return NewErrorFValue(interpreter,
+							  "%s: re: out of memory",
+							  MEMORY_ERROR);
 
 	memcpy(tmp, start, len);
 	tmp[len]   = '\0';
@@ -194,12 +204,16 @@ static Value* _RegexRunMode(Interpreter*   interpreter,
 							Value*		   haystack,
 							RegexMode	   mode) {
 	if (!ValueIsStr(haystack))
-		return NewErrorValue(interpreter, "re: haystack must be a string");
+		return NewErrorFValue(interpreter,
+							  "%s: re: haystack must be a string",
+							  TYPE_ERROR);
 
 	Rune*  haystackRunes = (Rune*) haystack->Value.Opaque;
 	String text			 = RunesStrToString(haystackRunes);
 	if (text == NULL)
-		return NewErrorValue(interpreter, "re: out of memory");
+		return NewErrorFValue(interpreter,
+							  "%s: re: out of memory",
+							  MEMORY_ERROR);
 
 	int		  textLen  = (int) strlen(text);
 	int		  allocCnt = lre_get_alloc_count(bc);
@@ -215,12 +229,17 @@ static Value* _RegexRunMode(Interpreter*   interpreter,
 						  &cap,
 						  &ret)) {
 		free(text);
-		return NewErrorValue(interpreter, "re: out of memory");
+		return NewErrorFValue(interpreter,
+							  "%s: re: out of memory",
+							  MEMORY_ERROR);
 	}
 	if (ret < 0) {
 		free(cap);
 		free(text);
-		return NewErrorFValue(interpreter, "re exec failed: code %d", ret);
+		return NewErrorFValue(interpreter,
+							  "%s: re exec failed: code %d",
+							  RUNTIME_ERROR,
+							  ret);
 	}
 	if (ret != 1) {
 		free(cap);
@@ -255,12 +274,16 @@ static Value* _RegexRunMode(Interpreter*   interpreter,
 static Value*
 _RegexFindAll(Interpreter* interpreter, const uint8_t* bc, Value* haystack) {
 	if (!ValueIsStr(haystack))
-		return NewErrorValue(interpreter, "re: haystack must be a string");
+		return NewErrorFValue(interpreter,
+							  "%s: re: haystack must be a string",
+							  TYPE_ERROR);
 
 	Rune*  haystackRunes = (Rune*) haystack->Value.Opaque;
 	String text			 = RunesStrToString(haystackRunes);
 	if (text == NULL)
-		return NewErrorValue(interpreter, "re: out of memory");
+		return NewErrorFValue(interpreter,
+							  "%s: re: out of memory",
+							  MEMORY_ERROR);
 
 	int textLen = (int) strlen(text);
 
@@ -288,12 +311,17 @@ _RegexFindAll(Interpreter* interpreter, const uint8_t* bc, Value* haystack) {
 						   &cap,
 						   &ret)) {
 			free(text);
-			return NewErrorValue(interpreter, "re: out of memory");
+			return NewErrorFValue(interpreter,
+							  "%s: re: out of memory",
+							  MEMORY_ERROR);
 		}
 		if (ret < 0) {
 			free(cap);
 			free(text);
-			return NewErrorFValue(interpreter, "re exec failed: code %d", ret);
+			return NewErrorFValue(interpreter,
+							  "%s: re exec failed: code %d",
+							  RUNTIME_ERROR,
+							  ret);
 		}
 		/* No match or full match degenerate — stop. */
 		if (ret != 1 || cap[0] == NULL || cap[1] == NULL) {
@@ -356,50 +384,75 @@ _RegexFindAll(Interpreter* interpreter, const uint8_t* bc, Value* haystack) {
 static Value*
 _RegexInit(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc < 2)
-		return NewErrorValue(interpreter, "RegExp.init(pattern, flags=0)");
+		return NewErrorFValue(interpreter,
+							  "%s: RegExp.init(pattern, flags=0)",
+							  ARGUMENT_ERROR);
 	int flags = 0;
 	if (argc >= 3 && !_RegexParseFlags(arguments[2], &flags))
-		return NewErrorValue(interpreter, "RegExp.init: flags must be numeric");
+		return NewErrorFValue(
+			interpreter,
+			"%s: RegExp.init: flags must be numeric",
+			TYPE_ERROR);
 	return _RegexCompileInto(interpreter, arguments[0], arguments[1], flags);
 }
 
 static Value*
 _RegexSearch(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 2)
-		return NewErrorValue(interpreter, "RegExp.search(text)");
+		return NewErrorFValue(interpreter,
+							  "%s: RegExp.search(text)",
+							  ARGUMENT_ERROR);
 	const uint8_t* bc = NULL;
 	if (!_RegexGetBc(arguments[0], &bc))
-		return NewErrorValue(interpreter, "RegExp object is not initialized");
+		return NewErrorFValue(
+			interpreter,
+			"%s: RegExp object is not initialized",
+			RUNTIME_ERROR);
 	return _RegexRunMode(interpreter, bc, arguments[1], MODE_SEARCH);
 }
 
 static Value*
 _RegexMatch(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 2)
-		return NewErrorValue(interpreter, "RegExp.match(text)");
+		return NewErrorFValue(interpreter,
+							  "%s: RegExp.match(text)",
+							  ARGUMENT_ERROR);
 	const uint8_t* bc = NULL;
 	if (!_RegexGetBc(arguments[0], &bc))
-		return NewErrorValue(interpreter, "RegExp object is not initialized");
+		return NewErrorFValue(
+			interpreter,
+			"%s: RegExp object is not initialized",
+			RUNTIME_ERROR);
 	return _RegexRunMode(interpreter, bc, arguments[1], MODE_MATCH);
 }
 
 static Value*
 _RegexFullMatch(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 2)
-		return NewErrorValue(interpreter, "RegExp.fullmatch(text)");
+		return NewErrorFValue(interpreter,
+							  "%s: RegExp.fullmatch(text)",
+							  ARGUMENT_ERROR);
 	const uint8_t* bc = NULL;
 	if (!_RegexGetBc(arguments[0], &bc))
-		return NewErrorValue(interpreter, "RegExp object is not initialized");
+		return NewErrorFValue(
+			interpreter,
+			"%s: RegExp object is not initialized",
+			RUNTIME_ERROR);
 	return _RegexRunMode(interpreter, bc, arguments[1], MODE_FULLMATCH);
 }
 
 static Value*
 _RegexFindAllMethod(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 2)
-		return NewErrorValue(interpreter, "RegExp.findall(text)");
+		return NewErrorFValue(interpreter,
+							  "%s: RegExp.findall(text)",
+							  ARGUMENT_ERROR);
 	const uint8_t* bc = NULL;
 	if (!_RegexGetBc(arguments[0], &bc))
-		return NewErrorValue(interpreter, "RegExp object is not initialized");
+		return NewErrorFValue(
+			interpreter,
+			"%s: RegExp object is not initialized",
+			RUNTIME_ERROR);
 	return _RegexFindAll(interpreter, bc, arguments[1]);
 }
 
@@ -413,17 +466,26 @@ _RegexExec(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _RegexTest(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 2)
-		return NewErrorValue(interpreter, "RegExp.test(text)");
+		return NewErrorFValue(interpreter,
+							  "%s: RegExp.test(text)",
+							  ARGUMENT_ERROR);
 	const uint8_t* bc = NULL;
 	if (!_RegexGetBc(arguments[0], &bc))
-		return NewErrorValue(interpreter, "RegExp object is not initialized");
+		return NewErrorFValue(
+			interpreter,
+			"%s: RegExp object is not initialized",
+			RUNTIME_ERROR);
 	if (!ValueIsStr(arguments[1]))
-		return NewErrorValue(interpreter, "re: haystack must be a string");
+		return NewErrorFValue(interpreter,
+							  "%s: re: haystack must be a string",
+							  TYPE_ERROR);
 
 	Rune*  runes = (Rune*) arguments[1]->Value.Opaque;
 	String text	 = RunesStrToString(runes);
 	if (text == NULL)
-		return NewErrorValue(interpreter, "re: out of memory");
+		return NewErrorFValue(interpreter,
+							  "%s: re: out of memory",
+							  MEMORY_ERROR);
 
 	int		  textLen  = (int) strlen(text);
 	int		  allocCnt = lre_get_alloc_count(bc);
@@ -439,10 +501,15 @@ _RegexTest(Interpreter* interpreter, int argc, Value** arguments) {
 										  &ret);
 	free(text);
 	if (!ok)
-		return NewErrorValue(interpreter, "re: out of memory");
+		return NewErrorFValue(interpreter,
+							  "%s: re: out of memory",
+							  MEMORY_ERROR);
 	if (ret < 0) {
 		free(cap);
-		return NewErrorFValue(interpreter, "re exec failed: code %d", ret);
+		return NewErrorFValue(interpreter,
+							  "%s: re exec failed: code %d",
+							  RUNTIME_ERROR,
+							  ret);
 	}
 	int matched = (ret == 1);
 	free(cap);
@@ -454,10 +521,15 @@ _RegexTest(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _ReCompile(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc < 1)
-		return NewErrorValue(interpreter, "re.compile(pattern, flags=0)");
+		return NewErrorFValue(interpreter,
+							  "%s: re.compile(pattern, flags=0)",
+							  ARGUMENT_ERROR);
 	int flags = 0;
 	if (argc >= 2 && !_RegexParseFlags(arguments[1], &flags))
-		return NewErrorValue(interpreter, "re.compile: flags must be numeric");
+		return NewErrorFValue(
+			interpreter,
+			"%s: re.compile: flags must be numeric",
+			TYPE_ERROR);
 
 	Value*		   rxClass = CreateRegexClass(interpreter);
 	ClassInstance* inst	   = CreateClassInstance(rxClass);
@@ -480,7 +552,9 @@ static Value* _ReResolvePattern(Interpreter*	interpreter,
 
 	int flags = 0;
 	if (!_RegexParseFlags(flagsV, &flags))
-		return NewErrorValue(interpreter, "re: flags must be numeric");
+		return NewErrorFValue(interpreter,
+							  "%s: re: flags must be numeric",
+							  TYPE_ERROR);
 
 	Value*		   rxClass = CreateRegexClass(interpreter);
 	ClassInstance* inst	   = CreateClassInstance(rxClass);
@@ -491,7 +565,9 @@ static Value* _ReResolvePattern(Interpreter*	interpreter,
 		return compiled;
 
 	if (!_RegexGetBc(compiled, outBc))
-		return NewErrorValue(interpreter, "re: failed to prepare regex");
+		return NewErrorFValue(interpreter,
+							  "%s: re: failed to prepare regex",
+							  RUNTIME_ERROR);
 
 	/* Return `compiled` so the caller keeps it on the stack (GC root). */
 	return compiled;
@@ -499,7 +575,10 @@ static Value* _ReResolvePattern(Interpreter*	interpreter,
 
 static Value* _ReSearch(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc < 2)
-		return NewErrorValue(interpreter, "re.search(pattern, text, flags=0)");
+		return NewErrorFValue(
+			interpreter,
+			"%s: re.search(pattern, text, flags=0)",
+			ARGUMENT_ERROR);
 	const uint8_t* bc = NULL;
 	Value*		   rx = _ReResolvePattern(interpreter,
 										  arguments[0],
@@ -512,7 +591,9 @@ static Value* _ReSearch(Interpreter* interpreter, int argc, Value** arguments) {
 
 static Value* _ReMatch(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc < 2)
-		return NewErrorValue(interpreter, "re.match(pattern, text, flags=0)");
+		return NewErrorFValue(interpreter,
+							  "%s: re.match(pattern, text, flags=0)",
+							  ARGUMENT_ERROR);
 	const uint8_t* bc = NULL;
 	Value*		   rx = _ReResolvePattern(interpreter,
 										  arguments[0],
@@ -526,8 +607,10 @@ static Value* _ReMatch(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _ReFullMatch(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc < 2)
-		return NewErrorValue(interpreter,
-							 "re.fullmatch(pattern, text, flags=0)");
+		return NewErrorFValue(
+			interpreter,
+			"%s: re.fullmatch(pattern, text, flags=0)",
+			ARGUMENT_ERROR);
 	const uint8_t* bc = NULL;
 	Value*		   rx = _ReResolvePattern(interpreter,
 										  arguments[0],
@@ -541,7 +624,10 @@ _ReFullMatch(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _ReFindAll(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc < 2)
-		return NewErrorValue(interpreter, "re.findall(pattern, text, flags=0)");
+		return NewErrorFValue(
+			interpreter,
+			"%s: re.findall(pattern, text, flags=0)",
+			ARGUMENT_ERROR);
 	const uint8_t* bc = NULL;
 	Value*		   rx = _ReResolvePattern(interpreter,
 										  arguments[0],

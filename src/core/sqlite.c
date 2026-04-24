@@ -1,5 +1,7 @@
 #include "./sqlite.h"
 
+#include "../error.h"
+
 // ─── Internal binding property keys ──────────────────────────────────────────
 
 #define PROP_DB_PTR		"__ptr"
@@ -261,20 +263,22 @@ static Value* _BindParamList(Interpreter*  interp,
 				Value*		entry = (Value*) HashMapGet(map, (String) key);
 				int rc = _BindParam(stmt, j, entry ? entry : interp->Null);
 				if (rc != SQLITE_OK)
-					return NewErrorFValue(interp,
-										  "sqlite3_bind '%s': %s",
-										  pname,
-										  db ? sqlite3_errmsg(db)
-											 : "unknown error");
+					return NewErrorFValue(
+						interp,
+						"%s: sqlite3_bind '%s': %s",
+						RUNTIME_ERROR,
+						pname,
+						db ? sqlite3_errmsg(db) : "unknown error");
 			}
 		} else {
 			int rc = _BindParam(stmt, pos++, val);
 			if (rc != SQLITE_OK)
-				return NewErrorFValue(interp,
-									  "sqlite3_bind [%d]: %s",
-									  pos - 1,
-									  db ? sqlite3_errmsg(db)
-										 : "unknown error");
+				return NewErrorFValue(
+					interp,
+					"%s: sqlite3_bind [%d]: %s",
+					RUNTIME_ERROR,
+					pos - 1,
+					db ? sqlite3_errmsg(db) : "unknown error");
 		}
 	}
 	return NULL;
@@ -295,8 +299,9 @@ static Value* _PrepareExec(Interpreter*	  interp,
 		if (_GetBound(cls))
 			return NewErrorFValue(
 				interp,
-				"%s: this statement has permanently bound parameters – "
+				"%s: %s – this statement has permanently bound parameters – "
 				"do not pass arguments when using bind()",
+				RUNTIME_ERROR,
 				method);
 		sqlite3_clear_bindings(stmt);
 		return _BindParamList(interp, stmt, db, argc - 1, &arguments[1]);
@@ -313,9 +318,10 @@ static Value* _StmtInit(Interpreter* interp, int argc, Value** arguments) {
 	(void) arguments;
 	// Instances are created internally by Database.prepare().
 	// Constructing a Statement directly in script is not supported.
-	return NewErrorValue(
+	return NewErrorFValue(
 		interp,
-		"Statement cannot be constructed directly – use db.prepare()");
+		"%s: Statement cannot be constructed directly – use db.prepare()",
+		RUNTIME_ERROR);
 }
 
 // stmt.run([...params]) -> { changes: int, lastInsertRowid: int|num }
@@ -328,9 +334,15 @@ static Value* _StmtRun(Interpreter* interp, int argc, Value** arguments) {
 	sqlite3_stmt*  stmt = _GetStmt(cls);
 	sqlite3*	   db	= _GetStmtDB(cls);
 	if (!stmt)
-		return NewErrorValue(interp, "Statement is finalized or invalid");
+		return NewErrorFValue(
+			interp,
+			"%s: Statement is finalized or invalid",
+			RUNTIME_ERROR);
 	if (!db)
-		return NewErrorValue(interp, "Statement has no associated database");
+		return NewErrorFValue(
+			interp,
+			"%s: Statement has no associated database",
+			RUNTIME_ERROR);
 
 	Value* err = _PrepareExec(interp, cls, stmt, db, argc, arguments, "run");
 	if (err)
@@ -341,8 +353,10 @@ static Value* _StmtRun(Interpreter* interp, int argc, Value** arguments) {
 	// Capture the error message BEFORE calling sqlite3_reset: reset may update
 	// the connection's extended error state, clobbering the message we need.
 	if (rc != SQLITE_DONE && rc != SQLITE_ROW) {
-		Value* e =
-			NewErrorFValue(interp, "sqlite3_step: %s", sqlite3_errmsg(db));
+		Value* e = NewErrorFValue(interp,
+								  "%s: sqlite3_step: %s",
+								  RUNTIME_ERROR,
+								  sqlite3_errmsg(db));
 		sqlite3_reset(stmt);
 		return e;
 	}
@@ -370,9 +384,15 @@ static Value* _StmtGet(Interpreter* interp, int argc, Value** arguments) {
 	sqlite3_stmt*  stmt = _GetStmt(cls);
 	sqlite3*	   db	= _GetStmtDB(cls);
 	if (!stmt)
-		return NewErrorValue(interp, "Statement is finalized or invalid");
+		return NewErrorFValue(
+			interp,
+			"%s: Statement is finalized or invalid",
+			RUNTIME_ERROR);
 	if (!db)
-		return NewErrorValue(interp, "Statement has no associated database");
+		return NewErrorFValue(
+			interp,
+			"%s: Statement has no associated database",
+			RUNTIME_ERROR);
 
 	bool   pluck = _GetPluck(cls);
 	Value* err	 = _PrepareExec(interp, cls, stmt, db, argc, arguments, "get");
@@ -386,8 +406,10 @@ static Value* _StmtGet(Interpreter* interp, int argc, Value** arguments) {
 		result = _MakeRow(interp, stmt, pluck);
 	} else if (rc != SQLITE_DONE) {
 		// Capture error before reset.
-		Value* e =
-			NewErrorFValue(interp, "sqlite3_step: %s", sqlite3_errmsg(db));
+		Value* e = NewErrorFValue(interp,
+								  "%s: sqlite3_step: %s",
+								  RUNTIME_ERROR,
+								  sqlite3_errmsg(db));
 		sqlite3_reset(stmt);
 		return e;
 	}
@@ -404,9 +426,15 @@ static Value* _StmtAll(Interpreter* interp, int argc, Value** arguments) {
 	sqlite3_stmt*  stmt = _GetStmt(cls);
 	sqlite3*	   db	= _GetStmtDB(cls);
 	if (!stmt)
-		return NewErrorValue(interp, "Statement is finalized or invalid");
+		return NewErrorFValue(
+			interp,
+			"%s: Statement is finalized or invalid",
+			RUNTIME_ERROR);
 	if (!db)
-		return NewErrorValue(interp, "Statement has no associated database");
+		return NewErrorFValue(
+			interp,
+			"%s: Statement has no associated database",
+			RUNTIME_ERROR);
 
 	bool   pluck = _GetPluck(cls);
 	Value* err	 = _PrepareExec(interp, cls, stmt, db, argc, arguments, "all");
@@ -422,8 +450,10 @@ static Value* _StmtAll(Interpreter* interp, int argc, Value** arguments) {
 
 	// Capture error before reset.
 	if (rc != SQLITE_DONE) {
-		Value* e =
-			NewErrorFValue(interp, "sqlite3_step: %s", sqlite3_errmsg(db));
+		Value* e = NewErrorFValue(interp,
+								  "%s: sqlite3_step: %s",
+								  RUNTIME_ERROR,
+								  sqlite3_errmsg(db));
 		sqlite3_reset(stmt);
 		return e;
 	}
@@ -444,7 +474,10 @@ static Value* _StmtBind(Interpreter* interp, int argc, Value** arguments) {
 	sqlite3_stmt*  stmt = _GetStmt(cls);
 	sqlite3*	   db	= _GetStmtDB(cls);
 	if (!stmt)
-		return NewErrorValue(interp, "Statement is finalized or invalid");
+		return NewErrorFValue(
+			interp,
+			"%s: Statement is finalized or invalid",
+			RUNTIME_ERROR);
 
 	if (argc > 1) {
 		sqlite3_clear_bindings(stmt);
@@ -613,8 +646,10 @@ static Value* _DbInit(Interpreter* interp, int argc, Value** arguments) {
 		free(pathAlloc);
 
 	if (rc != SQLITE_OK) {
-		Value* err =
-			NewErrorFValue(interp, "sqlite3_open: %s", sqlite3_errmsg(db));
+		Value* err = NewErrorFValue(interp,
+									"%s: sqlite3_open: %s",
+									RUNTIME_ERROR,
+									sqlite3_errmsg(db));
 		if (db)
 			sqlite3_close(db);
 		return err;
@@ -659,15 +694,23 @@ static Value* _DbClose(Interpreter* interp, int argc, Value** arguments) {
 // binding.  Ideal for DDL and multi-statement migration scripts.
 static Value* _DbExec(Interpreter* interp, int argc, Value** arguments) {
 	if (argc < 2)
-		return NewErrorValue(interp, "Database.exec expects 1 argument: (sql)");
+		return NewErrorFValue(
+			interp,
+			"%s: Database.exec expects 1 argument: (sql)",
+			ARGUMENT_ERROR);
 
 	ClassInstance* cls = CoerceToClassInstance(arguments[0]);
 	sqlite3*	   db  = _GetDB(cls);
 	if (!db)
-		return NewErrorValue(interp, "Database is closed");
+		return NewErrorFValue(interp,
+							  "%s: Database is closed",
+							  RUNTIME_ERROR);
 
 	if (!ValueIsStr(arguments[1]))
-		return NewErrorValue(interp, "Database.exec: sql must be a string");
+		return NewErrorFValue(
+			interp,
+			"%s: Database.exec: sql must be a string",
+			TYPE_ERROR);
 
 	Rune*  runes  = (Rune*) arguments[1]->Value.Opaque;
 	String sql	  = RunesStrToString(runes);
@@ -676,7 +719,10 @@ static Value* _DbExec(Interpreter* interp, int argc, Value** arguments) {
 	free(sql);
 
 	if (rc != SQLITE_OK) {
-		Value* err = NewErrorFValue(interp, "sqlite3_exec: %s", errmsg);
+		Value* err = NewErrorFValue(interp,
+									"%s: sqlite3_exec: %s",
+									RUNTIME_ERROR,
+									errmsg);
 		sqlite3_free(errmsg);
 		return err;
 	}
@@ -689,16 +735,23 @@ static Value* _DbExec(Interpreter* interp, int argc, Value** arguments) {
 // tracking list so that db.close() can safely invalidate it.
 static Value* _DbPrepare(Interpreter* interp, int argc, Value** arguments) {
 	if (argc < 2)
-		return NewErrorValue(interp,
-							 "Database.prepare expects 1 argument: (sql)");
+		return NewErrorFValue(
+			interp,
+			"%s: Database.prepare expects 1 argument: (sql)",
+			ARGUMENT_ERROR);
 
 	ClassInstance* cls = CoerceToClassInstance(arguments[0]);
 	sqlite3*	   db  = _GetDB(cls);
 	if (!db)
-		return NewErrorValue(interp, "Database is closed");
+		return NewErrorFValue(interp,
+							  "%s: Database is closed",
+							  RUNTIME_ERROR);
 
 	if (!ValueIsStr(arguments[1]))
-		return NewErrorValue(interp, "Database.prepare: sql must be a string");
+		return NewErrorFValue(
+			interp,
+			"%s: Database.prepare: sql must be a string",
+			TYPE_ERROR);
 
 	Rune*  runes = (Rune*) arguments[1]->Value.Opaque;
 	String sql	 = RunesStrToString(runes);
@@ -709,14 +762,17 @@ static Value* _DbPrepare(Interpreter* interp, int argc, Value** arguments) {
 
 	if (rc != SQLITE_OK)
 		return NewErrorFValue(interp,
-							  "sqlite3_prepare_v2: %s",
+							  "%s: sqlite3_prepare_v2: %s",
+							  RUNTIME_ERROR,
 							  sqlite3_errmsg(db));
 
 	Class* dbCls		= CoerceToUserClass(cls->Proto);
 	Value* stmtClassVal = ClassGetMember(dbCls, PROP_STMT_CLASS, true);
 	if (!stmtClassVal) {
 		sqlite3_finalize(stmt);
-		return NewErrorValue(interp, "internal: Statement class not found");
+		return NewErrorFValue(interp,
+							  "%s: internal: Statement class not found",
+							  RUNTIME_ERROR);
 	}
 
 	ClassInstance* stmtInst = CreateClassInstance(stmtClassVal);

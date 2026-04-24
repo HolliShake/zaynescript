@@ -1,5 +1,7 @@
 #include "./array.h"
 
+#include "../error.h"
+
 /**
  * @brief Appends value at interpreter->Stacks[StckC++] so it becomes the new
  * operand-stack top.
@@ -52,14 +54,18 @@ DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis);
 static Value*
 _ArrayInit(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc < 1) {
-		return NewErrorFValue(interpreter,
-							  "Array constructor requires at least 1 argument");
+		return NewErrorFValue(
+			interpreter,
+			"%s: Array constructor requires at least 1 argument",
+			ARGUMENT_ERROR);
 	}
 
 	Value* thisArg = arguments[0];
 	if (!ValueIsArray(thisArg)) {
-		return NewErrorFValue(interpreter,
-							  "Array constructor requires an Array argument");
+		return NewErrorFValue(
+			interpreter,
+			"%s: Array constructor requires an Array argument",
+			TYPE_ERROR);
 	}
 
 	Array* array = CoerceToArray(thisArg);
@@ -75,21 +81,26 @@ static Value*
 _ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
 	// Reserve 1 arg for thisArg"
 	if (argc != 2) {
-		return NewErrorValue(interpreter, "Array.each expects 1 argument");
+		return NewErrorFValue(interpreter,
+							  "%s: Array.each expects 1 argument",
+							  ARGUMENT_ERROR);
 	}
 
 	Value* thisArg	= arguments[0];
 	Value* callback = arguments[1];
 
 	if (!ValueIsArray(thisArg)) {
-		return NewErrorValue(interpreter,
-							 "First argument to Array.each must be an array");
+		return NewErrorFValue(
+			interpreter,
+			"%s: first argument to Array.each must be an array",
+			TYPE_ERROR);
 	}
 
 	if (!ValueIsCallable(callback)) {
-		return NewErrorValue(
+		return NewErrorFValue(
 			interpreter,
-			"Second argument to Array.each must be a function");
+			"%s: second argument to Array.each must be a function",
+			TYPE_ERROR);
 	}
 
 	int argNeeded = ValueIsNativeFunction(callback)
@@ -97,9 +108,11 @@ _ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
 						: CoerceToUserFunction(callback)->Argc;
 
 	if (argNeeded != 2 && argNeeded != VARARG) {
-		return NewErrorValue(interpreter,
-							 "Callback function for Array.each must take "
-							 "exactly 2 arguments (item, index)");
+		return NewErrorFValue(
+			interpreter,
+			"%s: callback function for Array.each must take exactly 2 arguments "
+			"(item, index)",
+			ARGUMENT_ERROR);
 	}
 
 	Array* array = CoerceToArray(thisArg);
@@ -125,21 +138,26 @@ static Value*
 _ArrayKeep(Interpreter* interpreter, int argc, Value** arguments) {
 	// Reserve 1 arg for thisArg"
 	if (argc != 2) {
-		return NewErrorValue(interpreter, "Array.keep expects 1 argument");
+		return NewErrorFValue(interpreter,
+							  "%s: Array.keep expects 1 argument",
+							  ARGUMENT_ERROR);
 	}
 
 	Value* thisArg	= arguments[0];
 	Value* callback = arguments[1];
 
 	if (!ValueIsArray(thisArg)) {
-		return NewErrorValue(interpreter,
-							 "First argument to Array.keep must be an array");
+		return NewErrorFValue(
+			interpreter,
+			"%s: first argument to Array.keep must be an array",
+			TYPE_ERROR);
 	}
 
 	if (!ValueIsCallable(callback)) {
-		return NewErrorValue(
+		return NewErrorFValue(
 			interpreter,
-			"Second argument to Array.keep must be a function");
+			"%s: second argument to Array.keep must be a function",
+			TYPE_ERROR);
 	}
 
 	int argNeeded = ValueIsNativeFunction(callback)
@@ -147,9 +165,11 @@ _ArrayKeep(Interpreter* interpreter, int argc, Value** arguments) {
 						: CoerceToUserFunction(callback)->Argc;
 
 	if (argNeeded != 2 && argNeeded != VARARG) {
-		return NewErrorValue(interpreter,
-							 "Callback function for Array.keep must take "
-							 "exactly 2 arguments (item, index)");
+		return NewErrorFValue(
+			interpreter,
+			"%s: callback function for Array.keep must take exactly 2 arguments "
+			"(item, index)",
+			ARGUMENT_ERROR);
 	}
 
 	Array* array = CoerceToArray(thisArg);
@@ -177,15 +197,19 @@ static Value*
 _ArrayPush(Interpreter* interpreter, int argc, Value** arguments) {
 	// Reserve 1 arg for thisArg"
 	if (argc != 2) {
-		return NewErrorValue(interpreter, "Array.push expects 1 argument");
+		return NewErrorFValue(interpreter,
+							  "%s: Array.push expects 1 argument",
+							  ARGUMENT_ERROR);
 	}
 
 	Value* thisArg	  = arguments[0];
 	Value* itemToPush = arguments[1];
 
 	if (!ValueIsArray(thisArg)) {
-		return NewErrorValue(interpreter,
-							 "First argument to Array.push must be an array");
+		return NewErrorFValue(
+			interpreter,
+			"%s: first argument to Array.push must be an array",
+			TYPE_ERROR);
 	}
 
 	Array* array = CoerceToArray(thisArg);
@@ -197,19 +221,25 @@ _ArrayPush(Interpreter* interpreter, int argc, Value** arguments) {
 static Value* _ArrayPop(Interpreter* interpreter, int argc, Value** arguments) {
 	// Reserve 1 arg for thisArg"
 	if (argc != 1) {
-		return NewErrorValue(interpreter, "Array.pop expects no arguments");
+		return NewErrorFValue(interpreter,
+							  "%s: Array.pop expects no arguments",
+							  ARGUMENT_ERROR);
 	}
 
 	Value* thisArg = arguments[0];
 
 	if (!ValueIsArray(thisArg)) {
-		return NewErrorValue(interpreter,
-							 "First argument to Array.pop must be an array");
+		return NewErrorFValue(
+			interpreter,
+			"%s: first argument to Array.pop must be an array",
+			TYPE_ERROR);
 	}
 
 	Array* array = CoerceToArray(thisArg);
 	if (ArrayLength(array) == 0) {
-		return NewErrorValue(interpreter, "Cannot pop from an empty array");
+		return NewErrorFValue(interpreter,
+							  "%s: cannot pop from an empty array",
+							  INDEX_ERROR);
 	}
 
 	void* poppedItem = ArrayGet(array, ArrayLength(array) - 1);
@@ -222,14 +252,18 @@ static Value*
 _ArrayLength(Interpreter* interpreter, int argc, Value** arguments) {
 	// Reserve 1 arg for thisArg"
 	if (argc != 1) {
-		return NewErrorValue(interpreter, "Array.length expects no arguments");
+		return NewErrorFValue(interpreter,
+							  "%s: Array.length expects no arguments",
+							  ARGUMENT_ERROR);
 	}
 
 	Value* thisArg = arguments[0];
 
 	if (!ValueIsArray(thisArg)) {
-		return NewErrorValue(interpreter,
-							 "First argument to Array.length must be an array");
+		return NewErrorFValue(
+			interpreter,
+			"%s: first argument to Array.length must be an array",
+			TYPE_ERROR);
 	}
 
 	Array* array = CoerceToArray(thisArg);
