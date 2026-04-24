@@ -308,7 +308,11 @@ static LineInfo _GetLineFromPc(UserFunction* uf, size_t pc) {
 		return uf->Lines[high];
 	}
 BAD:;
-	return (LineInfo){};
+	return (LineInfo){
+		.Path = NULL,
+		.Line = -1,
+		.Pc	  = -1,
+	};
 }
 
 static void _RaiseError(Interpreter* interpreter,
@@ -342,14 +346,17 @@ static void _RaiseError(Interpreter* interpreter,
 	 * created */
 	LineInfo line	= _GetLineFromPc(uf, *ip);
 	String	 errStr = ValueToString(error);
-	String	 buf = FormatString("[%s:%d]::%s\n", line.Path, line.Line, errStr);
+	String	 path	= ValueToString(line.Path);
+	String	 buf	= FormatString("[%s:%d]::%s\n", path, line.Line, errStr);
+	free(path);
 	free(errStr);
 
 	for (int i = interpreter->CallStackC - 1; i >= 0; i--) {
 		StackTrace trace = interpreter->CallStack[i];
-		String	   frame =
-			FormatString("  |> [%s:%d]\n", trace.line.Path, trace.line.Line);
-		String tmp = FormatString("%s%s", buf, frame);
+		String	   path	 = ValueToString(trace.line.Path);
+		String frame = FormatString("  |> [%s:%d]\n", path, trace.line.Line);
+		String tmp	 = FormatString("%s%s", buf, frame);
+		free(path);
 		free(frame);
 		free(buf);
 		buf = tmp;

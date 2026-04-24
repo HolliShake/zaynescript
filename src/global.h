@@ -676,7 +676,7 @@ typedef struct environment_struct {
  * stack traces.
  */
 typedef struct line_info_struct {
-	String Path; /**< Path to the source file */
+	Value* Path; /**< Path to the source file */
 	int	   Pc;	 /**< Program counter */
 	int	   Line; /**< Line number in the source file */
 } LineInfo;
@@ -1002,9 +1002,10 @@ struct interpreter_struct {
  * and functions).
  */
 typedef struct compiler_struct {
-	Interpreter* Interpreter; /**< Pointer to the interpreter */
-	String		 ModulePath;  /**< Path to the module */
-	Parser*		 Parser;	  /**< Pointer to the parser */
+	Interpreter* Interpreter;  /**< Pointer to the interpreter */
+	String		 ModulePath;   /**< Path to the module */
+	int			 ModuleOffset; /**< Offset of the module in the constant pool */
+	Parser*		 Parser;	   /**< Pointer to the parser */
 } Compiler;
 
 /**
