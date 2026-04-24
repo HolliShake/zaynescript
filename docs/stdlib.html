@@ -18,6 +18,54 @@
     <script>
       document.addEventListener("DOMContentLoaded", () => {
         hljs.highlightAll();
+        const sidebar = document.querySelector(".docs-sidebar");
+        if (sidebar) {
+          const groups = Array.from(sidebar.querySelectorAll(".sidebar-group"));
+          const titles = Array.from(sidebar.querySelectorAll(".sidebar-group-title"));
+          sidebar.classList.add("accordion-enabled");
+
+          const openGroup = (group, forceOpen) => {
+            const isOpen = group.classList.contains("is-open");
+            const nextOpen = forceOpen === undefined ? !isOpen : forceOpen;
+            group.classList.toggle("is-open", nextOpen);
+          };
+
+          const closeOtherGroups = (except) => {
+            groups.forEach((group) => {
+              if (group !== except) {
+                group.classList.remove("is-open");
+              }
+            });
+          };
+
+          titles.forEach((title) => {
+            title.tabIndex = 0;
+            title.setAttribute("role", "button");
+            title.addEventListener("click", () => {
+              const group = title.closest(".sidebar-group");
+              if (!group) return;
+              const shouldOpen = !group.classList.contains("is-open");
+              closeOtherGroups(group);
+              openGroup(group, shouldOpen);
+            });
+            title.addEventListener("keydown", (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                title.click();
+              }
+            });
+          });
+
+          const groupWithActiveNav = sidebar.querySelector(".sidebar-group a.active");
+          const defaultGroup =
+            (groupWithActiveNav && groupWithActiveNav.closest(".sidebar-group")) ||
+            groups[0];
+          if (defaultGroup) {
+            closeOtherGroups(defaultGroup);
+            openGroup(defaultGroup, true);
+          }
+        }
+
         const headings = document.querySelectorAll(
           ".docs-main h2[id], .docs-main h3[id]",
         );
@@ -30,7 +78,15 @@
                 const link = document.querySelector(
                   `.docs-sidebar a[href="#${e.target.id}"]`,
                 );
-                if (link) link.classList.add("active");
+                if (link) {
+                  link.classList.add("active");
+                  const group = link.closest(".sidebar-group");
+                  if (group) {
+                    sidebar
+                      ?.querySelectorAll(".sidebar-group")
+                      .forEach((g) => g.classList.toggle("is-open", g === group));
+                  }
+                }
               }
             });
           },
@@ -208,23 +264,6 @@
           </ul>
         </div>
         <div class="sidebar-group">
-          <div class="sidebar-group-title">lib:http</div>
-          <ul>
-            <li><a href="#lib-http">Overview</a></li>
-            <li><a href="#lib-http-statuscode">StatusCode</a></li>
-            <li><a href="#lib-http-method">Method</a></li>
-          </ul>
-        </div>
-        <div class="sidebar-group">
-          <div class="sidebar-group-title">lib:argparser</div>
-          <ul>
-            <li><a href="#lib-argparser">Overview</a></li>
-            <li><a href="#lib-argparser-args">args() and argv</a></li>
-            <li><a href="#lib-argparser-api">ArgParser API</a></li>
-            <li><a href="#lib-argparser-parsewithdefs">parseWithDefs</a></li>
-          </ul>
-        </div>
-        <div class="sidebar-group">
           <div class="sidebar-group-title">core:sqlite</div>
           <ul>
             <li><a href="#sqlite-overview">Overview</a></li>
@@ -242,6 +281,23 @@
             <li><a href="#sqlite-stmt-columns">columns</a></li>
             <li><a href="#sqlite-stmt-finalize">finalize</a></li>
             <li><a href="#sqlite-patterns">Common patterns</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-group">
+          <div class="sidebar-group-title">lib:http</div>
+          <ul>
+            <li><a href="#lib-http">Overview</a></li>
+            <li><a href="#lib-http-statuscode">StatusCode</a></li>
+            <li><a href="#lib-http-method">Method</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-group">
+          <div class="sidebar-group-title">lib:argparser</div>
+          <ul>
+            <li><a href="#lib-argparser">Overview</a></li>
+            <li><a href="#lib-argparser-args">args() and argv</a></li>
+            <li><a href="#lib-argparser-api">ArgParser API</a></li>
+            <li><a href="#lib-argparser-parsewithdefs">parseWithDefs</a></li>
           </ul>
         </div>
       </aside>
@@ -315,17 +371,26 @@ println(n * 2);</code></pre>
 
         <h3 id="io-format">format</h3>
         <div class="method">
-          <div class="method-sig">
-            format(template: string, ...args) → string
-          </div>
+          <div class="method-sig">format(template: string, ...args) → string</div>
           <p class="method-desc">
-            Returns a new string with each <code>{}</code> placeholder in
-            <code>template</code> replaced by the next argument in order. Extra
-            arguments are ignored; extra placeholders are left as-is.
+            Returns a new string by replacing each exact <code>{}</code> token in <code>template</code> with the next argument in order. Only empty-brace placeholders are recognized.
           </p>
         </div>
         <pre><code class="language-javascript">const msg = format("Hello, {}! You are {} years old.", "Alice", 30);
 println(msg); // Hello, Alice! You are 30 years old.</code></pre>
+        <pre><code class="language-javascript">// Fewer args than placeholders: remaining {} are kept
+println(format("{} + {} = {}", 1, 2)); // 1 + 2 = {}
+
+// Extra args are ignored
+println(format("x={}", 42, 99)); // x=42
+
+// Specifiers like {0}, %s, etc. are not supported
+println(format("name={0}, value=%s, raw={}", "Alice")); // name={0}, value=%s, raw=Alice</code></pre>
+        <div class="note">
+          <strong>Note:</strong> <code>format</code> only replaces literal
+          <code>{}</code> pairs. It does not implement positional or typed
+          format specifiers.
+        </div>
 
         <h3 id="io-clearscreen">clearScreen</h3>
         <div class="method">

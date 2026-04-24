@@ -18,6 +18,54 @@
     <script>
       document.addEventListener("DOMContentLoaded", () => {
         hljs.highlightAll();
+        const sidebar = document.querySelector(".docs-sidebar");
+        if (sidebar) {
+          const groups = Array.from(sidebar.querySelectorAll(".sidebar-group"));
+          const titles = Array.from(sidebar.querySelectorAll(".sidebar-group-title"));
+          sidebar.classList.add("accordion-enabled");
+
+          const openGroup = (group, forceOpen) => {
+            const isOpen = group.classList.contains("is-open");
+            const nextOpen = forceOpen === undefined ? !isOpen : forceOpen;
+            group.classList.toggle("is-open", nextOpen);
+          };
+
+          const closeOtherGroups = (except) => {
+            groups.forEach((group) => {
+              if (group !== except) {
+                group.classList.remove("is-open");
+              }
+            });
+          };
+
+          titles.forEach((title) => {
+            title.tabIndex = 0;
+            title.setAttribute("role", "button");
+            title.addEventListener("click", () => {
+              const group = title.closest(".sidebar-group");
+              if (!group) return;
+              const shouldOpen = !group.classList.contains("is-open");
+              closeOtherGroups(group);
+              openGroup(group, shouldOpen);
+            });
+            title.addEventListener("keydown", (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                title.click();
+              }
+            });
+          });
+
+          const groupWithActiveNav = sidebar.querySelector(".sidebar-group a.active");
+          const defaultGroup =
+            (groupWithActiveNav && groupWithActiveNav.closest(".sidebar-group")) ||
+            groups[0];
+          if (defaultGroup) {
+            closeOtherGroups(defaultGroup);
+            openGroup(defaultGroup, true);
+          }
+        }
+
         // Highlight active sidebar link on scroll
         const headings = document.querySelectorAll(
           ".docs-main h2[id], .docs-main h3[id]",
@@ -31,7 +79,15 @@
                 const link = document.querySelector(
                   `.docs-sidebar a[href="#${e.target.id}"]`,
                 );
-                if (link) link.classList.add("active");
+                if (link) {
+                  link.classList.add("active");
+                  const group = link.closest(".sidebar-group");
+                  if (group) {
+                    sidebar
+                      ?.querySelectorAll(".sidebar-group")
+                      .forEach((g) => g.classList.toggle("is-open", g === group));
+                  }
+                }
               }
             });
           },
