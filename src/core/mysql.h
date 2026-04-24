@@ -16,7 +16,7 @@
  * @brief Opaque connection handle from libmysqlclient/libmariadb used by the
  *        Database wrapper in mysql.c.
  */
-typedef struct st_mysql		MYSQL;
+typedef struct st_mysql MYSQL;
 /**
  * @brief Opaque result-set handle returned by mysql_store_result() for query
  *        reads.
@@ -26,12 +26,12 @@ typedef struct st_mysql_res MYSQL_RES;
  * @brief One fetched result row represented as an array of C strings (NULL
  *        entries indicate SQL NULL).
  */
-typedef char**				MYSQL_ROW;
+typedef char** MYSQL_ROW;
 /**
  * @brief Unsigned 64-bit count type used by the client API for affected rows
  *        and insert IDs.
  */
-typedef unsigned long long	my_ulonglong;
+typedef unsigned long long my_ulonglong;
 
 /**
  * @brief Creates the `Database` class-backed module that lazily loads
