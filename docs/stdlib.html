@@ -985,9 +985,7 @@ println(absolutePath(join(getCwd(), "README.md")));</code></pre>
 
         <h3 id="path-absbase">absolutePathFromBase</h3>
         <div class="method">
-          <div class="method-sig">
-            absolutePathFromBase(base: string, p: string) → string
-          </div>
+          <div class="method-sig">absolutePathFromBase(base: string, p: string) → string</div>
           <p class="method-desc">
             If <code>p</code> is absolute, returns it normalized. Otherwise
             combines <code>p</code> with <code>base</code> (intended to be an
@@ -1147,9 +1145,7 @@ println(arr);  // [1, 2]</code></pre>
 
         <h3 id="arr-each">each</h3>
         <div class="method">
-          <div class="method-sig">
-            array.each(callback(value, index)) → array
-          </div>
+          <div class="method-sig">array.each(callback(value, index)) → array</div>
           <p class="method-desc">
             Calls <code>callback(value, index)</code> for every element and
             returns a new array containing each return value. Analogous to
@@ -1168,9 +1164,7 @@ nums.each(println);
 
         <h3 id="arr-keep">keep</h3>
         <div class="method">
-          <div class="method-sig">
-            array.keep(callback(value, index)) → array
-          </div>
+          <div class="method-sig">array.keep(callback(value, index)) → array</div>
           <p class="method-desc">
             Returns a new array containing only the elements for which
             <code>callback</code> returns a truthy value. Analogous to
@@ -1211,9 +1205,7 @@ import "core:date";</code></pre>
           <div class="method-sig">new Date()</div>
           <div class="method-sig">new Date(timestamp: number)</div>
           <div class="method-sig">new Date(dateString: string)</div>
-          <div class="method-sig">
-            new Date(year, month, [day, hours, minutes, seconds, ms])
-          </div>
+          <div class="method-sig">new Date(year, month, [day, hours, minutes, seconds, ms])</div>
           <p class="method-desc" style="margin-top: 0.5rem">
             Creates a new Date instance.<br />
             • <strong>No argument</strong> — current date and time.<br />
@@ -1793,9 +1785,7 @@ stmt.finalize();</code></pre>
 
         <h3 id="sqlite-stmt-run">run</h3>
         <div class="method">
-          <div class="method-sig">
-            stmt.run([...params]) → { changes: int, lastInsertRowid: num }
-          </div>
+          <div class="method-sig">stmt.run([...params]) → { changes: int, lastInsertRowid: num }</div>
           <p class="method-desc">
             Executes the statement (intended for DML: <code>INSERT</code>,
             <code>UPDATE</code>, <code>DELETE</code>) and returns an info
@@ -1944,9 +1934,7 @@ stmt.finalize();</code></pre>
 
         <h3 id="sqlite-stmt-columns">columns</h3>
         <div class="method">
-          <div class="method-sig">
-            stmt.columns() → array of { name, column, table, database, type }
-          </div>
+          <div class="method-sig">stmt.columns() → array of { name, column, table, database, type }</div>
           <p class="method-desc">
             Returns an array of column metadata objects for the result set,
             matching the
@@ -2348,9 +2336,7 @@ app.listen(3000, fn(msg) {
 
         <h3>res.setHeader(name, value)</h3>
         <div class="method">
-          <div class="method-sig">
-            res.setHeader(name: string, value: string) → res
-          </div>
+          <div class="method-sig">res.setHeader(name: string, value: string) → res</div>
           <p class="method-desc">
             Appends a response header. Can be chained before
             <code>send()</code> or <code>json()</code>.
