@@ -176,13 +176,13 @@ make release
 # Force architecture on native build
 make 64
 make 32
-make 32i386
+make 32i686
 
 # Cross-compile Windows builds via MinGW
 make win32          # auto arch
 make win32-64
 make win32-32
-make win32-32i386
+make win32-32i686
 
 # Build then run immediately
 make run
@@ -337,8 +337,11 @@ println(2n ** 64n); // 18446744073709551616n</code></pre>
             <td>Windows cross-builds (MinGW)</td>
             <td>
               <code>x86_64-w64-mingw32-gcc</code> or
-              <code>i686-w64-mingw32-gcc</code>, plus a MinGW
-              <code>libmariadb.dll</code> package
+              <code>i686-w64-mingw32-gcc</code>,
+              <code>$(prefix)-windres</code>, and CMake
+              (<code>$(prefix)-cmake</code> if available, else plain
+              <code>cmake</code>), plus MinGW CMake toolchain files from
+              <code>mingw-w64-cmake</code>
             </td>
           </tr>
         </tbody>
@@ -374,9 +377,9 @@ println(2n ** 64n); // 18446744073709551616n</code></pre>
             <td><code>make 32</code></td>
           </tr>
           <tr>
-            <td><code>32i386</code></td>
-            <td>32-bit i386 / generic 32-bit</td>
-            <td><code>make 32i386</code></td>
+            <td><code>32i686</code></td>
+            <td>32-bit i686 baseline</td>
+            <td><code>make 32i686</code></td>
           </tr>
         </tbody>
       </table>
@@ -463,17 +466,25 @@ println(2n ** 64n); // 18446744073709551616n</code></pre>
             <td><code>win32/32/</code></td>
           </tr>
           <tr>
-            <td><code>make win32-32i386</code></td>
-            <td>Cross-compile 32-bit Windows build (i386)</td>
-            <td><code>win32/32i386/</code></td>
+            <td><code>make win32-32i686</code></td>
+            <td>Cross-compile 32-bit Windows build (i686 baseline)</td>
+            <td><code>win32/32i686/</code></td>
           </tr>
         </tbody>
       </table>
 
       <p>
         Each Windows output folder contains <code>zscript.exe</code>,
-        <code>sqlite3.dll</code>, <code>libmariadb.dll</code>, and copied
+        <code>sqlite3.dll</code>, <code>libmariadb.dll</code>,
+        <code>libmariadb.dll.a</code>, and copied
         <code>lib/</code> and <code>tests/</code> directories.
+      </p>
+      <p>
+        Windows MariaDB binaries are built from
+        <code>thirdparty/mariadb-connector-c/</code> using the MinGW CMake
+        toolchain file (for example
+        <code>/usr/share/mingw/toolchain-i686-w64-mingw32.cmake</code>), not
+        copied from a system DLL package.
       </p>
 
       <h3>run.sh flags (Linux / macOS)</h3>

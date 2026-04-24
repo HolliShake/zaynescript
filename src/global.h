@@ -13,7 +13,6 @@
 #include <assert.h>
 #include <ctype.h>
 #include <dirent.h>
-#include <dlfcn.h>
 #include <errno.h>
 #include <limits.h>
 #include <math.h>
@@ -28,9 +27,13 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#if defined(_WIN32)
+#	include <windows.h>
+#else
+#	include <dlfcn.h>
+#endif
 
 // Order patterns
-#include "../thirdparty/libbf/cutils.h"
 #include "../thirdparty/libbf/libbf.h"
 #include "../thirdparty/mongoose/mongoose.h"
 #include "../utf/utf.h"
@@ -42,9 +45,33 @@
 
 // --- OS DETECTION & INCLUDES ---
 #if defined(_WIN32)
-#	include <windows.h>
 typedef HANDLE Thread;
 #	define THREAD_RETURN DWORD WINAPI
+#	ifndef RTLD_LAZY
+#		define RTLD_LAZY 0
+#	endif
+static inline void* dlopen(const char* path, int flags) {
+	(void) flags;
+	return (void*) LoadLibraryA(path);
+}
+
+static inline void* dlsym(void* handle, const char* symbol) {
+	return (void*) GetProcAddress((HMODULE) handle, symbol);
+}
+
+static inline int dlclose(void* handle) {
+	return FreeLibrary((HMODULE) handle) ? 0 : -1;
+}
+
+static inline const char* dlerror(void) {
+	static char errbuf[64];
+	DWORD		code = GetLastError();
+	snprintf(errbuf,
+			 sizeof(errbuf),
+			 "win32 dl error %lu",
+			 (unsigned long) code);
+	return errbuf;
+}
 #else
 #	include <pthread.h>
 #	include <unistd.h>
@@ -1508,25 +1535,5 @@ String AbsolutePathFromBase(String baseStr, String pathStr);
  * @return An absolute path string.
  */
 String AbsolutePath(String pathStr);
-
-/**
- * @brief Starts a new thread.
- *
- * Starts a new thread using the platform-specific threading API.
- *
- * @param thread Pointer to the thread handle.
- * @param fn Function pointer to the thread function.
- * @param arg Argument to pass to the thread function.
- */
-int ThreadStart(Thread* thread, void* (*fn)(void*), Value* arg);
-
-/**
- * @brief Joins a thread.
- *
- * Joins a thread using the platform-specific threading API.
- *
- * @param thread Thread handle.
- */
-void ThreadJoin(Thread thread);
 
 #endif
