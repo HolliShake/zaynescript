@@ -6,7 +6,7 @@
     <title>Standard Library — ZayneScript</title>
     <meta
       name="description"
-      content="ZayneScript standard library reference: core:io (including File for disk I/O), core:math, core:os (including args for scripts), core:path (cross-platform file paths), core:object, core:array, core:date, core:promise, core:sqlite, core:utf8 (Unicode), core:mongoose (HTTP server and client), plus user libraries lib:http and lib:argparser."
+      content="ZayneScript standard library reference: core:io (including File for disk I/O), core:math, core:os (including args for scripts), core:path (cross-platform file paths), core:object, core:array, core:date, core:promise, core:sqlite, core:mysql, core:utf8 (Unicode), core:mongoose (HTTP server and client), plus user libraries lib:http and lib:argparser."
     />
     <link rel="stylesheet" href="style.css" />
     <link rel="icon" type="image/x-icon" href="zs.ico" />
@@ -149,8 +149,9 @@
             <li><a href="#date">core:date</a></li>
             <li><a href="#regex">core:regex</a></li>
             <li><a href="#promise">core:promise</a></li>
-            <li><a href="#sqlite">core:sqlite</a></li>
             <li><a href="#utf8">core:utf8</a></li>
+            <li><a href="#sqlite">core:sqlite</a></li>
+            <li><a href="#mysql">core:mysql</a></li>
             <li><a href="#mongoose">core:mongoose</a></li>
             <li><a href="#lib-http">lib:http</a></li>
             <li><a href="#lib-argparser">lib:argparser</a></li>
@@ -266,19 +267,6 @@
           </ul>
         </div>
         <div class="sidebar-group">
-          <div class="sidebar-group-title">core:mongoose</div>
-          <ul>
-            <li><a href="#mongoose-overview">Overview</a></li>
-            <li><a href="#mongoose-request">request (HTTP client)</a></li>
-            <li><a href="#mongoose-server">Server class</a></li>
-            <li><a href="#mongoose-routing">Routing</a></li>
-            <li><a href="#mongoose-req">Request object</a></li>
-            <li><a href="#mongoose-res">Response object</a></li>
-            <li><a href="#mongoose-middleware">Middleware</a></li>
-            <li><a href="#mongoose-patterns">Common patterns</a></li>
-          </ul>
-        </div>
-        <div class="sidebar-group">
           <div class="sidebar-group-title">core:sqlite</div>
           <ul>
             <li><a href="#sqlite-overview">Overview</a></li>
@@ -296,6 +284,31 @@
             <li><a href="#sqlite-stmt-columns">columns</a></li>
             <li><a href="#sqlite-stmt-finalize">finalize</a></li>
             <li><a href="#sqlite-patterns">Common patterns</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-group">
+          <div class="sidebar-group-title">core:mysql</div>
+          <ul>
+            <li><a href="#mysql-overview">Overview</a></li>
+            <li><a href="#mysql-database">Database class</a></li>
+            <li><a href="#mysql-db-constructor">constructor</a></li>
+            <li><a href="#mysql-db-query">query</a></li>
+            <li><a href="#mysql-db-exec">exec</a></li>
+            <li><a href="#mysql-db-close">close</a></li>
+            <li><a href="#mysql-patterns">Common patterns</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-group">
+          <div class="sidebar-group-title">core:mongoose</div>
+          <ul>
+            <li><a href="#mongoose-overview">Overview</a></li>
+            <li><a href="#mongoose-request">request (HTTP client)</a></li>
+            <li><a href="#mongoose-server">Server class</a></li>
+            <li><a href="#mongoose-routing">Routing</a></li>
+            <li><a href="#mongoose-req">Request object</a></li>
+            <li><a href="#mongoose-res">Response object</a></li>
+            <li><a href="#mongoose-middleware">Middleware</a></li>
+            <li><a href="#mongoose-patterns">Common patterns</a></li>
           </ul>
         </div>
         <div class="sidebar-group">
@@ -2085,6 +2098,168 @@ try {
 } catch (e) {
     println("Caught:", e);
 }
+db.close();</code></pre>
+
+        <!-- ==============================================================
+         core:mysql
+         ============================================================== -->
+        <h2 id="mysql">core:mysql — MySQL / MariaDB Database</h2>
+        <p>Import with:</p>
+        <pre><code class="language-javascript">import { Database } from "core:mysql";</code></pre>
+
+        <h3 id="mysql-overview">Overview</h3>
+        <p>
+          <code>core:mysql</code> provides a lightweight synchronous SQL API for
+          MySQL-compatible servers (MySQL and MariaDB). It dynamically loads
+          <code>libmariadb</code> / <code>libmysqlclient</code> at runtime and
+          exposes one class: <code>Database</code>.
+        </p>
+        <ul style="margin: 0.75rem 0 0.75rem 1.5rem">
+          <li>
+            <strong>query(sql)</strong> returns an array of row objects for
+            <code>SELECT</code>-style statements.
+          </li>
+          <li>
+            <strong>exec(sql)</strong> executes write/DDL statements and returns
+            metadata <code>{ affectedRows, insertId }</code>.
+          </li>
+          <li>
+            <strong>close()</strong> closes the connection; further use throws a
+            runtime error.
+          </li>
+        </ul>
+
+        <h2 id="mysql-database">Database</h2>
+
+        <h3 id="mysql-db-constructor">Constructor</h3>
+        <div class="method">
+          <div class="method-sig">
+            new Database(options?) or new Database(host, user, password, database, port?)
+          </div>
+          <p class="method-desc">
+            Opens a new connection. Preferred usage is an options object.
+            Default port is <code>3306</code>.
+          </p>
+        </div>
+        <pre><code class="language-javascript">const db = new Database({
+    host: "127.0.0.1",
+    user: "root",
+    password: "secret",
+    database: "zscript_test",
+    port: 3306
+});
+
+// Positional form is also supported:
+const db2 = new Database("127.0.0.1", "root", "secret", "zscript_test", 3306);</code></pre>
+
+        <div class="note">
+          <strong>Note:</strong> if the client library cannot be loaded or
+          authentication fails, the constructor raises a runtime error.
+        </div>
+
+        <h3 id="mysql-db-query">query</h3>
+        <div class="method">
+          <div class="method-sig">db.query(sql: string) → array&lt;object&gt;</div>
+          <p class="method-desc">
+            Executes a query and returns rows. Each row is currently keyed by
+            column index strings (<code>"0"</code>, <code>"1"</code>, ...),
+            matching the current runtime implementation.
+          </p>
+        </div>
+        <pre><code class="language-javascript">const rows = db.query("SELECT id, name FROM users ORDER BY id LIMIT 3");
+rows.each(fn(row, i) {
+    println("id=", row["0"], "name=", row["1"]);
+});</code></pre>
+
+        <h3 id="mysql-db-exec">exec</h3>
+        <div class="method">
+          <div class="method-sig">db.exec(sql: string) → object</div>
+          <p class="method-desc">
+            Executes statements such as <code>INSERT</code>,
+            <code>UPDATE</code>, <code>DELETE</code>, <code>CREATE</code>, and
+            <code>DROP</code>. Returns an object with:
+            <code>affectedRows</code> and <code>insertId</code>.
+          </p>
+        </div>
+        <pre><code class="language-javascript">db.exec("CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(64))");
+
+const ins = db.exec("INSERT INTO users (name) VALUES ('alice')");
+println("affected:", ins.affectedRows, "insertId:", ins.insertId);
+
+const upd = db.exec("UPDATE users SET name = 'alice_updated' WHERE id = " + ins.insertId);
+println("updated:", upd.affectedRows);
+
+const del = db.exec("DELETE FROM users WHERE id = " + ins.insertId);
+println("deleted:", del.affectedRows);</code></pre>
+
+        <h3 id="mysql-db-close">close</h3>
+        <div class="method">
+          <div class="method-sig">db.close()</div>
+          <p class="method-desc">
+            Closes the active database handle. It is safe to call during cleanup
+            before process exit.
+          </p>
+        </div>
+        <pre><code class="language-javascript">db.close();</code></pre>
+
+        <h2 id="mysql-patterns">Common Patterns</h2>
+
+        <h3>CLI-driven connection options</h3>
+        <pre><code class="language-javascript">import { Database } from "core:mysql";
+import { args } from "core:os";
+
+const argv = args();
+if (argv.length() &lt; 4) {
+    raise "Usage: <host> <user> <password> <database> [port]";
+}
+
+const db = new Database({
+    host: argv[0],
+    user: argv[1],
+    password: argv[2],
+    database: argv[3],
+    port: argv.length() &gt; 4 ? argv[4] : 3306
+});</code></pre>
+
+        <h3>Ephemeral test table lifecycle (CRUD)</h3>
+        <pre><code class="language-javascript">import { Database } from "core:mysql";
+import { getPid } from "core:os";
+import { format } from "core:io";
+
+const db = new Database({ host: "127.0.0.1", user: "root", password: "secret", database: "zscript_test" });
+const suffix = format("{}", getPid());
+const table = "zscript_mysql_crud_" + suffix;
+
+db.exec("CREATE TABLE IF NOT EXISTS " + table + " (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(128) NOT NULL)");
+const ins = db.exec("INSERT INTO " + table + " (name) VALUES ('alice_" + suffix + "')");
+
+const rows = db.query("SELECT id, name FROM " + table + " WHERE id = " + ins.insertId);
+assert rows.length() == 1;
+assert rows[0]["1"] != null;
+
+db.exec("DROP TABLE IF EXISTS " + table);
+db.close();</code></pre>
+
+        <h3>Safe cleanup with try/catch</h3>
+        <pre><code class="language-javascript">import { Database } from "core:mysql";
+import { println } from "core:io";
+
+const db = new Database({
+    host: "127.0.0.1",
+    user: "root",
+    password: "secret",
+    database: "zscript_test"
+});
+
+try {
+    db.exec("CREATE TABLE IF NOT EXISTS logs (id INT AUTO_INCREMENT PRIMARY KEY, msg TEXT)");
+    db.exec("INSERT INTO logs (msg) VALUES ('hello')");
+    const rows = db.query("SELECT id, msg FROM logs ORDER BY id DESC LIMIT 1");
+    println(rows[0]["0"], rows[0]["1"]);
+} catch (e) {
+    println("MySQL error:", e);
+}
+
 db.close();</code></pre>
 
         <!-- ==============================================================

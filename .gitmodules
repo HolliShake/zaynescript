@@ -1,0 +1,4 @@
+[submodule "mariadb-connector-c"]
+	path = thirdparty/mariadb-connector-c
+	url = https://github.com/mariadb-corporation/mariadb-connector-c.git
+	ignore = all

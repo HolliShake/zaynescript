@@ -16,7 +16,7 @@
  *   app.listen(8000)
  */
 
-#include "../../mongoose/mongoose.h"
+#include "../../thirdparty/mongoose/mongoose.h"
 #include "../error.h"
 #include "../function.h"
 #include "../global.h"

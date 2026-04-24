@@ -14,6 +14,7 @@
 #include "./io.h"
 #include "./math.h"
 #include "./mongoose.h"
+#include "./mysql.h"
 #include "./object.h"
 #include "./os.h"
 #include "./path.h"
