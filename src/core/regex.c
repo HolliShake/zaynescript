@@ -1,11 +1,5 @@
 #include "./regex.h"
 
-#include "../../libregex/libregexp.h"
-#include "../array.h"
-#include "../error.h"
-
-#include <stdlib.h>
-#include <string.h>
 
 #define LRE_BLOB_KEY "__lre"
 

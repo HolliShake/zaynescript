@@ -30,6 +30,7 @@
  */
 
 #include "../../sqlite/sqlite3.h"
+#include "../error.h"
 #include "../function.h"
 #include "../global.h"
 #include "../value.h"

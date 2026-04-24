@@ -1,7 +1,5 @@
 #include "./object.h"
 
-#include "../error.h"
-
 static Value* _ObjectInit(Interpreter* interp, int argc, Value** args) {
 	if (argc != 1) {
 		return NewErrorFValue(interp,

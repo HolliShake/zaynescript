@@ -1,7 +1,5 @@
 #include "./mongoose.h"
 
-#include "../error.h"
-
 /* -----------------------------------------------------------------------
  * MIME type lookup table — sorted by extension for readability.
  * _MimeFromExt() accepts the result of strrchr(fname, '.'), i.e. the

@@ -1,7 +1,5 @@
 #include "./io.h"
 
-#include "../error.h"
-
 static Value* _IoGenericPrint(Interpreter* interpreter,
 							  int		   argc,
 							  Value**	   arguments,

@@ -11,6 +11,7 @@
  * @c LoadCoreUtf8 / @c import { ... } from "core:utf8".
  */
 #include "../../utf/utf8proc/utf8proc.h"
+#include "../error.h"
 #include "../global.h"
 #include "../hashmap.h"
 #include "../value.h"

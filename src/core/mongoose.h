@@ -17,6 +17,7 @@
  */
 
 #include "../../mongoose/mongoose.h"
+#include "../error.h"
 #include "../function.h"
 #include "../global.h"
 #include "../hashmap.h"

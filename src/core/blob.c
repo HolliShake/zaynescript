@@ -1,7 +1,5 @@
 #include "./blob.h"
 
-#include "../error.h"
-
 /**
  * @brief Growable byte buffer used while constructing Blob values.
  */

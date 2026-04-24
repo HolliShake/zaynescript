@@ -1,6 +1,5 @@
 #include "./path.h"
 
-#include "../error.h"
 
 #ifdef _WIN32
 #	include <io.h>

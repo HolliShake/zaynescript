@@ -1,6 +1,5 @@
 #include "./promise.h"
 
-#include "../error.h"
 
 /**
  * @brief Appends task to the ring buffer TaskQueue[(head + count) % STACK_SIZE]

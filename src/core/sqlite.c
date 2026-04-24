@@ -1,6 +1,5 @@
 #include "./sqlite.h"
 
-#include "../error.h"
 
 // ─── Internal binding property keys ──────────────────────────────────────────
 

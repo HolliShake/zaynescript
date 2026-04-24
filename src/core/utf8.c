@@ -1,7 +1,5 @@
 #include "./utf8.h"
 
-#include "../error.h"
-
 size_t Utf8Core_RuneLen(const Rune* runes) {
 	size_t n = 0;
 	if (runes == NULL) {

@@ -8,6 +8,7 @@
  */
 
 #include "../class.h"
+#include "../error.h"
 #include "../function.h"
 #include "../global.h"
 #include "../statemachine.h"

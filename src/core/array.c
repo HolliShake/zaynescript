@@ -1,7 +1,5 @@
 #include "./array.h"
 
-#include "../error.h"
-
 /**
  * @brief Appends value at interpreter->Stacks[StckC++] so it becomes the new
  * operand-stack top.

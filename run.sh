@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# Build and run zscript using the same rules as the Makefile (see Makefile targets).
+# Build and run zscript via Make (see Makefile targets: release, debug, run).
+#   default:   make run   (debug build, then ASAN_OPTIONS + LC_ALL as in Makefile "run")
+#   --release: make release
+#   --compile: make debug (build only)
+#   --dbg:     make debug; gdb … (Makefile has no gdb target; convenience only)
 set -e
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
