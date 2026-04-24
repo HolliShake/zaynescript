@@ -58,22 +58,48 @@ pre,
     scrollbar-width: thin;
 }
 
-*::-webkit-scrollbar {
+/* WebKit/Blink needs element-targeted scrollbar pseudo selectors
+   for consistent styling on nested scroll containers like the stdlib sidebar. */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.docs-sidebar::-webkit-scrollbar,
+pre::-webkit-scrollbar,
+.method-sig::-webkit-scrollbar,
+.docs-main table::-webkit-scrollbar,
+.page-content table::-webkit-scrollbar {
     width: 10px;
     height: 10px;
 }
 
-*::-webkit-scrollbar-track {
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track,
+.docs-sidebar::-webkit-scrollbar-track,
+pre::-webkit-scrollbar-track,
+.method-sig::-webkit-scrollbar-track,
+.docs-main table::-webkit-scrollbar-track,
+.page-content table::-webkit-scrollbar-track {
     background: var(--scrollbar-track);
 }
 
-*::-webkit-scrollbar-thumb {
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb,
+.docs-sidebar::-webkit-scrollbar-thumb,
+pre::-webkit-scrollbar-thumb,
+.method-sig::-webkit-scrollbar-thumb,
+.docs-main table::-webkit-scrollbar-thumb,
+.page-content table::-webkit-scrollbar-thumb {
     background: var(--scrollbar-thumb);
     border: 2px solid var(--scrollbar-track);
     border-radius: 999px;
 }
 
-*::-webkit-scrollbar-thumb:hover {
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover,
+.docs-sidebar::-webkit-scrollbar-thumb:hover,
+pre::-webkit-scrollbar-thumb:hover,
+.method-sig::-webkit-scrollbar-thumb:hover,
+.docs-main table::-webkit-scrollbar-thumb:hover,
+.page-content table::-webkit-scrollbar-thumb:hover {
     background: var(--scrollbar-thumb-hover);
 }
 
@@ -326,6 +352,34 @@ a:hover {
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text-muted);
+}
+
+.docs-sidebar.accordion-enabled .sidebar-group-title {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.55rem 1.25rem;
+}
+
+.docs-sidebar.accordion-enabled .sidebar-group-title::after {
+    content: "▸";
+    font-size: 0.7rem;
+    opacity: 0.75;
+    transition: transform 0.15s ease;
+}
+
+.docs-sidebar.accordion-enabled .sidebar-group.is-open .sidebar-group-title::after {
+    transform: rotate(90deg);
+}
+
+.docs-sidebar.accordion-enabled .sidebar-group > ul {
+    display: none;
+}
+
+.docs-sidebar.accordion-enabled .sidebar-group.is-open > ul {
+    display: block;
 }
 
 .docs-sidebar ul {
