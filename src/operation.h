@@ -236,6 +236,26 @@ Value* DoPos(Interpreter* interp, Value* val);
 Value* DoNeg(Interpreter* interp, Value* val);
 
 /**
+ * @brief Performs bitwise NOT (~) on a numeric value.
+ *
+ * @param interp The interpreter instance
+ * @param val    The value to complement
+ *
+ * @return Bitwise-complemented value, or error for invalid operand
+ */
+Value* DoBitNot(Interpreter* interp, Value* val);
+
+/**
+ * @brief Returns the type of a value as a string.
+ *
+ * @param interpreter The interpreter instance
+ * @param val         The value to get the type of
+ *
+ * @return String value representing the type of the value
+ */
+Value* DoGetType(Interpreter* interpreter, Value* val);
+
+/**
  * @brief Performs multiplication operation on two values.
  * Supports integer and numeric operands.
  * Returns int if result fits in int range, otherwise returns

@@ -89,7 +89,7 @@ static Token TokenizeIdentifier(Lexer* lexer) {
 								KEY_TRUE,	  KEY_FALSE, KEY_CLASS,	 KEY_ENUM,
 								KEY_IMPORT,	  KEY_FROM,	 KEY_STATIC, KEY_CONST,
 								KEY_VAR,	  KEY_LOCAL, KEY_FN,	 KEY_ASYNC,
-								KEY_AWAIT,	  KEY_NEW,	 KEY_THIS };
+								KEY_AWAIT,	  KEY_NEW,	 KEY_TYPEOF, KEY_THIS };
 
 	for (size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++) {
 		if (strcmp(value, keywords[i]) == 0) {

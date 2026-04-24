@@ -1,5 +1,7 @@
 #include "./compiler.h"
 
+#include "global.h"
+
 #define PushArray(type, array, count, val, defaultValue)                       \
 	do {                                                                       \
 		(array)[count++] = val;                                                \
@@ -857,6 +859,13 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 				_Emit(compiler, uf, OP_NOT);
 				break;
 			}
+		case AST_BITWISE_NOT:
+			{
+				_CompileExpression(compiler, uf, scope, node->A);
+				_EmitLine(compiler, uf, node->Position);
+				_Emit(compiler, uf, OP_BITNOT);
+				break;
+			}
 		case AST_POSITIVE:
 			{
 				_CompileExpression(compiler, uf, scope, node->A);
@@ -914,6 +923,13 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 				_Emit(compiler, uf, OP_AWAIT);
 				_EmitLine(compiler, uf, node->Position);
 				_Emit(compiler, uf, OP_GET_AWAITED_VALUE);
+				break;
+			}
+		case AST_TYPEOF:
+			{
+				_CompileExpression(compiler, uf, scope, node->A);
+				_EmitLine(compiler, uf, node->Position);
+				_Emit(compiler, uf, OP_GETTYPE);
 				break;
 			}
 		case AST_MUL:

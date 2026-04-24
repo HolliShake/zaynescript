@@ -1,5 +1,7 @@
 #include "./interpreter.h"
 
+#include "global.h"
+
 static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
 	// libbf uses size == 0 to signal a free() operation
 	if (size == 0) {
@@ -802,6 +804,18 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 					Push(interpreter, res);
 					break;
 				}
+			case OP_BITNOT:
+				{
+					rhs = Popp(interpreter);
+					res = DoBitNot(interpreter, rhs);
+					if (ValueIsError(res)) {
+						// Raise
+						_RaiseError(interpreter, fn, res, &ip, true);
+						break;
+					}
+					Push(interpreter, res);
+					break;
+				}
 			case OP_POS:
 				{
 					rhs = Popp(interpreter);
@@ -939,6 +953,13 @@ void Run(Interpreter* interpreter, Value* fnOrSm) {
 						Panic("Invalid state machine: WaitFor "
 							  "is NULL");
 					Push(interpreter, wait->Value);
+					break;
+				}
+			case OP_GETTYPE:
+				{
+					val = Popp(interpreter);
+					res = DoGetType(interpreter, val);
+					Push(interpreter, res);
 					break;
 				}
 			case OP_MUL:
