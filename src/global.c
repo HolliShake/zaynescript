@@ -64,32 +64,26 @@ String RunesStrToString(Rune* runes) {
 		return NULL;
 	}
 
-	// Count the number of runes
 	size_t runeCount = 0;
 	while (runes[runeCount] != 0) {
 		runeCount++;
 	}
 
-	// Calculate total size needed for UTF-8 encoded string
 	size_t totalSize = 0;
 	for (size_t i = 0; i < runeCount; i++) {
-		totalSize += utf_size_of_codepoint(runes[i]);
+		totalSize += (size_t) utf_size_of_codepoint((int) runes[i]);
 	}
 
-	// Allocate string buffer
-	String str = Allocate(totalSize + 1);
-
-	// Convert each rune to UTF-8 and append to string
+	String str	  = Allocate(totalSize + 1);
 	size_t offset = 0;
 	for (size_t i = 0; i < runeCount; i++) {
-		String runeStr = utf_rune_to_string(runes[i]);
-		size_t runeLen = strlen(runeStr);
-		memcpy(str + offset, runeStr, runeLen);
-		offset += runeLen;
-		free(runeStr);
+		unsigned char buf[5];
+		int			  sz = utf_encode_char((int) runes[i], buf);
+		memcpy(str + offset, buf, (size_t) sz);
+		offset += (size_t) sz;
 	}
 
-	str[totalSize] = '\0';
+	str[offset] = '\0';
 	return str;
 }
 

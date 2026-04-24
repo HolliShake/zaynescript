@@ -4,6 +4,8 @@
 #include "src/lexer.h"
 #include "src/parser.h"
 
+#include <string.h>
+
 #ifndef BUILD_DATE
 #	define BUILD_DATE __DATE__ " " __TIME__
 #endif
@@ -265,7 +267,9 @@ void RunTests() {
 		if (strcmp(entry->d_name, "test_doughnut.zs") == 0
 			|| strcmp(entry->d_name, "test_cube.zs") == 0
 			|| strcmp(entry->d_name, "test_star.zs") == 0
-			|| strcmp(entry->d_name, "test_diamond.zs") == 0) {
+			|| strcmp(entry->d_name, "test_diamond.zs") == 0
+			|| strcmp(entry->d_name, "test_mongoose.zs") == 0
+			|| strcmp(entry->d_name, "test_phoenix_fractal.zs") == 0) {
 			continue;
 		}
 

@@ -1,5 +1,7 @@
 #include "./interpreter.h"
 
+#include "global.h"
+
 static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
 	// libbf uses size == 0 to signal a free() operation
 	if (size == 0) {
@@ -1465,10 +1467,12 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 	interpreter->StckC	 = old;
 	interpreter->RootEnv = saveGbl;
 
-	if (interpreter->StckC != 0)
-		PopN(interpreter, interpreter->StckC);
+	if (interpreter->StckC != 1) {
+		DumpStack();
+		Panic("Expected stack count is 1, got %d\n", interpreter->StckC);
+	}
 
-	assert(interpreter->StckC == 0);
+	assert(interpreter->StckC == 1);
 
 	ForceGarbageCollect(interpreter);
 }

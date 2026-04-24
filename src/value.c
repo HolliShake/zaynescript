@@ -80,6 +80,12 @@ Value* NewStrValue(Interpreter* interpreter, String value) {
 	return v;
 }
 
+Value* NewStrValueOwningRunes(Interpreter* interpreter, Rune* runes) {
+	Value* v		= _CreateValue(interpreter, VLT_STR);
+	v->Value.Opaque = runes;
+	return v;
+}
+
 Value* NewBoolValue(Interpreter* interpreter, int value) {
 	Value* v	 = _CreateValue(interpreter, VLT_BOOL);
 	v->Value.I32 = value ? 1 : 0;

@@ -1,5 +1,7 @@
 #include "./operation.h"
 
+#include "global.h"
+
 #define FreeTempBf(interpreter, bf, val)                                       \
 	do {                                                                       \
 		if ((val)->Type == VLT_INT || (val)->Type == VLT_NUM) {                \
@@ -1223,6 +1225,15 @@ Value* DoInc(Interpreter* interpreter, Value* val) {
 	return result;
 }
 
+static size_t RuneLength(Rune* rune) {
+	if (rune == NULL)
+		return 0;
+	size_t i = 0;
+	while (rune[i] != 0)
+		i++;
+	return i;
+}
+
 Value* DoAdd(Interpreter* interpreter, Value* lhs, Value* rhs) {
 	Value* result = NULL;
 
@@ -1253,20 +1264,17 @@ Value* DoAdd(Interpreter* interpreter, Value* lhs, Value* rhs) {
 		result = prec == PREC_INT ? NewBigIntValue(interpreter, resNum)
 								  : NewBigNumValue(interpreter, resNum);
 	} else if (ValueIsStr(lhs) && ValueIsStr(rhs)) {
-		Rune*  lhsRunes	 = (Rune*) lhs->Value.Opaque;
-		Rune*  rhsRunes	 = (Rune*) rhs->Value.Opaque;
-		String lhsStr	 = RunesStrToString(lhsRunes);
-		String rhsStr	 = RunesStrToString(rhsRunes);
-		size_t lhsLen	 = strlen(lhsStr);
-		size_t rhsLen	 = strlen(rhsStr);
-		String resultStr = Allocate(lhsLen + rhsLen + 1);
-		memcpy(resultStr, lhsStr, lhsLen);
-		memcpy(resultStr + lhsLen, rhsStr, rhsLen);
-		resultStr[lhsLen + rhsLen] = '\0';
-		result					   = NewStrValue(interpreter, resultStr);
-		free(lhsStr);
-		free(rhsStr);
-		free(resultStr);
+		Rune*  lhsRunes = (Rune*) lhs->Value.Opaque;
+		Rune*  rhsRunes = (Rune*) rhs->Value.Opaque;
+		size_t lhsLen	= RuneLength(lhsRunes);
+		size_t rhsLen	= RuneLength(rhsRunes);
+		Rune*  out		= Allocate(sizeof(Rune) * (lhsLen + rhsLen + 1));
+		if (lhsLen > 0)
+			memcpy(out, lhsRunes, sizeof(Rune) * lhsLen);
+		if (rhsLen > 0)
+			memcpy(out + lhsLen, rhsRunes, sizeof(Rune) * rhsLen);
+		out[lhsLen + rhsLen] = 0;
+		result				 = NewStrValueOwningRunes(interpreter, out);
 	} else {
 		String errMsg =
 			FormatString("%s: invalid operands for operator (+): %s and %s",

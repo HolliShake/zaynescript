@@ -94,6 +94,14 @@ Value* NewBigNumValue(Interpreter* interpreter, bf_t* value);
 Value* NewStrValue(Interpreter* interpreter, String value);
 
 /**
+ * @brief Creates a string value from a NUL-terminated UTF-32 rune buffer.
+ *
+ * Takes ownership of @a runes (allocated with Allocate/malloc); the GC will
+ * free it when the value is collected.
+ */
+Value* NewStrValueOwningRunes(Interpreter* interpreter, Rune* runes);
+
+/**
  * @brief Creates a new boolean value
  *
  * @param interpreter Pointer to the interpreter instance
