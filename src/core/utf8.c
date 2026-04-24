@@ -344,10 +344,9 @@ _Utf8CharWidth(Interpreter* interpreter, int argc, Value** arguments) {
 							  ARGUMENT_ERROR);
 	}
 	if (!ValueIsNum(arguments[0]) && !ValueIsInt(arguments[0])) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: charWidth() expects a number (codepoint)",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: charWidth() expects a number (codepoint)",
+							  TYPE_ERROR);
 	}
 	int cp = CoerceToI32(arguments[0]);
 	return NewIntValue(interpreter, Utf8Core_RuneCharWidth((Rune) cp));
@@ -356,10 +355,9 @@ _Utf8CharWidth(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _Utf8CategoryString(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: categoryString() expects 1 number",
-			ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: categoryString() expects 1 number",
+							  ARGUMENT_ERROR);
 	}
 	if (!ValueIsNum(arguments[0]) && !ValueIsInt(arguments[0])) {
 		return NewErrorFValue(
@@ -378,10 +376,9 @@ _Utf8CategoryString(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _Utf8ValidCodepoint(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: validCodepoint() expects 1 number",
-			ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: validCodepoint() expects 1 number",
+							  ARGUMENT_ERROR);
 	}
 	if (!ValueIsNum(arguments[0]) && !ValueIsInt(arguments[0])) {
 		return NewErrorFValue(

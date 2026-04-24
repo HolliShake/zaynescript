@@ -478,10 +478,9 @@ static ReqResCtx* _GetCtx(ClassInstance* cls) {
 static Value* _ResInit(Interpreter* interp, int argc, Value** args) {
 	(void) argc;
 	(void) args;
-	return NewErrorFValue(
-		interp,
-		"%s: Response cannot be constructed directly",
-		RUNTIME_ERROR);
+	return NewErrorFValue(interp,
+						  "%s: Response cannot be constructed directly",
+						  RUNTIME_ERROR);
 }
 
 /* res.send(body) */
@@ -529,10 +528,9 @@ static Value* _ResSend(Interpreter* interp, int argc, Value** args) {
 /* res.json(obj) */
 static Value* _ResJson(Interpreter* interp, int argc, Value** args) {
 	if (argc < 2)
-		return NewErrorFValue(
-			interp,
-			"%s: res.json() requires a body argument",
-			ARGUMENT_ERROR);
+		return NewErrorFValue(interp,
+							  "%s: res.json() requires a body argument",
+							  ARGUMENT_ERROR);
 
 	ClassInstance* cls = CoerceToClassInstance(args[0]);
 	ReqResCtx*	   ctx = _GetCtx(cls);
@@ -575,10 +573,9 @@ static Value* _ResJson(Interpreter* interp, int argc, Value** args) {
 /* res.status(code) → this  (chainable) */
 static Value* _ResStatus(Interpreter* interp, int argc, Value** args) {
 	if (argc < 2 || !ValueIsAnyNum(args[1]))
-		return NewErrorFValue(
-			interp,
-			"%s: res.status() requires a numeric status code",
-			TYPE_ERROR);
+		return NewErrorFValue(interp,
+							  "%s: res.status() requires a numeric status code",
+							  TYPE_ERROR);
 	ClassInstance* cls = CoerceToClassInstance(args[0]);
 	HashMapSet(cls->Members,
 			   PROP_RES_STATUS,
@@ -681,10 +678,9 @@ static ModuleFunction _ResClassMethods[] = {
 static Value* _ReqInit(Interpreter* interp, int argc, Value** args) {
 	(void) argc;
 	(void) args;
-	return NewErrorFValue(
-		interp,
-		"%s: Request cannot be constructed directly",
-		RUNTIME_ERROR);
+	return NewErrorFValue(interp,
+						  "%s: Request cannot be constructed directly",
+						  RUNTIME_ERROR);
 }
 
 static ModuleFunction _ReqClassMethods[] = {
@@ -1101,10 +1097,9 @@ static Value* _ServerInit(Interpreter* interp, int argc, Value** args) {
 	Value* reqClass = ClassGetMember(serverCls, PROP_REQ_CLASS, true);
 	Value* resClass = ClassGetMember(serverCls, PROP_RES_CLASS, true);
 	if (!reqClass || !resClass)
-		return NewErrorFValue(
-			interp,
-			"%s: internal: Request/Response class not found",
-			RUNTIME_ERROR);
+		return NewErrorFValue(interp,
+							  "%s: internal: Request/Response class not found",
+							  RUNTIME_ERROR);
 
 	AppState* app = (AppState*) Callocate(1, sizeof(AppState));
 	app->Interp	  = interp;
@@ -1121,7 +1116,8 @@ static Value* _ServerInit(Interpreter* interp, int argc, Value** args) {
 	static Value* _App##ZsName(Interpreter* interp, int argc, Value** args) {  \
 		if (argc != 3 || !ValueIsStr(args[1]) || !ValueIsCallable(args[2]))    \
 			return NewErrorFValue(interp,                                      \
-								  "%s: " #ZsName "() requires (path, handler): " \
+								  "%s: " #ZsName                               \
+								  "() requires (path, handler): "              \
 								  "path string and callable",                  \
 								  ARGUMENT_ERROR);                             \
 		ClassInstance* cls = CoerceToClassInstance(args[0]);                   \
@@ -1145,10 +1141,9 @@ DEFINE_ROUTE_METHOD(All, NULL)
 
 static Value* _AppUse(Interpreter* interp, int argc, Value** args) {
 	if (argc < 2 || !ValueIsCallable(args[1]))
-		return NewErrorFValue(
-			interp,
-			"%s: use() requires a callback function",
-			TYPE_ERROR);
+		return NewErrorFValue(interp,
+							  "%s: use() requires a callback function",
+							  TYPE_ERROR);
 	ClassInstance* cls = CoerceToClassInstance(args[0]);
 	AppState*	   app = _GetApp(cls);
 	if (!app)
@@ -1156,10 +1151,9 @@ static Value* _AppUse(Interpreter* interp, int argc, Value** args) {
 							  "%s: use(): server not initialised",
 							  RUNTIME_ERROR);
 	if (app->MwCount >= MAX_MIDDLEWARE)
-		return NewErrorFValue(
-			interp,
-			"%s: use(): maximum middleware count reached",
-			RUNTIME_ERROR);
+		return NewErrorFValue(interp,
+							  "%s: use(): maximum middleware count reached",
+							  RUNTIME_ERROR);
 	app->Middleware[app->MwCount++] = args[1];
 	_PushMgGcRoot(cls, args[1]);
 	return args[0];
@@ -1167,10 +1161,9 @@ static Value* _AppUse(Interpreter* interp, int argc, Value** args) {
 
 static Value* _AppListen(Interpreter* interp, int argc, Value** args) {
 	if (argc < 2 || !ValueIsAnyNum(args[1]))
-		return NewErrorFValue(
-			interp,
-			"%s: listen() requires a port number argument",
-			TYPE_ERROR);
+		return NewErrorFValue(interp,
+							  "%s: listen() requires a port number argument",
+							  TYPE_ERROR);
 	ClassInstance* cls = CoerceToClassInstance(args[0]);
 	AppState*	   app = _GetApp(cls);
 	if (!app)
@@ -1439,10 +1432,10 @@ static void _FetchEvHandler(struct mg_connection* c, int ev, void* ev_data) {
 	if (ev == MG_EV_ERROR) {
 		Interpreter* interp = ctx->interp;
 		String		 msg	= (String) ev_data;
-		Value* err = NewErrorFValue(interp,
-									"%s: %s",
-									RUNTIME_ERROR,
-									msg ? msg : "request failed");
+		Value*		 err	= NewErrorFValue(interp,
+											 "%s: %s",
+											 RUNTIME_ERROR,
+											 msg ? msg : "request failed");
 
 		StateMachine* sm = CoerceToStateMachine(ctx->promise);
 		StateMachineReject(sm, err);
@@ -1463,10 +1456,9 @@ static void _FetchEvHandler(struct mg_connection* c, int ev, void* ev_data) {
 
 static Value* _Request(Interpreter* interp, int argc, Value** args) {
 	if (argc < 1 || !ValueIsStr(args[0]))
-		return NewErrorFValue(
-			interp,
-			"%s: request() requires a URL string",
-			TYPE_ERROR);
+		return NewErrorFValue(interp,
+							  "%s: request() requires a URL string",
+							  TYPE_ERROR);
 
 	String url = ValueToString(args[0]);
 
@@ -1569,11 +1561,10 @@ static Value* _Request(Interpreter* interp, int argc, Value** args) {
 	free(url);
 
 	if (c == NULL) {
-		StateMachineReject(
-			sm,
-			NewErrorFValue(interp,
-							"%s: request(): failed to connect",
-							RUNTIME_ERROR));
+		StateMachineReject(sm,
+						   NewErrorFValue(interp,
+										  "%s: request(): failed to connect",
+										  RUNTIME_ERROR));
 		free(ctx->host);
 		free(ctx->uri);
 		free(ctx->method);

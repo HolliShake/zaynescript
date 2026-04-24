@@ -4,20 +4,18 @@
 
 static Value* _ObjectInit(Interpreter* interp, int argc, Value** args) {
 	if (argc != 1) {
-		return NewErrorFValue(
-			interp,
-			"%s: Object constructor expects 0 arguments",
-			ARGUMENT_ERROR);
+		return NewErrorFValue(interp,
+							  "%s: Object constructor expects 0 arguments",
+							  ARGUMENT_ERROR);
 	}
 	return interp->Null;
 }
 
 static Value* _ObjectDestroy(Interpreter* interp, int argc, Value** args) {
 	if (argc != 0) {
-		return NewErrorFValue(
-			interp,
-			"%s: Object destructor expects 0 arguments",
-			ARGUMENT_ERROR);
+		return NewErrorFValue(interp,
+							  "%s: Object destructor expects 0 arguments",
+							  ARGUMENT_ERROR);
 	}
 	// Do nothing!!
 	return interp->Null;
@@ -25,10 +23,9 @@ static Value* _ObjectDestroy(Interpreter* interp, int argc, Value** args) {
 
 static Value* _ObjectKeys(Interpreter* interp, int argc, Value** args) {
 	if (argc != 1 || !ValueIsObject(args[0]))
-		return NewErrorFValue(
-			interp,
-			"%s: Object.keys expects 1 object argument",
-			TYPE_ERROR);
+		return NewErrorFValue(interp,
+							  "%s: Object.keys expects 1 object argument",
+							  TYPE_ERROR);
 
 	Value*	 obj	 = args[0];
 	HashMap* map	 = CoerceToHashMap(obj);
@@ -50,10 +47,9 @@ static Value* _ObjectKeys(Interpreter* interp, int argc, Value** args) {
 
 static Value* _ObjectValues(Interpreter* interp, int argc, Value** args) {
 	if (argc != 1 || !ValueIsObject(args[0]))
-		return NewErrorFValue(
-			interp,
-			"%s: Object.values expects 1 object argument",
-			TYPE_ERROR);
+		return NewErrorFValue(interp,
+							  "%s: Object.values expects 1 object argument",
+							  TYPE_ERROR);
 
 	Value*	 obj	   = args[0];
 	HashMap* map	   = CoerceToHashMap(obj);
@@ -75,10 +71,9 @@ static Value* _ObjectValues(Interpreter* interp, int argc, Value** args) {
 
 static Value* _ObjectFreeze(Interpreter* interp, int argc, Value** args) {
 	if (argc != 1 || !ValueIsObject(args[0]))
-		return NewErrorFValue(
-			interp,
-			"%s: Object.freeze expects 1 object argument",
-			TYPE_ERROR);
+		return NewErrorFValue(interp,
+							  "%s: Object.freeze expects 1 object argument",
+							  TYPE_ERROR);
 
 	Value*	 obj	   = args[0];
 	HashMap* map	   = HashMapClone(CoerceToHashMap(obj), true);

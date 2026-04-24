@@ -168,10 +168,10 @@ static Value* _BlobInit(Interpreter* interpreter, int argc, Value** arguments) {
 
 	Value* thisArg = arguments[0];
 	if (!ValueIsBlob(thisArg)) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: Blob constructor requires a Blob argument as the first argument",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: Blob constructor requires a Blob argument "
+							  "as the first argument",
+							  TYPE_ERROR);
 	}
 
 	Value* data = argc >= 2 ? arguments[1] : NULL;

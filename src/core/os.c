@@ -89,10 +89,9 @@ static Value* _OsSystem(Interpreter* interpreter, int argc, Value** arguments) {
 							  ARGUMENT_ERROR);
 	}
 	if (!ValueIsStr(arguments[0])) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: system() expects a string as its argument",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: system() expects a string as its argument",
+							  TYPE_ERROR);
 	}
 
 	String cmd	  = ValueToString(arguments[0]);

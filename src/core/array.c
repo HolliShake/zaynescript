@@ -108,11 +108,11 @@ _ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
 						: CoerceToUserFunction(callback)->Argc;
 
 	if (argNeeded != 2 && argNeeded != VARARG) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: callback function for Array.each must take exactly 2 arguments "
-			"(item, index)",
-			ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: callback function for Array.each must take "
+							  "exactly 2 arguments "
+							  "(item, index)",
+							  ARGUMENT_ERROR);
 	}
 
 	Array* array = CoerceToArray(thisArg);
@@ -165,11 +165,11 @@ _ArrayKeep(Interpreter* interpreter, int argc, Value** arguments) {
 						: CoerceToUserFunction(callback)->Argc;
 
 	if (argNeeded != 2 && argNeeded != VARARG) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: callback function for Array.keep must take exactly 2 arguments "
-			"(item, index)",
-			ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: callback function for Array.keep must take "
+							  "exactly 2 arguments "
+							  "(item, index)",
+							  ARGUMENT_ERROR);
 	}
 
 	Array* array = CoerceToArray(thisArg);

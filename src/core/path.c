@@ -12,16 +12,14 @@
 static Value*
 _PathNormalize(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: normalize() expects exactly 1 argument",
-			ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: normalize() expects exactly 1 argument",
+							  ARGUMENT_ERROR);
 	}
 	if (!ValueIsStr(arguments[0])) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: normalize() expects a string argument",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: normalize() expects a string argument",
+							  TYPE_ERROR);
 	}
 	String in  = ValueToString(arguments[0]);
 	String out = NormalizePath(in);
@@ -34,16 +32,14 @@ _PathNormalize(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _PathBasename(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: basename() expects exactly 1 argument",
-			ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: basename() expects exactly 1 argument",
+							  ARGUMENT_ERROR);
 	}
 	if (!ValueIsStr(arguments[0])) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: basename() expects a string argument",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: basename() expects a string argument",
+							  TYPE_ERROR);
 	}
 	String in  = ValueToString(arguments[0]);
 	String out = Basename(in);
@@ -56,16 +52,14 @@ _PathBasename(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _PathDirname(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: dirname() expects exactly 1 argument",
-			ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: dirname() expects exactly 1 argument",
+							  ARGUMENT_ERROR);
 	}
 	if (!ValueIsStr(arguments[0])) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: dirname() expects a string argument",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: dirname() expects a string argument",
+							  TYPE_ERROR);
 	}
 	String in  = ValueToString(arguments[0]);
 	String out = Dirname(in);
@@ -78,25 +72,22 @@ _PathDirname(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _PathAbsolute(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: absolutePath() expects exactly 1 argument",
-			ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: absolutePath() expects exactly 1 argument",
+							  ARGUMENT_ERROR);
 	}
 	if (!ValueIsStr(arguments[0])) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: absolutePath() expects a string argument",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: absolutePath() expects a string argument",
+							  TYPE_ERROR);
 	}
 	String in  = ValueToString(arguments[0]);
 	String out = AbsolutePath(in);
 	free(in);
 	if (!out) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: absolutePath() could not resolve the path",
-			RUNTIME_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: absolutePath() could not resolve the path",
+							  RUNTIME_ERROR);
 	}
 	Value* ret = NewStrValue(interpreter, out);
 	free(out);
@@ -150,9 +141,7 @@ static Value* _PathJoin(Interpreter* interpreter, int argc, Value** arguments) {
 	free(a);
 	free(b);
 	if (!out) {
-		return NewErrorFValue(interpreter,
-							  "%s: join() failed",
-							  RUNTIME_ERROR);
+		return NewErrorFValue(interpreter, "%s: join() failed", RUNTIME_ERROR);
 	}
 	Value* ret = NewStrValue(interpreter, out);
 	free(out);
@@ -162,10 +151,9 @@ static Value* _PathJoin(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _PathExists(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: exists() expects exactly 1 argument",
-			ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: exists() expects exactly 1 argument",
+							  ARGUMENT_ERROR);
 	}
 	if (!ValueIsStr(arguments[0])) {
 		return NewErrorFValue(interpreter,
@@ -181,16 +169,14 @@ _PathExists(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _PathIsDirectory(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: isDirectory() expects exactly 1 argument",
-			ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: isDirectory() expects exactly 1 argument",
+							  ARGUMENT_ERROR);
 	}
 	if (!ValueIsStr(arguments[0])) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: isDirectory() expects a string argument",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: isDirectory() expects a string argument",
+							  TYPE_ERROR);
 	}
 	String p = ValueToString(arguments[0]);
 	bool   v = PathIsDirectory(p);
@@ -201,10 +187,9 @@ _PathIsDirectory(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _PathIsFile(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: isFile() expects exactly 1 argument",
-			ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: isFile() expects exactly 1 argument",
+							  ARGUMENT_ERROR);
 	}
 	if (!ValueIsStr(arguments[0])) {
 		return NewErrorFValue(interpreter,
@@ -220,16 +205,14 @@ _PathIsFile(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _PathIsAbsolute(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 1) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: isAbsolute() expects exactly 1 argument",
-			ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: isAbsolute() expects exactly 1 argument",
+							  ARGUMENT_ERROR);
 	}
 	if (!ValueIsStr(arguments[0])) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: isAbsolute() expects a string argument",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: isAbsolute() expects a string argument",
+							  TYPE_ERROR);
 	}
 	String p = ValueToString(arguments[0]);
 	bool   v = IsAbsolutePath(p);
@@ -240,10 +223,9 @@ _PathIsAbsolute(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _PathSeparator(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 0) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: separator() expects exactly 0 arguments",
-			ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: separator() expects exactly 0 arguments",
+							  ARGUMENT_ERROR);
 	}
 	char sep[2] = { NativePathSeparator(), '\0' };
 	return NewStrValue(interpreter, sep);
