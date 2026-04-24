@@ -1470,8 +1470,6 @@ void _RunProgram(Interpreter* interpreter, Value* fnValue) {
 		Panic("Expected stack count is 1, got %d\n", interpreter->StckC);
 	}
 
-	assert(interpreter->StckC == 1);
-
 	ForceGarbageCollect(interpreter);
 }
 
