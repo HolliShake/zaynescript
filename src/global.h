@@ -13,6 +13,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <dirent.h>
+#include <dlfcn.h>
 #include <errno.h>
 #include <limits.h>
 #include <math.h>
@@ -29,9 +30,9 @@
 #include <unistd.h>
 
 // Order patterns
-#include "../libbf/cutils.h"
-#include "../libbf/libbf.h"
-#include "../mongoose/mongoose.h"
+#include "../thirdparty/libbf/cutils.h"
+#include "../thirdparty/libbf/libbf.h"
+#include "../thirdparty/mongoose/mongoose.h"
 #include "../utf/utf.h"
 
 // Platform-specific includes for aligned allocation

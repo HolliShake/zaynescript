@@ -12,9 +12,11 @@ DIST_DIR   := dist
 TARGET     := $(DIST_DIR)/zscript.exe
 SQLITE_LIB := $(DIST_DIR)/libsqlite3.so
 MARIADB_LIB := $(DIST_DIR)/libmariadb.so
+THIRDPARTY_DIR := thirdparty
+SQLITE_SRC := $(THIRDPARTY_DIR)/sqlite/sqlite3.c
 
 # ── MariaDB connector build dir ─────────────────────────────
-MARIADB_SRC       := mariadb-connector-c
+MARIADB_SRC       := $(THIRDPARTY_DIR)/mariadb-connector-c
 MARIADB_BUILD_DIR := $(MARIADB_SRC)/build-zscript
 
 # ── Install paths ────────────────────────────────────────────
@@ -30,12 +32,12 @@ ALL_SRCS := \
 	$(wildcard src/core/*.c) \
 	$(wildcard utf/*.c) \
 	$(wildcard utf/utf8proc/*.c) \
-	$(filter-out libbf/cutils.c, $(wildcard libbf/*.c)) \
-	$(wildcard libregex/*.c) \
-	$(wildcard mongoose/*.c)
+	$(filter-out $(THIRDPARTY_DIR)/libbf/cutils.c, $(wildcard $(THIRDPARTY_DIR)/libbf/*.c)) \
+	$(wildcard $(THIRDPARTY_DIR)/libregex/*.c) \
+	$(wildcard $(THIRDPARTY_DIR)/mongoose/*.c)
 
 # sqlite/ is excluded for all builds — linked dynamically via dist/libsqlite3.so
-SRCS := $(filter-out sqlite/%, $(ALL_SRCS))
+SRCS := $(filter-out $(THIRDPARTY_DIR)/sqlite/%, $(ALL_SRCS))
 
 # ── Build metadata ───────────────────────────────────────────
 BUILD_DATE := $(shell date '+%Y-%m-%d %H:%M:%S')
@@ -101,7 +103,7 @@ $(DIST_DIR):
 	mkdir -p $@
 
 # ── SQLite ───────────────────────────────────────────────────
-$(SQLITE_LIB): sqlite/sqlite3.c | $(DIST_DIR)
+$(SQLITE_LIB): $(SQLITE_SRC) | $(DIST_DIR)
 	@echo "[sqlite] Building shared library..."
 	$(CC) -fPIC -shared -O2 -o $@ $<
 	@echo "[sqlite] → $@"
