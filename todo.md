@@ -18,3 +18,14 @@
 [ ] [Parser] if a "local", "var", "const" statement was followed by an identifier or group assignment
 [ ] [Parser] if a "new" operator was followed by an expression then "(" args* ")"
 [x] [Parser] if a "class" was followed by identifier
+
+
+
+**BUGS**
+[src/interpreter.c:869]::Panic: Invalid stack state: StckC (1) is less than StackBot (3)
+   - REPRODUCE:
+       APP.controller(UserController, fn(app, ctrl) {
+            // health
+            app.get("health", fn(req, res) async => await ctrl["health"](req, res));
+        });
+ 

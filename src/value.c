@@ -1,15 +1,5 @@
-#include "./value.h"
 
-/**
- * @brief Full mark/sweep over the interpreter heap: marks every Value reachable
- *        from built-in roots, constants, stacks, environments, the task queue,
- *        and the call stack, frees unmarked nodes via _Free(), then sets
- *        Allocated and GcThreshold from the survivor count.
- * @param interpreter Interpreter whose GcRoot list and allocation accounting
- * are updated.
- * @origin src/gc.c
- */
-extern void GarbageCollect(Interpreter* interpreter);
+#include "./value.h"
 
 static void DefaultDestroyer(Value* thisArg) {
 	// Do nothing!
@@ -41,7 +31,6 @@ Value* NewErrorFValue(Interpreter* interpreter, String fmt, ...) {
 	va_start(args, fmt);
 	vsnprintf(message, size, fmt, args);
 	va_end(args);
-	/***********/
 	Value* v		= _CreateValue(interpreter, VLT_ERROR);
 	v->Value.Opaque = StringToRunes(message);
 	free(message);

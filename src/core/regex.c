@@ -1,3 +1,4 @@
+
 #include "./regex.h"
 
 
@@ -33,10 +34,6 @@ void* lre_realloc(void* opaque, void* ptr, size_t size) {
 
 /* ── Internal helpers ──────────────────────────────────────────────────── */
 
-/**
- * Advance one UTF-8 codepoint from *p, not past end.
- * Returns the new pointer, always strictly greater than the input.
- */
 static const uint8_t* _Utf8Next(const uint8_t* p, const uint8_t* end) {
 	if (p >= end)
 		return p + 1; /* caller's guard handles this */
@@ -147,10 +144,6 @@ static Value* _RegexSliceToStr(Interpreter*	  interpreter,
 	return out;
 }
 
-/**
- * Run lre_exec once.  Returns 1 on success (check *outRet for match status),
- * 0 on allocation failure.  Caller owns *outCap on success.
- */
 static int _RegexExecRaw(const uint8_t* bc,
 						 const uint8_t* text,
 						 int			textLen,
@@ -172,10 +165,6 @@ static int _RegexExecRaw(const uint8_t* bc,
 	return 1;
 }
 
-/**
- * Build a result array from a successful lre_exec cap array.
- * Returns an Error Value on OOM; otherwise a (possibly empty) Array Value.
- */
 static Value*
 _RegexBuildMatchArray(Interpreter* interpreter, uint8_t** cap, int capCount) {
 	Value* out = NewArrayValue(interpreter);
@@ -524,11 +513,6 @@ _ReCompile(Interpreter* interpreter, int argc, Value** arguments) {
 	return _RegexCompileInto(interpreter, rxVal, arguments[0], flags);
 }
 
-/**
- * Accept either a pre-compiled RegExp Value or a raw pattern string.
- * The compiled Value is returned so the caller can keep it rooted (preventing
- * GC from collecting the Blob before the bytecode pointer is used).
- */
 static Value* _ReResolvePattern(Interpreter*	interpreter,
 								Value*			patternOrRegex,
 								Value*			flagsV,

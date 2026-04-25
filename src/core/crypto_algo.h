@@ -3,7 +3,8 @@
  * @brief Extended digests, KDFs, and ciphers aligned with CryptoJS @c
  * develop/src modules (original C; @see
  * https://github.com/brix/crypto-js/tree/develop/src).
- * @see thirdparty/crypto/pqcleanfips202/ (PQClean FIPS 202 Keccak, TweetFips202/SUPERCOP lineage)
+ * @see thirdparty/crypto/pqcleanfips202/ (PQClean FIPS 202 Keccak,
+ * TweetFips202/SUPERCOP lineage)
  */
 #ifndef CORE_CRYPTO_ALGO_H
 #define CORE_CRYPTO_ALGO_H

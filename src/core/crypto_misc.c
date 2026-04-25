@@ -1,7 +1,4 @@
-/**
- * Base64url (RFC 4648 §5). Original C.
- * @see https://github.com/brix/crypto-js/tree/develop/src — @c enc-base64url.js
- */
+
 #include "./crypto.h"
 #include "./crypto_algo.h"
 

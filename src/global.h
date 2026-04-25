@@ -384,7 +384,7 @@ typedef enum ast_type_enum {
 	AST_PRE_INC,	 /**< Pre-increment (++i) */
 	AST_PRE_DEC,	 /**< Pre-decrement (--i) */
 	AST_AWAIT,		 /**< Await expression (await promise) */
-	AST_TYPEOF,		/**< Typeof expression (typeof expr) */
+	AST_TYPEOF,		 /**< Typeof expression (typeof expr) */
 	// Binary Operators
 	AST_MUL,		  /**< Multiplication (*) */
 	AST_DIV,		  /**< Division (/) */
@@ -880,8 +880,8 @@ typedef struct stack_trace {
  * list.
  *
  * Contains information about an imported module including its
- * path, loaded value, dependencies, and a pointer to the next
- * import node in the chain.
+ * path, dependencies, and a pointer to the next import node in
+ * the chain.
  */
 typedef struct import_node ImportNode;
 
@@ -908,7 +908,6 @@ typedef struct import_node ImportNode;
 
 typedef struct import_node {
 	String		 Path;		   /**< Path of the imported module */
-	Value*		 Module;	   /**< Loaded module value (Class or Object) */
 	ImportNode** Dependencies; /**< Array of module dependencies (other
 							 modules this module imports) */
 	int DepCount;			   /**< Count of dependencies */
@@ -928,13 +927,49 @@ typedef struct import_node {
  * was paused.
  */
 typedef struct exception_handler_struct {
-	int JumpAddress;		 /**< Instruction index to jump to on
-								exception */
-	size_t* PausedAddress;	 /**< Saved paused instruction/address
-								pointer */
-	size_t JitPausedAddress; /**< Saved  paused instruction/address pointer for
-								jit */
+	int JumpAddress;	   /**< Instruction index to jump to on
+							  exception */
+	size_t* PausedAddress; /**< Saved paused instruction/address
+							  pointer */
 } ExceptionHandler;
+
+/**
+ * @struct callframe_struct
+ * @brief Represents a single call frame in the interpreter's
+ * execution stack.
+ *
+ * Stores the parent call frame, operands for the current function
+ * call (arguments, captured variables, etc.), the current
+ * environment, function being called, and instruction pointer for
+ * resuming execution.
+ */
+typedef struct callframe_struct CallFrame;
+
+typedef struct callframe_struct {
+	CallFrame* Parent;		 /**< Parent call frame (caller) */
+	Value*	   Operand[256]; /**< Operands for the current function call
+						 (arguments,	 captured variables, etc.) */
+	int	   OperandC;		 /**< Count of operands */
+	Value* GlobalEnv;
+	Value* Env;
+	Value* Fn;
+	size_t Ip;
+	int	   RefCount;
+} CallFrame;
+
+static inline void InitCallFrame(CallFrame* frame,
+								 CallFrame* parent,
+								 Value*		global,
+								 Value*		env,
+								 Value*		fn) {
+	frame->Parent	 = parent;
+	frame->OperandC	 = 0;
+	frame->GlobalEnv = global;
+	frame->Env		 = env;
+	frame->Fn		 = fn;
+	frame->Ip		 = 0;
+	frame->RefCount	 = 1;
+}
 
 /**
  * @struct interpreter_struct
@@ -955,29 +990,25 @@ struct interpreter_struct {
 	String		  ArgString; /**< Arguments passed when --run */
 	struct mg_mgr MgMgr; /**< Mongoose manager for handling HTTP requests (used
 						  * in native modules) */
-	ImportNode* ImportHead;		 /**< Head of the linked list of
-									imported modules */
-	HashMap* Imports;			 /**< Imports map */
-	Value*	 Object;			 /**< Built-in Object class */
-	Value*	 Array;				 /**< Built-in Array class */
-	Value*	 Date;				 /**< Built-in Date class */
-	Value*	 Promise;			 /**< Built-in Promise class */
-	Value*	 True;				 /**< Singleton 'true' value */
-	Value*	 False;				 /**< Singleton 'false' value */
-	Value*	 Null;				 /**< Singleton 'null' value */
-	Value*	 GcRoot;			 /**< Head of the allocation list */
-	Value*	 RootEnv;			 /**< Root environment of the current program */
-	Value*	 CallEnv;			 /**< Current execution environment */
-	size_t	 Allocated;			 /**< Count of live young-generation values */
-	Value**	 Constants;			 /**< Array of constant values */
-	int		 ConstantC;			 /**< Count of constants */
-	Value**	 Functions;			 /**< Array of function definitions */
-	int		 FunctionC;			 /**< Count of functions */
-	Value*	 Stacks[STACK_SIZE]; /**< Execution stack */
-	int		 StckC;				 /**< Stack pointer/count */
-	Value*	 Envs[STACK_SIZE];	 /**< Environment stack for variable
-									scopes */
-	int EnvrC;					 /**< Environment stack pointer */
+	ImportNode* ImportHead;	 /**< Head of the linked list of
+								imported modules */
+	HashMap*   Imports;		 /**< Imports map */
+	CallFrame* CurrentFrame; /**< Pointer to the current call frame */
+	Value*	   ActiveTask; /**< Pointer to the currently active task (for async
+								operations) */
+	Value*	Object;		   /**< Built-in Object class */
+	Value*	Array;		   /**< Built-in Array class */
+	Value*	Date;		   /**< Built-in Date class */
+	Value*	Promise;	   /**< Built-in Promise class */
+	Value*	True;		   /**< Singleton 'true' value */
+	Value*	False;		   /**< Singleton 'false' value */
+	Value*	Null;		   /**< Singleton 'null' value */
+	Value*	GcRoot;		   /**< Head of the allocation list */
+	size_t	Allocated;	   /**< Count of live young-generation values */
+	Value** Constants;	   /**< Array of constant values */
+	int		ConstantC;	   /**< Count of constants */
+	Value** Functions;	   /**< Array of function definitions */
+	int		FunctionC;	   /**< Count of functions */
 	ExceptionHandler
 		ExceptionHandlerStacks[STACK_SIZE]; /**< Stack for exception handlers */
 	int ExceptionHandlerStackC;				/**< Exception handler stack
@@ -991,9 +1022,7 @@ struct interpreter_struct {
 	StackTrace CallStack[STACK_SIZE]; /**< Call stack for debugging
 										 (stores line info and function
 										 for each call frame) */
-	int	   CallStackC;				  /**< Call stack pointer/count */
-	Value* ActiveFunction; /** < Currently active function being processed */
-	Value* ActiveTask;	   /**< Currently active task being processed */
+	int CallStackC;					  /**< Call stack pointer/count */
 };
 
 /**
@@ -1083,24 +1112,20 @@ typedef enum state_machine_state_enum {
 typedef struct state_machine_struct {
 	StateMachineState State; /**< Current state (PENDING,
 								FULFILLED, or REJECTED) */
-	bool IsCallback;		 /**< True if this is a callback state
+	CallFrame* Frame;		 /**< Current call frame for this state machine */
+	bool	   IsCallback;	 /**< True if this is a callback state
 								machine */
-	Value* CallEnv;			 /**< Execution environment when created */
-	Value* WaitFor;			 /**< Value being awaited (e.g. a promise) */
-	Value* Value;			 /**< Resulting value of the operation */
-	Value* Function;		 /**< Function being executed */
-	bool   IsCatched;		 /**< True if this state machine has been
-								caught by a catch	 handler */
-	size_t	 Ip;			 /**< Instruction pointer */
-	LineInfo Line;			 /**< Line information for debugging */
-	Value**	 WaitList;		 /**< Array of awaited values */
-	size_t	 WaitListC;		 /**< Count of items in WaitList */
-	Value**	 Stacks;		 /**< Saved execution stack */
-	size_t	 StckTop;		 /**< Top index of the execution stack */
-	size_t	 StckBot;		 /**< Base index of the execution stack */
-	Value**	 EnvStack;		 /**< Saved environment stack */
-	size_t	 EnvrTop;		 /**< Top index of saved environment stack */
-	size_t	 EnvrBot;		 /**< Base index of saved environment stack */
+	Value* GlobalEnv;	/**< Global environment captured for callback/task frame
+						   initialization */
+	Value* Callback;	/*< Pointer to the callback function (if IsCallback is
+						   true) */
+	Value* WaitFor;		/**< Value being awaited (e.g. a promise) */
+	Value* Value;		/**< Resulting value of the operation */
+	bool   IsCatched;	/**< True if this state machine has been
+						   caught by a catch	 handler */
+	LineInfo Line;		/**< Line information for debugging */
+	Value**	 WaitList;	/**< Array of awaited values */
+	size_t	 WaitListC; /**< Count of items in WaitList */
 } StateMachine;
 
 // -----------------------------------------------------------------------------

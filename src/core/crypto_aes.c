@@ -1,7 +1,4 @@
-/**
- * AES-128 ECB/CBC with PKCS#7 (tiny-AES-c, unlicense).
- * @see https://github.com/brix/crypto-js/tree/develop/src — @c aes.js
- */
+
 #include "./crypto.h"
 #include "./crypto_algo.h"
 

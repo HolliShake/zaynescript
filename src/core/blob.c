@@ -1,8 +1,6 @@
+
 #include "./blob.h"
 
-/**
- * @brief Growable byte buffer used while constructing Blob values.
- */
 typedef struct {
 	uint8_t* data; /**< Allocated storage; may be NULL when empty. */
 	size_t	 len;  /**< Number of bytes currently stored. */
@@ -43,9 +41,6 @@ _BlobBufAppendUtf8(_BlobBuf* buf, Interpreter* interpreter, const String utf8) {
 						  strlen(utf8));
 }
 
-/**
- * @brief Formats one element for Blob string join (commas; arrays recurse).
- */
 static String _BlobJoinElementString(Value* el, Interpreter* interpreter);
 
 static String _BlobArrayJoinString(Array* arr, Interpreter* interpreter) {

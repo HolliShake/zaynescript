@@ -1,3 +1,4 @@
+
 #include "./class.h"
 
 Class* CreateUserClass(String name, Value* base) {
