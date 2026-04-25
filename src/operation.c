@@ -1,7 +1,6 @@
 
 #include "./operation.h"
 
-#include "global.h"
 
 #define FreeTempBf(interpreter, bf, val)                                       \
 	do {                                                                       \

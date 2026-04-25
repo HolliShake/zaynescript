@@ -1,12 +1,6 @@
 
 #include "./interpreter.h"
 
-#include "global.h"
-
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-
 static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
 	// libbf uses size == 0 to signal a free() operation
 	if (size == 0) {
@@ -1370,8 +1364,6 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					val					   = FPopp(interpreter, frame);
 					CallFrame* parentFrame = frame->Parent;
 					CallFrame* deadFrame   = frame;
-
-					assert(parentFrame != deadFrame);
 
 					if (uf->Async) {
 						// Return resolved promise

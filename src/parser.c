@@ -1,9 +1,6 @@
 
 #include "./parser.h"
 
-#include "global.h"
-#include "keyword.h"
-
 Parser* CreateParser(Lexer* lexer) {
 	Parser* parser = Allocate(sizeof(Parser));
 	parser->Lexer  = lexer;
