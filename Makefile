@@ -7,12 +7,19 @@
 CC  := clang
 LLD := lld
 
+# Use all available CPU cores by default when user does not pass -j.
+NPROC := $(shell nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
+ifeq (,$(filter -j%,$(MAKEFLAGS)))
+MAKEFLAGS += -j$(NPROC)
+endif
+
 # ── Output ──────────────────────────────────────────────────
 DIST_DIR   := dist
 TARGET     := $(DIST_DIR)/zscript.exe
 SQLITE_LIB := $(DIST_DIR)/libsqlite3.so
 MARIADB_LIB := $(DIST_DIR)/libmariadb.so
 THIRDPARTY_DIR := thirdparty
+THIRDPARTY_CRYPTO_DIR := $(THIRDPARTY_DIR)/crypto
 SQLITE_SRC := $(THIRDPARTY_DIR)/sqlite/sqlite3.c
 
 # ── MariaDB connector build dir ─────────────────────────────
@@ -35,7 +42,10 @@ ALL_SRCS := \
 	$(wildcard utf/utf8proc/*.c) \
 	$(filter-out $(THIRDPARTY_DIR)/libbf/cutils.c, $(wildcard $(THIRDPARTY_DIR)/libbf/*.c)) \
 	$(wildcard $(THIRDPARTY_DIR)/libregex/*.c) \
-	$(wildcard $(THIRDPARTY_DIR)/mongoose/*.c)
+	$(wildcard $(THIRDPARTY_DIR)/mongoose/*.c) \
+	$(THIRDPARTY_CRYPTO_DIR)/pqcleanfips202/pqclean_fips202.c \
+	$(THIRDPARTY_CRYPTO_DIR)/RHash/librhash/ripemd-160.c \
+	$(THIRDPARTY_CRYPTO_DIR)/tiny-AES-c/aes.c
 
 # sqlite/ is excluded for all builds — linked dynamically via dist/libsqlite3.so
 SRCS := $(filter-out $(THIRDPARTY_DIR)/sqlite/%, $(ALL_SRCS))
@@ -47,6 +57,9 @@ BUILD_DATE := $(shell date '+%Y-%m-%d %H:%M:%S')
 CFLAGS_COMMON := \
 	-Wno-pointer-sign \
 	-DBUILD_DATE='"$(BUILD_DATE)"' \
+	-I$(THIRDPARTY_DIR) \
+	-I$(THIRDPARTY_CRYPTO_DIR)/RHash/librhash \
+	-I$(THIRDPARTY_CRYPTO_DIR)/tiny-AES-c \
 	-I$(MARIADB_SRC)/include
 
 LDFLAGS_COMMON := \

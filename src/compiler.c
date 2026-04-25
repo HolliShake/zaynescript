@@ -1,5 +1,7 @@
 #include "./compiler.h"
 
+#include "global.h"
+
 #define PushArray(type, array, count, val, defaultValue)                       \
 	do {                                                                       \
 		(array)[count++] = val;                                                \
@@ -10,15 +12,21 @@
 #define GetOffset() (compiler->Interpreter->ConstantC)
 
 Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser) {
-	Compiler* compiler	  = Allocate(sizeof(Compiler));
-	compiler->Interpreter = interpreter;
-	compiler->Parser	  = parser;
-	compiler->ModulePath  = NULL;
+	Compiler* compiler	   = Allocate(sizeof(Compiler));
+	compiler->Interpreter  = interpreter;
+	compiler->Parser	   = parser;
+	compiler->ModulePath   = NULL;
+	compiler->ModuleOffset = -1;
 	return compiler;
 }
 
+static int _SaveStr(Compiler* compiler, String str);
+
 static void _InitModule(Compiler* compiler) {
-	compiler->ModulePath = AbsolutePath(compiler->Parser->Lexer->Path);
+	String modulePath	   = AbsolutePath(compiler->Parser->Lexer->Path);
+	int	   offset		   = _SaveStr(compiler, modulePath);
+	compiler->ModulePath   = modulePath;
+	compiler->ModuleOffset = offset;
 }
 
 static String _GetModule(Compiler* compiler) {
@@ -242,13 +250,15 @@ _EmitArg(Compiler* compiler, UserFunction* uf, OpcodeEnum opcode, int index) {
 }
 
 static void _EmitLine(Compiler* compiler, UserFunction* uf, Position pos) {
-	PushArray(LineInfo,
-			  uf->Lines,
-			  uf->LineC,
-			  ((LineInfo){ .Path = _GetModule(compiler),
-						   .Pc	 = uf->CodeC,
-						   .Line = pos.LineStart }),
-			  ((LineInfo){}));
+	PushArray(
+		LineInfo,
+		uf->Lines,
+		uf->LineC,
+		((LineInfo){
+			.Path = compiler->Interpreter->Constants[compiler->ModuleOffset],
+			.Pc	  = uf->CodeC,
+			.Line = pos.LineStart }),
+		((LineInfo){}));
 }
 
 static int
@@ -849,6 +859,13 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 				_Emit(compiler, uf, OP_NOT);
 				break;
 			}
+		case AST_BITWISE_NOT:
+			{
+				_CompileExpression(compiler, uf, scope, node->A);
+				_EmitLine(compiler, uf, node->Position);
+				_Emit(compiler, uf, OP_BITNOT);
+				break;
+			}
 		case AST_POSITIVE:
 			{
 				_CompileExpression(compiler, uf, scope, node->A);
@@ -906,6 +923,13 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 				_Emit(compiler, uf, OP_AWAIT);
 				_EmitLine(compiler, uf, node->Position);
 				_Emit(compiler, uf, OP_GET_AWAITED_VALUE);
+				break;
+			}
+		case AST_TYPEOF:
+			{
+				_CompileExpression(compiler, uf, scope, node->A);
+				_EmitLine(compiler, uf, node->Position);
+				_Emit(compiler, uf, OP_GETTYPE);
 				break;
 			}
 		case AST_MUL:

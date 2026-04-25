@@ -10,6 +10,7 @@
 #include "../global.h"
 #include "./array.h"
 #include "./blob.h"
+#include "./crypto.h"
 #include "./date.h"
 #include "./io.h"
 #include "./math.h"
@@ -21,6 +22,7 @@
 #include "./promise.h"
 #include "./regex.h"
 #include "./sqlite.h"
+#include "./string.h"
 #include "./utf8.h"
 
 #ifndef CORE_LOADER_H

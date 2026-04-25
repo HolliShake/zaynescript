@@ -6,7 +6,7 @@
     <title>Standard Library — ZayneScript</title>
     <meta
       name="description"
-      content="ZayneScript standard library reference: core:io (including File for disk I/O), core:math, core:os (including args for scripts), core:path (cross-platform file paths), core:object, core:array, core:date, core:promise, core:sqlite, core:mysql, core:utf8 (Unicode), core:mongoose (HTTP server and client), plus user libraries lib:http and lib:argparser."
+      content="ZayneScript standard library reference: core:io (including File for disk I/O), core:math, core:os (including args for scripts), core:path (cross-platform file paths), core:object, core:array, core:date, core:promise, core:sqlite, core:mysql, core:utf8 (Unicode), core:string (text helpers), core:mongoose (HTTP server and client), plus user libraries lib:http and lib:argparser."
     />
     <link rel="stylesheet" href="style.css" />
     <link rel="icon" type="image/x-icon" href="zs.ico" />
@@ -137,24 +137,64 @@
     <div class="docs-wrapper">
       <!-- Sidebar -->
       <aside class="docs-sidebar">
+        <!-- Sidebar groups and their contents sorted alphabetically -->
         <div class="sidebar-group">
           <div class="sidebar-group-title">Modules</div>
           <ul>
+            <li><a href="#array">core:array</a></li>
+            <li><a href="#crypto">core:crypto</a></li>
+            <li><a href="#date">core:date</a></li>
             <li><a href="#io">core:io</a></li>
             <li><a href="#math">core:math</a></li>
+            <li><a href="#mongoose">core:mongoose</a></li>
+            <li><a href="#mysql">core:mysql</a></li>
+            <li><a href="#object">core:object</a></li>
             <li><a href="#os">core:os</a></li>
             <li><a href="#path">core:path</a></li>
-            <li><a href="#object">core:object</a></li>
-            <li><a href="#array">core:array</a></li>
-            <li><a href="#date">core:date</a></li>
-            <li><a href="#regex">core:regex</a></li>
             <li><a href="#promise">core:promise</a></li>
-            <li><a href="#utf8">core:utf8</a></li>
+            <li><a href="#regex">core:regex</a></li>
             <li><a href="#sqlite">core:sqlite</a></li>
-            <li><a href="#mysql">core:mysql</a></li>
-            <li><a href="#mongoose">core:mongoose</a></li>
-            <li><a href="#lib-http">lib:http</a></li>
+            <li><a href="#string">core:string</a></li>
+            <li><a href="#utf8">core:utf8</a></li>
             <li><a href="#lib-argparser">lib:argparser</a></li>
+            <li><a href="#lib-http">lib:http</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-group">
+          <div class="sidebar-group-title">core:array</div>
+          <ul>
+            <li><a href="#arr-push">push</a></li>
+            <li><a href="#arr-pop">pop</a></li>
+            <li><a href="#arr-length">length</a></li>
+            <li><a href="#arr-each">each</a></li>
+            <li><a href="#arr-keep">keep</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-group">
+          <div class="sidebar-group-title">core:crypto</div>
+          <ul>
+            <li><a href="#crypto-overview">Overview</a></li>
+            <li><a href="#crypto-input-types">Accepted input types</a></li>
+            <li><a href="#crypto-aes-sample">AES sample</a></li>
+            <li><a href="#crypto-ciphers">Cipher helpers</a></li>
+            <li><a href="#crypto-common-errors">Common errors</a></li>
+            <li><a href="#crypto-complete-example">Complete example</a></li>
+            <li><a href="#crypto-encoders">Encoders</a></li>
+            <li><a href="#crypto-hashes">Hash functions</a></li>
+            <li><a href="#crypto-hmac">HMAC functions</a></li>
+            <li><a href="#crypto-kdf">KDF functions</a></li>
+            <li><a href="#crypto-usecase-scenarios">Use-case scenarios</a></li>
+            <li><a href="#crypto-validation">Validation</a></li>
+            <li><a href="#crypto-wordarray">WordArray</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-group">
+          <div class="sidebar-group-title">core:date</div>
+          <ul>
+            <li><a href="#date-constructor">constructor</a></li>
+            <li><a href="#date-getters">Getters</a></li>
+            <li><a href="#date-gettime">getTime</a></li>
+            <li><a href="#date-tostring">toString</a></li>
           </ul>
         </div>
         <div class="sidebar-group">
@@ -182,6 +222,40 @@
             <li><a href="#math-single">Single-arg functions</a></li>
             <li><a href="#math-double">Two-arg functions</a></li>
             <li><a href="#math-constants">Constants</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-group">
+          <div class="sidebar-group-title">core:mongoose</div>
+          <ul>
+            <li><a href="#mongoose-overview">Overview</a></li>
+            <li><a href="#mongoose-request">request (HTTP client)</a></li>
+            <li><a href="#mongoose-server">Server class</a></li>
+            <li><a href="#mongoose-routing">Routing</a></li>
+            <li><a href="#mongoose-req">Request object</a></li>
+            <li><a href="#mongoose-res">Response object</a></li>
+            <li><a href="#mongoose-middleware">Middleware</a></li>
+            <li><a href="#mongoose-patterns">Common patterns</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-group">
+          <div class="sidebar-group-title">core:mysql</div>
+          <ul>
+            <li><a href="#mysql-overview">Overview</a></li>
+            <li><a href="#mysql-database">Database class</a></li>
+            <li><a href="#mysql-db-constructor">constructor</a></li>
+            <li><a href="#mysql-db-query">query</a></li>
+            <li><a href="#mysql-db-exec">exec</a></li>
+            <li><a href="#mysql-db-close">close</a></li>
+            <li><a href="#mysql-patterns">Common patterns</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-group">
+          <div class="sidebar-group-title">core:object</div>
+          <ul>
+            <li><a href="#obj-overview">Overview</a></li>
+            <li><a href="#obj-keys">keys</a></li>
+            <li><a href="#obj-values">values</a></li>
+            <li><a href="#obj-freeze">freeze</a></li>
           </ul>
         </div>
         <div class="sidebar-group">
@@ -213,31 +287,10 @@
           </ul>
         </div>
         <div class="sidebar-group">
-          <div class="sidebar-group-title">core:object</div>
+          <div class="sidebar-group-title">core:promise</div>
           <ul>
-            <li><a href="#obj-overview">Overview</a></li>
-            <li><a href="#obj-keys">keys</a></li>
-            <li><a href="#obj-values">values</a></li>
-            <li><a href="#obj-freeze">freeze</a></li>
-          </ul>
-        </div>
-        <div class="sidebar-group">
-          <div class="sidebar-group-title">core:array</div>
-          <ul>
-            <li><a href="#arr-push">push</a></li>
-            <li><a href="#arr-pop">pop</a></li>
-            <li><a href="#arr-length">length</a></li>
-            <li><a href="#arr-each">each</a></li>
-            <li><a href="#arr-keep">keep</a></li>
-          </ul>
-        </div>
-        <div class="sidebar-group">
-          <div class="sidebar-group-title">core:date</div>
-          <ul>
-            <li><a href="#date-constructor">constructor</a></li>
-            <li><a href="#date-getters">Getters</a></li>
-            <li><a href="#date-gettime">getTime</a></li>
-            <li><a href="#date-tostring">toString</a></li>
+            <li><a href="#promise-then">then</a></li>
+            <li><a href="#promise-error">error</a></li>
           </ul>
         </div>
         <div class="sidebar-group">
@@ -247,23 +300,6 @@
             <li><a href="#regex-module-api">Module API</a></li>
             <li><a href="#regex-compiled-api">Compiled Pattern API</a></li>
             <li><a href="#regex-flags">Flags</a></li>
-          </ul>
-        </div>
-        <div class="sidebar-group">
-          <div class="sidebar-group-title">core:promise</div>
-          <ul>
-            <li><a href="#promise-then">then</a></li>
-            <li><a href="#promise-error">error</a></li>
-          </ul>
-        </div>
-        <div class="sidebar-group">
-          <div class="sidebar-group-title">core:utf8</div>
-          <ul>
-            <li><a href="#utf8-overview">Overview</a></li>
-            <li><a href="#utf8-normalize">Normalization</a></li>
-            <li><a href="#utf8-case">Case</a></li>
-            <li><a href="#utf8-props">Properties</a></li>
-            <li><a href="#utf8-version">version</a></li>
           </ul>
         </div>
         <div class="sidebar-group">
@@ -287,36 +323,21 @@
           </ul>
         </div>
         <div class="sidebar-group">
-          <div class="sidebar-group-title">core:mysql</div>
+          <div class="sidebar-group-title">core:string</div>
           <ul>
-            <li><a href="#mysql-overview">Overview</a></li>
-            <li><a href="#mysql-database">Database class</a></li>
-            <li><a href="#mysql-db-constructor">constructor</a></li>
-            <li><a href="#mysql-db-query">query</a></li>
-            <li><a href="#mysql-db-exec">exec</a></li>
-            <li><a href="#mysql-db-close">close</a></li>
-            <li><a href="#mysql-patterns">Common patterns</a></li>
+            <li><a href="#string-overview">Overview</a></li>
+            <li><a href="#string-example">Quick example</a></li>
+            <li><a href="#string-api">Functions</a></li>
           </ul>
         </div>
         <div class="sidebar-group">
-          <div class="sidebar-group-title">core:mongoose</div>
+          <div class="sidebar-group-title">core:utf8</div>
           <ul>
-            <li><a href="#mongoose-overview">Overview</a></li>
-            <li><a href="#mongoose-request">request (HTTP client)</a></li>
-            <li><a href="#mongoose-server">Server class</a></li>
-            <li><a href="#mongoose-routing">Routing</a></li>
-            <li><a href="#mongoose-req">Request object</a></li>
-            <li><a href="#mongoose-res">Response object</a></li>
-            <li><a href="#mongoose-middleware">Middleware</a></li>
-            <li><a href="#mongoose-patterns">Common patterns</a></li>
-          </ul>
-        </div>
-        <div class="sidebar-group">
-          <div class="sidebar-group-title">lib:http</div>
-          <ul>
-            <li><a href="#lib-http">Overview</a></li>
-            <li><a href="#lib-http-statuscode">StatusCode</a></li>
-            <li><a href="#lib-http-method">Method</a></li>
+            <li><a href="#utf8-overview">Overview</a></li>
+            <li><a href="#utf8-normalize">Normalization</a></li>
+            <li><a href="#utf8-case">Case</a></li>
+            <li><a href="#utf8-props">Properties</a></li>
+            <li><a href="#utf8-version">version</a></li>
           </ul>
         </div>
         <div class="sidebar-group">
@@ -328,6 +349,14 @@
             <li><a href="#lib-argparser-parsewithdefs">parseWithDefs</a></li>
           </ul>
         </div>
+        <div class="sidebar-group">
+          <div class="sidebar-group-title">lib:http</div>
+          <ul>
+            <li><a href="#lib-http">Overview</a></li>
+            <li><a href="#lib-http-statuscode">StatusCode</a></li>
+            <li><a href="#lib-http-method">Method</a></li>
+          </ul>
+        </div>
       </aside>
 
       <!-- Main content -->
@@ -337,11 +366,437 @@
           ZayneScript registers built-in modules under the
           <code>core:</code> import prefix (names are case-sensitive:
           <code>core:date</code>, <code>core:array</code>,
-          <code>core:regex</code>, …). They load on
+          <code>core:regex</code>, <code>core:string</code>, …). They load on
           demand — import only what you need. The repo
           also includes <code>lib/http.zs</code>, a thin wrapper re-exporting the
           HTTP client and common constants for use via <code>lib:http</code>.
         </p>
+
+        <!-- ==============================================================
+         core:array
+         ============================================================== -->
+        <h2 id="array">core:array — Array class</h2>
+        <p>Import with:</p>
+        <pre><code class="language-javascript">import { Array } from "core:array";</code></pre>
+        <p>
+          Array methods are available directly on every array literal via the
+          prototype. You do <em>not</em> need to explicitly import
+          <code>core:array</code> to use the built-in methods — they are always
+          present. Import it only when you need the <code>Array</code> class
+          itself (e.g. to add static helpers at runtime).
+        </p>
+
+        <hr />
+
+        <h3 id="arr-push">push</h3>
+        <div class="method">
+          <div class="method-sig">array.push(value)</div>
+          <p class="method-desc">
+            Appends <code>value</code> to the end of the array. Returns
+            <code>null</code>.
+          </p>
+        </div>
+        <pre><code class="language-javascript">const arr = [1, 2];
+arr.push(3);
+println(arr); // [1, 2, 3]</code></pre>
+
+        <h3 id="arr-pop">pop</h3>
+        <div class="method">
+          <div class="method-sig">array.pop() → value</div>
+          <p class="method-desc">
+            Removes and returns the last element. Throws an error if the array
+            is empty.
+          </p>
+        </div>
+        <pre><code class="language-javascript">const last = arr.pop();
+println(last); // 3
+println(arr);  // [1, 2]</code></pre>
+
+        <h3 id="arr-length">length</h3>
+        <div class="method">
+          <div class="method-sig">array.length() → int</div>
+          <p class="method-desc">
+            Returns the number of elements in the array.
+          </p>
+        </div>
+        <pre><code class="language-javascript">println([10, 20, 30].length()); // 3</code></pre>
+
+        <h3 id="arr-each">each</h3>
+        <div class="method">
+          <div class="method-sig">array.each(callback(value, index)) → array</div>
+          <p class="method-desc">
+            Calls <code>callback(value, index)</code> for every element and
+            returns a new array containing each return value. Analogous to
+            <code>Array.prototype.map</code> in JavaScript.
+          </p>
+        </div>
+        <pre><code class="language-javascript">const nums    = [1, 2, 3, 4, 5];
+const doubled = nums.each(fn(v, i) { return v * 2; });
+println(doubled); // [2, 4, 6, 8, 10]
+
+// println prints each argument: element, then index
+nums.each(println);
+// 1 0
+// 2 1
+// 3 2 ...</code></pre>
+
+        <h3 id="arr-keep">keep</h3>
+        <div class="method">
+          <div class="method-sig">array.keep(callback(value, index)) → array</div>
+          <p class="method-desc">
+            Returns a new array containing only the elements for which
+            <code>callback</code> returns a truthy value. Analogous to
+            <code>Array.prototype.filter</code>.
+          </p>
+        </div>
+        <pre><code class="language-javascript">const evens = nums.keep(fn(v, i) { return v % 2 == 0; });
+println(evens); // [2, 4]</code></pre>
+
+        <h3>Adding static helpers at runtime</h3>
+        <p>
+          Because <code>Array</code> is a first-class class value you can attach
+          arbitrary static functions to it:
+        </p>
+        <pre><code class="language-javascript">import { Array } from "core:array";
+
+Array.sum = fn(arr) {
+    local total = 0;
+    arr.each(fn(i, e) { total += e; });
+    return total;
+};
+
+println(Array.sum([1, 2, 3, 4, 5])); // 15</code></pre>
+
+        <!-- ==============================================================
+         core:crypto
+         ============================================================== -->
+        <h2 id="crypto">core:crypto — detailed API reference</h2>
+        <p>Import with:</p>
+        <pre><code class="language-javascript">import { Crypto } from "core:crypto";</code></pre>
+        <p class="page-intro" style="margin-top: 0.75rem">
+          Native implementation lives in <code>src/core/crypto.c</code>. The
+          module mirrors a CryptoJS-style aggregate API and returns
+          <code>WordArray</code> objects for all binary outputs.
+        </p>
+
+        <h3 id="crypto-overview">Overview</h3>
+        <ul style="margin: 0.75rem 0 0.75rem 1.5rem">
+          <li><strong>Hashing:</strong> MD5, SHA-1, SHA-2 family, SHA-3 family, RIPEMD-160.</li>
+          <li><strong>HMAC:</strong> MD5/SHA1/SHA256/SHA384/SHA512/RIPEMD160.</li>
+          <li><strong>KDF:</strong> PBKDF2 and EVP-style MD5 KDF (<code>EvpKDF</code>).</li>
+          <li><strong>Ciphers:</strong> AES-128 ECB/CBC (PKCS#7) and RC4.</li>
+          <li><strong>Encoders:</strong> Hex, Utf8, Base64, Base64Url.</li>
+        </ul>
+
+        <h3 id="crypto-input-types">Accepted input types</h3>
+        <p>
+          Most crypto functions accept message/key inputs as:
+          <code>string</code>, byte <code>Array</code> (0..255),
+          <code>WordArray</code>, object with <code>bytes</code> field, or
+          <code>null</code> (treated as empty input). Output is usually
+          <code>WordArray</code>.
+        </p>
+
+        <h3 id="crypto-aes-sample">AES sample (real-world flow)</h3>
+        <p>
+          Typical secure-message flow: derive key/IV from passphrase + salt,
+          encrypt with AES-CBC, transmit as Base64, then decode/decrypt.
+        </p>
+        <pre><code class="language-javascript">import { println } from "core:io";
+import { Crypto } from "core:crypto";
+
+const passphrase = "correct horse battery staple";
+const salt = "NaCl-1234"; // demo only; use per-message random salt in real apps
+const msg = "confidential payload";
+
+// 1) Derive 16-byte key + 16-byte IV
+const kivHex = Crypto.EvpKDF(passphrase, salt, 1000, 16, 16).toString(null);
+const key = Crypto.enc.Hex.parse(kivHex.substring(0, 32));
+const iv  = Crypto.enc.Hex.parse(kivHex.substring(32, 64));
+
+// 2) Encrypt
+const ciphertextWa = Crypto.AesCbcEncrypt(key, iv, msg);
+
+// 3) Transport-friendly encoding
+const transport = ciphertextWa.toString(Crypto.enc.Base64);
+println(transport);
+
+// 4) Decode + decrypt (receiver side)
+const decodedWa = Crypto.enc.Base64.parse(transport);
+const plaintext = Crypto.AesCbcDecrypt(key, iv, decodedWa).toString(Crypto.enc.Utf8);
+println(plaintext); // confidential payload</code></pre>
+
+        <h3 id="crypto-ciphers">Cipher helpers</h3>
+        <div class="method">
+          <div class="method-sig">Crypto.AesEcbEncrypt(key, plaintext) / Crypto.AesEcbDecrypt(key, ciphertext)</div>
+          <p class="method-desc">AES-128 ECB with PKCS#7 padding. Key must be 16 bytes.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">Crypto.AesCbcEncrypt(key, iv, plaintext) / Crypto.AesCbcDecrypt(key, iv, ciphertext)</div>
+          <p class="method-desc">AES-128 CBC with PKCS#7 padding. Key and IV must both be 16 bytes.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">Crypto.RC4(key, data, dropN) → WordArray</div>
+          <p class="method-desc">RC4 stream cipher. Use same <code>key</code> and <code>dropN</code> to decrypt.</p>
+        </div>
+        <pre><code class="language-javascript">const key = Crypto.enc.Utf8.parse("0123456789abcdef");
+const iv = Crypto.enc.Hex.parse("000102030405060708090a0b0c0d0e0f");
+const pt = "hello-aes-cbc";
+
+const ct = Crypto.AesCbcEncrypt(key, iv, pt);
+const dec = Crypto.AesCbcDecrypt(key, iv, ct).toString(Crypto.enc.Utf8);
+println(dec); // hello-aes-cbc
+
+const rc4Ct = Crypto.RC4("secret-key", "hello", 768);
+const rc4Pt = Crypto.RC4("secret-key", rc4Ct, 768).toString(Crypto.enc.Utf8);
+println(rc4Pt); // hello</code></pre>
+
+        <h3 id="crypto-common-errors">Common errors and constraints</h3>
+        <ul style="margin: 0.75rem 0 0.75rem 1.5rem">
+          <li>PBKDF2 requires 5 args; invalid <code>prf</code> is rejected.</li>
+          <li>AES helpers require 16-byte key (and 16-byte IV for CBC).</li>
+          <li>Invalid encoded input for <code>enc.*.parse</code> returns error.</li>
+          <li>UTF-8 stringify fails for invalid byte sequences.</li>
+        </ul>
+
+        <h3 id="crypto-complete-example">Complete example</h3>
+        <pre><code class="language-javascript">import { println } from "core:io";
+import { Crypto } from "core:crypto";
+
+const msg = "payload";
+
+// digest + hmac
+println(Crypto.SHA256(msg).toString(null));
+println(Crypto.HmacSHA256(msg, "k").toString(null));
+
+// derive key+iv then encrypt
+const kiv = Crypto.EvpKDF("password", "12345678", 1000, 16, 16).toString(null);
+const key = Crypto.enc.Hex.parse(kiv.substring(0, 32));
+const iv  = Crypto.enc.Hex.parse(kiv.substring(32, 64));
+const c = Crypto.AesCbcEncrypt(key, iv, msg);
+println(Crypto.AesCbcDecrypt(key, iv, c).toString(Crypto.enc.Utf8));</code></pre>
+
+        <h3 id="crypto-encoders">Encoders</h3>
+        <div class="method">
+          <div class="method-sig">Crypto.enc.Hex.stringify(wa) / Crypto.enc.Hex.parse(hex)</div>
+          <p class="method-desc">Hex encode/decode. Invalid hex parse returns error.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">Crypto.enc.Utf8.stringify(wa) / Crypto.enc.Utf8.parse(str)</div>
+          <p class="method-desc">UTF-8 conversion. Invalid UTF-8 decode returns error.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">Crypto.enc.Base64.stringify(wa) / Crypto.enc.Base64.parse(str)</div>
+          <p class="method-desc">RFC 4648 Base64 with padding.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">Crypto.enc.Base64Url.stringify(wa) / Crypto.enc.Base64Url.parse(str)</div>
+          <p class="method-desc">RFC 4648 base64url (URL-safe alphabet).</p>
+        </div>
+        <pre><code class="language-javascript">const hello = Crypto.enc.Utf8.parse("Hello");
+println(Crypto.enc.Hex.stringify(hello));        // 48656c6c6f
+println(Crypto.enc.Base64.stringify(hello));     // SGVsbG8=
+println(Crypto.enc.Base64Url.stringify(hello));  // SGVsbG8
+println(Crypto.enc.Utf8.stringify(hello));       // Hello</code></pre>
+
+        <h3 id="crypto-hashes">Hash functions</h3>
+        <p>All hash functions take one argument and return <code>WordArray</code>.</p>
+        <div class="method">
+          <div class="method-sig">
+Crypto.MD5(msg), Crypto.SHA1(msg), Crypto.SHA224(msg), Crypto.SHA256(msg),
+Crypto.SHA384(msg), Crypto.SHA512(msg), Crypto.SHA3_224(msg),
+Crypto.SHA3_256(msg), Crypto.SHA3_384(msg), Crypto.SHA3_512(msg),
+Crypto.RIPEMD160(msg)
+          </div>
+        </div>
+        <pre><code class="language-javascript">println(Crypto.SHA512("abc").toString(null));
+println(Crypto.SHA3_256("").toString(null));
+println(Crypto.RIPEMD160("").toString(null));</code></pre>
+
+        <h3 id="crypto-hmac">HMAC functions</h3>
+        <p>All HMAC functions take <code>(message, key)</code> and return <code>WordArray</code>.</p>
+        <div class="method">
+          <div class="method-sig">
+Crypto.HmacMD5(msg, key), Crypto.HmacSHA1(msg, key),
+Crypto.HmacSHA256(msg, key), Crypto.HmacSHA384(msg, key),
+Crypto.HmacSHA512(msg, key), Crypto.HmacRIPEMD160(msg, key)
+          </div>
+        </div>
+        <pre><code class="language-javascript">const mac = Crypto.HmacSHA256(
+  "The quick brown fox jumps over the lazy dog",
+  "key"
+);
+println(mac.toString(null));</code></pre>
+
+        <h3 id="crypto-kdf">Key derivation functions</h3>
+        <div class="method">
+          <div class="method-sig">Crypto.PBKDF2(password, salt, iterations, dkLen, prf) → WordArray</div>
+          <p class="method-desc">
+            <code>iterations</code> must be positive. <code>dkLen</code> range is
+            <code>1..65536</code>. <code>prf</code> values:
+            <code>0 = HMAC-SHA256</code>, <code>1 = HMAC-SHA1</code>,
+            <code>2 = HMAC-MD5</code>.
+          </p>
+        </div>
+        <div class="method">
+          <div class="method-sig">Crypto.EvpKDF(password, salt, iterations, keyLen, ivLen) → WordArray</div>
+          <p class="method-desc">
+            OpenSSL-style EVP_BytesToKey MD5 chain. Returns one <code>WordArray</code>
+            containing <code>key || iv</code>. <code>keyLen</code>/<code>ivLen</code>
+            must be within implementation limits.
+          </p>
+        </div>
+        <pre><code class="language-javascript">// PBKDF2 example
+const dk = Crypto.PBKDF2("password", "salt", 10000, 32, 0);
+println(dk.toString(null));
+
+// EvpKDF example: first 16 bytes key, next 16 bytes iv
+const kiv = Crypto.EvpKDF("password", "12345678", 1000, 16, 16);
+const key = Crypto.enc.Hex.parse(kiv.toString(null).substring(0, 32));
+const iv  = Crypto.enc.Hex.parse(kiv.toString(null).substring(32, 64));</code></pre>
+
+        <h3 id="crypto-usecase-scenarios">Use-case scenarios</h3>
+        <ul style="margin: 0.75rem 0 0.75rem 1.5rem">
+          <li><strong>API request signing</strong>: hash body + <code>HmacSHA256</code> for tamper detection.</li>
+          <li><strong>Password-derived encryption</strong>: <code>PBKDF2</code>/<code>EvpKDF</code> then AES-CBC for data-at-rest.</li>
+          <li><strong>Token fingerprinting</strong>: store SHA-256 digests instead of raw secret tokens.</li>
+          <li><strong>Binary transport conversion</strong>: convert payloads via <code>enc.Base64</code>/<code>enc.Base64Url</code>.</li>
+        </ul>
+
+        <h3 id="crypto-validation">Validation</h3>
+        <pre><code class="language-bash">./dist/zscript.exe --run tests/test_crypto.zs</code></pre>
+
+        <h3 id="crypto-wordarray">WordArray and conversion</h3>
+        <div class="method">
+          <div class="method-sig">wordArray.toString(encoder?) → string</div>
+          <p class="method-desc">
+            Without <code>encoder</code> (or with <code>null</code>) returns lowercase
+            hex. Encoder options are <code>Crypto.enc.Hex</code>,
+            <code>Crypto.enc.Utf8</code>, <code>Crypto.enc.Base64</code>, and
+            <code>Crypto.enc.Base64Url</code>.
+          </p>
+        </div>
+        <pre><code class="language-javascript">const wa = Crypto.SHA256("abc");
+println(wa.toString(null));                  // hex
+println(wa.toString(Crypto.enc.Base64));     // base64</code></pre>
+
+        <!-- ==============================================================
+         core:date
+         ============================================================== -->
+        <h2 id="date">core:date — Date and Time</h2>
+        <p>Import with:</p>
+        <pre><code class="language-javascript">import { Date } from "core:date";
+// Or wildcard:
+import "core:date";</code></pre>
+
+        <hr />
+
+        <h3 id="date-constructor">Constructor</h3>
+        <div class="method">
+          <div class="method-sig">new Date()</div>
+          <div class="method-sig">new Date(timestamp: number)</div>
+          <div class="method-sig">new Date(dateString: string)</div>
+          <div class="method-sig">new Date(year, month, [day, hours, minutes, seconds, ms])</div>
+          <p class="method-desc" style="margin-top: 0.5rem">
+            Creates a new Date instance.<br />
+            • <strong>No argument</strong> — current date and time.<br />
+            • <strong>Number</strong> — Unix timestamp in milliseconds.<br />
+            • <strong>String</strong> — parsed date. Supported formats:
+            <code>YYYY-MM-DD</code>, <code>YYYY-MM-DD HH:mm:ss</code>,
+            <code>YYYY-MM-DDTHH:mm:ss</code>,
+            <code>YYYY/MM/DD HH:mm:ss</code>.<br />
+            • <strong>Components</strong> — year (full), month (0-based Jan=0),
+            day (default 1), hours, minutes, seconds, milliseconds.
+          </p>
+        </div>
+        <pre><code class="language-javascript">const now = new Date();
+println(now.toString()); // e.g. Fri Apr 04 2026 14:30:00
+
+const d1 = new Date("2023-12-25");
+println(d1.getFullYear()); // 2023
+println(d1.getMonth());    // 11  (0-based)
+println(d1.getDate());     // 25
+
+const d2 = new Date(2024, 0, 1, 12, 30, 45);
+// year=2024, month=January(0), day=1, 12:30:45
+
+const d3 = new Date(1705449600000); // from timestamp ms</code></pre>
+
+        <h3 id="date-getters">Instance Getters</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>Returns</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>getFullYear()</code></td>
+              <td><code>int</code></td>
+              <td>Full 4-digit year (e.g. 2026)</td>
+            </tr>
+            <tr>
+              <td><code>getMonth()</code></td>
+              <td><code>int</code></td>
+              <td>Month 0–11 (0 = January)</td>
+            </tr>
+            <tr>
+              <td><code>getDate()</code></td>
+              <td><code>int</code></td>
+              <td>Day of month 1–31</td>
+            </tr>
+            <tr>
+              <td><code>getDay()</code></td>
+              <td><code>int</code></td>
+              <td>Day of week 0–6 (0 = Sunday)</td>
+            </tr>
+            <tr>
+              <td><code>getHours()</code></td>
+              <td><code>int</code></td>
+              <td>Hours 0–23</td>
+            </tr>
+            <tr>
+              <td><code>getMinutes()</code></td>
+              <td><code>int</code></td>
+              <td>Minutes 0–59</td>
+            </tr>
+            <tr>
+              <td><code>getSeconds()</code></td>
+              <td><code>int</code></td>
+              <td>Seconds 0–59</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre><code class="language-javascript">const d = new Date("2026-04-04T14:30:00");
+println(d.getFullYear()); // 2026
+println(d.getMonth());    // 3   (April = index 3)
+println(d.getDate());     // 4
+println(d.getDay());      // 6   (Saturday)
+println(d.getHours());    // 14
+println(d.getMinutes());  // 30
+println(d.getSeconds());  // 0</code></pre>
+
+        <h3 id="date-gettime">getTime</h3>
+        <div class="method">
+          <div class="method-sig">date.getTime() → num</div>
+          <p class="method-desc">
+            Returns the internal Unix timestamp in
+            <strong>milliseconds</strong>.
+          </p>
+        </div>
+        <pre><code class="language-javascript">println(new Date().getTime()); // e.g. 1743778200000</code></pre>
+
+        <h3 id="date-tostring">toString</h3>
+        <div class="method">
+          <div class="method-sig">date.toString() → string</div>
+          <p class="method-desc">
+            Returns a human-readable string representation of the date, e.g.
+            <code>"Sat Apr 04 2026 14:30:00"</code>.
+          </p>
+        </div>
+        <pre><code class="language-javascript">println(new Date().toString());</code></pre>
 
         <!-- ==============================================================
          core:io
@@ -833,6 +1288,524 @@ println(sin(pi / 2));   // 1
 println(e);             // 2.718281828459045</code></pre>
 
         <!-- ==============================================================
+         core:mongoose
+         ============================================================== -->
+        <h2 id="mongoose">core:mongoose — HTTP Server</h2>
+        <p>Import with:</p>
+        <pre><code class="language-javascript">import { Server, request } from "core:mongoose";</code></pre>
+        <p class="page-intro">
+          <code>core:mongoose</code> wraps the
+          <a href="https://mongoose.ws" target="_blank" rel="noopener"
+            >Mongoose</a
+          >
+          embedded networking library to give ZayneScript an Express.js-style
+          HTTP server and a small async HTTP <strong>client</strong>. Create a
+          <code>Server</code>, register routes, and call
+          <code>listen()</code> — the event loop runs until
+          <code>close()</code> is called. Outbound requests use
+          <code>request()</code> and return a <code>Promise</code>.
+        </p>
+
+        <hr />
+
+        <h3 id="mongoose-overview">Overview</h3>
+        <p>Import symbols for both the server and client:</p>
+        <pre><code class="language-javascript">import { Server, request } from "core:mongoose";</code></pre>
+
+        <h3 id="mongoose-request">request — HTTP client</h3>
+        <div class="method">
+          <div class="method-sig">request(url: string [, options: object]) → Promise</div>
+          <p class="method-desc">
+            Performs a non-blocking HTTP request using the interpreter's shared
+            Mongoose manager. Resolves with an object
+            <code>{ status, statusText, headers, body }</code> — on failure the
+            promise is rejected with an error string.
+          </p>
+        </div>
+        <p>Optional <code>options</code> fields:</p>
+        <ul style="margin: 0.75rem 0 0.75rem 1.5rem">
+          <li>
+            <code>method</code> — verb string (default <code>"GET"</code>);
+            upper-cased internally.
+          </li>
+          <li>
+            <code>headers</code> — plain object of header names to values (merged
+            into the request).
+          </li>
+          <li>
+            <code>body</code> — string for raw text; an object value is
+            stringified and sent as JSON with
+            <code>Content-Type: application/json</code> if not already set.
+          </li>
+        </ul>
+        <p>
+          If the response has <code>Content-Type: application/json</code>,
+          <code>body</code> is parsed into objects/arrays/values; otherwise it
+          remains a string.
+        </p>
+        <pre><code class="language-javascript">import { println } from "core:io";
+import { request } from "core:mongoose";
+
+request("http://127.0.0.1:8080/api/ping", {
+    method: "GET"
+}).then(fn(res) {
+    println(res.status, res.body);
+}).error(fn(e) {
+    println("failed:", e);
+});</code></pre>
+        <p>
+          For named constants and a re-export of <code>request</code>, see
+          <a href="#lib-http">lib:http</a> below. For parsing
+          <code>args()</code> into flags and positionals, see
+          <a href="#lib-argparser">lib:argparser</a>.
+        </p>
+
+        <h3 id="mongoose-server">Server class</h3>
+
+        <h4 id="mongoose-server-constructor">constructor</h4>
+        <div class="method">
+          <div class="method-sig">new Server()</div>
+          <p class="method-desc">
+            Creates a new HTTP server instance. No arguments required.
+          </p>
+        </div>
+        <pre><code class="language-javascript">import { Server } from "core:mongoose";
+const app = new Server();</code></pre>
+
+        <h3 id="mongoose-routing">Routing</h3>
+        <p>
+          Route handlers receive <code>(req, res)</code> and are matched in
+          registration order. The path is matched with Mongoose's glob patterns
+          — use <code>*</code> as a wildcard segment.
+        </p>
+
+        <div class="method">
+          <div class="method-sig">app.get(path, handler)</div>
+        </div>
+        <div class="method">
+          <div class="method-sig">app.post(path, handler)</div>
+        </div>
+        <div class="method">
+          <div class="method-sig">app.put(path, handler)</div>
+        </div>
+        <div class="method">
+          <div class="method-sig">app.delete(path, handler)</div>
+        </div>
+        <div class="method">
+          <div class="method-sig">app.patch(path, handler)</div>
+        </div>
+        <div class="method">
+          <div class="method-sig">app.all(path, handler)</div>
+          <p class="method-desc">Matches any HTTP method.</p>
+        </div>
+
+        <pre><code class="language-javascript">app.get("/hello", fn(req, res) {
+    res.send("Hello World!");
+});
+
+app.post("/users", fn(req, res) {
+    res.status(201).json({ created: true });
+});</code></pre>
+
+        <h4>Wildcard captures</h4>
+        <p>
+          Wildcards in the path are captured and exposed on
+          <code>req.params</code> as numeric keys (<code>"0"</code>,
+          <code>"1"</code>, …).
+        </p>
+        <pre><code class="language-javascript">app.get("/users/*", fn(req, res) {
+    const id = req.params["0"];  // e.g. "42" for /users/42
+    res.json({ id: id });
+});</code></pre>
+
+        <h3 id="mongoose-req">Request object</h3>
+        <p>Available inside every route handler as the first argument.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Property</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>req.method</code></td>
+              <td>string</td>
+              <td>
+                HTTP verb in upper-case — <code>"GET"</code>,
+                <code>"POST"</code>, etc.
+              </td>
+            </tr>
+            <tr>
+              <td><code>req.path</code></td>
+              <td>string</td>
+              <td>Request URI path (without query string).</td>
+            </tr>
+            <tr>
+              <td><code>req.url</code></td>
+              <td>string</td>
+              <td>Same as <code>req.path</code> (full URI).</td>
+            </tr>
+            <tr>
+              <td><code>req.query</code></td>
+              <td>string</td>
+              <td>
+                Raw query string, e.g. <code>"name=Alice&amp;age=30"</code>.
+              </td>
+            </tr>
+            <tr>
+              <td><code>req.body</code></td>
+              <td>string</td>
+              <td>Raw request body as a string.</td>
+            </tr>
+            <tr>
+              <td><code>req.headers</code></td>
+              <td>object</td>
+              <td>
+                All request headers as a plain object with lower-cased keys.
+              </td>
+            </tr>
+            <tr>
+              <td><code>req.params</code></td>
+              <td>object</td>
+              <td>
+                Wildcard captures from the route path, keyed <code>"0"</code> …
+                <code>"3"</code>.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3 id="mongoose-res">Response object</h3>
+        <p>Available inside every route handler as the second argument.</p>
+
+        <h4>res.send(body)</h4>
+        <div class="method">
+          <div class="method-sig">res.send(body: string)</div>
+          <p class="method-desc">
+            Sends a plain-text response with the current status code (default
+            <code>200</code>) and any headers set via
+            <code>res.setHeader()</code>.
+          </p>
+        </div>
+
+        <h4>res.json(value)</h4>
+        <div class="method">
+          <div class="method-sig">res.json(value)</div>
+          <p class="method-desc">
+            Serialises <code>value</code> to a string and sends it with
+            <code>Content-Type: application/json</code>.
+          </p>
+        </div>
+
+        <h4>res.status(code)</h4>
+        <div class="method">
+          <div class="method-sig">res.status(code: int) → res</div>
+          <p class="method-desc">
+            Sets the response status code. Returns <code>res</code> for
+            chaining: <code>res.status(404).send("Not found")</code>.
+          </p>
+        </div>
+
+        <h4>res.redirect(url)</h4>
+        <div class="method">
+          <div class="method-sig">res.redirect(url: string)</div>
+          <p class="method-desc">
+            Sends a <code>302 Found</code> redirect to <code>url</code>.
+          </p>
+        </div>
+
+        <h4>res.setHeader(name, value)</h4>
+        <div class="method">
+          <div class="method-sig">res.setHeader(name: string, value: string) → res</div>
+          <p class="method-desc">
+            Appends a response header. Can be chained before
+            <code>send()</code> or <code>json()</code>.
+          </p>
+        </div>
+
+        <h3 id="mongoose-middleware">Middleware</h3>
+        <div class="method">
+          <div class="method-sig">app.use(fn(req, res))</div>
+          <p class="method-desc">
+            Registers a function that runs before every route handler. Useful
+            for logging, auth checks, or attaching properties to
+            <code>req</code>. Up to 32 middleware functions are supported.
+          </p>
+        </div>
+        <pre><code class="language-javascript">import { println } from "core:io";
+
+app.use(fn(req, res) {
+    println(req.method, req.path);
+});</code></pre>
+
+        <h3 id="mongoose-patterns">Common Patterns</h3>
+
+        <h4>Simple REST-like API</h4>
+        <pre><code class="language-javascript">import { Server } from "core:mongoose";
+import { println } from "core:io";
+
+const app = new Server();
+
+app.get("/", fn(req, res) {
+    res.send("Welcome!");
+});
+
+app.get("/greet/*", fn(req, res) {
+    const name = req.params["0"];
+    res.json({ message: "Hello, " + name + "!" });
+});
+
+app.post("/echo", fn(req, res) {
+    res.setHeader("X-Echo", "true").send(req.body);
+});
+
+app.listen(8080, fn(msg) { println(msg); });</code></pre>
+
+        <h4>Request logging middleware</h4>
+        <pre><code class="language-javascript">import { Server } from "core:mongoose";
+import { println } from "core:io";
+
+const app = new Server();
+
+app.use(fn(req, res) {
+    println("[" + req.method + "]", req.path);
+});
+
+app.get("/ping", fn(req, res) {
+    res.send("pong");
+});
+
+app.listen(3000, fn(msg) { println(msg); });</code></pre>
+
+        <h4>JSON API with status codes</h4>
+        <pre><code class="language-javascript">import { Server }  from "core:mongoose";
+import { Database } from "core:sqlite";
+
+const app = new Server();
+const db  = new Database("app.sqlite");
+db.exec("CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY, text TEXT)");
+
+app.get("/notes", fn(req, res) {
+    const rows = db.prepare("SELECT * FROM notes").all();
+    res.json(rows);
+});
+
+app.post("/notes", fn(req, res) {
+    const info = db.prepare("INSERT INTO notes (text) VALUES (?)").run(req.body);
+    res.status(201).json({ id: info.lastInsertRowid });
+});
+
+app.listen(4000, fn(msg) { println(msg); });</code></pre>
+
+        <!-- ==============================================================
+         core:mysql
+         ============================================================== -->
+        <h2 id="mysql">core:mysql — MySQL / MariaDB Database</h2>
+        <p>Import with:</p>
+        <pre><code class="language-javascript">import { Database } from "core:mysql";</code></pre>
+
+        <h3 id="mysql-overview">Overview</h3>
+        <p>
+          <code>core:mysql</code> provides a lightweight synchronous SQL API for
+          MySQL-compatible servers (MySQL and MariaDB). It dynamically loads
+          <code>libmariadb</code> / <code>libmysqlclient</code> at runtime and
+          exposes one class: <code>Database</code>.
+        </p>
+        <ul style="margin: 0.75rem 0 0.75rem 1.5rem">
+          <li>
+            <strong>query(sql)</strong> returns an array of row objects for
+            <code>SELECT</code>-style statements.
+          </li>
+          <li>
+            <strong>exec(sql)</strong> executes write/DDL statements and returns
+            metadata <code>{ affectedRows, insertId }</code>.
+          </li>
+          <li>
+            <strong>close()</strong> closes the connection; further use throws a
+            runtime error.
+          </li>
+        </ul>
+
+        <h3 id="mysql-database">Database</h3>
+
+        <h4 id="mysql-db-constructor">Constructor</h4>
+        <div class="method">
+          <div class="method-sig">
+            new Database(options?) or new Database(host, user, password, database, port?)
+          </div>
+          <p class="method-desc">
+            Opens a new connection. Preferred usage is an options object.
+            Default port is <code>3306</code>.
+          </p>
+        </div>
+        <pre><code class="language-javascript">const db = new Database({
+    host: "127.0.0.1",
+    user: "root",
+    password: "secret",
+    database: "zscript_test",
+    port: 3306
+});
+
+// Positional form is also supported:
+const db2 = new Database("127.0.0.1", "root", "secret", "zscript_test", 3306);</code></pre>
+
+        <div class="note">
+          <strong>Note:</strong> if the client library cannot be loaded or
+          authentication fails, the constructor raises a runtime error.
+        </div>
+
+        <h4 id="mysql-db-query">query</h4>
+        <div class="method">
+          <div class="method-sig">db.query(sql: string) → array&lt;object&gt;</div>
+          <p class="method-desc">
+            Executes a query and returns rows. Each row is currently keyed by
+            column index strings (<code>"0"</code>, <code>"1"</code>, ...),
+            matching the current runtime implementation.
+          </p>
+        </div>
+        <pre><code class="language-javascript">const rows = db.query("SELECT id, name FROM users ORDER BY id LIMIT 3");
+rows.each(fn(row, i) {
+    println("id=", row["0"], "name=", row["1"]);
+});</code></pre>
+
+        <h4 id="mysql-db-exec">exec</h4>
+        <div class="method">
+          <div class="method-sig">db.exec(sql: string) → object</div>
+          <p class="method-desc">
+            Executes statements such as <code>INSERT</code>,
+            <code>UPDATE</code>, <code>DELETE</code>, <code>CREATE</code>, and
+            <code>DROP</code>. Returns an object with:
+            <code>affectedRows</code> and <code>insertId</code>.
+          </p>
+        </div>
+        <pre><code class="language-javascript">db.exec("CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(64))");
+
+const ins = db.exec("INSERT INTO users (name) VALUES ('alice')");
+println("affected:", ins.affectedRows, "insertId:", ins.insertId);
+
+const upd = db.exec("UPDATE users SET name = 'alice_updated' WHERE id = " + ins.insertId);
+println("updated:", upd.affectedRows);
+
+const del = db.exec("DELETE FROM users WHERE id = " + ins.insertId);
+println("deleted:", del.affectedRows);</code></pre>
+
+        <h4 id="mysql-db-close">close</h4>
+        <div class="method">
+          <div class="method-sig">db.close()</div>
+          <p class="method-desc">
+            Closes the active database handle. It is safe to call during cleanup
+            before process exit.
+          </p>
+        </div>
+        <pre><code class="language-javascript">db.close();</code></pre>
+
+        <h3 id="mysql-patterns">Common Patterns</h3>
+
+        <h4>CLI-driven connection options</h4>
+        <pre><code class="language-javascript">import { Database } from "core:mysql";
+import { args } from "core:os";
+
+const argv = args();
+if (argv.length() &lt; 4) {
+    raise "Usage: <host> <user> <password> <database> [port]";
+}
+
+const db = new Database({
+    host: argv[0],
+    user: argv[1],
+    password: argv[2],
+    database: argv[3],
+    port: argv.length() &gt; 4 ? argv[4] : 3306
+});</code></pre>
+
+        <h4>Ephemeral test table lifecycle (CRUD)</h4>
+        <pre><code class="language-javascript">import { Database } from "core:mysql";
+import { getPid } from "core:os";
+import { format } from "core:io";
+
+const db = new Database({ host: "127.0.0.1", user: "root", password: "secret", database: "zscript_test" });
+const suffix = format("{}", getPid());
+const table = "zscript_mysql_crud_" + suffix;
+
+db.exec("CREATE TABLE IF NOT EXISTS " + table + " (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(128) NOT NULL)");
+const ins = db.exec("INSERT INTO " + table + " (name) VALUES ('alice_" + suffix + "')");
+
+const rows = db.query("SELECT id, name FROM " + table + " WHERE id = " + ins.insertId);
+assert rows.length() == 1;
+assert rows[0]["1"] != null;
+
+db.exec("DROP TABLE IF EXISTS " + table);
+db.close();</code></pre>
+
+        <h4>Safe cleanup with try/catch</h4>
+        <pre><code class="language-javascript">import { Database } from "core:mysql";
+import { println } from "core:io";
+
+const db = new Database({
+    host: "127.0.0.1",
+    user: "root",
+    password: "secret",
+    database: "zscript_test"
+});
+
+try {
+    db.exec("CREATE TABLE IF NOT EXISTS logs (id INT AUTO_INCREMENT PRIMARY KEY, msg TEXT)");
+    db.exec("INSERT INTO logs (msg) VALUES ('hello')");
+    const rows = db.query("SELECT id, msg FROM logs ORDER BY id DESC LIMIT 1");
+    println(rows[0]["0"], rows[0]["1"]);
+} catch (e) {
+    println("MySQL error:", e);
+}
+
+db.close();</code></pre>
+
+        <!-- ==============================================================
+         core:object
+         ============================================================== -->
+        <h2 id="object">core:object — Object utilities</h2>
+        <p>Import with:</p>
+        <pre><code class="language-javascript">import { Object } from "core:object";</code></pre>
+        <p id="obj-overview">
+          Exposes the <code>Object</code> class used for plain maps. Static
+          helpers mirror common JavaScript-style utilities. The constructor
+          <code>new Object()</code> produces a new empty object instance.
+        </p>
+
+        <hr />
+
+        <h3 id="obj-keys">Object.keys</h3>
+        <div class="method">
+          <div class="method-sig">Object.keys(obj: object) → array</div>
+          <p class="method-desc">
+            Returns an array of the object's enumerable string keys.
+          </p>
+        </div>
+        <pre><code class="language-javascript">const o = { a: 1, b: 2 };
+println(Object.keys(o)); // [a, b]</code></pre>
+
+        <h3 id="obj-values">Object.values</h3>
+        <div class="method">
+          <div class="method-sig">Object.values(obj: object) → array</div>
+          <p class="method-desc">
+            Returns an array of the object's values in key iteration order.
+          </p>
+        </div>
+
+        <h3 id="obj-freeze">Object.freeze</h3>
+        <div class="method">
+          <div class="method-sig">Object.freeze(obj: object) → object</div>
+          <p class="method-desc">
+            Returns a <strong>new</strong> object with a shallow copy of
+            <code>obj</code>'s map, marked frozen in the runtime (mutations on
+            the copy are rejected). Use for immutable snapshots or constant
+            lookup tables (see <code>lib/http.zs</code> for
+            <code>StatusCode</code> / <code>Method</code> objects).
+          </p>
+        </div>
+
+        <!-- ==============================================================
          core:os
          ============================================================== -->
         <h2 id="os">core:os — Operating System Utilities</h2>
@@ -942,9 +1915,9 @@ println(args()); // e.g. [input.txt, --verbose, --out=out.txt]</code></pre>
           <code>core:path</code> helps you work with file and directory paths in
           a way that is consistent on both POSIX and Windows: both
           <code>/</code> and <code>\</code> are accepted as separators in
-          input, and results use the host’s native separator. Functions that
+          input, and results use the host's native separator. Functions that
           return a boolean (<code>exists</code>, <code>isDirectory</code>,
-          <code>isFile</code>, <code>isAbsolute</code>) use the interpreter’s
+          <code>isFile</code>, <code>isAbsolute</code>) use the interpreter's
           canonical <code>true</code> and <code>false</code> values, not new
           boolean allocations.
         </p>
@@ -1064,261 +2037,82 @@ println(absolutePath(join(getCwd(), "README.md")));</code></pre>
         <pre><code class="language-javascript">println(separator()); // "/" on Linux and macOS</code></pre>
 
         <!-- ==============================================================
-         core:object
+         core:promise
          ============================================================== -->
-        <h2 id="object">core:object — Object utilities</h2>
+        <h2 id="promise">core:promise — Promises</h2>
         <p>Import with:</p>
-        <pre><code class="language-javascript">import { Object } from "core:object";</code></pre>
-        <p id="obj-overview">
-          Exposes the <code>Object</code> class used for plain maps. Static
-          helpers mirror common JavaScript-style utilities. The constructor
-          <code>new Object()</code> produces a new empty object instance.
-        </p>
-
-        <hr />
-
-        <h3 id="obj-keys">Object.keys</h3>
-        <div class="method">
-          <div class="method-sig">Object.keys(obj: object) → array</div>
-          <p class="method-desc">
-            Returns an array of the object’s enumerable string keys.
-          </p>
-        </div>
-        <pre><code class="language-javascript">const o = { a: 1, b: 2 };
-println(Object.keys(o)); // [a, b]</code></pre>
-
-        <h3 id="obj-values">Object.values</h3>
-        <div class="method">
-          <div class="method-sig">Object.values(obj: object) → array</div>
-          <p class="method-desc">
-            Returns an array of the object’s values in key iteration order.
-          </p>
-        </div>
-
-        <h3 id="obj-freeze">Object.freeze</h3>
-        <div class="method">
-          <div class="method-sig">Object.freeze(obj: object) → object</div>
-          <p class="method-desc">
-            Returns a <strong>new</strong> object with a shallow copy of
-            <code>obj</code>’s map, marked frozen in the runtime (mutations on
-            the copy are rejected). Use for immutable snapshots or constant
-            lookup tables (see <code>lib/http.zs</code> for
-            <code>StatusCode</code> / <code>Method</code> objects).
-          </p>
-        </div>
-
-        <!-- ==============================================================
-         core:array
-         ============================================================== -->
-        <h2 id="array">core:array — Array class</h2>
-        <p>Import with:</p>
-        <pre><code class="language-javascript">import { Array } from "core:array";</code></pre>
+        <pre><code class="language-javascript">import { Promise } from "core:promise";</code></pre>
         <p>
-          Array methods are available directly on every array literal via the
-          prototype. You do <em>not</em> need to explicitly import
-          <code>core:array</code> to use the built-in methods — they are always
-          present. Import it only when you need the <code>Array</code> class
-          itself (e.g. to add static helpers at runtime).
+          Promises are created <strong>implicitly</strong> by calling any
+          <code>async</code> function. You rarely construct them manually. The
+          two instance methods below form the chaining API.
         </p>
 
         <hr />
 
-        <h3 id="arr-push">push</h3>
+        <h3 id="promise-then">then</h3>
         <div class="method">
-          <div class="method-sig">array.push(value)</div>
+          <div class="method-sig">promise.then(callback(value)) → Promise</div>
           <p class="method-desc">
-            Appends <code>value</code> to the end of the array. Returns
-            <code>null</code>.
+            Registers a callback to run when the promise resolves. The callback
+            receives the resolved value as its sole argument. The return value
+            of the callback becomes the resolved value of the new promise
+            returned by
+            <code>then</code>, enabling chaining.
           </p>
         </div>
-        <pre><code class="language-javascript">const arr = [1, 2];
-arr.push(3);
-println(arr); // [1, 2, 3]</code></pre>
+        <pre><code class="language-javascript">fn getData() async { return 42; }
 
-        <h3 id="arr-pop">pop</h3>
+getData()
+    .then(fn(v) {
+        println("value:", v); // value: 42
+        return v * 2;
+    })
+    .then(fn(v) {
+        println("doubled:", v); // doubled: 84
+    });</code></pre>
+
+        <div class="note">
+          <strong>Note:</strong> The <code>then</code> callback must accept
+          exactly <strong>1 argument</strong> (or use a vararg signature). A
+          callback with the wrong arity will produce a runtime error.
+        </div>
+
+        <h3 id="promise-error">error</h3>
         <div class="method">
-          <div class="method-sig">array.pop() → value</div>
+          <div class="method-sig">promise.error(callback(err)) → Promise</div>
           <p class="method-desc">
-            Removes and returns the last element. Throws an error if the array
-            is empty.
+            Registers a callback to run if the promise (or any preceding promise
+            in the chain) is <strong>rejected</strong>. The callback receives
+            the error value. Returns a new promise for further chaining.
           </p>
         </div>
-        <pre><code class="language-javascript">const last = arr.pop();
-println(last); // 3
-println(arr);  // [1, 2]</code></pre>
+        <pre><code class="language-javascript">fn mayFail() async {
+    return somethingRisky();
+}
 
-        <h3 id="arr-length">length</h3>
-        <div class="method">
-          <div class="method-sig">array.length() → int</div>
-          <p class="method-desc">
-            Returns the number of elements in the array.
-          </p>
-        </div>
-        <pre><code class="language-javascript">println([10, 20, 30].length()); // 3</code></pre>
+mayFail()
+    .then(fn(v) { println("Got:", v); })
+    .error(fn(e) { println("Error:", e); });</code></pre>
 
-        <h3 id="arr-each">each</h3>
-        <div class="method">
-          <div class="method-sig">array.each(callback(value, index)) → array</div>
-          <p class="method-desc">
-            Calls <code>callback(value, index)</code> for every element and
-            returns a new array containing each return value. Analogous to
-            <code>Array.prototype.map</code> in JavaScript.
-          </p>
-        </div>
-        <pre><code class="language-javascript">const nums    = [1, 2, 3, 4, 5];
-const doubled = nums.each(fn(v, i) { return v * 2; });
-println(doubled); // [2, 4, 6, 8, 10]
+        <h3>Full async / Promise example</h3>
+        <pre><code class="language-javascript">import { println } from "core:io";
 
-// println prints each argument: element, then index
-nums.each(println);
-// 1 0
-// 2 1
-// 3 2 ...</code></pre>
+fn step1() async { return "hello"; }
+fn step2(s) async { return s + " world"; }
 
-        <h3 id="arr-keep">keep</h3>
-        <div class="method">
-          <div class="method-sig">array.keep(callback(value, index)) → array</div>
-          <p class="method-desc">
-            Returns a new array containing only the elements for which
-            <code>callback</code> returns a truthy value. Analogous to
-            <code>Array.prototype.filter</code>.
-          </p>
-        </div>
-        <pre><code class="language-javascript">const evens = nums.keep(fn(v, i) { return v % 2 == 0; });
-println(evens); // [2, 4]</code></pre>
+fn pipeline() async {
+    const s = await step1();
+    return await step2(s);
+}
 
-        <h3>Adding static helpers at runtime</h3>
-        <p>
-          Because <code>Array</code> is a first-class class value you can attach
-          arbitrary static functions to it:
-        </p>
-        <pre><code class="language-javascript">import { Array } from "core:array";
-
-Array.sum = fn(arr) {
-    local total = 0;
-    arr.each(fn(i, e) { total += e; });
-    return total;
-};
-
-println(Array.sum([1, 2, 3, 4, 5])); // 15</code></pre>
-
-        <!-- ==============================================================
-         core:date
-         ============================================================== -->
-        <h2 id="date">core:date — Date and Time</h2>
-        <p>Import with:</p>
-        <pre><code class="language-javascript">import { Date } from "core:date";
-// Or wildcard:
-import "core:date";</code></pre>
-
-        <hr />
-
-        <h3 id="date-constructor">Constructor</h3>
-        <div class="method">
-          <div class="method-sig">new Date()</div>
-          <div class="method-sig">new Date(timestamp: number)</div>
-          <div class="method-sig">new Date(dateString: string)</div>
-          <div class="method-sig">new Date(year, month, [day, hours, minutes, seconds, ms])</div>
-          <p class="method-desc" style="margin-top: 0.5rem">
-            Creates a new Date instance.<br />
-            • <strong>No argument</strong> — current date and time.<br />
-            • <strong>Number</strong> — Unix timestamp in milliseconds.<br />
-            • <strong>String</strong> — parsed date. Supported formats:
-            <code>YYYY-MM-DD</code>, <code>YYYY-MM-DD HH:mm:ss</code>,
-            <code>YYYY-MM-DDTHH:mm:ss</code>,
-            <code>YYYY/MM/DD HH:mm:ss</code>.<br />
-            • <strong>Components</strong> — year (full), month (0-based Jan=0),
-            day (default 1), hours, minutes, seconds, milliseconds.
-          </p>
-        </div>
-        <pre><code class="language-javascript">const now = new Date();
-println(now.toString()); // e.g. Fri Apr 04 2026 14:30:00
-
-const d1 = new Date("2023-12-25");
-println(d1.getFullYear()); // 2023
-println(d1.getMonth());    // 11  (0-based)
-println(d1.getDate());     // 25
-
-const d2 = new Date(2024, 0, 1, 12, 30, 45);
-// year=2024, month=January(0), day=1, 12:30:45
-
-const d3 = new Date(1705449600000); // from timestamp ms</code></pre>
-
-        <h3 id="date-getters">Instance Getters</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Method</th>
-              <th>Returns</th>
-              <th>Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>getFullYear()</code></td>
-              <td><code>int</code></td>
-              <td>Full 4-digit year (e.g. 2026)</td>
-            </tr>
-            <tr>
-              <td><code>getMonth()</code></td>
-              <td><code>int</code></td>
-              <td>Month 0–11 (0 = January)</td>
-            </tr>
-            <tr>
-              <td><code>getDate()</code></td>
-              <td><code>int</code></td>
-              <td>Day of month 1–31</td>
-            </tr>
-            <tr>
-              <td><code>getDay()</code></td>
-              <td><code>int</code></td>
-              <td>Day of week 0–6 (0 = Sunday)</td>
-            </tr>
-            <tr>
-              <td><code>getHours()</code></td>
-              <td><code>int</code></td>
-              <td>Hours 0–23</td>
-            </tr>
-            <tr>
-              <td><code>getMinutes()</code></td>
-              <td><code>int</code></td>
-              <td>Minutes 0–59</td>
-            </tr>
-            <tr>
-              <td><code>getSeconds()</code></td>
-              <td><code>int</code></td>
-              <td>Seconds 0–59</td>
-            </tr>
-          </tbody>
-        </table>
-        <pre><code class="language-javascript">const d = new Date("2026-04-04T14:30:00");
-println(d.getFullYear()); // 2026
-println(d.getMonth());    // 3   (April = index 3)
-println(d.getDate());     // 4
-println(d.getDay());      // 6   (Saturday)
-println(d.getHours());    // 14
-println(d.getMinutes());  // 30
-println(d.getSeconds());  // 0</code></pre>
-
-        <h3 id="date-gettime">getTime</h3>
-        <div class="method">
-          <div class="method-sig">date.getTime() → num</div>
-          <p class="method-desc">
-            Returns the internal Unix timestamp in
-            <strong>milliseconds</strong>.
-          </p>
-        </div>
-        <pre><code class="language-javascript">println(new Date().getTime()); // e.g. 1743778200000</code></pre>
-
-        <h3 id="date-tostring">toString</h3>
-        <div class="method">
-          <div class="method-sig">date.toString() → string</div>
-          <p class="method-desc">
-            Returns a human-readable string representation of the date, e.g.
-            <code>"Sat Apr 04 2026 14:30:00"</code>.
-          </p>
-        </div>
-        <pre><code class="language-javascript">println(new Date().toString());</code></pre>
+pipeline()
+    .then(fn(result) {
+        println(result); // hello world
+    })
+    .error(fn(e) {
+        println("Failed:", e);
+    });</code></pre>
 
         <!-- ==============================================================
          core:regex
@@ -1431,82 +2225,620 @@ const rx = compile("hello", I);
 println(rx.search("HeLLo")); // [HeLLo]</code></pre>
 
         <!-- ==============================================================
-         core:promise
+         core:sqlite
          ============================================================== -->
-        <h2 id="promise">core:promise — Promises</h2>
+        <h2 id="sqlite">core:sqlite — SQLite3 Database</h2>
         <p>Import with:</p>
-        <pre><code class="language-javascript">import { Promise } from "core:promise";</code></pre>
+        <pre><code class="language-javascript">import { Database } from "core:sqlite";
+// Or import both exported names:
+import { Database, Statement } from "core:sqlite";</code></pre>
+
+        <hr />
+
+        <h3 id="sqlite-overview">Overview</h3>
         <p>
-          Promises are created <strong>implicitly</strong> by calling any
-          <code>async</code> function. You rarely construct them manually. The
-          two instance methods below form the chaining API.
+          <code>core:sqlite</code> wraps the bundled
+          <a href="https://www.sqlite.org" target="_blank" rel="noopener"
+            >SQLite3</a
+          >
+          amalgamation and exposes two classes:
+        </p>
+        <ul style="margin: 0.75rem 0 0.75rem 1.5rem">
+          <li>
+            <strong>Database</strong> — represents an open SQLite connection.
+          </li>
+          <li>
+            <strong>Statement</strong> — a compiled prepared statement returned
+            by <code>db.prepare()</code>. You do not construct it directly.
+          </li>
+        </ul>
+        <p>
+          Every <code>new Database(...)</code> call opens an independent
+          connection. Multiple databases can be open simultaneously.
+        </p>
+        <div class="note">
+          <strong>Note:</strong> Always call <code>db.close()</code> when you
+          are finished. The garbage collector does <em>not</em> automatically
+          close SQLite handles — that is intentional so you have full control
+          over transaction lifetime.
+        </div>
+
+        <!-- ── Database ─────────────────────────────────────────────── -->
+        <h3 id="sqlite-database">Database</h3>
+
+        <h4 id="sqlite-db-constructor">Constructor</h4>
+        <div class="method">
+          <div class="method-sig">new Database(path?: string)</div>
+          <p class="method-desc">
+            Opens (or creates) an SQLite database at <code>path</code>.<br />
+            Pass <code>":memory:"</code> or omit the argument for a private
+            in-memory database that is discarded when closed.
+          </p>
+        </div>
+        <pre><code class="language-javascript">const db  = new Database("app.sqlite");   // file-based
+const mem = new Database(":memory:");     // in-memory
+const def = new Database();               // also in-memory</code></pre>
+
+        <h4 id="sqlite-db-exec">exec</h4>
+        <div class="method">
+          <div class="method-sig">db.exec(sql: string)</div>
+          <p class="method-desc">
+            Executes one or more semicolon-separated SQL statements with no
+            parameter binding. Ideal for DDL (<code>CREATE</code>,
+            <code>DROP</code>, <code>ALTER</code>), <code>PRAGMA</code>s, and
+            multi-statement migration scripts. Returns <code>null</code> on
+            success; an error on failure.
+          </p>
+        </div>
+        <pre><code class="language-javascript">db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+        id   INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT    NOT NULL,
+        age  INTEGER
+    );
+`);
+
+// Transactions
+db.exec("BEGIN");
+// ... statements ...
+db.exec("COMMIT");</code></pre>
+
+        <h4 id="sqlite-db-prepare">prepare</h4>
+        <div class="method">
+          <div class="method-sig">db.prepare(sql: string) → Statement</div>
+          <p class="method-desc">
+            Compiles <code>sql</code> into a reusable
+            <a href="#sqlite-statement">Statement</a> object. All queries and
+            DML should go through prepared statements: they are safer (parameter
+            binding prevents SQL injection), faster when reused, and ergonomic
+            with the <code>run</code> / <code>get</code> /
+            <code>all</code> methods. Call <code>stmt.finalize()</code> when you
+            are done with the statement.
+          </p>
+        </div>
+        <pre><code class="language-javascript">// One-shot INSERT — chain prepare().run()
+const info = db.prepare("INSERT INTO users (name, age) VALUES (?, ?)").run("Alice", 30);
+println(info.changes);         // 1
+println(info.lastInsertRowid); // 1
+
+// One-shot SELECT — chain prepare().all()
+const rows = db.prepare("SELECT * FROM users WHERE age &gt;= ?").all(18);
+println(rows.length());
+
+// Reusable statement
+const stmt = db.prepare("SELECT * FROM users WHERE age &gt;= ?");
+const adults = stmt.all(18);
+const first  = stmt.get(18);
+stmt.finalize();</code></pre>
+
+        <h4 id="sqlite-db-close">close</h4>
+        <div class="method">
+          <div class="method-sig">db.close()</div>
+          <p class="method-desc">
+            Closes the database connection. Before closing, any prepared
+            statements that are still open (including one-shot statements
+            created via inline chains like
+            <code>db.prepare(sql).run(x)</code>) are automatically finalized via
+            <code>sqlite3_next_stmt</code>, ensuring the connection frees all of
+            its resources immediately. Calling <code>close()</code> on an
+            already-closed database is a no-op. Do not use any
+            <code>Statement</code> objects after the database has been closed.
+          </p>
+        </div>
+        <pre><code class="language-javascript">db.close();</code></pre>
+
+        <!-- ── Statement ────────────────────────────────────────────── -->
+        <h3 id="sqlite-statement">Statement</h3>
+        <p>
+          A <code>Statement</code> is obtained via
+          <code><a href="#sqlite-db-prepare">db.prepare(sql)</a></code
+          >. Unlike the raw SQLite C API, you never call <code>step</code> /
+          <code>reset</code> manually — the <code>run</code> /
+          <code>get</code> / <code>all</code> methods handle the full lifecycle
+          internally (modelled after
+          <a
+            href="https://github.com/WiseLibs/better-sqlite3"
+            target="_blank"
+            rel="noopener"
+            >better-sqlite3</a
+          >).
+        </p>
+
+        <h4 id="sqlite-stmt-run">run</h4>
+        <div class="method">
+          <div class="method-sig">stmt.run([...params]) → { changes: int, lastInsertRowid: num }</div>
+          <p class="method-desc">
+            Executes the statement (intended for DML: <code>INSERT</code>,
+            <code>UPDATE</code>, <code>DELETE</code>) and returns an info
+            object. Parameters are bound for this call only, unless
+            <a href="#sqlite-stmt-bind"><code>bind()</code></a> was already used
+            to lock them permanently.
+          </p>
+        </div>
+        <pre><code class="language-javascript">const r1 = db.prepare("INSERT INTO users (name, age) VALUES (?, ?)").run("Alice", 30);
+println(r1.changes);         // 1
+println(r1.lastInsertRowid); // 1
+
+const r2 = db.prepare("UPDATE users SET age = ? WHERE name = ?").run(31, "Alice");
+println(r2.changes); // 1
+
+// Named parameters
+const r3 = db.prepare("INSERT INTO users (name, age) VALUES (@name, @age)")
+              .run({ name: "Bob", age: 25 });
+println(r3.lastInsertRowid); // 2</code></pre>
+
+        <h4 id="sqlite-stmt-get">get</h4>
+        <div class="method">
+          <div class="method-sig">stmt.get([...params]) → object | null</div>
+          <p class="method-desc">
+            Executes the query and returns the <strong>first</strong> matching
+            row as an object whose keys are the column names, or
+            <code>null</code> if no rows are found. Column types are mapped as
+            shown in the <a href="#sqlite-type-map">type table</a> below.
+          </p>
+        </div>
+        <pre><code class="language-javascript">const user = db.prepare("SELECT * FROM users WHERE id = ?").get(1);
+println(user.name); // Alice
+println(user.age);  // 31
+
+// Named parameter
+const byName = db.prepare("SELECT * FROM users WHERE name = @name")
+                  .get({ name: "Bob" });
+println(byName); // { id: 2, name: "Bob", age: 25 }
+
+// Returns null when nothing matches
+const missing = db.prepare("SELECT * FROM users WHERE id = ?").get(999);
+println(missing); // null</code></pre>
+
+        <h4 id="sqlite-stmt-all">all</h4>
+        <div class="method">
+          <div class="method-sig">stmt.all([...params]) → array</div>
+          <p class="method-desc">
+            Executes the query and collects <strong>every</strong> matching row
+            into an array. Each element is a row object (same shape as
+            <code>get()</code>). Returns an empty array if no rows match.
+          </p>
+        </div>
+        <pre><code class="language-javascript">const all = db.prepare("SELECT * FROM users").all();
+all.each(fn(row, i) { println(row.id, row.name); });
+
+// With a filter
+const seniors = db.prepare("SELECT * FROM users WHERE age &gt;= ?").all(30);
+println(seniors.length());
+
+// Reusable: call all() multiple times with different params
+const stmt = db.prepare("SELECT * FROM users WHERE age &gt;= ?");
+println(stmt.all(18).length());
+println(stmt.all(30).length());
+stmt.finalize();</code></pre>
+
+        <h4 id="sqlite-type-map">Type mapping</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>SQLite type</th>
+              <th>ZayneScript type</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>INTEGER</code></td>
+              <td><code>int</code></td>
+            </tr>
+            <tr>
+              <td><code>REAL</code></td>
+              <td><code>num</code></td>
+            </tr>
+            <tr>
+              <td><code>TEXT</code></td>
+              <td><code>string</code></td>
+            </tr>
+            <tr>
+              <td><code>NULL</code></td>
+              <td><code>null</code></td>
+            </tr>
+            <tr>
+              <td><code>BLOB</code></td>
+              <td><code>null</code></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h4 id="sqlite-stmt-bind">bind</h4>
+        <div class="method">
+          <div class="method-sig">stmt.bind([...params]) → this</div>
+          <p class="method-desc">
+            <strong>Permanently</strong> binds parameters to the statement for
+            its entire lifetime. Bindings survive internal resets so the
+            statement can be executed many times without rebinding. After
+            calling <code>bind()</code> you must <em>not</em> pass parameters to
+            <code>run()</code>, <code>get()</code>, or <code>all()</code>.
+            Supports the same positional and named-object conventions as those
+            methods. Returns <code>this</code> for chaining:
+            <code>db.prepare(sql).bind(x).get()</code>.
+          </p>
+        </div>
+        <pre><code class="language-javascript">// Positional permanent bind
+const topUser = db.prepare("SELECT * FROM users WHERE id = ?").bind(1);
+println(topUser.get()); // { id:1, name:"Alice", age:31 }
+println(topUser.get()); // same result – statement is reused
+topUser.finalize();
+
+// Named permanent bind
+const byName = db.prepare("SELECT * FROM users WHERE name = @name")
+                  .bind({ name: "Bob" });
+println(byName.get()); // { id:2, ... }
+byName.finalize();</code></pre>
+
+        <h4 id="sqlite-stmt-pluck">pluck</h4>
+        <div class="method">
+          <div class="method-sig">stmt.pluck([bool]) → this</div>
+          <p class="method-desc">
+            Toggles <em>pluck mode</em>. When on (the default when called with
+            no argument or <code>true</code>), <code>get()</code> and
+            <code>all()</code> return the value of the
+            <strong>first column only</strong> instead of the full row object.
+            Pass <code>false</code>
+            to turn pluck back off. Chainable.
+          </p>
+        </div>
+        <pre><code class="language-javascript">const stmt = db.prepare("SELECT id FROM users");
+
+// Returns array of id values instead of array of objects
+const ids = stmt.pluck().all();
+ids.each(fn(id, i) { println(id); }); // 1  2  3 ...
+
+stmt.pluck(false); // back to full row objects
+const rows = stmt.all();
+
+stmt.finalize();</code></pre>
+
+        <h4 id="sqlite-stmt-columns">columns</h4>
+        <div class="method">
+          <div class="method-sig">stmt.columns() → array of { name, column, table, database, type }</div>
+          <p class="method-desc">
+            Returns an array of column metadata objects for the result set,
+            matching the
+            <a
+              href="https://github.com/WiseLibs/better-sqlite3/blob/master/docs/api.md#columns---array-of-objects"
+              target="_blank"
+              rel="noopener"
+              >better-sqlite3 shape</a
+            >:
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>name</code></td>
+                <td>Column alias or name (always populated)</td>
+              </tr>
+              <tr>
+                <td><code>column</code></td>
+                <td>Source column name (<code>null</code> for expressions)</td>
+              </tr>
+              <tr>
+                <td><code>table</code></td>
+                <td>Source table name (<code>null</code> for expressions)</td>
+              </tr>
+              <tr>
+                <td><code>database</code></td>
+                <td>
+                  Source database name (<code>null</code> for expressions)
+                </td>
+              </tr>
+              <tr>
+                <td><code>type</code></td>
+                <td>
+                  Declared type string, e.g. <code>"TEXT"</code> (<code
+                    >null</code
+                  >
+                  for expressions)
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="note">
+            <strong>Note:</strong> <code>column</code>, <code>table</code>, and
+            <code>database</code> are only populated when the bundled SQLite
+            amalgamation is compiled with
+            <code>SQLITE_ENABLE_COLUMN_METADATA</code>.
+          </div>
+        </div>
+        <pre><code class="language-javascript">const stmt = db.prepare("SELECT id, name, age FROM users");
+const cols = stmt.columns();
+cols.each(fn(c, i) {
+    println(c.name, c.type); // id INTEGER, name TEXT, age INTEGER
+});
+stmt.finalize();</code></pre>
+
+        <h4 id="sqlite-stmt-finalize">finalize</h4>
+        <div class="method">
+          <div class="method-sig">stmt.finalize()</div>
+          <p class="method-desc">
+            Destroys the prepared statement and frees its resources. After this
+            call the statement must not be used. Calling
+            <code>finalize()</code> on an already-finalized statement is a safe
+            no-op. Note: <code>db.close()</code> automatically finalizes any
+            not-yet-finalized statements, so explicit <code>finalize()</code>
+            calls are only strictly necessary if you want to release the
+            statement's resources before closing the database.
+          </p>
+        </div>
+        <pre><code class="language-javascript">stmt.finalize();</code></pre>
+
+        <!-- ── Common patterns ──────────────────────────────────────── -->
+        <h3 id="sqlite-patterns">Common Patterns</h3>
+
+        <h4>In-memory scratch database</h4>
+        <pre><code class="language-javascript">import { Database } from "core:sqlite";
+import { println } from "core:io";
+
+const db = new Database(":memory:");
+db.exec("CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT)");
+
+db.prepare("INSERT INTO kv VALUES (?, ?)").run("theme", "dark");
+
+const row = db.prepare("SELECT value FROM kv WHERE key = ?").get("theme");
+println(row.value); // dark
+db.close();</code></pre>
+
+        <h4>Bulk insert wrapped in a transaction</h4>
+        <pre><code class="language-javascript">import { Database } from "core:sqlite";
+
+const db    = new Database("data.sqlite");
+const names = ["Alice", "Bob", "Carol", "Dave", "Eve"];
+
+db.exec("CREATE TABLE IF NOT EXISTS people (id INTEGER PRIMARY KEY, name TEXT)");
+db.exec("BEGIN");
+
+const stmt = db.prepare("INSERT INTO people (name) VALUES (?)");
+names.each(fn(name, i) {
+    stmt.run(name); // run() resets and re-executes automatically
+});
+stmt.finalize();
+
+db.exec("COMMIT");
+db.close();</code></pre>
+
+        <h4>Named parameters</h4>
+        <pre><code class="language-javascript">// SQLite supports @name, :name, and $name placeholders.
+// Pass a plain object to run / get / all to bind by name.
+db.exec("CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY, sku TEXT, price NUM)");
+db.prepare("INSERT INTO products (sku, price) VALUES (@sku, @price)")
+  .run({ sku: "WIDGET-42", price: 9.99 });
+
+const p = db.prepare("SELECT * FROM products WHERE sku = @sku")
+             .get({ sku: "WIDGET-42" });
+println(p.price); // 9.99</code></pre>
+
+        <h4>Pluck — collect a single column</h4>
+        <pre><code class="language-javascript">const stmt = db.prepare("SELECT name FROM users ORDER BY name");
+const names = stmt.pluck().all();
+names.each(fn(n, i) { println(n); }); // Alice  Bob  Carol ...
+stmt.finalize();</code></pre>
+
+        <h4>Multiple independent connections</h4>
+        <pre><code class="language-javascript">const users  = new Database("users.sqlite");
+const orders = new Database("orders.sqlite");
+const cache  = new Database(":memory:");
+
+// All three connections are fully independent.
+users.close();
+orders.close();
+cache.close();</code></pre>
+
+        <h4>Error handling</h4>
+        <pre><code class="language-javascript">import { Database } from "core:sqlite";
+import { println } from "core:io";
+
+const db = new Database(":memory:");
+db.exec("CREATE TABLE t (id INTEGER PRIMARY KEY, val TEXT UNIQUE)");
+
+try {
+    db.prepare("INSERT INTO t VALUES (1, 'hello')").run();
+    db.prepare("INSERT INTO t VALUES (1, 'hello')").run(); // duplicate PK
+} catch (e) {
+    println("Caught:", e);
+}
+db.close();</code></pre>
+
+        <!-- ==============================================================
+         core:string
+         ============================================================== -->
+        <h2 id="string">core:string — text helpers</h2>
+        <p>Import with:</p>
+        <pre><code class="language-javascript">import {
+    toUpper, toLower, capitalize,
+    isIdentifier, isAlpha, isDigit, isAlnum,
+    split, ord, chr, bytes, codepoints,
+    strip, join, repeat, reverse,
+    contains, startsWith, endsWith,
+    replace, byteLength, encode, decode
+} from "core:string";</code></pre>
+        <p class="page-intro" style="margin-top: 0.75rem">
+          <code>core:string</code> complements
+          <a href="#utf8"><code>core:utf8</code></a
+          >: higher-level helpers on script strings (Unicode scalar / rune
+          strings at runtime). Case mapping and classification use
+          <a href="https://github.com/JuliaStrings/utf8proc" target="_blank" rel="noopener"
+            >utf8proc</a
+          >. Normalization and case <em>folding</em> stay in
+          <code>core:utf8</code> (<code>nfc</code>, <code>casefold</code>, …).
         </p>
 
         <hr />
 
-        <h3 id="promise-then">then</h3>
-        <div class="method">
-          <div class="method-sig">promise.then(callback(value)) → Promise</div>
-          <p class="method-desc">
-            Registers a callback to run when the promise resolves. The callback
-            receives the resolved value as its sole argument. The return value
-            of the callback becomes the resolved value of the new promise
-            returned by
-            <code>then</code>, enabling chaining.
-          </p>
-        </div>
-        <pre><code class="language-javascript">fn getData() async { return 42; }
+        <h3 id="string-overview">Overview</h3>
+        <ul style="margin: 0.75rem 0 0.75rem 1.5rem">
+          <li>
+            <strong>Case</strong> — <code>toUpper</code>, <code>toLower</code>,
+            <code>capitalize</code> (first codepoint title-case, rest lower).
+          </li>
+          <li>
+            <strong>Predicates</strong> — <code>isIdentifier</code>,
+            <code>isAlpha</code>, <code>isDigit</code> (Unicode
+            <code>Nd</code> only, whole string), <code>isAlnum</code> (letters and
+            number categories for every codepoint; empty string is false).
+          </li>
+          <li>
+            <strong><code>split</code></strong> — one argument: split on Unicode
+            whitespace (<code>Zs</code>, <code>Zl</code>, <code>Zp</code>); two
+            arguments: split on a non-empty UTF-8 delimiter substring (may
+            yield empty segments, like many languages).
+          </li>
+          <li>
+            <strong>Encoding</strong> — <code>ord</code> / <code>chr</code> for a
+            single codepoint; <code>bytes</code> (UTF-8 byte values as an array of
+            ints), <code>codepoints</code> (rune values as ints),
+            <code>byteLength</code> (UTF-8 byte count).
+          </li>
+          <li>
+            <strong>Base64 (RFC 4648)</strong> — <code>encode(s)</code> from UTF-8
+            text, or <code>encode(byteArray)</code> from integers
+            <code>0..255</code>; <code>decode(s)</code> ignores ASCII whitespace in
+            <code>s</code>, decodes standard Base64 with <code>=</code> padding,
+            and returns a string only when the decoded bytes are valid UTF-8
+            (otherwise an error value).
+          </li>
+          <li>
+            <strong>Other</strong> — <code>strip</code>, <code>join</code>
+            (array of strings + separator), <code>repeat</code>,
+            <code>reverse</code> (by codepoint), <code>contains</code> /
+            <code>startsWith</code> / <code>endsWith</code>, <code>replace</code>
+            (all occurrences; second argument must be non-empty).
+          </li>
+        </ul>
 
-getData()
-    .then(fn(v) {
-        println("value:", v); // value: 42
-        return v * 2;
-    })
-    .then(fn(v) {
-        println("doubled:", v); // doubled: 84
-    });</code></pre>
-
-        <div class="note">
-          <strong>Note:</strong> The <code>then</code> callback must accept
-          exactly <strong>1 argument</strong> (or use a vararg signature). A
-          callback with the wrong arity will produce a runtime error.
-        </div>
-
-        <h3 id="promise-error">error</h3>
-        <div class="method">
-          <div class="method-sig">promise.error(callback(err)) → Promise</div>
-          <p class="method-desc">
-            Registers a callback to run if the promise (or any preceding promise
-            in the chain) is <strong>rejected</strong>. The callback receives
-            the error value. Returns a new promise for further chaining.
-          </p>
-        </div>
-        <pre><code class="language-javascript">fn mayFail() async {
-    return somethingRisky();
-}
-
-mayFail()
-    .then(fn(v) { println("Got:", v); })
-    .error(fn(e) { println("Error:", e); });</code></pre>
-
-        <h3>Full async / Promise example</h3>
+        <h3 id="string-example">Quick example</h3>
         <pre><code class="language-javascript">import { println } from "core:io";
+import {
+    toUpper, toLower, capitalize,
+    isIdentifier, isAlpha, isDigit, isAlnum,
+    split, join, strip, replace,
+    ord, chr, byteLength, bytes, encode, decode
+} from "core:string";
 
-fn step1() async { return "hello"; }
-fn step2(s) async { return s + " world"; }
+println(toUpper("ab"));                         // AB
+println(toLower("AB"));                         // ab
+println(capitalize("hello WORLD"));             // Hello world
+println(isIdentifier("_x9"));                   // true
+println(isAlpha("abc"));                        // true
+println(isDigit("42"));                         // true
+println(isAlnum("a1"));                        // true
+println(join(split("a,b,c", ","), "-"));       // a-b-c
+println(strip("  x  "));                        // x
+println(replace("one one", "one", "two"));      // two two
+println(ord("X"));                              // 88
+println(ord(chr(65)));                          // 65
+println(byteLength("hello"));                 // 5
+println(split("  a  b  ").length());           // 2 (whitespace split)
+println(bytes("AB").length());                // 2 (UTF-8 byte count)
+println(decode(encode("hello")));             // hello (UTF-8 roundtrip)
+println(encode(bytes("AB")));                 // QUI=</code></pre>
 
-fn pipeline() async {
-    const s = await step1();
-    return await step2(s);
-}
-
-pipeline()
-    .then(fn(result) {
-        println(result); // hello world
-    })
-    .error(fn(e) {
-        println("Failed:", e);
-    });</code></pre>
+        <h3 id="string-api">Functions (reference)</h3>
+        <p style="margin-bottom: 0.75rem">
+          Native bindings are implemented in
+          <code>src/core/string.c</code> and declared for the host from
+          <code>src/core/string.h</code> (<code>LoadCoreString</code>). Errors
+          use the usual <code>Error</code> value pattern (wrong arity or type).
+        </p>
+        <div class="method">
+          <div class="method-sig">toUpper(s) / toLower(s) / capitalize(s) → string</div>
+          <p class="method-desc">Per-codepoint case mapping (capitalize: title + lower rest).</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">isIdentifier(s) / isAlpha(s) / isDigit(s) / isAlnum(s) → bool</div>
+          <p class="method-desc">Whole-string predicates; empty string is false for the <code>is*</code> checks.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">split(s) / split(s, delim) → array</div>
+          <p class="method-desc">
+            One-arg whitespace split; two-arg delimiter split (<code>delim</code>
+            non-empty UTF-8 substring).
+          </p>
+        </div>
+        <div class="method">
+          <div class="method-sig">ord(s) → int</div>
+          <p class="method-desc">Exactly one codepoint required.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">chr(cp) → string</div>
+          <p class="method-desc">One Unicode scalar; invalid codepoint is an error.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">bytes(s) / codepoints(s) → array</div>
+          <p class="method-desc">UTF-8 byte values vs UTF-32 code units as integers.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">byteLength(s) → int</div>
+          <p class="method-desc"><code>strlen</code> of the UTF-8 encoding.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">strip(s) → string</div>
+          <p class="method-desc">Trim leading/trailing Unicode whitespace (same categories as one-arg split).</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">join(parts, sep) → string</div>
+          <p class="method-desc"><code>parts</code> must be an array of strings.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">repeat(s, n) → string</div>
+          <p class="method-desc"><code>n</code> non-negative integer.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">reverse(s) → string</div>
+          <p class="method-desc">Reverses codepoint order (not full grapheme clusters).</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">contains(s, sub) / startsWith(s, p) / endsWith(s, p) → bool</div>
+          <p class="method-desc">UTF-8 substring / prefix / suffix tests.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">replace(haystack, from, to) → string</div>
+          <p class="method-desc">Non-overlapping replacements; <code>from</code> must be non-empty.</p>
+        </div>
+        <div class="method">
+          <div class="method-sig">encode(s) / encode(byteArray) → string</div>
+          <p class="method-desc">
+            Standard Base64 (no line breaks). <code>s</code> is UTF-8 text;
+            <code>byteArray</code> is an array of byte values <code>0..255</code>.
+          </p>
+        </div>
+        <div class="method">
+          <div class="method-sig">decode(s) → string</div>
+          <p class="method-desc">
+            Decodes Base64; skips spaces, tabs, CR, LF in <code>s</code>. Result
+            must be well-formed UTF-8 or callers receive an error value (binary
+            payloads are not returned as raw strings).
+          </p>
+        </div>
 
         <!-- ==============================================================
          core:utf8
@@ -1657,940 +2989,119 @@ println(validCodepoint(65)); // true</code></pre>
 println(version());</code></pre>
 
         <!-- ==============================================================
-         core:sqlite
+         lib:argparser (user library)
          ============================================================== -->
-        <h2 id="sqlite">core:sqlite — SQLite3 Database</h2>
-        <p>Import with:</p>
-        <pre><code class="language-javascript">import { Database } from "core:sqlite";
-// Or import both exported names:
-import { Database, Statement } from "core:sqlite";</code></pre>
-
-        <hr />
-
-        <h3 id="sqlite-overview">Overview</h3>
+        <h2 id="lib-argparser">lib:argparser — command-line argument parser</h2>
         <p>
-          <code>core:sqlite</code> wraps the bundled
-          <a href="https://www.sqlite.org" target="_blank" rel="noopener"
-            >SQLite3</a
-          >
-          amalgamation and exposes two classes:
+          The repository includes <code>lib/argparser.zs</code>, copied next to
+          the executable at build time (see the
+          <code>dist/</code> layout on the home page). It parses the string array
+          returned by <a href="#os-args"><code>args()</code></a> from
+          <code>core:os</code> into positionals, boolean flags, and value flags.
         </p>
-        <ul style="margin: 0.75rem 0 0.75rem 1.5rem">
+
+        <h3 id="lib-argparser-args">How <code>args()</code> relates to the shell</h3>
+        <p>
+          Everything after the script path on the host command line becomes
+          <code>args()</code>. Tokens are split on ASCII spaces only; use
+          <code>lib:argparser</code> on that flat list the same way you would use
+          a classic <code>argv</code> in C.
+        </p>
+
+        <h3 id="lib-argparser-api">ArgParser class</h3>
+        <p>Import symbols:</p>
+        <pre><code class="language-javascript">import { ArgParser, createArgParser, parseWithDefs } from "lib:argparser";</code></pre>
+        <ul>
           <li>
-            <strong>Database</strong> — represents an open SQLite connection.
+            <code>createArgParser()</code> — same as <code>new ArgParser()</code>;
+            returns a parser instance with <code>strict</code> defaulting to
+            <code>false</code>.
           </li>
           <li>
-            <strong>Statement</strong> — a compiled prepared statement returned
-            by <code>db.prepare()</code>. You do not construct it directly.
+            <code>p.option(def)</code> — registers an option. Object
+            <code>def</code> may include:
+            <code>long</code> (string), <code>short</code> (single-character
+            string), <code>takesValue</code> (boolean), <code>multiple</code>
+            (boolean; values accumulate in an array), <code>defaultVal</code>
+            (applied if the flag never appears), and <code>help</code> (for
+            <code>helpText</code>). At least one of <code>long</code> or
+            <code>short</code> is required. Duplicate names or invalid identifiers
+            <strong>raise</strong> at registration time.
+          </li>
+          <li>
+            <code>p.strict = true</code> — unknown <code>--long</code> or
+            <code>-x</code> options are recorded in <code>errors</code> instead
+            of only in <code>unknown</code>.
+          </li>
+          <li>
+            <code>p.parse(argv)</code> — returns an object:
+            <code>ok</code> (boolean), <code>errors</code> (array of strings),
+            <code>positional</code> (array), <code>flags</code> (object; keys use
+            <code>long</code> when present, otherwise <code>short</code>), and
+            <code>unknown</code> (object of unrecognized flags when not strict).
+          </li>
+          <li>
+            <code>p.helpText(programName)</code> — multi-line usage string from
+            registered options.
           </li>
         </ul>
-        <p>
-          Every <code>new Database(...)</code> call opens an independent
-          connection. Multiple databases can be open simultaneously.
-        </p>
-        <div class="note">
-          <strong>Note:</strong> Always call <code>db.close()</code> when you
-          are finished. The garbage collector does <em>not</em> automatically
-          close SQLite handles — that is intentional so you have full control
-          over transaction lifetime.
-        </div>
-
-        <!-- ── Database ─────────────────────────────────────────────── -->
-        <h2 id="sqlite-database">Database</h2>
-
-        <h3 id="sqlite-db-constructor">Constructor</h3>
-        <div class="method">
-          <div class="method-sig">new Database(path?: string)</div>
-          <p class="method-desc">
-            Opens (or creates) an SQLite database at <code>path</code>.<br />
-            Pass <code>":memory:"</code> or omit the argument for a private
-            in-memory database that is discarded when closed.
-          </p>
-        </div>
-        <pre><code class="language-javascript">const db  = new Database("app.sqlite");   // file-based
-const mem = new Database(":memory:");     // in-memory
-const def = new Database();               // also in-memory</code></pre>
-
-        <h3 id="sqlite-db-exec">exec</h3>
-        <div class="method">
-          <div class="method-sig">db.exec(sql: string)</div>
-          <p class="method-desc">
-            Executes one or more semicolon-separated SQL statements with no
-            parameter binding. Ideal for DDL (<code>CREATE</code>,
-            <code>DROP</code>, <code>ALTER</code>), <code>PRAGMA</code>s, and
-            multi-statement migration scripts. Returns <code>null</code> on
-            success; an error on failure.
-          </p>
-        </div>
-        <pre><code class="language-javascript">db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-        id   INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT    NOT NULL,
-        age  INTEGER
-    );
-`);
-
-// Transactions
-db.exec("BEGIN");
-// ... statements ...
-db.exec("COMMIT");</code></pre>
-
-        <h3 id="sqlite-db-prepare">prepare</h3>
-        <div class="method">
-          <div class="method-sig">db.prepare(sql: string) → Statement</div>
-          <p class="method-desc">
-            Compiles <code>sql</code> into a reusable
-            <a href="#sqlite-statement">Statement</a> object. All queries and
-            DML should go through prepared statements: they are safer (parameter
-            binding prevents SQL injection), faster when reused, and ergonomic
-            with the <code>run</code> / <code>get</code> /
-            <code>all</code> methods. Call <code>stmt.finalize()</code> when you
-            are done with the statement.
-          </p>
-        </div>
-        <pre><code class="language-javascript">// One-shot INSERT — chain prepare().run()
-const info = db.prepare("INSERT INTO users (name, age) VALUES (?, ?)").run("Alice", 30);
-println(info.changes);         // 1
-println(info.lastInsertRowid); // 1
-
-// One-shot SELECT — chain prepare().all()
-const rows = db.prepare("SELECT * FROM users WHERE age &gt;= ?").all(18);
-println(rows.length());
-
-// Reusable statement
-const stmt = db.prepare("SELECT * FROM users WHERE age &gt;= ?");
-const adults = stmt.all(18);
-const first  = stmt.get(18);
-stmt.finalize();</code></pre>
-
-        <h3 id="sqlite-db-close">close</h3>
-        <div class="method">
-          <div class="method-sig">db.close()</div>
-          <p class="method-desc">
-            Closes the database connection. Before closing, any prepared
-            statements that are still open (including one-shot statements
-            created via inline chains like
-            <code>db.prepare(sql).run(x)</code>) are automatically finalized via
-            <code>sqlite3_next_stmt</code>, ensuring the connection frees all of
-            its resources immediately. Calling <code>close()</code> on an
-            already-closed database is a no-op. Do not use any
-            <code>Statement</code> objects after the database has been closed.
-          </p>
-        </div>
-        <pre><code class="language-javascript">db.close();</code></pre>
-
-        <!-- ── Statement ────────────────────────────────────────────── -->
-        <h2 id="sqlite-statement">Statement</h2>
-        <p>
-          A <code>Statement</code> is obtained via
-          <code><a href="#sqlite-db-prepare">db.prepare(sql)</a></code
-          >. Unlike the raw SQLite C API, you never call <code>step</code> /
-          <code>reset</code> manually — the <code>run</code> /
-          <code>get</code> / <code>all</code> methods handle the full lifecycle
-          internally (modelled after
-          <a
-            href="https://github.com/WiseLibs/better-sqlite3"
-            target="_blank"
-            rel="noopener"
-            >better-sqlite3</a
-          >).
-        </p>
-
-        <h3 id="sqlite-stmt-run">run</h3>
-        <div class="method">
-          <div class="method-sig">stmt.run([...params]) → { changes: int, lastInsertRowid: num }</div>
-          <p class="method-desc">
-            Executes the statement (intended for DML: <code>INSERT</code>,
-            <code>UPDATE</code>, <code>DELETE</code>) and returns an info
-            object. Parameters are bound for this call only, unless
-            <a href="#sqlite-stmt-bind"><code>bind()</code></a> was already used
-            to lock them permanently.
-          </p>
-        </div>
-        <pre><code class="language-javascript">const r1 = db.prepare("INSERT INTO users (name, age) VALUES (?, ?)").run("Alice", 30);
-println(r1.changes);         // 1
-println(r1.lastInsertRowid); // 1
-
-const r2 = db.prepare("UPDATE users SET age = ? WHERE name = ?").run(31, "Alice");
-println(r2.changes); // 1
-
-// Named parameters
-const r3 = db.prepare("INSERT INTO users (name, age) VALUES (@name, @age)")
-              .run({ name: "Bob", age: 25 });
-println(r3.lastInsertRowid); // 2</code></pre>
-
-        <h3 id="sqlite-stmt-get">get</h3>
-        <div class="method">
-          <div class="method-sig">stmt.get([...params]) → object | null</div>
-          <p class="method-desc">
-            Executes the query and returns the <strong>first</strong> matching
-            row as an object whose keys are the column names, or
-            <code>null</code> if no rows are found. Column types are mapped as
-            shown in the <a href="#sqlite-type-map">type table</a> below.
-          </p>
-        </div>
-        <pre><code class="language-javascript">const user = db.prepare("SELECT * FROM users WHERE id = ?").get(1);
-println(user.name); // Alice
-println(user.age);  // 31
-
-// Named parameter
-const byName = db.prepare("SELECT * FROM users WHERE name = @name")
-                  .get({ name: "Bob" });
-println(byName); // { id: 2, name: "Bob", age: 25 }
-
-// Returns null when nothing matches
-const missing = db.prepare("SELECT * FROM users WHERE id = ?").get(999);
-println(missing); // null</code></pre>
-
-        <h3 id="sqlite-stmt-all">all</h3>
-        <div class="method">
-          <div class="method-sig">stmt.all([...params]) → array</div>
-          <p class="method-desc">
-            Executes the query and collects <strong>every</strong> matching row
-            into an array. Each element is a row object (same shape as
-            <code>get()</code>). Returns an empty array if no rows match.
-          </p>
-        </div>
-        <pre><code class="language-javascript">const all = db.prepare("SELECT * FROM users").all();
-all.each(fn(row, i) { println(row.id, row.name); });
-
-// With a filter
-const seniors = db.prepare("SELECT * FROM users WHERE age &gt;= ?").all(30);
-println(seniors.length());
-
-// Reusable: call all() multiple times with different params
-const stmt = db.prepare("SELECT * FROM users WHERE age &gt;= ?");
-println(stmt.all(18).length());
-println(stmt.all(30).length());
-stmt.finalize();</code></pre>
-
-        <h3 id="sqlite-type-map">Type mapping</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>SQLite type</th>
-              <th>ZayneScript type</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>INTEGER</code></td>
-              <td><code>int</code></td>
-            </tr>
-            <tr>
-              <td><code>REAL</code></td>
-              <td><code>num</code></td>
-            </tr>
-            <tr>
-              <td><code>TEXT</code></td>
-              <td><code>string</code></td>
-            </tr>
-            <tr>
-              <td><code>NULL</code></td>
-              <td><code>null</code></td>
-            </tr>
-            <tr>
-              <td><code>BLOB</code></td>
-              <td><code>null</code></td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h3 id="sqlite-stmt-bind">bind</h3>
-        <div class="method">
-          <div class="method-sig">stmt.bind([...params]) → this</div>
-          <p class="method-desc">
-            <strong>Permanently</strong> binds parameters to the statement for
-            its entire lifetime. Bindings survive internal resets so the
-            statement can be executed many times without rebinding. After
-            calling <code>bind()</code> you must <em>not</em> pass parameters to
-            <code>run()</code>, <code>get()</code>, or <code>all()</code>.
-            Supports the same positional and named-object conventions as those
-            methods. Returns <code>this</code> for chaining:
-            <code>db.prepare(sql).bind(x).get()</code>.
-          </p>
-        </div>
-        <pre><code class="language-javascript">// Positional permanent bind
-const topUser = db.prepare("SELECT * FROM users WHERE id = ?").bind(1);
-println(topUser.get()); // { id:1, name:"Alice", age:31 }
-println(topUser.get()); // same result – statement is reused
-topUser.finalize();
-
-// Named permanent bind
-const byName = db.prepare("SELECT * FROM users WHERE name = @name")
-                  .bind({ name: "Bob" });
-println(byName.get()); // { id:2, ... }
-byName.finalize();</code></pre>
-
-        <h3 id="sqlite-stmt-pluck">pluck</h3>
-        <div class="method">
-          <div class="method-sig">stmt.pluck([bool]) → this</div>
-          <p class="method-desc">
-            Toggles <em>pluck mode</em>. When on (the default when called with
-            no argument or <code>true</code>), <code>get()</code> and
-            <code>all()</code> return the value of the
-            <strong>first column only</strong> instead of the full row object.
-            Pass <code>false</code>
-            to turn pluck back off. Chainable.
-          </p>
-        </div>
-        <pre><code class="language-javascript">const stmt = db.prepare("SELECT id FROM users");
-
-// Returns array of id values instead of array of objects
-const ids = stmt.pluck().all();
-ids.each(fn(id, i) { println(id); }); // 1  2  3 ...
-
-stmt.pluck(false); // back to full row objects
-const rows = stmt.all();
-
-stmt.finalize();</code></pre>
-
-        <h3 id="sqlite-stmt-columns">columns</h3>
-        <div class="method">
-          <div class="method-sig">stmt.columns() → array of { name, column, table, database, type }</div>
-          <p class="method-desc">
-            Returns an array of column metadata objects for the result set,
-            matching the
-            <a
-              href="https://github.com/WiseLibs/better-sqlite3/blob/master/docs/api.md#columns---array-of-objects"
-              target="_blank"
-              rel="noopener"
-              >better-sqlite3 shape</a
-            >:
-          </p>
-          <table>
-            <thead>
-              <tr>
-                <th>Field</th>
-                <th>Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><code>name</code></td>
-                <td>Column alias or name (always populated)</td>
-              </tr>
-              <tr>
-                <td><code>column</code></td>
-                <td>Source column name (<code>null</code> for expressions)</td>
-              </tr>
-              <tr>
-                <td><code>table</code></td>
-                <td>Source table name (<code>null</code> for expressions)</td>
-              </tr>
-              <tr>
-                <td><code>database</code></td>
-                <td>
-                  Source database name (<code>null</code> for expressions)
-                </td>
-              </tr>
-              <tr>
-                <td><code>type</code></td>
-                <td>
-                  Declared type string, e.g. <code>"TEXT"</code> (<code
-                    >null</code
-                  >
-                  for expressions)
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="note">
-            <strong>Note:</strong> <code>column</code>, <code>table</code>, and
-            <code>database</code> are only populated when the bundled SQLite
-            amalgamation is compiled with
-            <code>SQLITE_ENABLE_COLUMN_METADATA</code>.
-          </div>
-        </div>
-        <pre><code class="language-javascript">const stmt = db.prepare("SELECT id, name, age FROM users");
-const cols = stmt.columns();
-cols.each(fn(c, i) {
-    println(c.name, c.type); // id INTEGER, name TEXT, age INTEGER
-});
-stmt.finalize();</code></pre>
-
-        <h3 id="sqlite-stmt-finalize">finalize</h3>
-        <div class="method">
-          <div class="method-sig">stmt.finalize()</div>
-          <p class="method-desc">
-            Destroys the prepared statement and frees its resources. After this
-            call the statement must not be used. Calling
-            <code>finalize()</code> on an already-finalized statement is a safe
-            no-op. Note: <code>db.close()</code> automatically finalizes any
-            not-yet-finalized statements, so explicit <code>finalize()</code>
-            calls are only strictly necessary if you want to release the
-            statement's resources before closing the database.
-          </p>
-        </div>
-        <pre><code class="language-javascript">stmt.finalize();</code></pre>
-
-        <!-- ── Common patterns ──────────────────────────────────────── -->
-        <h2 id="sqlite-patterns">Common Patterns</h2>
-
-        <h3>In-memory scratch database</h3>
-        <pre><code class="language-javascript">import { Database } from "core:sqlite";
-import { println } from "core:io";
-
-const db = new Database(":memory:");
-db.exec("CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT)");
-
-db.prepare("INSERT INTO kv VALUES (?, ?)").run("theme", "dark");
-
-const row = db.prepare("SELECT value FROM kv WHERE key = ?").get("theme");
-println(row.value); // dark
-db.close();</code></pre>
-
-        <h3>Bulk insert wrapped in a transaction</h3>
-        <pre><code class="language-javascript">import { Database } from "core:sqlite";
-
-const db    = new Database("data.sqlite");
-const names = ["Alice", "Bob", "Carol", "Dave", "Eve"];
-
-db.exec("CREATE TABLE IF NOT EXISTS people (id INTEGER PRIMARY KEY, name TEXT)");
-db.exec("BEGIN");
-
-const stmt = db.prepare("INSERT INTO people (name) VALUES (?)");
-names.each(fn(name, i) {
-    stmt.run(name); // run() resets and re-executes automatically
-});
-stmt.finalize();
-
-db.exec("COMMIT");
-db.close();</code></pre>
-
-        <h3>Named parameters</h3>
-        <pre><code class="language-javascript">// SQLite supports @name, :name, and $name placeholders.
-// Pass a plain object to run / get / all to bind by name.
-db.exec("CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY, sku TEXT, price NUM)");
-db.prepare("INSERT INTO products (sku, price) VALUES (@sku, @price)")
-  .run({ sku: "WIDGET-42", price: 9.99 });
-
-const p = db.prepare("SELECT * FROM products WHERE sku = @sku")
-             .get({ sku: "WIDGET-42" });
-println(p.price); // 9.99</code></pre>
-
-        <h3>Pluck — collect a single column</h3>
-        <pre><code class="language-javascript">const stmt = db.prepare("SELECT name FROM users ORDER BY name");
-const names = stmt.pluck().all();
-names.each(fn(n, i) { println(n); }); // Alice  Bob  Carol ...
-stmt.finalize();</code></pre>
-
-        <h3>Multiple independent connections</h3>
-        <pre><code class="language-javascript">const users  = new Database("users.sqlite");
-const orders = new Database("orders.sqlite");
-const cache  = new Database(":memory:");
-
-// All three connections are fully independent.
-users.close();
-orders.close();
-cache.close();</code></pre>
-
-        <h3>Error handling</h3>
-        <pre><code class="language-javascript">import { Database } from "core:sqlite";
-import { println } from "core:io";
-
-const db = new Database(":memory:");
-db.exec("CREATE TABLE t (id INTEGER PRIMARY KEY, val TEXT UNIQUE)");
-
-try {
-    db.prepare("INSERT INTO t VALUES (1, 'hello')").run();
-    db.prepare("INSERT INTO t VALUES (1, 'hello')").run(); // duplicate PK
-} catch (e) {
-    println("Caught:", e);
-}
-db.close();</code></pre>
-
-        <!-- ==============================================================
-         core:mysql
-         ============================================================== -->
-        <h2 id="mysql">core:mysql — MySQL / MariaDB Database</h2>
-        <p>Import with:</p>
-        <pre><code class="language-javascript">import { Database } from "core:mysql";</code></pre>
-
-        <h3 id="mysql-overview">Overview</h3>
-        <p>
-          <code>core:mysql</code> provides a lightweight synchronous SQL API for
-          MySQL-compatible servers (MySQL and MariaDB). It dynamically loads
-          <code>libmariadb</code> / <code>libmysqlclient</code> at runtime and
-          exposes one class: <code>Database</code>.
-        </p>
-        <ul style="margin: 0.75rem 0 0.75rem 1.5rem">
+        <p>Supported syntax (high level):</p>
+        <ul>
           <li>
-            <strong>query(sql)</strong> returns an array of row objects for
-            <code>SELECT</code>-style statements.
+            <code>--</code> — end of options; remaining tokens are positional.
           </li>
           <li>
-            <strong>exec(sql)</strong> executes write/DDL statements and returns
-            metadata <code>{ affectedRows, insertId }</code>.
+            Long options: <code>--name</code>, <code>--name=value</code>, or
+            <code>--name</code> with the next token as the value when
+            <code>takesValue</code> is true and <code>=</code> is omitted.
           </li>
           <li>
-            <strong>close()</strong> closes the connection; further use throws a
-            runtime error.
+            Short options: <code>-x</code>; clustered booleans
+            <code>-xyz</code>; value either glued (<code>-fvalue</code>) or as
+            the next token (<code>-f value</code>).
+          </li>
+          <li>
+            A lone <code>-</code> is kept as a positional (common "stdin"
+            placeholder).
+          </li>
+          <li>
+            Tokens that look like signed decimal numbers (for example
+            <code>-3</code> or <code>-1.5</code>) are treated as positionals so
+            numeric arguments are not mistaken for flags.
           </li>
         </ul>
-
-        <h2 id="mysql-database">Database</h2>
-
-        <h3 id="mysql-db-constructor">Constructor</h3>
-        <div class="method">
-          <div class="method-sig">
-            new Database(options?) or new Database(host, user, password, database, port?)
-          </div>
-          <p class="method-desc">
-            Opens a new connection. Preferred usage is an options object.
-            Default port is <code>3306</code>.
-          </p>
-        </div>
-        <pre><code class="language-javascript">const db = new Database({
-    host: "127.0.0.1",
-    user: "root",
-    password: "secret",
-    database: "zscript_test",
-    port: 3306
-});
-
-// Positional form is also supported:
-const db2 = new Database("127.0.0.1", "root", "secret", "zscript_test", 3306);</code></pre>
-
-        <div class="note">
-          <strong>Note:</strong> if the client library cannot be loaded or
-          authentication fails, the constructor raises a runtime error.
-        </div>
-
-        <h3 id="mysql-db-query">query</h3>
-        <div class="method">
-          <div class="method-sig">db.query(sql: string) → array&lt;object&gt;</div>
-          <p class="method-desc">
-            Executes a query and returns rows. Each row is currently keyed by
-            column index strings (<code>"0"</code>, <code>"1"</code>, ...),
-            matching the current runtime implementation.
-          </p>
-        </div>
-        <pre><code class="language-javascript">const rows = db.query("SELECT id, name FROM users ORDER BY id LIMIT 3");
-rows.each(fn(row, i) {
-    println("id=", row["0"], "name=", row["1"]);
-});</code></pre>
-
-        <h3 id="mysql-db-exec">exec</h3>
-        <div class="method">
-          <div class="method-sig">db.exec(sql: string) → object</div>
-          <p class="method-desc">
-            Executes statements such as <code>INSERT</code>,
-            <code>UPDATE</code>, <code>DELETE</code>, <code>CREATE</code>, and
-            <code>DROP</code>. Returns an object with:
-            <code>affectedRows</code> and <code>insertId</code>.
-          </p>
-        </div>
-        <pre><code class="language-javascript">db.exec("CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(64))");
-
-const ins = db.exec("INSERT INTO users (name) VALUES ('alice')");
-println("affected:", ins.affectedRows, "insertId:", ins.insertId);
-
-const upd = db.exec("UPDATE users SET name = 'alice_updated' WHERE id = " + ins.insertId);
-println("updated:", upd.affectedRows);
-
-const del = db.exec("DELETE FROM users WHERE id = " + ins.insertId);
-println("deleted:", del.affectedRows);</code></pre>
-
-        <h3 id="mysql-db-close">close</h3>
-        <div class="method">
-          <div class="method-sig">db.close()</div>
-          <p class="method-desc">
-            Closes the active database handle. It is safe to call during cleanup
-            before process exit.
-          </p>
-        </div>
-        <pre><code class="language-javascript">db.close();</code></pre>
-
-        <h2 id="mysql-patterns">Common Patterns</h2>
-
-        <h3>CLI-driven connection options</h3>
-        <pre><code class="language-javascript">import { Database } from "core:mysql";
-import { args } from "core:os";
-
-const argv = args();
-if (argv.length() &lt; 4) {
-    raise "Usage: <host> <user> <password> <database> [port]";
-}
-
-const db = new Database({
-    host: argv[0],
-    user: argv[1],
-    password: argv[2],
-    database: argv[3],
-    port: argv.length() &gt; 4 ? argv[4] : 3306
-});</code></pre>
-
-        <h3>Ephemeral test table lifecycle (CRUD)</h3>
-        <pre><code class="language-javascript">import { Database } from "core:mysql";
-import { getPid } from "core:os";
-import { format } from "core:io";
-
-const db = new Database({ host: "127.0.0.1", user: "root", password: "secret", database: "zscript_test" });
-const suffix = format("{}", getPid());
-const table = "zscript_mysql_crud_" + suffix;
-
-db.exec("CREATE TABLE IF NOT EXISTS " + table + " (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(128) NOT NULL)");
-const ins = db.exec("INSERT INTO " + table + " (name) VALUES ('alice_" + suffix + "')");
-
-const rows = db.query("SELECT id, name FROM " + table + " WHERE id = " + ins.insertId);
-assert rows.length() == 1;
-assert rows[0]["1"] != null;
-
-db.exec("DROP TABLE IF EXISTS " + table);
-db.close();</code></pre>
-
-        <h3>Safe cleanup with try/catch</h3>
-        <pre><code class="language-javascript">import { Database } from "core:mysql";
+        <pre><code class="language-javascript">import { args } from "core:os";
+import { createArgParser } from "lib:argparser";
 import { println } from "core:io";
 
-const db = new Database({
-    host: "127.0.0.1",
-    user: "root",
-    password: "secret",
-    database: "zscript_test"
-});
+const p = createArgParser();
+p.option({ long: "output", short: "o", takesValue: true, help: "output file" });
+p.option({ long: "verbose", short: "v", help: "more logging" });
 
-try {
-    db.exec("CREATE TABLE IF NOT EXISTS logs (id INT AUTO_INCREMENT PRIMARY KEY, msg TEXT)");
-    db.exec("INSERT INTO logs (msg) VALUES ('hello')");
-    const rows = db.query("SELECT id, msg FROM logs ORDER BY id DESC LIMIT 1");
-    println(rows[0]["0"], rows[0]["1"]);
-} catch (e) {
-    println("MySQL error:", e);
-}
+const r = p.parse(args());
+if (!r.ok) {
+    println(r.errors);
+} else {
+    println("flags:", r.flags, "positionals:", r.positional);
+}</code></pre>
 
-db.close();</code></pre>
-
-        <!-- ==============================================================
-         core:mongoose
-         ============================================================== -->
-        <h2 id="mongoose">core:mongoose — HTTP Server</h2>
-        <p>Import with:</p>
-        <pre><code class="language-javascript">import { Server, request } from "core:mongoose";</code></pre>
-        <p class="page-intro">
-          <code>core:mongoose</code> wraps the
-          <a href="https://mongoose.ws" target="_blank" rel="noopener"
-            >Mongoose</a
-          >
-          embedded networking library to give ZayneScript an Express.js-style
-          HTTP server and a small async HTTP <strong>client</strong>. Create a
-          <code>Server</code>, register routes, and call
-          <code>listen()</code> — the event loop runs until
-          <code>close()</code> is called. Outbound requests use
-          <code>request()</code> and return a <code>Promise</code>.
-        </p>
-
-        <hr />
-
-        <h2 id="mongoose-request">request — HTTP client</h2>
-        <div class="method">
-          <div class="method-sig">request(url: string [, options: object]) → Promise</div>
-          <p class="method-desc">
-            Performs a non-blocking HTTP request using the interpreter’s shared
-            Mongoose manager. Resolves with an object
-            <code>{ status, statusText, headers, body }</code> — on failure the
-            promise is rejected with an error string.
-          </p>
-        </div>
-        <p>Optional <code>options</code> fields:</p>
-        <ul style="margin: 0.75rem 0 0.75rem 1.5rem">
-          <li>
-            <code>method</code> — verb string (default <code>"GET"</code>);
-            upper-cased internally.
-          </li>
-          <li>
-            <code>headers</code> — plain object of header names to values (merged
-            into the request).
-          </li>
-          <li>
-            <code>body</code> — string for raw text; an object value is
-            stringified and sent as JSON with
-            <code>Content-Type: application/json</code> if not already set.
-          </li>
-        </ul>
+        <h3 id="lib-argparser-parsewithdefs">parseWithDefs</h3>
         <p>
-          If the response has <code>Content-Type: application/json</code>,
-          <code>body</code> is parsed into objects/arrays/values; otherwise it
-          remains a string.
+          <code>parseWithDefs(defs, argv)</code> builds a temporary parser,
+          registers every object in the <code>defs</code> array with
+          <code>option</code>, then returns <code>parse(argv)</code>. Useful for
+          small tools without keeping a parser instance.
         </p>
-        <pre><code class="language-javascript">import { println } from "core:io";
-import { request } from "core:mongoose";
+        <pre><code class="language-javascript">import { parseWithDefs } from "lib:argparser";
 
-request("http://127.0.0.1:8080/api/ping", {
-    method: "GET"
-}).then(fn(res) {
-    println(res.status, res.body);
-}).error(fn(e) {
-    println("failed:", e);
-});</code></pre>
+const r = parseWithDefs([
+    { long: "out", short: "o", takesValue: true },
+    { long: "quiet", short: "q" }
+], argv);</code></pre>
         <p>
-          For named constants and a re-export of <code>request</code>, see
-          <a href="#lib-http">lib:http</a> below. For parsing
-          <code>args()</code> into flags and positionals, see
-          <a href="#lib-argparser">lib:argparser</a>.
+          See <code>tests/test_args.zs</code> for a runnable example with
+          <code>args()</code> and <code>lib:argparser</code>.
         </p>
-
-        <h2 id="mongoose-server">Server class</h2>
-
-        <h3 id="mongoose-server-constructor">constructor</h3>
-        <div class="method">
-          <div class="method-sig">new Server()</div>
-          <p class="method-desc">
-            Creates a new HTTP server instance. No arguments required.
-          </p>
-        </div>
-        <pre><code class="language-javascript">import { Server } from "core:mongoose";
-const app = new Server();</code></pre>
-
-        <h2 id="mongoose-routing">Routing</h2>
-        <p>
-          Route handlers receive <code>(req, res)</code> and are matched in
-          registration order. The path is matched with Mongoose's glob patterns
-          — use <code>*</code> as a wildcard segment.
-        </p>
-
-        <div class="method">
-          <div class="method-sig">app.get(path, handler)</div>
-        </div>
-        <div class="method">
-          <div class="method-sig">app.post(path, handler)</div>
-        </div>
-        <div class="method">
-          <div class="method-sig">app.put(path, handler)</div>
-        </div>
-        <div class="method">
-          <div class="method-sig">app.delete(path, handler)</div>
-        </div>
-        <div class="method">
-          <div class="method-sig">app.patch(path, handler)</div>
-        </div>
-        <div class="method">
-          <div class="method-sig">app.all(path, handler)</div>
-          <p class="method-desc">Matches any HTTP method.</p>
-        </div>
-
-        <pre><code class="language-javascript">app.get("/hello", fn(req, res) {
-    res.send("Hello World!");
-});
-
-app.post("/users", fn(req, res) {
-    res.status(201).json({ created: true });
-});</code></pre>
-
-        <h3>Wildcard captures</h3>
-        <p>
-          Wildcards in the path are captured and exposed on
-          <code>req.params</code> as numeric keys (<code>"0"</code>,
-          <code>"1"</code>, …).
-        </p>
-        <pre><code class="language-javascript">app.get("/users/*", fn(req, res) {
-    const id = req.params["0"];  // e.g. "42" for /users/42
-    res.json({ id: id });
-});</code></pre>
-
-        <h3 id="mongoose-listen">listen / close</h3>
-        <div class="method">
-          <div class="method-sig">app.listen(port: int, callback?: fn)</div>
-          <p class="method-desc">
-            Binds to <code>0.0.0.0:port</code> and enters the event loop. This
-            call <strong>blocks</strong> until <code>app.close()</code> is
-            called. The optional <code>callback</code> is invoked once the
-            server is ready, receiving a ready message string.
-          </p>
-        </div>
-        <div class="method">
-          <div class="method-sig">app.close()</div>
-          <p class="method-desc">
-            Stops the event loop and frees the server resources.
-          </p>
-        </div>
-        <pre><code class="language-javascript">import { println } from "core:io";
-
-app.listen(3000, fn(msg) {
-    println(msg); // Server listening on port 3000
-});</code></pre>
-
-        <h2 id="mongoose-req">Request object</h2>
-        <p>Available inside every route handler as the first argument.</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Property</th>
-              <th>Type</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>req.method</code></td>
-              <td>string</td>
-              <td>
-                HTTP verb in upper-case — <code>"GET"</code>,
-                <code>"POST"</code>, etc.
-              </td>
-            </tr>
-            <tr>
-              <td><code>req.path</code></td>
-              <td>string</td>
-              <td>Request URI path (without query string).</td>
-            </tr>
-            <tr>
-              <td><code>req.url</code></td>
-              <td>string</td>
-              <td>Same as <code>req.path</code> (full URI).</td>
-            </tr>
-            <tr>
-              <td><code>req.query</code></td>
-              <td>string</td>
-              <td>
-                Raw query string, e.g. <code>"name=Alice&amp;age=30"</code>.
-              </td>
-            </tr>
-            <tr>
-              <td><code>req.body</code></td>
-              <td>string</td>
-              <td>Raw request body as a string.</td>
-            </tr>
-            <tr>
-              <td><code>req.headers</code></td>
-              <td>object</td>
-              <td>
-                All request headers as a plain object with lower-cased keys.
-              </td>
-            </tr>
-            <tr>
-              <td><code>req.params</code></td>
-              <td>object</td>
-              <td>
-                Wildcard captures from the route path, keyed <code>"0"</code> …
-                <code>"3"</code>.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h2 id="mongoose-res">Response object</h2>
-        <p>Available inside every route handler as the second argument.</p>
-
-        <h3>res.send(body)</h3>
-        <div class="method">
-          <div class="method-sig">res.send(body: string)</div>
-          <p class="method-desc">
-            Sends a plain-text response with the current status code (default
-            <code>200</code>) and any headers set via
-            <code>res.setHeader()</code>.
-          </p>
-        </div>
-
-        <h3>res.json(value)</h3>
-        <div class="method">
-          <div class="method-sig">res.json(value)</div>
-          <p class="method-desc">
-            Serialises <code>value</code> to a string and sends it with
-            <code>Content-Type: application/json</code>.
-          </p>
-        </div>
-
-        <h3>res.status(code)</h3>
-        <div class="method">
-          <div class="method-sig">res.status(code: int) → res</div>
-          <p class="method-desc">
-            Sets the response status code. Returns <code>res</code> for
-            chaining: <code>res.status(404).send("Not found")</code>.
-          </p>
-        </div>
-
-        <h3>res.redirect(url)</h3>
-        <div class="method">
-          <div class="method-sig">res.redirect(url: string)</div>
-          <p class="method-desc">
-            Sends a <code>302 Found</code> redirect to <code>url</code>.
-          </p>
-        </div>
-
-        <h3>res.setHeader(name, value)</h3>
-        <div class="method">
-          <div class="method-sig">res.setHeader(name: string, value: string) → res</div>
-          <p class="method-desc">
-            Appends a response header. Can be chained before
-            <code>send()</code> or <code>json()</code>.
-          </p>
-        </div>
-
-        <h2 id="mongoose-middleware">Middleware</h2>
-        <div class="method">
-          <div class="method-sig">app.use(fn(req, res))</div>
-          <p class="method-desc">
-            Registers a function that runs before every route handler. Useful
-            for logging, auth checks, or attaching properties to
-            <code>req</code>. Up to 32 middleware functions are supported.
-          </p>
-        </div>
-        <pre><code class="language-javascript">import { println } from "core:io";
-
-app.use(fn(req, res) {
-    println(req.method, req.path);
-});</code></pre>
-
-        <h2 id="mongoose-patterns">Common Patterns</h2>
-
-        <h3>Simple REST-like API</h3>
-        <pre><code class="language-javascript">import { Server } from "core:mongoose";
-import { println } from "core:io";
-
-const app = new Server();
-
-app.get("/", fn(req, res) {
-    res.send("Welcome!");
-});
-
-app.get("/greet/*", fn(req, res) {
-    const name = req.params["0"];
-    res.json({ message: "Hello, " + name + "!" });
-});
-
-app.post("/echo", fn(req, res) {
-    res.setHeader("X-Echo", "true").send(req.body);
-});
-
-app.listen(8080, fn(msg) { println(msg); });</code></pre>
-
-        <h3>Request logging middleware</h3>
-        <pre><code class="language-javascript">import { Server } from "core:mongoose";
-import { println } from "core:io";
-
-const app = new Server();
-
-app.use(fn(req, res) {
-    println("[" + req.method + "]", req.path);
-});
-
-app.get("/ping", fn(req, res) {
-    res.send("pong");
-});
-
-app.listen(3000, fn(msg) { println(msg); });</code></pre>
-
-        <h3>JSON API with status codes</h3>
-        <pre><code class="language-javascript">import { Server }  from "core:mongoose";
-import { Database } from "core:sqlite";
-
-const app = new Server();
-const db  = new Database("app.sqlite");
-db.exec("CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY, text TEXT)");
-
-app.get("/notes", fn(req, res) {
-    const rows = db.prepare("SELECT * FROM notes").all();
-    res.json(rows);
-});
-
-app.post("/notes", fn(req, res) {
-    const info = db.prepare("INSERT INTO notes (text) VALUES (?)").run(req.body);
-    res.status(201).json({ id: info.lastInsertRowid });
-});
-
-app.listen(4000, fn(msg) { println(msg); });</code></pre>
 
         <!-- ==============================================================
          lib:http (user library)
@@ -2733,121 +3244,6 @@ request("http://api.example.com/users", {
         <p>
           See <code>tests/test_request.zs</code> for a minimal client example
           using <code>lib:http</code>.
-        </p>
-
-        <!-- ==============================================================
-         lib:argparser (user library)
-         ============================================================== -->
-        <h2 id="lib-argparser">lib:argparser — command-line argument parser</h2>
-        <p>
-          The repository includes <code>lib/argparser.zs</code>, copied next to
-          the executable at build time (see the
-          <code>dist/</code> layout on the home page). It parses the string array
-          returned by <a href="#os-args"><code>args()</code></a> from
-          <code>core:os</code> into positionals, boolean flags, and value flags.
-        </p>
-
-        <h3 id="lib-argparser-args">How <code>args()</code> relates to the shell</h3>
-        <p>
-          Everything after the script path on the host command line becomes
-          <code>args()</code>. Tokens are split on ASCII spaces only; use
-          <code>lib:argparser</code> on that flat list the same way you would use
-          a classic <code>argv</code> in C.
-        </p>
-
-        <h3 id="lib-argparser-api">ArgParser class</h3>
-        <p>Import symbols:</p>
-        <pre><code class="language-javascript">import { ArgParser, createArgParser, parseWithDefs } from "lib:argparser";</code></pre>
-        <ul>
-          <li>
-            <code>createArgParser()</code> — same as <code>new ArgParser()</code>;
-            returns a parser instance with <code>strict</code> defaulting to
-            <code>false</code>.
-          </li>
-          <li>
-            <code>p.option(def)</code> — registers an option. Object
-            <code>def</code> may include:
-            <code>long</code> (string), <code>short</code> (single-character
-            string), <code>takesValue</code> (boolean), <code>multiple</code>
-            (boolean; values accumulate in an array), <code>defaultVal</code>
-            (applied if the flag never appears), and <code>help</code> (for
-            <code>helpText</code>). At least one of <code>long</code> or
-            <code>short</code> is required. Duplicate names or invalid identifiers
-            <strong>raise</strong> at registration time.
-          </li>
-          <li>
-            <code>p.strict = true</code> — unknown <code>--long</code> or
-            <code>-x</code> options are recorded in <code>errors</code> instead
-            of only in <code>unknown</code>.
-          </li>
-          <li>
-            <code>p.parse(argv)</code> — returns an object:
-            <code>ok</code> (boolean), <code>errors</code> (array of strings),
-            <code>positional</code> (array), <code>flags</code> (object; keys use
-            <code>long</code> when present, otherwise <code>short</code>), and
-            <code>unknown</code> (object of unrecognized flags when not strict).
-          </li>
-          <li>
-            <code>p.helpText(programName)</code> — multi-line usage string from
-            registered options.
-          </li>
-        </ul>
-        <p>Supported syntax (high level):</p>
-        <ul>
-          <li>
-            <code>--</code> — end of options; remaining tokens are positional.
-          </li>
-          <li>
-            Long options: <code>--name</code>, <code>--name=value</code>, or
-            <code>--name</code> with the next token as the value when
-            <code>takesValue</code> is true and <code>=</code> is omitted.
-          </li>
-          <li>
-            Short options: <code>-x</code>; clustered booleans
-            <code>-xyz</code>; value either glued (<code>-fvalue</code>) or as
-            the next token (<code>-f value</code>).
-          </li>
-          <li>
-            A lone <code>-</code> is kept as a positional (common “stdin”
-            placeholder).
-          </li>
-          <li>
-            Tokens that look like signed decimal numbers (for example
-            <code>-3</code> or <code>-1.5</code>) are treated as positionals so
-            numeric arguments are not mistaken for flags.
-          </li>
-        </ul>
-        <pre><code class="language-javascript">import { args } from "core:os";
-import { createArgParser } from "lib:argparser";
-import { println } from "core:io";
-
-const p = createArgParser();
-p.option({ long: "output", short: "o", takesValue: true, help: "output file" });
-p.option({ long: "verbose", short: "v", help: "more logging" });
-
-const r = p.parse(args());
-if (!r.ok) {
-    println(r.errors);
-} else {
-    println("flags:", r.flags, "positionals:", r.positional);
-}</code></pre>
-
-        <h3 id="lib-argparser-parsewithdefs">parseWithDefs</h3>
-        <p>
-          <code>parseWithDefs(defs, argv)</code> builds a temporary parser,
-          registers every object in the <code>defs</code> array with
-          <code>option</code>, then returns <code>parse(argv)</code>. Useful for
-          small tools without keeping a parser instance.
-        </p>
-        <pre><code class="language-javascript">import { parseWithDefs } from "lib:argparser";
-
-const r = parseWithDefs([
-    { long: "out", short: "o", takesValue: true },
-    { long: "quiet", short: "q" }
-], argv);</code></pre>
-        <p>
-          See <code>tests/test_args.zs</code> for a runnable example with
-          <code>args()</code> and <code>lib:argparser</code>.
         </p>
       </main>
     </div>
