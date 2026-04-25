@@ -1,5 +1,9 @@
 #include "./operation.h"
 
+#include "global.h"
+
+#include <stdlib.h>
+
 #define FreeTempBf(interpreter, bf, val)                                       \
 	do {                                                                       \
 		if ((val)->Type == VLT_INT || (val)->Type == VLT_NUM) {                \
@@ -989,6 +993,38 @@ Value* DoNot(Interpreter* interpreter, Value* val) {
 	return resultBool ? interpreter->True : interpreter->False;
 }
 
+Value* DoBitNot(Interpreter* interpreter, Value* val) {
+	if (ValueIsInt(val)) {
+		return NewIntValue(interpreter, ~CoerceToI32(val));
+	} else if (ValueIsNum(val)) {
+		return NewNumValue(interpreter, ~CoerceToI64(val));
+	} else if (ValueIsAnyNum(val)) {
+		/* libbf: no unary NOT; for two's-complement integers ~n == -n - 1
+		 * (see thirdparty/libbf logical ops + readme two-complement note). */
+		bf_t* resNum = Allocate(sizeof(bf_t));
+		bf_init(&interpreter->BfContext, resNum);
+		bf_t* tmpBf = CoerceToBitField(interpreter, val);
+		bf_set(resNum, tmpBf);
+		FreeTempBf(interpreter, tmpBf, val);
+		bf_neg(resNum);
+		bf_add_si(resNum,
+				  resNum,
+				  -1,
+				  BF_PREC_INF,
+				  BF_RNDZ | BF_FTOA_FORMAT_FRAC | BF_FTOA_JS_QUIRKS);
+		int prec = BFPrecession(val);
+		return prec == PREC_INT ? NewBigIntValue(interpreter, resNum)
+								: NewBigNumValue(interpreter, resNum);
+	} else {
+		String errMsg = FormatString("%s: invalid operand for operator (~): %s",
+									 TYPE_ERROR,
+									 ValueTypeOf(val));
+		Value* errVal = NewErrorValue(interpreter, errMsg);
+		free(errMsg);
+		return errVal;
+	}
+}
+
 Value* DoPos(Interpreter* interpreter, Value* val) {
 	if (ValueIsInt(val)) {
 		return NewIntValue(interpreter, +CoerceToI32(val));
@@ -1000,7 +1036,6 @@ Value* DoPos(Interpreter* interpreter, Value* val) {
 		bf_t* tmpBf = CoerceToBitField(interpreter, val);
 		bf_set(resNum, tmpBf);
 		FreeTempBf(interpreter, tmpBf, val);
-		// unary + is a no-op, just copy
 		int prec = BFPrecession(val);
 		return prec == PREC_INT ? NewBigIntValue(interpreter, resNum)
 								: NewBigNumValue(interpreter, resNum);
@@ -1037,6 +1072,10 @@ Value* DoNeg(Interpreter* interpreter, Value* val) {
 		free(errMsg);
 		return errVal;
 	}
+}
+
+Value* DoGetType(Interpreter* interpreter, Value* val) {
+	return NewStrValue(interpreter, ValueTypeOf(val));
 }
 
 Value* DoMul(Interpreter* interpreter, Value* lhs, Value* rhs) {

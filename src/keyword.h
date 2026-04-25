@@ -49,6 +49,7 @@
 #define KEY_FALSE	 "false"	/**< Boolean false literal keyword */
 #define KEY_NEW		 "new"		/**< Object instantiation keyword */
 #define KEY_AWAIT	 "await"	/**< Asynchronous operation awaiting keyword */
+#define KEY_TYPEOF   "typeof"	/**< Typeof keyword */
 #define KEY_THIS	 "this"		/**< Current instance reference keyword */
 
 #endif							/* KEYWORD_H */

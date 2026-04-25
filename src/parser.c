@@ -1,5 +1,7 @@
 #include "./parser.h"
 
+#include "keyword.h"
+
 Parser* CreateParser(Lexer* lexer) {
 	Parser* parser = Allocate(sizeof(Parser));
 	parser->Lexer  = lexer;
@@ -468,7 +470,7 @@ static Ast* _ParsePostfix(Parser* parser) {
 static Ast* _ParseUnary(Parser* parser) {
 	String op	= NULL;
 	Ast*   node = NULL;
-	if (CHECKTV("+") || CHECKTV("-") || CHECKTV("!")) {
+	if (CHECKTV("+") || CHECKTV("-") || CHECKTV("!") || CHECKTV("~")) {
 		op = parser->Next.Value;
 		ACCEPTT(TK_SYM);
 
@@ -484,7 +486,8 @@ static Ast* _ParseUnary(Parser* parser) {
 
 		node = AstSingle(strcmp(op, "+") == 0	? AST_POSITIVE
 						 : strcmp(op, "-") == 0 ? AST_NEGATIVE
-												: AST_LOGICAL_NOT,
+						 : strcmp(op, "!") == 0 ? AST_LOGICAL_NOT
+												: AST_BITWISE_NOT,
 						 operand,
 						 MergePositions(operand->Position, operand->Position));
 
@@ -532,6 +535,21 @@ static Ast* _ParseUnary(Parser* parser) {
 		}
 
 		return AstSingle(AST_AWAIT,
+						 operand,
+						 MergePositions(operand->Position, operand->Position));
+	} else if (CHECKTV(KEY_TYPEOF)) {
+		ACCEPTV_FREE(KEY_TYPEOF);
+
+		Ast* operand = _ParseUnary(parser);
+
+		if (operand == NULL) {
+			ThrowError(parser->Lexer->Path,
+					   parser->Lexer->Data,
+					   parser->Next.Position,
+					   "expected an expression");
+		}
+
+		return AstSingle(AST_TYPEOF,
 						 operand,
 						 MergePositions(operand->Position, operand->Position));
 	}

@@ -151,3 +151,6 @@ array.push(20);
 array[1] = 30;
 println("HEre!");
 println(array, array.push, array.length(), p.callable(), p.name = "Doy", p.DEFAULT_AGE, Person.DEFAULT_AGE);
+
+
+println(~4, typeof(5n));

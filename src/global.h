@@ -380,9 +380,11 @@ typedef enum ast_type_enum {
 	AST_POSITIVE,	 /**< Unary plus (+) */
 	AST_NEGATIVE,	 /**< Unary minus (-) */
 	AST_LOGICAL_NOT, /**< Logical NOT (!) */
+	AST_BITWISE_NOT, /**< Bitwise NOT (~) */
 	AST_PRE_INC,	 /**< Pre-increment (++i) */
 	AST_PRE_DEC,	 /**< Pre-decrement (--i) */
 	AST_AWAIT,		 /**< Await expression (await promise) */
+	AST_TYPEOF,		/**< Typeof expression (typeof expr) */
 	// Binary Operators
 	AST_MUL,		  /**< Multiplication (*) */
 	AST_DIV,		  /**< Division (/) */
@@ -567,10 +569,12 @@ typedef enum opcode_enum {
 	OP_CALL,						 /**< Call a function */
 	OP_CALL_METHOD,					 /**< Call a method */
 	OP_NOT,							 /**< Logical NOT */
+	OP_BITNOT,						 /**< Bitwise NOT */
 	OP_POS,							 /**< Unary plus */
 	OP_NEG,							 /**< Unary minus */
 	OP_AWAIT,						 /**< Await a promise */
 	OP_GET_AWAITED_VALUE,			 /**< Get the awaited value */
+	OP_GETTYPE,						 /**< Get the type of a value */
 	OP_MUL,							 /**< Multiply */
 	OP_DIV,							 /**< Divide */
 	OP_MOD,							 /**< Modulo */
@@ -676,7 +680,7 @@ typedef struct environment_struct {
  * stack traces.
  */
 typedef struct line_info_struct {
-	String Path; /**< Path to the source file */
+	Value* Path; /**< Path to the source file */
 	int	   Pc;	 /**< Program counter */
 	int	   Line; /**< Line number in the source file */
 } LineInfo;
@@ -1002,9 +1006,10 @@ struct interpreter_struct {
  * and functions).
  */
 typedef struct compiler_struct {
-	Interpreter* Interpreter; /**< Pointer to the interpreter */
-	String		 ModulePath;  /**< Path to the module */
-	Parser*		 Parser;	  /**< Pointer to the parser */
+	Interpreter* Interpreter;  /**< Pointer to the interpreter */
+	String		 ModulePath;   /**< Path to the module */
+	int			 ModuleOffset; /**< Offset of the module in the constant pool */
+	Parser*		 Parser;	   /**< Pointer to the parser */
 } Compiler;
 
 /**
