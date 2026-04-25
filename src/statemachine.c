@@ -1,40 +1,29 @@
+
 #include "./statemachine.h"
 
 StateMachine* CreateStateMachine(StateMachineState initial,
 								 bool			   isCallback,
-								 size_t			   ip,
-								 Value*			   env,
 								 Value*			   promise,
 								 Value*			   function) {
 	StateMachine* sm = Allocate(sizeof(StateMachine));
 	sm->State		 = initial;
+	sm->Frame		 = NULL;
 	sm->IsCallback	 = isCallback;
-	sm->CallEnv		 = env;
+	sm->GlobalEnv	 = NULL;
+	sm->Callback	 = function;
 	sm->WaitFor		 = promise;
 	sm->Value		 = NULL;
-	sm->Function	 = function;
 	sm->IsCatched	 = false;
-	sm->Ip			 = ip;
-	sm->Stacks		 = NULL;
-	sm->StckTop		 = 0;
-	sm->StckBot		 = 0;
 	sm->WaitList = Allocate(sizeof(Value*)), sm->WaitList[0] = NULL;
 	sm->WaitListC = 0;
-	sm->EnvStack  = NULL;
-	sm->EnvrTop	  = 0;
-	sm->EnvrBot	  = 0;
 	return sm;
 }
 
 void StateMachineSet(StateMachine*	   stateMachine,
 					 StateMachineState newState,
-					 size_t			   ip,
-					 Value*			   env,
 					 Value*			   waitFor,
 					 Value*			   value) {
 	stateMachine->State	  = newState;
-	stateMachine->Ip	  = ip;
-	stateMachine->CallEnv = env;
 	stateMachine->WaitFor = waitFor;
 	stateMachine->Value	  = value;
 }
@@ -46,21 +35,18 @@ void StateMachineUpdate(StateMachine*	  stateMachine,
 	stateMachine->Value = value;
 }
 
-void StateMachineAwait(StateMachine* stateMachine, size_t ip, Value* promise) {
+void StateMachineAwait(StateMachine* stateMachine, Value* promise) {
 	stateMachine->State	  = PENDING;
-	stateMachine->Ip	  = ip;
 	stateMachine->WaitFor = promise;
 }
 
 void StateMachineFulfill(StateMachine* stateMachine, Value* value) {
 	stateMachine->State = FULFILLED;
-	stateMachine->Ip	= 0;
 	stateMachine->Value = value;
 }
 
 void StateMachineReject(StateMachine* stateMachine, Value* value) {
 	stateMachine->State = REJECTED;
-	stateMachine->Ip	= 0;
 	stateMachine->Value = value;
 }
 
@@ -74,10 +60,6 @@ void StateMachineAddWaitList(StateMachine* stateMachine, Value* value) {
 }
 
 void FreeStateMachine(StateMachine* sm) {
-	if (sm->Stacks != NULL)
-		free(sm->Stacks);
-	if (sm->EnvStack != NULL)
-		free(sm->EnvStack);
 	if (sm->WaitList != NULL)
 		free(sm->WaitList);
 	free(sm);

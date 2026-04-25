@@ -1,7 +1,4 @@
-/**
- * PBKDF2 (RFC 2898). Original C.
- * @see https://github.com/brix/crypto-js/tree/develop/src — @c pbkdf2.js
- */
+
 #include "./crypto.h"
 #include "./crypto_algo.h"
 

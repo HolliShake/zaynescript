@@ -1,17 +1,8 @@
 #include "./crypto.h"
+
 #include "./crypto_algo.h"
 
-/**
- * @file crypto.c
- * @brief Pure-C digests, HMAC, encoders, and the @c core:crypto module.
- *
- * The @c Crypto export and WordArray / @c enc layout follow the public CryptoJS
- * API documented at https://github.com/brix/crypto-js — this is an original C
- * implementation of those algorithms and helpers, not a translation of the
- * CryptoJS JavaScript sources.
- */
 
-/** One WordArray class per interpreter (digest + @c toString, see @c file). */
 static Value*		s_word_array_class	= NULL;
 static Interpreter* s_word_array_interp = NULL;
 
@@ -789,7 +780,7 @@ static Value* _CryptoWordArrayToString(Interpreter* interpreter,
 		outv = NewStrValue(interpreter, b64);
 		free(b64);
 	} else if (mode == 3) {
-		size_t cap = 4 * ((rawlen + 2u) / 3u) + 4;
+		size_t cap	= 4 * ((rawlen + 2u) / 3u) + 4;
 		char*  b64u = Allocate(cap);
 		crypto_base64url_encode(raw, rawlen, b64u);
 		outv = NewStrValue(interpreter, b64u);
@@ -953,35 +944,62 @@ _CryptoHmacSha256(Interpreter* interpreter, int argc, Value** arguments) {
 	return _make_word_array(interpreter, digest, CRYPTO_SHA256_DIGEST_LEN);
 }
 
-#define _CRYPTO_ONE_SHOT(fname, label, digest_fn, digest_len)                                  \
-	static Value* fname(Interpreter* interpreter, int argc, Value** arguments) {               \
-		if (argc != 1) {                                                                       \
-			return NewErrorFValue(interpreter,                                                 \
-								  "%s: " label " expects 1 argument",                          \
-								  ARGUMENT_ERROR);                                             \
-		}                                                                                      \
-		uint8_t* msg = NULL;                                                                   \
-		size_t	  len = 0;                                                                     \
-		String	  err = NULL;                                                                  \
-		if (_bytes_from_value(interpreter, arguments[0], &msg, &len, &err) != 0) {              \
-			Value* e = NewErrorValue(interpreter, err);                                        \
-			free(err);                                                                         \
-			return e;                                                                          \
-		}                                                                                      \
-		uint8_t digest[digest_len];                                                            \
-		digest_fn(msg, len, digest);                                                           \
-		free(msg);                                                                             \
-		return _make_word_array(interpreter, digest, digest_len);                              \
+#define _CRYPTO_ONE_SHOT(fname, label, digest_fn, digest_len)                  \
+	static Value* fname(Interpreter* interpreter,                              \
+						int			 argc,                                     \
+						Value**		 arguments) {                              \
+		if (argc != 1) {                                                       \
+			return NewErrorFValue(interpreter,                                 \
+								  "%s: " label " expects 1 argument",          \
+								  ARGUMENT_ERROR);                             \
+		}                                                                      \
+		uint8_t* msg = NULL;                                                   \
+		size_t	 len = 0;                                                      \
+		String	 err = NULL;                                                   \
+		if (_bytes_from_value(interpreter, arguments[0], &msg, &len, &err)     \
+			!= 0) {                                                            \
+			Value* e = NewErrorValue(interpreter, err);                        \
+			free(err);                                                         \
+			return e;                                                          \
+		}                                                                      \
+		uint8_t digest[digest_len];                                            \
+		digest_fn(msg, len, digest);                                           \
+		free(msg);                                                             \
+		return _make_word_array(interpreter, digest, digest_len);              \
 	}
 
-_CRYPTO_ONE_SHOT(_CryptoSha224, "SHA224", crypto_sha224, CRYPTO_SHA224_DIGEST_LEN)
-_CRYPTO_ONE_SHOT(_CryptoSha384, "SHA384", crypto_sha384, CRYPTO_SHA384_DIGEST_LEN)
-_CRYPTO_ONE_SHOT(_CryptoSha512, "SHA512", crypto_sha512, CRYPTO_SHA512_DIGEST_LEN)
-_CRYPTO_ONE_SHOT(_CryptoSha3_224, "SHA3_224", crypto_sha3_224, CRYPTO_SHA3_224_DIGEST_LEN)
-_CRYPTO_ONE_SHOT(_CryptoSha3_256, "SHA3_256", crypto_sha3_256, CRYPTO_SHA3_256_DIGEST_LEN)
-_CRYPTO_ONE_SHOT(_CryptoSha3_384, "SHA3_384", crypto_sha3_384, CRYPTO_SHA3_384_DIGEST_LEN)
-_CRYPTO_ONE_SHOT(_CryptoSha3_512, "SHA3_512", crypto_sha3_512, CRYPTO_SHA3_512_DIGEST_LEN)
-_CRYPTO_ONE_SHOT(_CryptoRipemd160, "RIPEMD160", crypto_ripemd160, CRYPTO_RIPEMD160_DIGEST_LEN)
+_CRYPTO_ONE_SHOT(_CryptoSha224,
+				 "SHA224",
+				 crypto_sha224,
+				 CRYPTO_SHA224_DIGEST_LEN)
+_CRYPTO_ONE_SHOT(_CryptoSha384,
+				 "SHA384",
+				 crypto_sha384,
+				 CRYPTO_SHA384_DIGEST_LEN)
+_CRYPTO_ONE_SHOT(_CryptoSha512,
+				 "SHA512",
+				 crypto_sha512,
+				 CRYPTO_SHA512_DIGEST_LEN)
+_CRYPTO_ONE_SHOT(_CryptoSha3_224,
+				 "SHA3_224",
+				 crypto_sha3_224,
+				 CRYPTO_SHA3_224_DIGEST_LEN)
+_CRYPTO_ONE_SHOT(_CryptoSha3_256,
+				 "SHA3_256",
+				 crypto_sha3_256,
+				 CRYPTO_SHA3_256_DIGEST_LEN)
+_CRYPTO_ONE_SHOT(_CryptoSha3_384,
+				 "SHA3_384",
+				 crypto_sha3_384,
+				 CRYPTO_SHA3_384_DIGEST_LEN)
+_CRYPTO_ONE_SHOT(_CryptoSha3_512,
+				 "SHA3_512",
+				 crypto_sha3_512,
+				 CRYPTO_SHA3_512_DIGEST_LEN)
+_CRYPTO_ONE_SHOT(_CryptoRipemd160,
+				 "RIPEMD160",
+				 crypto_ripemd160,
+				 CRYPTO_RIPEMD160_DIGEST_LEN)
 
 #undef _CRYPTO_ONE_SHOT
 
@@ -1072,10 +1090,10 @@ _CryptoHmacRipemd160(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _CryptoPBKDF2(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 5) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: PBKDF2 expects 5 arguments (password, salt, iterations, dkLen, prf)",
-			ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: PBKDF2 expects 5 arguments (password, salt, "
+							  "iterations, dkLen, prf)",
+							  ARGUMENT_ERROR);
 	}
 	uint8_t *pass = NULL, *salt = NULL;
 	size_t	 plen = 0, slen = 0;
@@ -1124,9 +1142,10 @@ _CryptoPBKDF2(Interpreter* interpreter, int argc, Value** arguments) {
 	if (!ValueIsInt(arguments[4]) && !ValueIsNum(arguments[4])) {
 		free(pass);
 		free(salt);
-		return NewErrorFValue(interpreter,
-							  "%s: PBKDF2 prf must be 0 (SHA256), 1 (SHA1), or 2 (MD5)",
-							  TYPE_ERROR);
+		return NewErrorFValue(
+			interpreter,
+			"%s: PBKDF2 prf must be 0 (SHA256), 1 (SHA1), or 2 (MD5)",
+			TYPE_ERROR);
 	}
 	int prf = CoerceToI32(arguments[4]);
 	if (prf < 0 || prf > 2) {
@@ -1161,10 +1180,10 @@ _CryptoPBKDF2(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _CryptoEvpKDF(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 5) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: EvpKDF expects 5 arguments (password, salt, iterations, keyLen, ivLen)",
-			ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: EvpKDF expects 5 arguments (password, salt, "
+							  "iterations, keyLen, ivLen)",
+							  ARGUMENT_ERROR);
 	}
 	uint8_t *pass = NULL, *salt = NULL;
 	size_t	 plen = 0, slen = 0;
@@ -1195,7 +1214,7 @@ _CryptoEvpKDF(Interpreter* interpreter, int argc, Value** arguments) {
 							  "%s: EvpKDF iterations must be positive",
 							  ARGUMENT_ERROR);
 	}
-	int kli = CoerceToI32(arguments[3]);
+	int kli	 = CoerceToI32(arguments[3]);
 	int ivli = CoerceToI32(arguments[4]);
 	if (kli < 0 || ivli < 0 || kli > 4096 || ivli > 4096) {
 		free(pass);
@@ -1204,8 +1223,8 @@ _CryptoEvpKDF(Interpreter* interpreter, int argc, Value** arguments) {
 							  "%s: EvpKDF keyLen/ivLen out of range",
 							  ARGUMENT_ERROR);
 	}
-	size_t	 tot = (size_t) kli + (size_t) ivli;
-	uint8_t* buf = Allocate(tot ? tot : 1);
+	size_t	 tot  = (size_t) kli + (size_t) ivli;
+	uint8_t* buf  = Allocate(tot ? tot : 1);
 	uint8_t* keyp = buf;
 	uint8_t* ivp  = buf + (size_t) kli;
 	if (crypto_evpkdf_md5(pass,
@@ -1259,8 +1278,8 @@ _CryptoRC4(Interpreter* interpreter, int argc, Value** arguments) {
 							  TYPE_ERROR);
 	}
 	int		 dropi = CoerceToI32(arguments[2]);
-	unsigned drop = dropi < 0 ? 0u : (unsigned) dropi;
-	uint8_t* out = Allocate(dlen ? dlen : 1);
+	unsigned drop  = dropi < 0 ? 0u : (unsigned) dropi;
+	uint8_t* out   = Allocate(dlen ? dlen : 1);
 	crypto_rc4(key, klen, drop, data, dlen, out);
 	free(key);
 	free(data);
@@ -1272,9 +1291,10 @@ _CryptoRC4(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _CryptoAesEcbEncrypt(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 2) {
-		return NewErrorFValue(interpreter,
-							  "%s: AesEcbEncrypt expects 2 arguments (key, plaintext)",
-							  ARGUMENT_ERROR);
+		return NewErrorFValue(
+			interpreter,
+			"%s: AesEcbEncrypt expects 2 arguments (key, plaintext)",
+			ARGUMENT_ERROR);
 	}
 	uint8_t *key = NULL, *pt = NULL;
 	size_t	 klen = 0, plen = 0;
@@ -1297,12 +1317,14 @@ _CryptoAesEcbEncrypt(Interpreter* interpreter, int argc, Value** arguments) {
 							  "%s: AES-128 requires a 16-byte key",
 							  ARGUMENT_ERROR);
 	}
-	uint8_t* ct	 = NULL;
+	uint8_t* ct	   = NULL;
 	size_t	 ctlen = 0;
 	if (crypto_aes_ecb_encrypt(key, klen, pt, plen, &ct, &ctlen) != 0) {
 		free(key);
 		free(pt);
-		return NewErrorFValue(interpreter, "%s: AES-ECB encrypt failed", RUNTIME_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: AES-ECB encrypt failed",
+							  RUNTIME_ERROR);
 	}
 	free(key);
 	free(pt);
@@ -1314,9 +1336,10 @@ _CryptoAesEcbEncrypt(Interpreter* interpreter, int argc, Value** arguments) {
 static Value*
 _CryptoAesEcbDecrypt(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 2) {
-		return NewErrorFValue(interpreter,
-							  "%s: AesEcbDecrypt expects 2 arguments (key, ciphertext)",
-							  ARGUMENT_ERROR);
+		return NewErrorFValue(
+			interpreter,
+			"%s: AesEcbDecrypt expects 2 arguments (key, ciphertext)",
+			ARGUMENT_ERROR);
 	}
 	uint8_t *key = NULL, *ct = NULL;
 	size_t	 klen = 0, clen = 0;
@@ -1339,7 +1362,7 @@ _CryptoAesEcbDecrypt(Interpreter* interpreter, int argc, Value** arguments) {
 							  "%s: AES-128 requires a 16-byte key",
 							  ARGUMENT_ERROR);
 	}
-	uint8_t* pt	 = NULL;
+	uint8_t* pt	   = NULL;
 	size_t	 ptlen = 0;
 	if (crypto_aes_ecb_decrypt(key, klen, ct, clen, &pt, &ptlen) != 0) {
 		free(key);
@@ -1388,17 +1411,20 @@ _CryptoAesCbcEncrypt(Interpreter* interpreter, int argc, Value** arguments) {
 		free(key);
 		free(iv);
 		free(pt);
-		return NewErrorFValue(interpreter,
-							  "%s: AES-128 CBC requires 16-byte key and 16-byte IV",
-							  ARGUMENT_ERROR);
+		return NewErrorFValue(
+			interpreter,
+			"%s: AES-128 CBC requires 16-byte key and 16-byte IV",
+			ARGUMENT_ERROR);
 	}
-	uint8_t* ct	 = NULL;
+	uint8_t* ct	   = NULL;
 	size_t	 ctlen = 0;
 	if (crypto_aes_cbc_encrypt(key, klen, iv, pt, plen, &ct, &ctlen) != 0) {
 		free(key);
 		free(iv);
 		free(pt);
-		return NewErrorFValue(interpreter, "%s: AES-CBC encrypt failed", RUNTIME_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: AES-CBC encrypt failed",
+							  RUNTIME_ERROR);
 	}
 	free(key);
 	free(iv);
@@ -1441,11 +1467,12 @@ _CryptoAesCbcDecrypt(Interpreter* interpreter, int argc, Value** arguments) {
 		free(key);
 		free(iv);
 		free(ct);
-		return NewErrorFValue(interpreter,
-							  "%s: AES-128 CBC requires 16-byte key and 16-byte IV",
-							  ARGUMENT_ERROR);
+		return NewErrorFValue(
+			interpreter,
+			"%s: AES-128 CBC requires 16-byte key and 16-byte IV",
+			ARGUMENT_ERROR);
 	}
-	uint8_t* pt	 = NULL;
+	uint8_t* pt	   = NULL;
 	size_t	 ptlen = 0;
 	if (crypto_aes_cbc_decrypt(key, klen, iv, ct, clen, &pt, &ptlen) != 0) {
 		free(key);
@@ -1624,7 +1651,7 @@ _EncB64UrlStringify(Interpreter* interpreter, int argc, Value** arguments) {
 		free(err);
 		return e;
 	}
-	size_t cap = 4 * ((len + 2u) / 3u) + 4;
+	size_t cap	= 4 * ((len + 2u) / 3u) + 4;
 	char*  b64u = Allocate(cap);
 	crypto_base64url_encode(raw, len, b64u);
 	free(raw);
@@ -1701,11 +1728,12 @@ static Value* _build_encoders(Interpreter* interp) {
 	Value*	 b64u  = NewObjectValue(interp);
 	HashMap* b64um = CoerceToHashMap(b64u);
 	HashMapSet(b64um, LX_ENC_TAG, NewIntValue(interp, 3));
-	HashMapSet(b64um,
-			   "stringify",
-			   NewNativeFunctionValue(
-				   interp,
-				   CreateNativeFunctionMeta("stringify", 1, _EncB64UrlStringify)));
+	HashMapSet(
+		b64um,
+		"stringify",
+		NewNativeFunctionValue(
+			interp,
+			CreateNativeFunctionMeta("stringify", 1, _EncB64UrlStringify)));
 	HashMapSet(b64um,
 			   "parse",
 			   NewNativeFunctionValue(
@@ -1740,11 +1768,26 @@ static ModuleFunction _CryptoModuleFunctions[] = {
 	{ .Name = "SHA224", .Argc = 1, .CFunction = _CryptoSha224, .Value = NULL },
 	{ .Name = "SHA384", .Argc = 1, .CFunction = _CryptoSha384, .Value = NULL },
 	{ .Name = "SHA512", .Argc = 1, .CFunction = _CryptoSha512, .Value = NULL },
-	{ .Name = "SHA3_224", .Argc = 1, .CFunction = _CryptoSha3_224, .Value = NULL },
-	{ .Name = "SHA3_256", .Argc = 1, .CFunction = _CryptoSha3_256, .Value = NULL },
-	{ .Name = "SHA3_384", .Argc = 1, .CFunction = _CryptoSha3_384, .Value = NULL },
-	{ .Name = "SHA3_512", .Argc = 1, .CFunction = _CryptoSha3_512, .Value = NULL },
-	{ .Name = "RIPEMD160", .Argc = 1, .CFunction = _CryptoRipemd160, .Value = NULL },
+	{ .Name		 = "SHA3_224",
+	  .Argc		 = 1,
+	  .CFunction = _CryptoSha3_224,
+	  .Value	 = NULL },
+	{ .Name		 = "SHA3_256",
+	  .Argc		 = 1,
+	  .CFunction = _CryptoSha3_256,
+	  .Value	 = NULL },
+	{ .Name		 = "SHA3_384",
+	  .Argc		 = 1,
+	  .CFunction = _CryptoSha3_384,
+	  .Value	 = NULL },
+	{ .Name		 = "SHA3_512",
+	  .Argc		 = 1,
+	  .CFunction = _CryptoSha3_512,
+	  .Value	 = NULL },
+	{ .Name		 = "RIPEMD160",
+	  .Argc		 = 1,
+	  .CFunction = _CryptoRipemd160,
+	  .Value	 = NULL },
 	{ .Name		 = "HmacSHA384",
 	  .Argc		 = 2,
 	  .CFunction = _CryptoHmacSha384,
@@ -1797,7 +1840,8 @@ Value* LoadCoreCrypto(Interpreter* interpreter) {
 	}
 
 	HashMapSet(map, "enc", _build_encoders(interpreter));
-	/* Aggregate for `import { Crypto } from "core:crypto"` (see file header). */
+	/* Aggregate for `import { Crypto } from "core:crypto"` (see file header).
+	 */
 	HashMapSet(map, "Crypto", module);
 
 	return module;

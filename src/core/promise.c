@@ -1,3 +1,4 @@
+
 #include "./promise.h"
 
 
@@ -51,12 +52,8 @@ _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
 
 	StateMachine* originalSM = CoerceToStateMachine(thisArg);
 
-	StateMachine* sm = CreateStateMachine(PENDING,
-										  true,
-										  0,
-										  interpreter->CallEnv,
-										  thisArg,
-										  thenCallback);
+	StateMachine* sm = CreateStateMachine(PENDING, true, thisArg, thenCallback);
+	sm->GlobalEnv	 = originalSM->GlobalEnv;
 
 	sm->Line = originalSM->Line;
 
@@ -111,12 +108,9 @@ _PromiseError(Interpreter* interpreter, int argc, Value** arguments) {
 	StateMachine* originalSM = CoerceToStateMachine(thisArg);
 	originalSM->IsCatched	 = true;
 
-	StateMachine* sm = CreateStateMachine(PENDING,
-										  true,
-										  0,
-										  interpreter->CallEnv,
-										  thisArg,
-										  catchCallback);
+	StateMachine* sm =
+		CreateStateMachine(PENDING, true, thisArg, catchCallback);
+	sm->GlobalEnv = originalSM->GlobalEnv;
 
 	sm->Line = originalSM->Line;
 

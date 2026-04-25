@@ -1,8 +1,7 @@
+
 #include "./operation.h"
 
 #include "global.h"
-
-#include <stdlib.h>
 
 #define FreeTempBf(interpreter, bf, val)                                       \
 	do {                                                                       \
@@ -22,63 +21,52 @@
 #define GetOffset() (interpreter->ConstantC)
 
 /**
- * @brief Stores function in interpreter->ActiveFunction so diagnostics and
- * nested machinery know the current callee.
- * @param interpreter VM state field being updated.
- * @param function Value recorded as active; may be NULL when clearing.
+ * @brief Switches interpreter->CurrentFrame to the frame currently being
+ * executed.
+ * @param interpreter VM state whose current frame pointer is updated.
+ * @param frame Call frame that subsequent operand helpers should target.
  * @origin src/interpreter.c
  */
-extern void SetActiveFunction(Interpreter* interpreter, Value* function);
+extern void SetCurrentFrame(Interpreter* interpreter, CallFrame* frame);
 
 /**
- * @brief Stores task in interpreter->ActiveTask while promise/async machinery
- * runs nested work.
- * @param interpreter VM state field being updated.
- * @param task Promise Value (or NULL) considered the currently executing async
- * task.
+ * @brief Releases heap memory for a call frame after its return value has been
+ * extracted.
+ * @param interpreter VM state that owns frame-related allocations.
+ * @param frame Frame previously allocated for a nested call.
  * @origin src/interpreter.c
  */
-extern void SetActiveTask(Interpreter* interpreter, Value* task);
+extern void ReleaseFrame(Interpreter* interpreter, CallFrame* frame);
 
 /**
- * @brief Appends value at interpreter->Stacks[StckC++] so it becomes the new
- * operand-stack top.
- * @param interpreter VM whose StckC indexes the next free stack slot.
- * @param value Pointer stored on the stack; lifetime must cover the span it
- * remains reachable from the stack.
+ * @brief Pushes a value onto the operand stack owned by frame.
+ * @param interpreter VM context (unused by the implementation, kept for API
+ * consistency).
+ * @param frame Target frame whose Operand/OperandC fields are mutated.
+ * @param value Value to place at the new stack top.
  * @origin src/interpreter.c
  */
-extern void Push(Interpreter* interpreter, Value* value);
+extern void FPush(Interpreter* interpreter, CallFrame* frame, Value* value);
 
 /**
- * @brief Returns interpreter->Stacks[--StckC], removing one slot from the
- * logical operand stack.
- * @param interpreter VM whose StckC must be > 0; otherwise behaviour is
- * undefined.
- * @return The Value* that was previously the stack top.
+ * @brief Pops and returns the top operand from frame.
+ * @param interpreter VM context (unused by the implementation, kept for API
+ * consistency).
+ * @param frame Target frame to pop from.
+ * @return Value previously at frame->Operand[frame->OperandC - 1].
  * @origin src/interpreter.c
  */
-extern Value* Popp(Interpreter* interpreter);
+extern Value* FPopp(Interpreter* interpreter, CallFrame* frame);
 
 /**
- * @brief Lowers StckC by n without clearing slots, shrinking the logical stack
- * height after bulk operand drops.
- * @param interpreter VM whose stack depth must be at least n; otherwise
- * behaviour is undefined.
- * @param n Number of operand slots to discard from the top.
+ * @brief Drops the top n operands from frame without returning them.
+ * @param interpreter VM context (unused by the implementation, kept for API
+ * consistency).
+ * @param frame Target frame whose operand count is decremented.
+ * @param n Number of operands to discard.
  * @origin src/interpreter.c
  */
-extern void PopN(Interpreter* interpreter, int n);
-
-/**
- * @brief Reads interpreter->Stacks[StckC - 1] without changing StckC
- * (non-destructive top-of-stack).
- * @param interpreter VM whose StckC must be > 0; otherwise behaviour is
- * undefined.
- * @return Current top operand without popping it.
- * @origin src/interpreter.c
- */
-extern Value* Peek(Interpreter* interpreter);
+extern void FPopN(Interpreter* interpreter, CallFrame* frame, int n);
 
 static int _GetConstantOffset(Interpreter* interpreter, Value* value) {
 	if (value == NULL) {
@@ -103,61 +91,51 @@ BAD:;
 	return -1;
 }
 
-static void _DupTop(Interpreter* interpreter) {
-	Push(interpreter, Peek(interpreter));
-}
-
 /**
  * @brief Main opcode dispatch loop: executes a UserFunction bytecode stream or
  * resumes a StateMachine until return, error, or await boundary.
  * @param interpreter VM providing stacks, environments, and globals for opcode
  * handlers.
- * @param fnOrSm Either a VLT_USER_FUNCTION value or a promise StateMachine
- * wrapper around one.
+ * @param frame Call frame currently executing the bytecode stream.
+ * @param promise Promise task being resumed, or NULL for a direct function
+ * run.
  * @origin src/interpreter.c
  */
-extern void Run(Interpreter* interpreter, Value* fnOrSm);
-
-/**
- * @brief Maps canonical core module names (e.g. "io", "math") to their native
- * Loader entry points for import.
- * @origin src/core/loader.c
- */
-extern CoreMapper _CoreModuleMappers[];
+extern void Run(Interpreter* interpreter, CallFrame* frame, Value* promise);
 
 void SaveRootEnv(Interpreter* interpreter, Value* env) {
-	interpreter->Envs[interpreter->EnvrC++] = interpreter->CallEnv;
-	interpreter->RootEnv					= env;
-	interpreter->CallEnv					= env;
+	// interpreter->Envs[interpreter->EnvrC++] = interpreter->CallEnv;
+	// interpreter->RootEnv					= env;
+	// interpreter->CallEnv					= env;
 }
 
 void SaveEnv(Interpreter* interpreter, Value* env) {
-	interpreter->Envs[interpreter->EnvrC++] = interpreter->CallEnv;
-	interpreter->CallEnv					= env;
+	// interpreter->Envs[interpreter->EnvrC++] = interpreter->CallEnv;
+	// interpreter->CallEnv					= env;
 }
 
 void RestoreEnv(Interpreter* interpreter) {
-	Value* top = interpreter->Envs[interpreter->EnvrC - 1];
-	interpreter->Envs[--interpreter->EnvrC] = NULL;
-	interpreter->CallEnv					= top;
+	// Value* top = interpreter->Envs[interpreter->EnvrC - 1];
+	// interpreter->Envs[--interpreter->EnvrC] = NULL;
+	// interpreter->CallEnv					= top;
 }
 
 void RestoreNthEnvAndSync(Interpreter* interpreter, int n) {
-	if (n < 0 || n >= interpreter->EnvrC) {
-		// Invalid index, do nothing or handle error as needed
-		return;
-	}
-	int			 start = interpreter->EnvrC - n;
-	Value*		 top   = interpreter->Envs[start];
-	Environment* dst   = CoerceToEnvironment(top);
-	// Remove all environments above n
-	for (int i = start + 1; i < n; i++) {
-		Environment* current = CoerceToEnvironment(interpreter->Envs[i]);
-		EnvironmentSync(current, dst);
-		interpreter->Envs[i] = NULL;
-	}
-	interpreter->EnvrC	 -= n;
-	interpreter->CallEnv  = top;
+	// if (n < 0 || n >= interpreter->EnvrC) {
+	// 	// Invalid index, do nothing or handle error as needed
+	// 	return;
+	// }
+	// int			 start = interpreter->EnvrC - n;
+	// Value*		 top   = interpreter->Envs[start];
+	// Environment* dst   = CoerceToEnvironment(top);
+	// // Remove all environments above n
+	// for (int i = start + 1; i < n; i++) {
+	// 	Environment* current = CoerceToEnvironment(interpreter->Envs[i]);
+	// 	EnvironmentSync(current, dst);
+	// 	interpreter->Envs[i] = NULL;
+	// }
+	// interpreter->EnvrC	 -= n;
+	// interpreter->CallEnv  = top;
 }
 
 bool IsMethodOfObject(Interpreter* interpreter, Value* obj, Value* method) {
@@ -512,18 +490,6 @@ extern Value* CompileAst(Compiler* compiler, Ast* programAst);
  */
 extern void FreeCompiler(Compiler* compiler);
 
-/**
- * @brief Runs _RunProgram(): seeds the module environment, executes fnValue via
- * Run(), then drives the combined task queue and mongoose poll loop until no
- * pending async work or open connections remain.
- * @param interpreter Fully initialized interpreter (built-ins, paths, GC roots,
- * MgMgr).
- * @param fnValue VLT_USER_FUNCTION entry compiled for this module; becomes the
- * first Run() target.
- * @origin src/interpreter.c
- */
-extern void Interpret(Interpreter* interpreter, Value* fnValue);
-
 static Value* DoImportFileOrLib(Interpreter* interpreter,
 								String		 moduleNameOrPath,
 								bool		 isLib) {
@@ -626,8 +592,15 @@ static Value* DoImportFileOrLib(Interpreter* interpreter,
 	UserFunction* uf		= CoerceToUserFunction(compiled);
 	interpreter->ModulePath = uf->Name;
 
-	DoCall(interpreter, compiled, 0, false);
-	Value* result = Popp(interpreter);
+	Value* global =
+		NewEnvironmentValue(interpreter, CreateEnvironment(NULL, uf->LocalC));
+
+	CallFrame* frame = Allocate(sizeof(CallFrame));
+	InitCallFrame(frame, NULL, global, global, compiled);
+
+	Run(interpreter, frame, NULL);
+	Value* result = FPopp(interpreter, frame);
+	ReleaseFrame(interpreter, frame);
 
 	interpreter->ModulePath = currentModuleName;
 
@@ -700,12 +673,15 @@ Value* DoGetIndex(Interpreter* interpreter, Value* obj, Value* index) {
 	return GenericGetAttribute(interpreter, obj, index, false);
 }
 
-Value* DoCallCtor(Interpreter* interpreter, Value* clsValue, int argc) {
+Value* DoCallCtor(Interpreter* interpreter,
+				  CallFrame*   frame,
+				  Value*	   clsValue,
+				  int		   argc) {
 	if (clsValue == NULL)
 		Panic("Attempted to call constructor on a null value\n");
 
 	if (!ValueIsClass(clsValue)) {
-		PopN(interpreter, argc);
+		FPopN(interpreter, frame, argc);
 		return NewErrorFValue(interpreter,
 							  "%s: attempted to call "
 							  "constructor on non-class value",
@@ -716,7 +692,7 @@ Value* DoCallCtor(Interpreter* interpreter, Value* clsValue, int argc) {
 
 	if (!ClassHasMember(cls, CONSTRUCTOR_NAME, false, true)) {
 		if (argc != 0) {
-			PopN(interpreter, argc);
+			FPopN(interpreter, frame, argc);
 			String errMsg =
 				FormatString("%s: argument count mismatch, expected "
 							 "0 arguments but got %d",
@@ -728,7 +704,7 @@ Value* DoCallCtor(Interpreter* interpreter, Value* clsValue, int argc) {
 		}
 		// Push default instance, no constructor call
 		ClassInstance* instance = CreateClassInstance(clsValue);
-		Push(interpreter, NewClassInstanceValue(interpreter, instance));
+		FPush(interpreter, frame, NewClassInstanceValue(interpreter, instance));
 		return interpreter->Null;
 	}
 
@@ -746,35 +722,37 @@ Value* DoCallCtor(Interpreter* interpreter, Value* clsValue, int argc) {
 			NewClassInstanceValue(interpreter, CreateClassInstance(clsValue));
 	}
 
-	Push(interpreter, instanceValue);
+	FPush(interpreter, frame, instanceValue);
 
 	Value* constructor = ClassGetMember(cls, CONSTRUCTOR_NAME, false);
 
-	Value* result = DoCall(interpreter, constructor, ++argc, true);
+	Value* result = DoCall(interpreter, frame, constructor, ++argc, true);
 
 	if (ValueIsNull(result)) {
-		Popp(interpreter);	  // Pop constructor return value
-		Push(interpreter,
-			 instanceValue);  // Push instance as return value
+		FPopp(interpreter, frame);	// Pop constructor return value
+		FPush(interpreter,
+			  frame,
+			  instanceValue);  // Push instance as return value
 	}
 
 	return result;
 }
 
 Value* DoCallMethod(Interpreter* interpreter,
+					CallFrame*	 frame,
 					Value*		 obj,
 					Value*		 methodName,
 					int			 argc) {
 	bool withThis = IsMethodOfObject(interpreter, obj, methodName);
 	if (!withThis) {
 		argc--;
-		Popp(interpreter);	// pop 'this'
+		FPopp(interpreter, frame);	// pop 'this'
 	}
 
 	Value* method = GenericGetAttribute(interpreter, obj, methodName, true);
 
 	if (ValueIsNull(method)) {
-		PopN(interpreter, argc);
+		FPopN(interpreter, frame, argc);
 		String method = ValueToString(methodName);
 		String errMsg =
 			FormatString("%s: method '%s' not found on object of type %s",
@@ -787,7 +765,7 @@ Value* DoCallMethod(Interpreter* interpreter,
 		return errVal;
 	}
 
-	return DoCall(interpreter, method, argc, withThis);
+	return DoCall(interpreter, frame, method, argc, withThis);
 }
 
 /**
@@ -812,92 +790,13 @@ extern void PushTrace(Interpreter* interpreter, LineInfo line, Value* fn);
  */
 extern void PopTrace(Interpreter* interpreter);
 
-Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
-	Value* en = NULL;
-
-	if (fn == NULL)
-		Panic("Attempted to call a null value!");
-
-	UserFunction* uf = NULL;
-	StateMachine* sm = NULL;
-
-	bool isfn = ValueIsUserFunction(fn);
-
-	if (isfn) {
-		uf = CoerceToUserFunction(fn);
-		SaveEnv(interpreter,
-				(en = NewEnvironmentValue(
-					 interpreter,
-					 CreateEnvironment(uf->Scope, uf->LocalC))));
-	}
-
-	if (ValueIsUserFunction(fn) && CoerceToUserFunction(fn)->Async) {
-		uf			= CoerceToUserFunction(fn);
-		sm			= CreateStateMachine(PENDING,
-										 false,
-										 0,
-										 interpreter->CallEnv,
-										 NULL,
-										 fn);
-		fn			= NewPromiseValue(interpreter, sm);
-		sm->StckBot = interpreter->StckC;
-		sm->EnvrBot = interpreter->EnvrC;
-	}
-
-	if (ValueIsPromise(fn)) {
-		SetActiveTask(interpreter, fn);
-		sm			= CoerceToStateMachine(fn);
-		sm->StckBot = interpreter->StckC;
-		sm->EnvrBot = interpreter->EnvrC;
-
-		PushTrace(interpreter, sm->Line, fn);
-
-		if (1) {
-			// 2. ANCHOR: Set the new bottom to the CURRENT top
-			// of the stack
-			interpreter->EnvrC = sm->EnvrBot;
-			interpreter->StckC = sm->StckBot;
-
-			if (sm->EnvStack != NULL && sm->EnvrTop > 0) {
-				memcpy(&interpreter->Envs[sm->EnvrBot],
-					   sm->EnvStack,
-					   sizeof(Value*) * sm->EnvrTop);
-
-				// 3. Advance the global env stack pointer
-				interpreter->EnvrC = sm->EnvrBot + sm->EnvrTop;
-			}
-
-			// 4. Restore to the OFFSET position
-			// (interpreter->Stacks + sm->StackBot)
-			if (sm->Stacks != NULL && sm->StckTop > 0) {
-				memcpy(&interpreter->Stacks[sm->StckBot],
-					   sm->Stacks,
-					   sizeof(Value*) * sm->StckTop);
-
-				// 5. Advance the global stack pointer
-				interpreter->StckC = sm->StckBot + sm->StckTop;
-			}
-		}
-
-		if (sm->Ip == 0) {
-			Run(interpreter, fn);
-		} else {
-			interpreter->CallEnv = sm->CallEnv;
-			Run(interpreter, fn);
-		}
-
-		SetActiveTask(interpreter, NULL);
-
-		PopTrace(interpreter);
-
-		if (isfn)
-			RestoreEnv(interpreter);
-
-		return interpreter->Null;
-	}
-
+Value* DoCall(Interpreter* interpreter,
+			  CallFrame*   frame,
+			  Value*	   fn,
+			  int		   argc,
+			  bool		   withThis) {
 	if (!ValueIsCallable(fn)) {
-		PopN(interpreter, argc);
+		FPopN(interpreter, frame, argc);
 		return NewErrorFValue(interpreter,
 							  "%s: invalid operation: attempted to call a "
 							  "non-callable value (%s)",
@@ -910,7 +809,7 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 		NativeFunctionCallback nativeFunc = nFMeta->FuncPtr;
 
 		if (nFMeta->Argc != VARARG && argc != nFMeta->Argc) {
-			PopN(interpreter, argc);
+			FPopN(interpreter, frame, argc);
 			String errMsg =
 				FormatString("%s: argument count mismatch: expected "
 							 "%d arguments but got %d",
@@ -932,22 +831,24 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 		}
 
 		for (int i = 0; i < argc; i++) {
-			args[i] = Popp(interpreter);
+			args[i] = FPopp(interpreter, frame);
 			// printf("ARG[%d]: %s\n", i,
 			// ValueToString(args[i]));
 		}
 
 		Value* res = nativeFunc(interpreter, argc, args);
 
-		Push(interpreter, res);
+		FPush(interpreter, frame, res);
 		free(args);
 
 		return ValueIsError(res) ? res : interpreter->Null;
 	}
 
+	UserFunction* uf = CoerceToUserFunction(fn);
+
 	// Call
 	if (argc != uf->Argc) {
-		PopN(interpreter, argc);
+		FPopN(interpreter, frame, argc);
 		String errMsg = FormatString("%s: argument count mismatch: expected %d "
 									 "arguments but got %d",
 									 ARGUMENT_ERROR,
@@ -957,33 +858,38 @@ Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis) {
 		Value* errVal = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 
-		if (isfn)
-			RestoreEnv(interpreter);
-
 		return errVal;
 	}
 
 	PushTrace(interpreter, uf->Lines[0], fn);
 
-	// 1. Save
-	Value* oldRoot = interpreter->RootEnv;
-	if (uf->Scope == NULL) {
-		interpreter->RootEnv = en;
+	CallFrame* newFrame = Allocate(sizeof(CallFrame));
+	InitCallFrame(newFrame,
+				  frame,
+				  frame->GlobalEnv,
+				  NewEnvironmentValue(interpreter,
+									  CreateEnvironment(uf->Scope, uf->LocalC)),
+				  fn);
+
+	// Move call arguments from caller stack into callee stack so
+	// function prologue OP_STORE_LOCAL opcodes bind parameters safely.
+	if (argc > 0) {
+		Value** callArgs = Allocate(sizeof(Value*) * argc);
+		for (int i = 0; i < argc; i++) {
+			callArgs[i] = FPopp(interpreter, frame);
+		}
+		for (int i = argc - 1; i >= 0; i--) {
+			FPush(interpreter, newFrame, callArgs[i]);
+		}
+		free(callArgs);
 	}
 
-	SetActiveFunction(interpreter, fn);
-
 	// 2. Run the function
-	Run(interpreter, fn);
-
-	SetActiveFunction(interpreter, NULL);
+	Run(interpreter, newFrame, NULL);
+	SetCurrentFrame(interpreter, frame);
+	ReleaseFrame(interpreter, newFrame);
 
 	PopTrace(interpreter);
-
-	// 3. Restore
-	if (isfn)
-		RestoreEnv(interpreter);
-	interpreter->RootEnv = oldRoot;
 
 	return interpreter->Null;
 }
@@ -1744,20 +1650,23 @@ Value* DoXor(Interpreter* interpreter, Value* lhs, Value* rhs) {
 	return result;
 }
 
-Value* DoLoadFunction(Interpreter* interpreter, int offset, bool closure) {
+Value* DoLoadFunction(Interpreter* interpreter,
+					  CallFrame*   frame,
+					  int		   offset,
+					  bool		   closure) {
 	// For closure, clone the function
 	Value*		  fn = interpreter->Functions[offset];
 	UserFunction* uf = CoerceToUserFunction(fn);
-	uf->Scope		 = interpreter->CallEnv;
+	uf->Scope		 = frame->Env;
 
 	if (closure) {
 		fn		  = NewUserFunctionValue(interpreter, UserFunctionClone(uf));
 		uf		  = CoerceToUserFunction(fn);
-		uf->Scope = interpreter->CallEnv;
+		uf->Scope = frame->Env;
 	}
 
-	Environment* rootEnv = CoerceToEnvironment(interpreter->RootEnv);
-	Environment* loclEnv = CoerceToEnvironment(interpreter->CallEnv);
+	Environment* rootEnv = CoerceToEnvironment(frame->GlobalEnv);
+	Environment* loclEnv = CoerceToEnvironment(frame->Env);
 
 	for (int i = 0; i < uf->CaptureC; i++) {
 		CaptureMeta capture = uf->CaptureMetas[i];

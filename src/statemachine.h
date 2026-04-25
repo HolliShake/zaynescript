@@ -25,10 +25,6 @@
  * (e.g., PENDING).
  * @param isCallback Whether this state machine is a callback
  * (e.g., then/catch handler).
- * @param ip         The instruction pointer for execution within
- * the state machine.
- * @param env        The environment value associated with this
- * state machine.
  * @param waitFor    The value this state machine is waiting on
  * (e.g., a promise), or NULL.
  * @param function   The function being executed by this state
@@ -38,8 +34,6 @@
  */
 StateMachine* CreateStateMachine(StateMachineState initial,
 								 bool			   isCallback,
-								 size_t			   ip,
-								 Value*			   env,
 								 Value*			   waitFor,
 								 Value*			   function);
 
@@ -66,8 +60,6 @@ StateMachine* CreateStateMachine(StateMachineState initial,
  */
 void StateMachineSet(StateMachine*	   stateMachine,
 					 StateMachineState newState,
-					 size_t			   ip,
-					 Value*			   env,
 					 Value*			   waitFor,
 					 Value*			   value);
 
@@ -103,12 +95,10 @@ void StateMachineUpdate(StateMachine*	  stateMachine,
  *
  * @param stateMachine Pointer to the StateMachine instance to
  * update.
- * @param ip The instruction pointer to set for the StateMachine
- * when awaiting.
  * @param value The value that the StateMachine is waiting for
  * (e.g., a promise).
  */
-void StateMachineAwait(StateMachine* stateMachine, size_t ip, Value* value);
+void StateMachineAwait(StateMachine* stateMachine, Value* value);
 
 /**
  * @brief Transitions the StateMachine to a fulfilled state with

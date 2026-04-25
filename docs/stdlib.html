@@ -1418,6 +1418,38 @@ app.post("/users", fn(req, res) {
     res.json({ id: id });
 });</code></pre>
 
+          <h4>Multiple wildcards</h4>
+          <p>
+            If your route contains more than one wildcard, each is captured in order:
+          </p>
+          <pre><code class="language-javascript">app.get("/users/*/posts/*", fn(req, res) {
+      const userId = req.params["0"];  // e.g. "42" for /users/42/posts/99
+      const postId = req.params["1"];  // e.g. "99" for /users/42/posts/99
+      res.json({ user: userId, post: postId });
+  });</code></pre>
+
+          <h4>Query parameters</h4>
+          <p>
+            The <code>req.query</code> property contains the raw query string (e.g. <code>"name=Alice&amp;age=30"</code> for <code>/users?name=Alice&amp;age=30</code>). To access query parameters as an object, you can parse it manually:
+          </p>
+          <pre><code class="language-javascript">// Example: GET /search?term=cat&amp;page=2
+  app.get("/search", fn(req, res) {
+      // Parse query string into an object
+      const params = {};
+      req.query.split("&").each(fn(pair) {
+          const kv = pair.split("=");
+          if (kv.length == 2) {
+              params[kv[0]] = kv[1];
+          }
+      });
+      res.json(params); // { term: "cat", page: "2" }
+  });
+  // For more robust parsing (decoding, missing values), see core:string helpers.
+          </code></pre>
+          <div class="note">
+            <strong>Note:</strong> <code>req.params</code> contains wildcard route captures (from <code>*</code> in the path), while <code>req.query</code> is the raw query string after <code>?</code> in the URL. They are separate.
+          </div>
+
         <h3 id="mongoose-req">Request object</h3>
         <p>Available inside every route handler as the first argument.</p>
         <table>

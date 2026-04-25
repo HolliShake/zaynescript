@@ -156,6 +156,7 @@ fn nestedReturnTarget() {
     return -1;
 }
 
+println(20);
 const result = runStress(20);
 assert result.sum == 81, "sum mismatch";
 assert result.continues == 4, "continue count mismatch";

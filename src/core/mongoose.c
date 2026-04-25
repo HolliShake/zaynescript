@@ -1,3 +1,4 @@
+
 #include "./mongoose.h"
 
 /* -----------------------------------------------------------------------
@@ -6,9 +7,6 @@
  * dot is included (or NULL when there is no extension).
  * ----------------------------------------------------------------------- */
 
-/**
- * @brief Maps a file extension to its corresponding MIME type string.
- */
 typedef struct {
 	const String ext;  /**< File extension (without leading dot, e.g. "html") */
 	const String mime; /**< MIME type string (e.g. "text/html") */
@@ -117,24 +115,22 @@ static const MimeEntry _MimeTable[] = {
  * --------------------------------------------------------------------- */
 
 /**
- * @brief Appends value at interpreter->Stacks[StckC++] so it becomes the new
- * operand-stack top.
- * @param interpreter VM whose StckC indexes the next free stack slot.
- * @param value Pointer stored on the stack; lifetime must cover the span it
- * remains reachable from the stack.
+ * @brief Pushes value onto frame->Operand and increments frame->OperandC.
+ * @param interpreter VM context (currently unused by the implementation).
+ * @param frame Call frame whose operand stack is mutated.
+ * @param value Value placed at the new top slot.
  * @origin src/interpreter.c
  */
-extern void Push(Interpreter* interpreter, Value* value);
+extern void FPush(Interpreter* interpreter, CallFrame* frame, Value* value);
 
 /**
- * @brief Returns interpreter->Stacks[--StckC], removing one slot from the
- * logical operand stack.
- * @param interpreter VM whose StckC must be > 0; otherwise behaviour is
- * undefined.
- * @return The Value* that was previously the stack top.
+ * @brief Pops and returns the top operand from frame.
+ * @param interpreter VM context (currently unused by the implementation).
+ * @param frame Call frame whose operand stack is decremented.
+ * @return Value previously stored at frame->Operand[frame->OperandC - 1].
  * @origin src/interpreter.c
  */
-extern Value* Popp(Interpreter* interpreter);
+extern Value* FPopp(Interpreter* interpreter, CallFrame* frame);
 
 /**
  * @brief Dispatches fn as a callable: wires environments for user functions,
@@ -152,8 +148,11 @@ extern Value* Popp(Interpreter* interpreter);
  * or an Error Value on failure.
  * @origin src/operation.c
  */
-extern Value*
-DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis);
+extern Value* DoCall(Interpreter* interpreter,
+					 CallFrame*	  frame,
+					 Value*		  fn,
+					 int		  argc,
+					 bool		  withThis);
 
 /**
  * @brief Appends task to the ring buffer TaskQueue[(head + count) % STACK_SIZE]
@@ -378,9 +377,6 @@ static String _JsonEscape(const String src) {
 #define MAX_MIDDLEWARE 32
 #define ROUTE_GROW	   16
 
-/**
- * @brief Represents a single registered HTTP route handler.
- */
 typedef struct {
 	String Method;	/**< HTTP method string (e.g. "GET", "POST"), or NULL for
 					   wildcard */
@@ -388,10 +384,6 @@ typedef struct {
 	Value* Handler; /**< Callable Value invoked when the route matches */
 } Route;
 
-/**
- * @brief Internal state for an HTTP server instance (opaque pointer stored on
- * the Server ClassInstance).
- */
 typedef struct {
 	Route* Routes;	 /**< Array of registered route handlers */
 	size_t Count;	 /**< Number of routes registered */
@@ -406,15 +398,85 @@ typedef struct {
 	Value* ResClass;	 /**< Built-in Response class Value */
 } AppState;
 
-/**
- * @brief Context bundle passed as opaque data on each Mongoose connection
- * to link it with the parsed HTTP message and response state.
- */
 typedef struct {
 	struct mg_connection*	Conn; /**< Active Mongoose connection */
 	struct mg_http_message* Msg;  /**< Parsed HTTP request message */
 	bool Responded;				  /**< True once a response has been sent */
 } ReqResCtx;
+
+static bool _HasNamedParams(String routePath) {
+	return routePath != NULL && strchr(routePath, ':') != NULL;
+}
+
+static bool _MatchNamedRoute(Interpreter* interp,
+							 String		  routePath,
+							 String		  reqPath,
+							 HashMap*	  paramsMap) {
+	if (routePath == NULL || reqPath == NULL) {
+		return false;
+	}
+
+	size_t i		= 0;
+	size_t j		= 0;
+	size_t routeLen = strlen(routePath);
+	size_t reqLen	= strlen(reqPath);
+
+	for (;;) {
+		while (i < routeLen && routePath[i] == '/')
+			i++;
+		while (j < reqLen && reqPath[j] == '/')
+			j++;
+
+		if (i >= routeLen || j >= reqLen) {
+			break;
+		}
+
+		size_t segStartRoute = i;
+		size_t segStartReq	 = j;
+
+		while (i < routeLen && routePath[i] != '/')
+			i++;
+		while (j < reqLen && reqPath[j] != '/')
+			j++;
+
+		size_t segLenRoute = i - segStartRoute;
+		size_t segLenReq   = j - segStartReq;
+
+		if (segLenRoute == 0 || segLenReq == 0) {
+			return false;
+		}
+
+		if (routePath[segStartRoute] == ':' && segLenRoute > 1) {
+			size_t keyLen = segLenRoute - 1;
+			String key	  = Allocate(keyLen + 1);
+			memcpy(key, &routePath[segStartRoute + 1], keyLen);
+			key[keyLen] = '\0';
+
+			String val = Allocate(segLenReq + 1);
+			memcpy(val, &reqPath[segStartReq], segLenReq);
+			val[segLenReq] = '\0';
+
+			HashMapSet(paramsMap, key, NewStrValue(interp, val));
+			free(key);
+			free(val);
+		} else {
+			if (segLenRoute != segLenReq
+				|| strncmp(&routePath[segStartRoute],
+						   &reqPath[segStartReq],
+						   segLenRoute)
+					   != 0) {
+				return false;
+			}
+		}
+	}
+
+	while (i < routeLen && routePath[i] == '/')
+		i++;
+	while (j < reqLen && reqPath[j] == '/')
+		j++;
+
+	return i == routeLen && j == reqLen;
+}
 
 /* -----------------------------------------------------------------------
  * AppState helpers  (Server ClassInstance)
@@ -998,10 +1060,12 @@ static void _EvHandler(struct mg_connection* c, int ev, void* ev_data) {
 		Value* mw = app->Middleware[i];
 		if (!ValueIsCallable(mw))
 			continue;
-		Push(interp, resVal);
-		Push(interp, reqVal);
-		DoCall(interp, mw, 2, false);
-		Popp(interp);
+		if (interp->CurrentFrame == NULL)
+			continue;
+		FPush(interp, interp->CurrentFrame, resVal);
+		FPush(interp, interp->CurrentFrame, reqVal);
+		DoCall(interp, interp->CurrentFrame, mw, 2, false);
+		FPopp(interp, interp->CurrentFrame);
 	}
 
 	if (ctx.Responded)
@@ -1021,35 +1085,48 @@ static void _EvHandler(struct mg_connection* c, int ev, void* ev_data) {
 		if (r->Method && strcasecmp(r->Method, meth) != 0)
 			continue;
 
-		struct mg_str caps[4];
-		memset(caps, 0, sizeof(caps));
-		if (!mg_match(mg_str_n(uri, strlen(uri)), mg_str(r->Path), caps))
+		Value*	 paramsObj = NewObjectValue(interp);
+		HashMap* paramsMap = CoerceToHashMap(paramsObj);
+		bool	 routeMatched;
+
+		if (_HasNamedParams(r->Path)) {
+			routeMatched = _MatchNamedRoute(interp, r->Path, uri, paramsMap);
+		} else {
+			struct mg_str caps[4];
+			memset(caps, 0, sizeof(caps));
+			routeMatched =
+				mg_match(mg_str_n(uri, strlen(uri)), mg_str(r->Path), caps);
+			if (routeMatched) {
+				for (int k = 0; k < 4; k++) {
+					if (caps[k].len == 0)
+						break;
+					char capKey[16], capBuf[512];
+					snprintf(capKey, sizeof(capKey), "%d", k);
+					snprintf(capBuf,
+							 sizeof(capBuf),
+							 "%.*s",
+							 (int) caps[k].len,
+							 caps[k].buf);
+					HashMapSet(paramsMap, capKey, NewStrValue(interp, capBuf));
+				}
+			}
+		}
+
+		if (!routeMatched)
 			continue;
 
 		matched = true;
 
-		/* Populate req.params with wildcard captures */
-		ClassInstance* reqInst	 = CoerceToClassInstance(reqVal);
-		Value*		   paramsObj = NewObjectValue(interp);
-		HashMap*	   paramsMap = CoerceToHashMap(paramsObj);
-		for (int k = 0; k < 4; k++) {
-			if (caps[k].len == 0)
-				break;
-			char capKey[16], capBuf[512];
-			snprintf(capKey, sizeof(capKey), "%d", k);
-			snprintf(capBuf,
-					 sizeof(capBuf),
-					 "%.*s",
-					 (int) caps[k].len,
-					 caps[k].buf);
-			HashMapSet(paramsMap, capKey, NewStrValue(interp, capBuf));
-		}
+		/* Populate req.params with named/wildcard captures */
+		ClassInstance* reqInst = CoerceToClassInstance(reqVal);
 		HashMapSet(reqInst->Members, "params", paramsObj);
 
-		Push(interp, resVal);
-		Push(interp, reqVal);
-		DoCall(interp, r->Handler, 2, false);
-		Value* result = Popp(interp);
+		if (interp->CurrentFrame == NULL)
+			continue;
+		FPush(interp, interp->CurrentFrame, resVal);
+		FPush(interp, interp->CurrentFrame, reqVal);
+		DoCall(interp, interp->CurrentFrame, r->Handler, 2, false);
+		Value* result = FPopp(interp, interp->CurrentFrame);
 
 		if ((ValueIsPromise(result)
 			 && CoerceToStateMachine(result)->State == REJECTED)) {
@@ -1195,9 +1272,11 @@ static Value* _AppListen(Interpreter* interp, int argc, Value** args) {
 		String msg	  = FormatString("Server listening on port %d", port);
 		Value* msgVal = NewStrValue(interp, msg);
 		free(msg);
-		Push(interp, msgVal);
-		DoCall(interp, cb, 1, false);
-		Popp(interp);
+		if (interp->CurrentFrame != NULL) {
+			FPush(interp, interp->CurrentFrame, msgVal);
+			DoCall(interp, interp->CurrentFrame, cb, 1, false);
+			FPopp(interp, interp->CurrentFrame);
+		}
 	}
 
 	return interp->Null;
@@ -1315,10 +1394,6 @@ _BuildClass(Interpreter* interp, const String name, ModuleFunction methods[]) {
  *   body    – string body for POST/PUT
  * ----------------------------------------------------------------------- */
 
-/**
- * @brief Context for an outbound HTTP fetch request, stored as
- * Mongoose connection fn_data during the async request lifecycle.
- */
 typedef struct {
 	Interpreter* interp;   /**< Interpreter instance owning the fetch */
 	Value*		 promise;  /**< Promise Value to resolve/reject on completion */
@@ -1538,9 +1613,8 @@ static Value* _Request(Interpreter* interp, int argc, Value** args) {
 	char* uri		  = strdup(mg_url_uri(url));
 
 	/* Create a pending promise */
-	StateMachine* sm =
-		CreateStateMachine(PENDING, false, 0, interp->CallEnv, NULL, NULL);
-	Value* promise = NewPromiseValue(interp, sm);
+	StateMachine* sm	  = CreateStateMachine(PENDING, false, NULL, NULL);
+	Value*		  promise = NewPromiseValue(interp, sm);
 
 	/* Allocate context for the event handler callback */
 	FetchCtx* ctx = (FetchCtx*) Allocate(sizeof(FetchCtx));

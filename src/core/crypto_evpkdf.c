@@ -1,7 +1,4 @@
-/**
- * EVP_BytesToKey MD5 (OpenSSL-style, crypto-js @c evpkdf.js). Original C.
- * @see https://github.com/brix/crypto-js/tree/develop/src — @c evpkdf.js
- */
+
 #include "./crypto.h"
 #include "./crypto_algo.h"
 

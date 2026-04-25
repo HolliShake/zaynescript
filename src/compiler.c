@@ -1,3 +1,4 @@
+
 #include "./compiler.h"
 
 #include "global.h"
@@ -918,6 +919,13 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 			}
 		case AST_AWAIT:
 			{
+				if (!uf->Async) {
+					ThrowError(
+						compiler->Parser->Lexer->Path,
+						compiler->Parser->Lexer->Data,
+						node->Position,
+						"'await' can only be used inside async functions");
+				}
 				_CompileExpression(compiler, uf, scope, node->A);
 				_EmitLine(compiler, uf, node->Position);
 				_Emit(compiler, uf, OP_AWAIT);

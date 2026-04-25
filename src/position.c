@@ -1,3 +1,4 @@
+
 #include "./position.h"
 
 Position PositionFromLineAndColm(int line, int colm) {

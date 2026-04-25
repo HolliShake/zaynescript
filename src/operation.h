@@ -158,12 +158,14 @@ Value* DoGetIndex(Interpreter* interp, Value* obj, Value* index);
  * present. If no constructor exists, expects 0 arguments.
  *
  * @param interp      The interpreter instance
+ * @param frame       The current call frame for environment context
  * @param clsValue    The class to instantiate
  * @param argc        Number of arguments
  *
  * @return Null value on success, or error value on failure
  */
-Value* DoCallCtor(Interpreter* interp, Value* clsValue, int argc);
+Value*
+DoCallCtor(Interpreter* interp, CallFrame* frame, Value* clsValue, int argc);
 
 /**
  * @brief Performs method call operation.
@@ -171,14 +173,18 @@ Value* DoCallCtor(Interpreter* interp, Value* clsValue, int argc);
  * Automatically handles 'this' argument for method calls.
  *
  * @param interp      The interpreter instance
+ * @param frame       The current call frame for environment context
  * @param obj         The object on which the method is called
  * @param methodName  The name of the method to call
  * @param argc        Number of arguments
  *
  * @return Null value on success, or error value on failure
  */
-Value*
-DoCallMethod(Interpreter* interp, Value* obj, Value* methodName, int argc);
+Value* DoCallMethod(Interpreter* interp,
+					CallFrame*	 frame,
+					Value*		 obj,
+					Value*		 methodName,
+					int			 argc);
 
 /**
  * @brief Dispatches fn as a callable: wires environments for user functions,
@@ -187,6 +193,8 @@ DoCallMethod(Interpreter* interp, Value* obj, Value* methodName, int argc);
  * concrete callee kind.
  *
  * @param interpreter Full VM state (stack, env stack, traces, active task).
+ * @param frame       Current call frame for environment context (user function
+ * scope, caller env, etc.).
  * @param fn          User function, native function, promise continuation, or
  * related callable Value.
  * @param argc        Operand count already present on the stack for this call
@@ -197,7 +205,11 @@ DoCallMethod(Interpreter* interp, Value* obj, Value* methodName, int argc);
  * @return Callee result, interpreter->Null for async promise bootstrap paths,
  * or an Error Value on failure.
  */
-Value* DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis);
+Value* DoCall(Interpreter* interpreter,
+			  CallFrame*   frame,
+			  Value*	   fn,
+			  int		   argc,
+			  bool		   withThis);
 
 /**
  * @brief Performs logical NOT operation on a value.
@@ -495,6 +507,7 @@ Value* DoXor(Interpreter* interp, Value* lhs, Value* rhs);
  * captures from root and local environments.
  *
  * @param interp     The interpreter instance
+ * @param frame      The current call frame (for local env)
  * @param offset     The offset of the function in the functions
  * array
  * @param closure    Whether to create a closure (clone) of the
@@ -502,6 +515,7 @@ Value* DoXor(Interpreter* interp, Value* lhs, Value* rhs);
  *
  * @return The loaded function value
  */
-Value* DoLoadFunction(Interpreter* interp, int offset, bool closure);
+Value*
+DoLoadFunction(Interpreter* interp, CallFrame* frame, int offset, bool closure);
 
 #endif

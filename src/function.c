@@ -1,3 +1,4 @@
+
 #include "./function.h"
 
 UserFunction* CreateUserFunction(String name, int argc, bool async) {

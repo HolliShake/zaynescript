@@ -1,8 +1,3 @@
-/**
- * @file string.c
- * @brief Implements @c core:string: utf8proc-backed helpers for script strings
- *        (stored as NUL-terminated rune arrays inside @c VLT_STR values).
- */
 
 #include "./string.h"
 

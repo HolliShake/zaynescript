@@ -1,7 +1,4 @@
-/**
- * RIPEMD-160 via RHash (permissive license in @c thirdparty/crypto/RHash).
- * @see https://github.com/brix/crypto-js/tree/develop/src — @c ripemd160.js
- */
+
 #include "./crypto.h"
 #include "./crypto_algo.h"
 

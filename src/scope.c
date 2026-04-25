@@ -1,3 +1,4 @@
+
 #include "./scope.h"
 
 Symbol* CreateSymbol(bool isGlobal,

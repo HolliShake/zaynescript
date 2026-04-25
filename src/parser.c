@@ -1,5 +1,7 @@
+
 #include "./parser.h"
 
+#include "global.h"
 #include "keyword.h"
 
 Parser* CreateParser(Lexer* lexer) {
@@ -468,8 +470,9 @@ static Ast* _ParsePostfix(Parser* parser) {
 }
 
 static Ast* _ParseUnary(Parser* parser) {
-	String op	= NULL;
-	Ast*   node = NULL;
+	Position start = parser->Next.Position, ended = start;
+	String	 op	  = NULL;
+	Ast*	 node = NULL;
 	if (CHECKTV("+") || CHECKTV("-") || CHECKTV("!") || CHECKTV("~")) {
 		op = parser->Next.Value;
 		ACCEPTT(TK_SYM);
@@ -483,13 +486,13 @@ static Ast* _ParseUnary(Parser* parser) {
 					   parser->Next.Position,
 					   "expected an expression");
 		}
-
-		node = AstSingle(strcmp(op, "+") == 0	? AST_POSITIVE
-						 : strcmp(op, "-") == 0 ? AST_NEGATIVE
-						 : strcmp(op, "!") == 0 ? AST_LOGICAL_NOT
-												: AST_BITWISE_NOT,
-						 operand,
-						 MergePositions(operand->Position, operand->Position));
+		ended = operand->Position;
+		node  = AstSingle(strcmp(op, "+") == 0	 ? AST_POSITIVE
+						  : strcmp(op, "-") == 0 ? AST_NEGATIVE
+						  : strcmp(op, "!") == 0 ? AST_LOGICAL_NOT
+												 : AST_BITWISE_NOT,
+						  operand,
+						  MergePositions(start, ended));
 
 		free(op);
 
@@ -508,9 +511,10 @@ static Ast* _ParseUnary(Parser* parser) {
 					   "expected an expression");
 		}
 
-		node = AstSingle(strcmp(op, "++") == 0 ? AST_PRE_INC : AST_PRE_DEC,
-						 operand,
-						 MergePositions(operand->Position, operand->Position));
+		ended = operand->Position;
+		node  = AstSingle(strcmp(op, "++") == 0 ? AST_PRE_INC : AST_PRE_DEC,
+						  operand,
+						  MergePositions(start, ended));
 
 		free(op);
 
@@ -533,10 +537,8 @@ static Ast* _ParseUnary(Parser* parser) {
 					   operand->Position,
 					   "await can only be applied to function calls");
 		}
-
-		return AstSingle(AST_AWAIT,
-						 operand,
-						 MergePositions(operand->Position, operand->Position));
+		ended = operand->Position;
+		return AstSingle(AST_AWAIT, operand, MergePositions(start, ended));
 	} else if (CHECKTV(KEY_TYPEOF)) {
 		ACCEPTV_FREE(KEY_TYPEOF);
 
@@ -549,9 +551,8 @@ static Ast* _ParseUnary(Parser* parser) {
 					   "expected an expression");
 		}
 
-		return AstSingle(AST_TYPEOF,
-						 operand,
-						 MergePositions(operand->Position, operand->Position));
+		ended = operand->Position;
+		return AstSingle(AST_TYPEOF, operand, MergePositions(start, ended));
 	}
 
 	return _ParsePostfix(parser);
