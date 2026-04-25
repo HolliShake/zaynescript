@@ -1,5 +1,5 @@
 import { println } from "core:io";
-import { Crypto } from "lib:crypto";
+import { Crypto } from "core:crypto";
 
 assert Crypto.MD5("abc").toString(null) == "900150983cd24fb0d6963f7d28e17f72", "md5 abc";
 assert Crypto.SHA1("abc").toString(null) == "a9993e364706816aba3e25717850c26c9cd0d89d", "sha1 abc";
