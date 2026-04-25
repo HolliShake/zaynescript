@@ -2710,7 +2710,7 @@ db.close();</code></pre>
     isIdentifier, isAlpha, isDigit, isAlnum,
     split, ord, chr, bytes, codepoints,
     strip, join, repeat, reverse,
-    contains, startsWith, endsWith,
+    contains, startsWith, startswith, endsWith, endswith,
     replace, byteLength, encode, decode
 } from "core:string";</code></pre>
         <p class="page-intro" style="margin-top: 0.75rem">
@@ -2762,7 +2762,8 @@ db.close();</code></pre>
             <strong>Other</strong> — <code>strip</code>, <code>join</code>
             (array of strings + separator), <code>repeat</code>,
             <code>reverse</code> (by codepoint), <code>contains</code> /
-            <code>startsWith</code> / <code>endsWith</code>, <code>replace</code>
+            <code>startsWith</code> / <code>startswith</code> /
+            <code>endsWith</code> / <code>endswith</code>, <code>replace</code>
             (all occurrences; second argument must be non-empty).
           </li>
         </ul>
@@ -2849,8 +2850,8 @@ println(encode(bytes("AB")));                 // QUI=</code></pre>
           <p class="method-desc">Reverses codepoint order (not full grapheme clusters).</p>
         </div>
         <div class="method">
-          <div class="method-sig">contains(s, sub) / startsWith(s, p) / endsWith(s, p) → bool</div>
-          <p class="method-desc">UTF-8 substring / prefix / suffix tests.</p>
+          <div class="method-sig">contains(s, sub) / startsWith(s, p) / startswith(s, p) / endsWith(s, p) / endswith(s, p) → bool</div>
+          <p class="method-desc">UTF-8 substring / prefix / suffix tests; <code>startswith</code>/<code>endswith</code> are lowercase aliases.</p>
         </div>
         <div class="method">
           <div class="method-sig">replace(haystack, from, to) → string</div>
