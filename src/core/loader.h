@@ -10,6 +10,7 @@
 #include "../global.h"
 #include "./array.h"
 #include "./blob.h"
+#include "./crypto.h"
 #include "./date.h"
 #include "./io.h"
 #include "./math.h"

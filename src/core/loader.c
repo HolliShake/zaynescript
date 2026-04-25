@@ -3,6 +3,7 @@
 CoreMapper _CoreModuleMappers[] = {
 	{ .Name = "array", .Loader = LoadCoreArray },
 	{ .Name = "blob", .Loader = LoadCoreBlob },
+	{ .Name = "crypto", .Loader = LoadCoreCrypto },
 	{ .Name = "date", .Loader = LoadCoreDate },
 	{ .Name = "io", .Loader = LoadCoreIo },
 	{ .Name = "math", .Loader = LoadCoreMath },
