@@ -1,10 +1,4 @@
-/**
- * SHA3 wrappers around PQClean FIPS 202 Keccak implementation.
- * @see thirdparty/crypto/pqcleanfips202/pqclean_fips202.c
- * @see https://github.com/PQClean/PQClean/tree/master/common
- * @see https://bench.cr.yp.to/supercop.html (TweetFips202/SUPERCOP origin, public domain)
- * @see https://github.com/brix/crypto-js/tree/develop/src — @c sha3.js
- */
+
 #include "./crypto.h"
 #include "./crypto_algo.h"
 

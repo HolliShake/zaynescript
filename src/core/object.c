@@ -1,3 +1,4 @@
+
 #include "./object.h"
 
 static Value* _ObjectInit(Interpreter* interp, int argc, Value** args) {

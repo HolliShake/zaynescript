@@ -1,3 +1,4 @@
+
 #include "./array.h"
 
 /**
@@ -8,7 +9,7 @@
  * remains reachable from the stack.
  * @origin src/interpreter.c
  */
-extern void Push(Interpreter* interpreter, Value* value);
+extern void FPush(Interpreter* interpreter, CallFrame* frame, Value* value);
 
 /**
  * @brief Returns interpreter->Stacks[--StckC], removing one slot from the
@@ -18,17 +19,7 @@ extern void Push(Interpreter* interpreter, Value* value);
  * @return The Value* that was previously the stack top.
  * @origin src/interpreter.c
  */
-extern Value* Popp(Interpreter* interpreter);
-
-/**
- * @brief Reads interpreter->Stacks[StckC - 1] without changing StckC
- * (non-destructive top-of-stack).
- * @param interpreter VM whose StckC must be > 0; otherwise behaviour is
- * undefined.
- * @return Current top operand without popping it.
- * @origin src/interpreter.c
- */
-extern Value* Peek(Interpreter* interpreter);
+extern Value* FPopp(Interpreter* interpreter, CallFrame* frame);
 
 /**
  * @brief Dispatches fn as a callable: wires environments for user functions,
@@ -46,8 +37,11 @@ extern Value* Peek(Interpreter* interpreter);
  * or an Error Value on failure.
  * @origin src/operation.c
  */
-extern Value*
-DoCall(Interpreter* interpreter, Value* fn, int argc, bool withThis);
+extern Value* DoCall(Interpreter* interpreter,
+					 CallFrame*	  frame,
+					 Value*		  fn,
+					 int		  argc,
+					 bool		  withThis);
 
 static Value*
 _ArrayInit(Interpreter* interpreter, int argc, Value** arguments) {
@@ -117,18 +111,18 @@ _ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
 
 	Value* arrayVal = NewArrayValue(interpreter);
 	Array* newArray = CoerceToArray(arrayVal);
-	Push(interpreter, arrayVal);
+	// FPush(interpreter, interpreter->CurrentFrame, arrayVal);
 
 	for (size_t i = 0; i < ArrayLength(array); i++) {
 		Value* item	 = ArrayGet(array, i);
 		Value* index = NewNumValue(interpreter, (int) i);
-		Push(interpreter, index);
-		Push(interpreter, item);
-		DoCall(interpreter, callback, argc, false);
-		ArrayPush(newArray, Popp(interpreter));
+		FPush(interpreter, interpreter->CurrentFrame, index);
+		FPush(interpreter, interpreter->CurrentFrame, item);
+		DoCall(interpreter, interpreter->CurrentFrame, callback, argc, false);
+		ArrayPush(newArray, FPopp(interpreter, interpreter->CurrentFrame));
 	}
 
-	Popp(interpreter);
+	// FPopp(interpreter, interpreter->CurrentFrame);
 	return arrayVal;
 }
 
@@ -174,20 +168,20 @@ _ArrayKeep(Interpreter* interpreter, int argc, Value** arguments) {
 
 	Value* arrayVal = NewArrayValue(interpreter);
 	Array* newArray = CoerceToArray(arrayVal);
-	Push(interpreter, arrayVal);
+	FPush(interpreter, interpreter->CurrentFrame, arrayVal);
 
 	for (size_t i = 0; i < ArrayLength(array); i++) {
 		Value* item	 = ArrayGet(array, i);
 		Value* index = NewNumValue(interpreter, (int) i);
-		Push(interpreter, index);
-		Push(interpreter, item);
-		DoCall(interpreter, callback, argc, false);
-		if (CoerceToBool(Popp(interpreter))) {
+		FPush(interpreter, interpreter->CurrentFrame, index);
+		FPush(interpreter, interpreter->CurrentFrame, item);
+		DoCall(interpreter, interpreter->CurrentFrame, callback, argc, false);
+		if (CoerceToBool(FPopp(interpreter, interpreter->CurrentFrame))) {
 			ArrayPush(newArray, item);
 		}
 	}
 
-	Popp(interpreter);
+	FPopp(interpreter, interpreter->CurrentFrame);
 	return arrayVal;
 }
 

@@ -1,7 +1,4 @@
-/**
- * RC4 stream cipher. Original C.
- * @see https://github.com/brix/crypto-js/tree/develop/src — @c rc4.js
- */
+
 #include "./crypto.h"
 #include "./crypto_algo.h"
 

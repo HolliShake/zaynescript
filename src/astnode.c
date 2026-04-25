@@ -1,3 +1,4 @@
+
 #include "./astnode.h"
 
 static Ast* InitAst(AstType type, Position position) {

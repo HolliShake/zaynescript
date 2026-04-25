@@ -1,3 +1,8 @@
+/**
+ * @file crypto.h
+ * @brief Public declarations for the crypto module.
+ */
+
 #include "../error.h"
 #include "../function.h"
 #include "../global.h"

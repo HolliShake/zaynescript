@@ -1418,6 +1418,38 @@ app.post("/users", fn(req, res) {
     res.json({ id: id });
 });</code></pre>
 
+          <h4>Multiple wildcards</h4>
+          <p>
+            If your route contains more than one wildcard, each is captured in order:
+          </p>
+          <pre><code class="language-javascript">app.get("/users/*/posts/*", fn(req, res) {
+      const userId = req.params["0"];  // e.g. "42" for /users/42/posts/99
+      const postId = req.params["1"];  // e.g. "99" for /users/42/posts/99
+      res.json({ user: userId, post: postId });
+  });</code></pre>
+
+          <h4>Query parameters</h4>
+          <p>
+            The <code>req.query</code> property contains the raw query string (e.g. <code>"name=Alice&amp;age=30"</code> for <code>/users?name=Alice&amp;age=30</code>). To access query parameters as an object, you can parse it manually:
+          </p>
+          <pre><code class="language-javascript">// Example: GET /search?term=cat&amp;page=2
+  app.get("/search", fn(req, res) {
+      // Parse query string into an object
+      const params = {};
+      req.query.split("&").each(fn(pair) {
+          const kv = pair.split("=");
+          if (kv.length == 2) {
+              params[kv[0]] = kv[1];
+          }
+      });
+      res.json(params); // { term: "cat", page: "2" }
+  });
+  // For more robust parsing (decoding, missing values), see core:string helpers.
+          </code></pre>
+          <div class="note">
+            <strong>Note:</strong> <code>req.params</code> contains wildcard route captures (from <code>*</code> in the path), while <code>req.query</code> is the raw query string after <code>?</code> in the URL. They are separate.
+          </div>
+
         <h3 id="mongoose-req">Request object</h3>
         <p>Available inside every route handler as the first argument.</p>
         <table>
@@ -2678,7 +2710,7 @@ db.close();</code></pre>
     isIdentifier, isAlpha, isDigit, isAlnum,
     split, ord, chr, bytes, codepoints,
     strip, join, repeat, reverse,
-    contains, startsWith, endsWith,
+    contains, startsWith, startswith, endsWith, endswith,
     replace, byteLength, encode, decode
 } from "core:string";</code></pre>
         <p class="page-intro" style="margin-top: 0.75rem">
@@ -2730,7 +2762,8 @@ db.close();</code></pre>
             <strong>Other</strong> — <code>strip</code>, <code>join</code>
             (array of strings + separator), <code>repeat</code>,
             <code>reverse</code> (by codepoint), <code>contains</code> /
-            <code>startsWith</code> / <code>endsWith</code>, <code>replace</code>
+            <code>startsWith</code> / <code>startswith</code> /
+            <code>endsWith</code> / <code>endswith</code>, <code>replace</code>
             (all occurrences; second argument must be non-empty).
           </li>
         </ul>
@@ -2817,8 +2850,8 @@ println(encode(bytes("AB")));                 // QUI=</code></pre>
           <p class="method-desc">Reverses codepoint order (not full grapheme clusters).</p>
         </div>
         <div class="method">
-          <div class="method-sig">contains(s, sub) / startsWith(s, p) / endsWith(s, p) → bool</div>
-          <p class="method-desc">UTF-8 substring / prefix / suffix tests.</p>
+          <div class="method-sig">contains(s, sub) / startsWith(s, p) / startswith(s, p) / endsWith(s, p) / endswith(s, p) → bool</div>
+          <p class="method-desc">UTF-8 substring / prefix / suffix tests; <code>startswith</code>/<code>endswith</code> are lowercase aliases.</p>
         </div>
         <div class="method">
           <div class="method-sig">replace(haystack, from, to) → string</div>

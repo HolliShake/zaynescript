@@ -1,3 +1,4 @@
+
 #include "./gc.h"
 
 /**
@@ -11,17 +12,18 @@
  */
 extern String ValueToString(Value* value);
 
-/**
- * @brief Deallocates @a value after its destroy callback: recurses
- *        type-specific teardown (arbitrary-precision floats via @a interp
- *        libbf context, string/error buffers, array/object hash maps, classes,
- *        instances, envs, user/native functions, promises, blobs), leaves
- *        @c VLT_OPAQUE storage untouched, then frees the @c Value struct.
- * @param interp Interpreter whose @c BfContext backs @c bf_free for @c
- *        VLT_BINT / @c VLT_BNUM.
- * @param value GC heap node to strip and deallocate; must not be NULL at call
- *        sites in this file.
- */
+static void _MarkCallFrame(CallFrame* frame) {
+	if (frame == NULL) {
+		return;
+	}
+	Mark(frame->Fn);
+	Mark(frame->Env);
+	Mark(frame->GlobalEnv);
+	for (int i = 0; i < frame->OperandC; i++) {
+		Mark(frame->Operand[i]);
+	}
+}
+
 static void _Free(Interpreter* interp, Value* value) {
 	value->Destroyer(value);
 	switch (value->Type) {
@@ -261,18 +263,12 @@ void Mark(Value* value) {
 			{
 				StateMachine* sm = CoerceToStateMachine(value);
 				if (sm != NULL) {
-					Mark(sm->CallEnv);
 					Mark(sm->WaitFor);
 					Mark(sm->Value);
-					Mark(sm->Function);
-					if (sm->EnvStack != NULL)
-						for (int i = 0; i < sm->EnvrTop; i++) {
-							Mark(sm->EnvStack[i]);
-						}
-					if (sm->Stacks != NULL)
-						for (int i = 0; i < sm->StckTop; i++) {
-							Mark(sm->Stacks[i]);
-						}
+					Mark(sm->Callback);
+					Mark(sm->GlobalEnv);
+					_MarkCallFrame(sm->Frame);
+
 					for (int i = 0; i < sm->WaitListC; i++) {
 						Mark(sm->WaitList[i]);
 					}
@@ -298,18 +294,6 @@ static void _MarkConstants(Interpreter* interpreter) {
 static void _MarkFunctions(Interpreter* interpreter) {
 	for (int i = 0; i < interpreter->FunctionC; i++) {
 		Mark(interpreter->Functions[i]);
-	}
-}
-
-static void _MarkStack(Interpreter* interpreter) {
-	for (int i = 0; i < interpreter->StckC; i++) {
-		Mark(interpreter->Stacks[i]);
-	}
-}
-
-static void _MarkEnvs(Interpreter* interpreter) {
-	for (int i = 0; i < interpreter->EnvrC; i++) {
-		Mark(interpreter->Envs[i]);
 	}
 }
 
@@ -352,14 +336,9 @@ void GarbageCollect(Interpreter* interpreter) {
 	Mark(interpreter->True);
 	Mark(interpreter->False);
 	Mark(interpreter->Null);
-	Mark(interpreter->RootEnv);
-	Mark(interpreter->CallEnv);
 	Mark(interpreter->ActiveTask);
-	Mark(interpreter->ActiveFunction);
 	_MarkConstants(interpreter);
 	_MarkFunctions(interpreter);
-	_MarkStack(interpreter);
-	_MarkEnvs(interpreter);
 	_MarkTaskQueue(interpreter);
 	_MarkCallStack(interpreter);
 

@@ -1,8 +1,3 @@
-/**
- * @file string.c
- * @brief Implements @c core:string: utf8proc-backed helpers for script strings
- *        (stored as NUL-terminated rune arrays inside @c VLT_STR values).
- */
 
 #include "./string.h"
 
@@ -1076,7 +1071,15 @@ static ModuleFunction _StringModuleFunctions[] = {
 	  .Argc		 = 2,
 	  .CFunction = (NativeFunctionCallback) _StringStartsWith,
 	  .Value	 = NULL },
+	{ .Name		 = "startswith",
+	  .Argc		 = 2,
+	  .CFunction = (NativeFunctionCallback) _StringStartsWith,
+	  .Value	 = NULL },
 	{ .Name		 = "endsWith",
+	  .Argc		 = 2,
+	  .CFunction = (NativeFunctionCallback) _StringEndsWith,
+	  .Value	 = NULL },
+	{ .Name		 = "endswith",
 	  .Argc		 = 2,
 	  .CFunction = (NativeFunctionCallback) _StringEndsWith,
 	  .Value	 = NULL },

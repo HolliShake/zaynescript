@@ -1,3 +1,4 @@
+
 #include "./lexer.h"
 
 // Helper function to get current rune

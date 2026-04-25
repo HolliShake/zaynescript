@@ -1,3 +1,4 @@
+
 #include "./io.h"
 
 static Value* _IoGenericPrint(Interpreter* interpreter,
@@ -572,14 +573,6 @@ _FileReadlines(Interpreter* interpreter, int argc, Value** arguments) {
 	return arrayVal;
 }
 
-/**
- * @brief Writes one value to an open FILE*: Blob values are written as raw
- * bytes, while all other values are stringified first.
- * @param interpreter Used to allocate an Error value when fwrite fails.
- * @param fp Destination stream already opened by the File wrapper.
- * @param v Value to serialize and write.
- * @return NULL on success, or an Error Value describing the write failure.
- */
 static Value* _FileWriteOne(Interpreter* interpreter, FILE* fp, Value* v) {
 	if (ValueIsBlob(v)) {
 		Blob*		b = CoerceToBlob(v);

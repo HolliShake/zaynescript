@@ -42,6 +42,9 @@
  */
 Interpreter* CreateInterpreter(String execPath);
 
+void SetActiveTask(Interpreter* interpreter, Value* task);
+void SetCurrentFrame(Interpreter* interpreter, CallFrame* frame);
+
 /**
  * @brief Executes the parsed program using the given interpreter.
  *
