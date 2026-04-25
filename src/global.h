@@ -927,10 +927,10 @@ typedef struct import_node {
  * was paused.
  */
 typedef struct exception_handler_struct {
-	int JumpAddress;		 /**< Instruction index to jump to on
-								exception */
-	size_t* PausedAddress;	 /**< Saved paused instruction/address
-								pointer */
+	int JumpAddress;	   /**< Instruction index to jump to on
+							  exception */
+	size_t* PausedAddress; /**< Saved paused instruction/address
+							  pointer */
 } ExceptionHandler;
 
 /**

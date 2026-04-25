@@ -1414,6 +1414,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 				}
 		}
 	}
+
 	SetCurrentFrame(interpreter, frame->Parent);
 	CallFrame* parentFrame = frame->Parent;
 
