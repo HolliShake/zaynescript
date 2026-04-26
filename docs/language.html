@@ -198,6 +198,7 @@
           <div class="sidebar-group-title">OOP</div>
           <ul>
             <li><a href="#classes">Classes</a></li>
+            <li><a href="#inheritance">Inheritance &amp; <code>base</code></a></li>
             <li><a href="#static">Static Members</a></li>
           </ul>
         </div>
@@ -473,7 +474,14 @@ fn example() {
           <li>
             For class <strong>instances</strong>, the string is the
             <strong>class name</strong> taken from the instance prototype (not the
-            literal <code>"Class"</code>).
+            literal <code>"Class"</code>). This applies even inside base-class
+            methods — <code>typeof this</code> always reflects the concrete
+            runtime type of the receiver.
+          </li>
+          <li>
+            <code>typeof base</code> inside a subclass method yields
+            <code>"Class"</code> — <code>base</code> is a class descriptor,
+            not an instance.
           </li>
         </ul>
         <pre><code class="language-javascript">println(typeof 0);       // Int
@@ -1000,6 +1008,78 @@ d.speak(); // Buddy says Woof!</code></pre>
           Override a method by re-declaring it in the subclass. Access the
           instance with <code>this</code>.
         </p>
+
+        <!-- ============================================================
+         Inheritance & base
+         ============================================================ -->
+        <h3 id="inheritance">Inheritance &amp; <code>base</code></h3>
+        <p>
+          Inside any subclass method, <code>base</code> is a special reference
+          to the <strong>parent class descriptor</strong>. It has two uses:
+        </p>
+        <ul>
+          <li>
+            <strong>Calling the parent constructor</strong> —
+            <code>base(this, arg1, arg2, …)</code> invokes the parent
+            <code>init</code> method. The first argument must always be the
+            current instance (<code>this</code>); subsequent arguments are
+            forwarded to the parent <code>init</code> parameter list.
+          </li>
+          <li>
+            <strong>Calling a parent method explicitly</strong> —
+            <code>base.methodName(this, arg1, …)</code> calls the parent
+            class's version of a method, bypassing any override in the
+            subclass. Again, <code>this</code> is passed as the first
+            argument.
+          </li>
+        </ul>
+        <pre><code class="language-javascript">class BaseClass {
+    fn init(a) {
+        this.Type = typeof(this); // runtime class name of the instance
+        println("From BaseClass!", this.Type);
+    }
+
+    fn greet() {
+        println("greet::From BaseClass!");
+    }
+}
+
+class DerivedClass (BaseClass) {
+    fn init() {
+        // Invoke the parent constructor — this is passed as the receiver,
+        // 2 is forwarded as the `a` parameter of BaseClass.init.
+        base(this, 2);
+
+        // typeof base → "Class"; typeof this → "DerivedClass"
+        println(typeof base, typeof this);
+
+        println("From DerivedClass!");
+
+        // Call the parent greet explicitly (prints BaseClass version),
+        // then call the overridden greet on this (prints DerivedClass version).
+        println(base.greet(this), this.greet());
+    }
+
+    fn greet() {
+        println("greet::From DerivedClass!");
+    }
+}
+
+new DerivedClass();
+// From BaseClass! DerivedClass
+// Class DerivedClass
+// From DerivedClass!
+// greet::From BaseClass! greet::From DerivedClass!</code></pre>
+
+        <div class="note">
+          <strong>Note:</strong> <code>typeof base</code> yields
+          <code>"Class"</code> — the parent is a class descriptor value.
+          <code>typeof this</code> inside any class method yields the
+          <strong>runtime class name</strong> of the instance (e.g.
+          <code>"DerivedClass"</code>), even when the method is defined on
+          the base class. This means you always see the concrete type, not
+          the declaring class.
+        </div>
 
         <!-- ============================================================
          Static Members
