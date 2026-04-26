@@ -1,13 +1,6 @@
 
 #include "./operation.h"
 
-#include "global.h"
-
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-
 #define FreeTempBf(interpreter, bf, val)                                       \
 	do {                                                                       \
 		if ((val)->Type == VLT_INT || (val)->Type == VLT_NUM) {                \
