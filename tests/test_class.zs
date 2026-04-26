@@ -29,3 +29,9 @@ class DerivedClass (BaseClass) {
 
 
 new DerivedClass();
+
+fn test(a, b) {
+    println(a, b);
+}
+
+test("A", "B");

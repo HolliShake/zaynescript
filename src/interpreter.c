@@ -844,8 +844,8 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 				{
 					argc = ReadInt32(uf->Codes, ip);
 					Forward(4);
-					key = FPopp(interpreter, frame);  // method name
-					obj = FPopp(interpreter, frame);  // 'this' object
+					key = FPopp(interpreter, frame);		  // method name
+					obj = FPeekAt(interpreter, frame, argc);  // 'this' object
 					res = DoCallMethod(interpreter, frame, obj, key, argc);
 					if (ValueIsError(res)) {
 						// Raise

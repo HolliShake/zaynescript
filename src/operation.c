@@ -5,6 +5,7 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 
 #define FreeTempBf(interpreter, bf, val)                                       \
@@ -202,6 +203,7 @@ bool IsMethodOfObject(Interpreter* interpreter, Value* obj, Value* method) {
 		}
 	} else if (ValueIsClass(obj)) {
 		// Class has no method!
+		free(key);
 		return false;
 	} else if (ValueIsClassInstance(obj)) {
 		// Handle class instance methods or attributes
@@ -683,6 +685,37 @@ Value* DoGetIndex(Interpreter* interpreter, Value* obj, Value* index) {
 	return GenericGetAttribute(interpreter, obj, index, false);
 }
 
+static void RotateN(int narg, CallFrame* frame) {
+	// Rotate the top N operands once:
+	// [ ..., A, B, C ] -> [ ..., C, A, B ] for narg=3.
+	if (frame == NULL || narg <= 1 || narg > frame->OperandC) {
+		return;
+	}
+
+	int	   top	= frame->OperandC - 1;
+	Value* last = frame->Operand[top];
+	for (int i = 0; i < narg - 1; i++) {
+		frame->Operand[top - i] = frame->Operand[top - i - 1];
+	}
+	frame->Operand[top - (narg - 1)] = last;
+}
+
+static void RotateNLeft(int narg, CallFrame* frame) {
+	// Rotate the top N operands to the left:
+	// [ ..., A, B, C ] -> [ ..., B, C, A ] for narg=3.
+	if (frame == NULL || narg <= 1 || narg > frame->OperandC) {
+		return;
+	}
+
+	int	   top	 = frame->OperandC - 1;
+	int	   base	 = top - (narg - 1);
+	Value* first = frame->Operand[base];
+	for (int i = base; i < top; i++) {
+		frame->Operand[i] = frame->Operand[i + 1];
+	}
+	frame->Operand[top] = first;
+}
+
 Value* DoCallCtor(Interpreter* interpreter,
 				  CallFrame*   frame,
 				  Value*	   clsValue,
@@ -734,6 +767,8 @@ Value* DoCallCtor(Interpreter* interpreter,
 
 	FPush(interpreter, frame, instanceValue);
 
+	RotateN(argc + 1, frame);  //  add 1 for 'this'
+
 	Value* constructor = ClassGetMember(cls, CONSTRUCTOR_NAME, false);
 
 	Value* result = DoCall(interpreter, frame, constructor, ++argc, true);
@@ -755,6 +790,7 @@ Value* DoCallMethod(Interpreter* interpreter,
 					int			 argc) {
 	bool withThis = IsMethodOfObject(interpreter, obj, methodName);
 	if (!withThis) {
+		RotateNLeft(argc, frame);
 		argc--;
 		FPopp(interpreter, frame);	// pop 'this'
 	}
@@ -872,7 +908,10 @@ Value* DoCall(Interpreter* interpreter,
 			args[0] = NULL;
 		}
 
-		for (int i = 0; i < argc; i++) {
+		for (int i = argc - 1; i >= 0; i--) {
+			// Caller stack top holds the last evaluated argument.
+			// Reverse while popping so native functions receive
+			// arguments in source order (arg0..argN).
 			args[i] = FPopp(interpreter, frame);
 			// printf("ARG[%d]: %s\n", i,
 			// ValueToString(args[i]));
@@ -916,19 +955,27 @@ Value* DoCall(Interpreter* interpreter,
 	// Move call arguments from caller stack into callee stack so
 	// function prologue OP_STORE_LOCAL opcodes bind parameters safely.
 	if (argc > 0) {
+		// Becomes left-to-right order of arguments.
+		// Exampl:
+		// fn(a, b, c) -> BOT<- [a, b, c] ->TOP
 		Value** callArgs = Allocate(sizeof(Value*) * argc);
 		for (int i = 0; i < argc; i++) {
 			callArgs[i] = FPopp(interpreter, frame);
 		}
-		for (int i = argc - 1; i >= 0; i--) {
+
+		// Push arguments to the new frame.
+		for (int i = 0; i < argc; i++) {
 			FPush(interpreter, newFrame, callArgs[i]);
 		}
+
 		free(callArgs);
 	}
 
 	// 2. Run the function
 	Run(interpreter, newFrame, NULL);
+
 	SetCurrentFrame(interpreter, frame);
+
 	ReleaseFrame(interpreter, newFrame);
 
 	PopTrace(interpreter);

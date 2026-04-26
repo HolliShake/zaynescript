@@ -738,26 +738,13 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 					cls			   = ctor_call->A;
 				}
 
-				int argc = 0;
-				// Count arguments first
-				Ast* argCount = arguments;
-				while (argCount != NULL) {
-					argc++;
-					argCount = argCount->Next;
-				}
-
-				// Emit arguments in reverse order
-				Ast** argArray = Allocate(sizeof(Ast*) * argc);
-				int	  i		   = 0;
-				Ast*  arg	   = arguments;
+				int	 argc = 0;
+				Ast* arg  = arguments;
 				while (arg != NULL) {
-					argArray[i++] = arg;
-					arg			  = arg->Next;
+					_CompileExpression(compiler, uf, scope, arg);
+					arg = arg->Next;
+					++argc;
 				}
-				for (int j = argc - 1; j >= 0; j--) {
-					_CompileExpression(compiler, uf, scope, argArray[j]);
-				}
-				free(argArray);
 
 				_CompileExpression(compiler, uf, scope, cls);
 				_EmitLine(compiler, uf, node->Position);
@@ -801,34 +788,28 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 
 							// Count arguments first
 							Ast * arg = args, *head = arg;
-							Ast** argsReverse = Allocate(sizeof(Ast*));
+							Ast** argsArray = Allocate(sizeof(Ast*));
 
-							argsReverse[argc++] = obj;
-							argsReverse = Reallocate(argsReverse,
-													 sizeof(Ast*) * (argc + 1));
+							argsArray[argc++] = obj;
+							argsArray = Reallocate(argsArray,
+												   sizeof(Ast*) * (argc + 1));
 
 							while (head != NULL) {
-								argsReverse[argc++] = head;
-								argsReverse =
-									Reallocate(argsReverse,
+								argsArray[argc++] = head;
+								argsArray =
+									Reallocate(argsArray,
 											   sizeof(Ast*) * (argc + 1));
 								head = head->Next;
 							}
 
-							for (int i = argc - 1; i >= 0; i--) {
+							for (int i = 0; i < argc; i++) {
 								_CompileExpression(compiler,
 												   uf,
 												   scope,
-												   argsReverse[i]);
+												   argsArray[i]);
 							}
 
-							free(argsReverse);
-
-							_EmitLine(compiler, uf, node->Position);
-							_Emit(compiler,
-								  uf,
-								  OP_DUPTOP);  // duplicate
-											   // for 'this'
+							free(argsArray);
 
 							if (objc->Type == AST_MEMBER) {
 								_EmitLine(compiler, uf, node->Position);
@@ -846,25 +827,14 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 						}
 					default:
 						{
-							// Count arguments first
-							Ast * arg = args, *head = arg;
-							Ast** argsReverse = Allocate(sizeof(Ast*));
+							// Evaluate regular call arguments
+							// left-to-right to match JS side-effect ordering.
+							Ast* head = args;
 							while (head != NULL) {
-								argsReverse[argc++] = head;
-								argsReverse =
-									Reallocate(argsReverse,
-											   sizeof(Ast*) * (argc + 1));
+								_CompileExpression(compiler, uf, scope, head);
+								argc++;
 								head = head->Next;
 							}
-
-							for (int i = argc - 1; i >= 0; i--) {
-								_CompileExpression(compiler,
-												   uf,
-												   scope,
-												   argsReverse[i]);
-							}
-
-							free(argsReverse);
 
 							_CompileExpression(compiler, uf, scope, objc);
 							_EmitLine(compiler, uf, node->Position);
