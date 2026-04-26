@@ -7,6 +7,7 @@ CoreMapper _CoreModuleMappers[] = {
 	{ .Name = "crypto", .Loader = LoadCoreCrypto },
 	{ .Name = "date", .Loader = LoadCoreDate },
 	{ .Name = "io", .Loader = LoadCoreIo },
+	{ .Name = "json", .Loader = LoadCoreJson },
 	{ .Name = "math", .Loader = LoadCoreMath },
 	{ .Name = "mysql", .Loader = LoadCoreMysql },
 	{ .Name = "mongoose", .Loader = LoadCoreMongoose },

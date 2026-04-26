@@ -1,7 +1,7 @@
 import { println } from "core:io";
 import { Object } from "core:object";
 import { Array } from "core:array";
-
+import { stringify,  parse } from "core:json";
 
 class BaseClass {
     fn init(a) {
@@ -19,14 +19,13 @@ class DerivedClass (BaseClass) {
         base(this, 2);
         println( typeof base, typeof this);
         println("From DerivedClass!");
-        println(base.greet(this), this.greet());
+        println(base.greet(this), this.greet(), DerivedClass);
     }
 
     fn greet() {
         println("greet::From DerivedClass!");
     }
 }
-
 
 new DerivedClass();
 
@@ -35,3 +34,5 @@ fn test(a, b) {
 }
 
 test("A", "B");
+
+println(parse(stringify({ A: 65 })));
