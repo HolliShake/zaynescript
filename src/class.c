@@ -89,6 +89,24 @@ ClassInstance* CreateClassInstance(Value* proto) {
 }
 
 String ClassInstanceToString(ClassInstance* instance) {
+	// Guard against cyclic graphs across class instances
+	// (e.g. a.ref -> b and b.ref -> a) while stringifying.
+#define CLASS_STRINGIFY_MAX_DEPTH 1024
+	static ClassInstance* stringifyStack[CLASS_STRINGIFY_MAX_DEPTH];
+	static size_t		   stringifyDepth = 0;
+
+	for (size_t i = 0; i < stringifyDepth; i++) {
+		if (stringifyStack[i] == instance) {
+			return FormatString("%s { [circular] }",
+								ClassToString(CoerceToUserClass(instance->Proto)));
+		}
+	}
+	if (stringifyDepth >= CLASS_STRINGIFY_MAX_DEPTH) {
+		return FormatString("%s { [max-depth] }",
+							ClassToString(CoerceToUserClass(instance->Proto)));
+	}
+	stringifyStack[stringifyDepth++] = instance;
+
 	HashMap* members   = instance->Members;
 	String	 className = ClassToString(CoerceToUserClass(instance->Proto));
 
@@ -125,14 +143,24 @@ String ClassInstanceToString(ClassInstance* instance) {
 			}
 			first = false;
 
-			String valueStr	 = ValueToString((Value*) node->Val);
-			currentPos		+= snprintf(buffer + currentPos,
-										bufferSize - currentPos,
-										"%s: %s",
-										node->Key,
-										valueStr);
+			Value* memberVal = (Value*) node->Val;
+			bool   isSelf	 = memberVal->Type == VLT_CLASS_INSTANCE
+							   && memberVal->Value.Opaque == instance;
 
-			free(valueStr);
+			if (isSelf) {
+				currentPos += snprintf(buffer + currentPos,
+									   bufferSize - currentPos,
+									   "%s: [self]",
+									   node->Key);
+			} else {
+				String valueStr	 = ValueToString(memberVal);
+				currentPos		+= snprintf(buffer + currentPos,
+											bufferSize - currentPos,
+											"%s: %s",
+											node->Key,
+											valueStr);
+				free(valueStr);
+			}
 
 			node = node->Next;
 		}
@@ -144,6 +172,8 @@ String ClassInstanceToString(ClassInstance* instance) {
 	// Create final string
 	String result = AllocateString(buffer);
 	free(buffer);
+	stringifyDepth--;
 
 	return result;
+#undef CLASS_STRINGIFY_MAX_DEPTH
 }
