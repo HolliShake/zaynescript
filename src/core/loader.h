@@ -13,6 +13,7 @@
 #include "./crypto.h"
 #include "./date.h"
 #include "./io.h"
+#include "./json.h"
 #include "./math.h"
 #include "./mongoose.h"
 #include "./mysql.h"

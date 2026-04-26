@@ -111,18 +111,18 @@ _ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
 
 	Value* arrayVal = NewArrayValue(interpreter);
 	Array* newArray = CoerceToArray(arrayVal);
-	// FPush(interpreter, interpreter->CurrentFrame, arrayVal);
+	FPush(interpreter, interpreter->CurrentFrame, arrayVal);
 
 	for (size_t i = 0; i < ArrayLength(array); i++) {
 		Value* item	 = ArrayGet(array, i);
 		Value* index = NewNumValue(interpreter, (int) i);
-		FPush(interpreter, interpreter->CurrentFrame, index);
 		FPush(interpreter, interpreter->CurrentFrame, item);
+		FPush(interpreter, interpreter->CurrentFrame, index);
 		DoCall(interpreter, interpreter->CurrentFrame, callback, argc, false);
 		ArrayPush(newArray, FPopp(interpreter, interpreter->CurrentFrame));
 	}
 
-	// FPopp(interpreter, interpreter->CurrentFrame);
+	FPopp(interpreter, interpreter->CurrentFrame);
 	return arrayVal;
 }
 
@@ -173,8 +173,8 @@ _ArrayKeep(Interpreter* interpreter, int argc, Value** arguments) {
 	for (size_t i = 0; i < ArrayLength(array); i++) {
 		Value* item	 = ArrayGet(array, i);
 		Value* index = NewNumValue(interpreter, (int) i);
-		FPush(interpreter, interpreter->CurrentFrame, index);
 		FPush(interpreter, interpreter->CurrentFrame, item);
+		FPush(interpreter, interpreter->CurrentFrame, index);
 		DoCall(interpreter, interpreter->CurrentFrame, callback, argc, false);
 		if (CoerceToBool(FPopp(interpreter, interpreter->CurrentFrame))) {
 			ArrayPush(newArray, item);

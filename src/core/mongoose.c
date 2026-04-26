@@ -1062,8 +1062,8 @@ static void _EvHandler(struct mg_connection* c, int ev, void* ev_data) {
 			continue;
 		if (interp->CurrentFrame == NULL)
 			continue;
-		FPush(interp, interp->CurrentFrame, resVal);
 		FPush(interp, interp->CurrentFrame, reqVal);
+		FPush(interp, interp->CurrentFrame, resVal);
 		DoCall(interp, interp->CurrentFrame, mw, 2, false);
 		FPopp(interp, interp->CurrentFrame);
 	}
@@ -1123,8 +1123,8 @@ static void _EvHandler(struct mg_connection* c, int ev, void* ev_data) {
 
 		if (interp->CurrentFrame == NULL)
 			continue;
-		FPush(interp, interp->CurrentFrame, resVal);
 		FPush(interp, interp->CurrentFrame, reqVal);
+		FPush(interp, interp->CurrentFrame, resVal);
 		DoCall(interp, interp->CurrentFrame, r->Handler, 2, false);
 		Value* result = FPopp(interp, interp->CurrentFrame);
 
