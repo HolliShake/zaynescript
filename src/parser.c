@@ -147,6 +147,10 @@ static Ast* _ParseTerminal(Parser* parser) {
 					node = AstThis(parser->Next.Position);
 					ACCEPTT(TK_KEY);
 					free(key);
+				} else if (strcmp(key, KEY_BASE) == 0) {
+					node = AstBase(parser->Next.Position);
+					ACCEPTT(TK_KEY);
+					free(key);
 				} else {
 					ThrowError(parser->Lexer->Path,
 							   parser->Lexer->Data,

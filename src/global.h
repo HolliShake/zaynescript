@@ -365,6 +365,8 @@ typedef enum ast_type_enum {
 	AST_BOOL,			/**< Boolean literal */
 	AST_NULL,			/**< Null literal */
 	AST_THIS,			/**< This keyword */
+	AST_BASE,			/**< Base keyword */
+
 	AST_SPREAD,			/**< Spread operator (...) */
 	AST_LIST_LITERAL,	/**< List literal ([...]) */
 	AST_OBJECT_KEY_VAL, /**< Object key-value pair */
@@ -561,6 +563,7 @@ typedef enum opcode_enum {
 										member */
 	OP_CLASS_DEFINE_INSTANCE_MEMBER, /**< Define an instance
 										class member */
+	OP_CLASS_GETBASE,				 /**< Get the base class */
 	OP_SET_INDEX,					 /**< Set value at index */
 	OP_GET_INDEX,					 /**< Get value at index */
 	OP_LOAD_FUNCTION_CLOSURE,		 /**< Load a function closure */

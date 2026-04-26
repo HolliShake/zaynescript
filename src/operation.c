@@ -1,6 +1,11 @@
 
 #include "./operation.h"
 
+#include "global.h"
+
+#include <stdbool.h>
+#include <stdio.h>
+
 
 #define FreeTempBf(interpreter, bf, val)                                       \
 	do {                                                                       \
@@ -66,6 +71,16 @@ extern Value* FPopp(Interpreter* interpreter, CallFrame* frame);
  * @origin src/interpreter.c
  */
 extern void FPopN(Interpreter* interpreter, CallFrame* frame, int n);
+
+/**
+ * @brief Peeks at the top operand from frame without popping it.
+ * @param interpreter VM context (unused by the implementation, kept for API
+ * consistency).
+ * @param frame Target frame to peek from.
+ * @return Value at frame->Operand[frame->OperandC - 1].
+ * @origin src/interpreter.c
+ */
+extern Value* FPeek(Interpreter* interpreter, CallFrame* frame);
 
 static int _GetConstantOffset(Interpreter* interpreter, Value* value) {
 	if (value == NULL) {
@@ -186,18 +201,8 @@ bool IsMethodOfObject(Interpreter* interpreter, Value* obj, Value* method) {
 			cls = CoerceToUserClass(cls->Base);
 		}
 	} else if (ValueIsClass(obj)) {
-		// Handle Class static functions or attributes
-		Class* cls = CoerceToUserClass(obj);
-
-		while (cls != NULL) {
-			if (ClassHasMember(cls, key, false, true)) {
-				free(key);
-				return true;
-			}
-			if (cls->Base == NULL)
-				break;
-			cls = CoerceToUserClass(cls->Base);
-		}
+		// Class has no method!
+		return false;
 	} else if (ValueIsClassInstance(obj)) {
 		// Handle class instance methods or attributes
 		ClassInstance* instance = CoerceToClassInstance(obj);
@@ -303,6 +308,12 @@ Value* GenericGetAttribute(Interpreter* interpreter,
 		Class* cls = CoerceToUserClass(obj);
 
 		while (cls != NULL) {
+			// This allows 'base.method(this)'
+			if (ClassHasMember(cls, key, false, forMethodCall)) {
+				Value* member = ClassGetMember(cls, key, false);
+				free(key);
+				return member;
+			}
 			if (ClassHasMember(cls, key, true, forMethodCall)) {
 				Value* member = ClassGetMember(cls, key, true);
 				free(key);
@@ -748,7 +759,7 @@ Value* DoCallMethod(Interpreter* interpreter,
 		FPopp(interpreter, frame);	// pop 'this'
 	}
 
-	Value* method = GenericGetAttribute(interpreter, obj, methodName, true);
+	Value* method = GenericGetAttribute(interpreter, obj, methodName, withThis);
 
 	if (ValueIsNull(method)) {
 		FPopN(interpreter, frame, argc);
@@ -794,6 +805,38 @@ Value* DoCall(Interpreter* interpreter,
 			  Value*	   fn,
 			  int		   argc,
 			  bool		   withThis) {
+	if (ValueIsClass(fn)) {
+		// If calling a base class, user must supply 'this' manually
+		if (argc < 1) {
+			return NewErrorFValue(interpreter,
+								  "%s: thisArg is required",
+								  ARGUMENT_ERROR);
+		}
+		// Extract 'init' from this class
+		Class* cls = CoerceToUserClass(fn);
+
+		Value* instance = FPeek(interpreter, frame);
+
+		if (!ClassHasMember(cls, CONSTRUCTOR_NAME, false, true)) {
+			// Do nothing, init is not defined
+			FPopN(interpreter, frame, argc);
+			FPush(interpreter, frame, instance);
+			return interpreter->Null;
+		}
+
+		Value* constructor = ClassGetMember(cls, CONSTRUCTOR_NAME, false);
+		Value* result = DoCall(interpreter, frame, constructor, argc, false);
+
+		if (ValueIsNull(result)) {
+			FPopp(interpreter, frame);	// Pop constructor return value
+			FPush(interpreter,
+				  frame,
+				  instance);  // Push instance as return value to allow chaining
+		}
+
+		return result;
+	}
+
 	if (!ValueIsCallable(fn)) {
 		FPopN(interpreter, frame, argc);
 		return NewErrorFValue(interpreter,

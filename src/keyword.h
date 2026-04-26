@@ -51,5 +51,6 @@
 #define KEY_AWAIT	 "await"	/**< Asynchronous operation awaiting keyword */
 #define KEY_TYPEOF	 "typeof"	/**< Typeof keyword */
 #define KEY_THIS	 "this"		/**< Current instance reference keyword */
+#define KEY_BASE      "base"		/**< Base class reference keyword */
 
 #endif							/* KEYWORD_H */

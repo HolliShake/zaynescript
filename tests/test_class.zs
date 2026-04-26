@@ -2,32 +2,30 @@ import { println } from "core:io";
 import { Object } from "core:object";
 import { Array } from "core:array";
 
-class Animal {
+
+class BaseClass {
+    fn init(a) {
+        this.Type = typeof(this);
+        println("From BaseClass!", this.Type);
+    }
+
     fn greet() {
-        println("From animal!");
+        println("greet::From BaseClass!");
     }
 }
 
-class Dog (Animal) {
+class DerivedClass (BaseClass) {
     fn init() {
-        println(this);
+        base(this, 2);
+        println( typeof base, typeof this);
+        println("From DerivedClass!");
+        println(base.greet(this), this.greet());
     }
 
-    fn t() {
-        this.greet();
-        return this;
+    fn greet() {
+        println("greet::From DerivedClass!");
     }
 }
 
-const dg = new Dog();
-println(dg);
 
-const a = [18];
-a.push(19);
-
-const ob = {
-    cls: Dog
-};
-
-println(a, dg.t(), new Dog, new ob.cls, new Object, new Array);
-
+new DerivedClass();

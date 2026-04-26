@@ -1,6 +1,11 @@
 
 #include "./compiler.h"
 
+#include "global.h"
+#include "keyword.h"
+
+#include <stdbool.h>
+
 
 #define PushArray(type, array, count, val, defaultValue)                       \
 	do {                                                                       \
@@ -497,6 +502,23 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 								   uf,
 								   scope,
 								   KEY_THIS,
+								   node->Position);
+				break;
+			}
+		case AST_BASE:
+			{
+				if (!(ScopeInside(scope, SCOPE_CLASS)
+					  || ScopeInside(scope, SCOPE_FUNCTION))) {
+					ThrowError(compiler->Parser->Lexer->Path,
+							   compiler->Parser->Lexer->Data,
+							   node->Position,
+							   "'base' can only be used inside "
+							   "class methods");
+				}
+				_CompileIdentifier(compiler,
+								   uf,
+								   scope,
+								   KEY_BASE,
 								   node->Position);
 				break;
 			}
@@ -1742,6 +1764,7 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 			}
 		default:
 			{
+				printf("TYPE %d\n", node->Type);
 				ThrowError(compiler->Parser->Lexer->Path,
 						   compiler->Parser->Lexer->Data,
 						   node->Position,
@@ -2209,15 +2232,15 @@ static void _CompileClassDeclaration(Compiler*	   compiler,
 					if (!isStatic) {
 						// Emit 'this' as the first
 						// parameter
-						int offset = UserFunctionEmitLocal(fn);
+						int toffset = UserFunctionEmitLocal(fn);
 						ScopeSetSymbol(fnScope,
 									   KEY_THIS,
 									   false,
 									   true,
 									   false,
-									   offset);
+									   toffset);
 						_EmitLine(compiler, fn, nextLine);
-						_EmitArg(compiler, fn, OP_STORE_LOCAL, offset);
+						_EmitArg(compiler, fn, OP_STORE_LOCAL, toffset);
 						paramc++;
 					}
 
@@ -2254,6 +2277,27 @@ static void _CompileClassDeclaration(Compiler*	   compiler,
 					}
 
 					fn->Argc = paramc;
+
+					if (!isStatic) {
+						// Extract 'base' from 'this'
+						_EmitLine(compiler, fn, nextLine);
+						_EmitArg(compiler, fn, OP_LOAD_LOCAL, 0);
+
+						_EmitLine(compiler, fn, nextLine);
+						_Emit(compiler, fn, OP_CLASS_GETBASE);
+
+						// Emmit 'base' as the second
+						int boffset = UserFunctionEmitLocal(fn);
+						ScopeSetSymbol(fnScope,
+									   KEY_BASE,
+									   false,
+									   true,
+									   false,
+									   boffset);
+						_EmitLine(compiler, fn, nextLine);
+						_EmitArg(compiler, fn, OP_STORE_LOCAL, boffset);
+						paramc++;
+					}
 
 					while (body != NULL) {
 						_CompileStatement(compiler, fn, fnScope, body);

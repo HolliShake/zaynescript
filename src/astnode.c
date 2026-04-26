@@ -1,16 +1,20 @@
 
 #include "./astnode.h"
 
+#include <stdbool.h>
+
 static Ast* InitAst(AstType type, Position position) {
-	Ast* ast	  = Allocate(sizeof(Ast));
-	ast->Type	  = type;
-	ast->Position = position;
-	ast->Value	  = NULL;
-	ast->A		  = NULL;
-	ast->B		  = NULL;
-	ast->C		  = NULL;
-	ast->D		  = NULL;
-	ast->Next	  = NULL;
+	Ast* ast	   = Allocate(sizeof(Ast));
+	ast->Position  = position;
+	ast->Type	   = type;
+	ast->Flag	   = false;
+	ast->Immediate = false;
+	ast->Value	   = NULL;
+	ast->A		   = NULL;
+	ast->B		   = NULL;
+	ast->C		   = NULL;
+	ast->D		   = NULL;
+	ast->Next	   = NULL;
 	return ast;
 }
 
@@ -63,6 +67,11 @@ Ast* AstNull(Position position) {
 
 Ast* AstThis(Position position) {
 	Ast* ast = InitAst(AST_THIS, position);
+	return ast;
+}
+
+Ast* AstBase(Position position) {
+	Ast* ast = InitAst(AST_BASE, position);
 	return ast;
 }
 
