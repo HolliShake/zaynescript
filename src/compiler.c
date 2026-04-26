@@ -1,6 +1,11 @@
 
 #include "./compiler.h"
 
+#include "global.h"
+#include "keyword.h"
+
+#include <stdbool.h>
+
 
 #define PushArray(type, array, count, val, defaultValue)                       \
 	do {                                                                       \
@@ -500,6 +505,23 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 								   node->Position);
 				break;
 			}
+		case AST_BASE:
+			{
+				if (!(ScopeInside(scope, SCOPE_CLASS)
+					  || ScopeInside(scope, SCOPE_FUNCTION))) {
+					ThrowError(compiler->Parser->Lexer->Path,
+							   compiler->Parser->Lexer->Data,
+							   node->Position,
+							   "'base' can only be used inside "
+							   "class methods");
+				}
+				_CompileIdentifier(compiler,
+								   uf,
+								   scope,
+								   KEY_BASE,
+								   node->Position);
+				break;
+			}
 		case AST_LIST_LITERAL:
 			{
 				Ast* elements  = node->A;
@@ -716,26 +738,13 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 					cls			   = ctor_call->A;
 				}
 
-				int argc = 0;
-				// Count arguments first
-				Ast* argCount = arguments;
-				while (argCount != NULL) {
-					argc++;
-					argCount = argCount->Next;
-				}
-
-				// Emit arguments in reverse order
-				Ast** argArray = Allocate(sizeof(Ast*) * argc);
-				int	  i		   = 0;
-				Ast*  arg	   = arguments;
+				int	 argc = 0;
+				Ast* arg  = arguments;
 				while (arg != NULL) {
-					argArray[i++] = arg;
-					arg			  = arg->Next;
+					_CompileExpression(compiler, uf, scope, arg);
+					arg = arg->Next;
+					++argc;
 				}
-				for (int j = argc - 1; j >= 0; j--) {
-					_CompileExpression(compiler, uf, scope, argArray[j]);
-				}
-				free(argArray);
 
 				_CompileExpression(compiler, uf, scope, cls);
 				_EmitLine(compiler, uf, node->Position);
@@ -779,34 +788,28 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 
 							// Count arguments first
 							Ast * arg = args, *head = arg;
-							Ast** argsReverse = Allocate(sizeof(Ast*));
+							Ast** argsArray = Allocate(sizeof(Ast*));
 
-							argsReverse[argc++] = obj;
-							argsReverse = Reallocate(argsReverse,
-													 sizeof(Ast*) * (argc + 1));
+							argsArray[argc++] = obj;
+							argsArray = Reallocate(argsArray,
+												   sizeof(Ast*) * (argc + 1));
 
 							while (head != NULL) {
-								argsReverse[argc++] = head;
-								argsReverse =
-									Reallocate(argsReverse,
+								argsArray[argc++] = head;
+								argsArray =
+									Reallocate(argsArray,
 											   sizeof(Ast*) * (argc + 1));
 								head = head->Next;
 							}
 
-							for (int i = argc - 1; i >= 0; i--) {
+							for (int i = 0; i < argc; i++) {
 								_CompileExpression(compiler,
 												   uf,
 												   scope,
-												   argsReverse[i]);
+												   argsArray[i]);
 							}
 
-							free(argsReverse);
-
-							_EmitLine(compiler, uf, node->Position);
-							_Emit(compiler,
-								  uf,
-								  OP_DUPTOP);  // duplicate
-											   // for 'this'
+							free(argsArray);
 
 							if (objc->Type == AST_MEMBER) {
 								_EmitLine(compiler, uf, node->Position);
@@ -824,25 +827,14 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 						}
 					default:
 						{
-							// Count arguments first
-							Ast * arg = args, *head = arg;
-							Ast** argsReverse = Allocate(sizeof(Ast*));
+							// Evaluate regular call arguments
+							// left-to-right to match JS side-effect ordering.
+							Ast* head = args;
 							while (head != NULL) {
-								argsReverse[argc++] = head;
-								argsReverse =
-									Reallocate(argsReverse,
-											   sizeof(Ast*) * (argc + 1));
+								_CompileExpression(compiler, uf, scope, head);
+								argc++;
 								head = head->Next;
 							}
-
-							for (int i = argc - 1; i >= 0; i--) {
-								_CompileExpression(compiler,
-												   uf,
-												   scope,
-												   argsReverse[i]);
-							}
-
-							free(argsReverse);
 
 							_CompileExpression(compiler, uf, scope, objc);
 							_EmitLine(compiler, uf, node->Position);
@@ -1742,6 +1734,7 @@ static Value* _CompileExpressionMain(Compiler*	   compiler,
 			}
 		default:
 			{
+				printf("TYPE %d\n", node->Type);
 				ThrowError(compiler->Parser->Lexer->Path,
 						   compiler->Parser->Lexer->Data,
 						   node->Position,
@@ -2209,15 +2202,15 @@ static void _CompileClassDeclaration(Compiler*	   compiler,
 					if (!isStatic) {
 						// Emit 'this' as the first
 						// parameter
-						int offset = UserFunctionEmitLocal(fn);
+						int toffset = UserFunctionEmitLocal(fn);
 						ScopeSetSymbol(fnScope,
 									   KEY_THIS,
 									   false,
 									   true,
 									   false,
-									   offset);
+									   toffset);
 						_EmitLine(compiler, fn, nextLine);
-						_EmitArg(compiler, fn, OP_STORE_LOCAL, offset);
+						_EmitArg(compiler, fn, OP_STORE_LOCAL, toffset);
 						paramc++;
 					}
 
@@ -2254,6 +2247,27 @@ static void _CompileClassDeclaration(Compiler*	   compiler,
 					}
 
 					fn->Argc = paramc;
+
+					if (!isStatic) {
+						// Extract 'base' from 'this'
+						_EmitLine(compiler, fn, nextLine);
+						_EmitArg(compiler, fn, OP_LOAD_LOCAL, 0);
+
+						_EmitLine(compiler, fn, nextLine);
+						_Emit(compiler, fn, OP_CLASS_GETBASE);
+
+						// Emmit 'base' as the second
+						int boffset = UserFunctionEmitLocal(fn);
+						ScopeSetSymbol(fnScope,
+									   KEY_BASE,
+									   false,
+									   true,
+									   false,
+									   boffset);
+						_EmitLine(compiler, fn, nextLine);
+						_EmitArg(compiler, fn, OP_STORE_LOCAL, boffset);
+						paramc++;
+					}
 
 					while (body != NULL) {
 						_CompileStatement(compiler, fn, fnScope, body);

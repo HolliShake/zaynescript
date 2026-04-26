@@ -132,6 +132,19 @@ Ast* AstNull(Position position);
 Ast* AstThis(Position position);
 
 /**
+ * @brief Creates an AST node representing the 'base' keyword.
+ *
+ * Allocates and initializes an AST_BASE node that represents the
+ * 'base' keyword in the source code, typically used within class
+ * methods to refer to the base class instance.
+ *
+ * @param position Source code location information.
+ * @return Pointer to newly allocated AST_BASE node, or NULL on
+ * allocation failure.
+ */
+Ast* AstBase(Position position);
+
+/**
  * @brief Creates an AST node representing a spread operator.
  *
  * Allocates and initializes an AST_SPREAD_OPERATOR node that

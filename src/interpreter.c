@@ -1,6 +1,11 @@
 
 #include "./interpreter.h"
 
+#include "global.h"
+
+#include <sched.h>
+#include <stdbool.h>
+
 static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
 	// libbf uses size == 0 to signal a free() operation
 	if (size == 0) {
@@ -753,6 +758,20 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 						(opcode == OP_CLASS_DEFINE_STATIC_MEMBER));
 					break;
 				}
+			case OP_CLASS_GETBASE:
+				{
+					obj = FPopp(interpreter, frame);
+					if (!ValueIsClassInstance(obj)) {
+						FPush(interpreter, frame, interpreter->Object);
+						break;
+					}
+					ClassInstance* inst = CoerceToClassInstance(obj);
+					Class*		   cls	= CoerceToUserClass(inst->Proto);
+					FPush(interpreter,
+						  frame,
+						  cls->Base != NULL ? cls->Base : interpreter->Object);
+					break;
+				}
 			case OP_SET_INDEX:
 				{
 					val = FPopp(interpreter, frame);
@@ -825,8 +844,8 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 				{
 					argc = ReadInt32(uf->Codes, ip);
 					Forward(4);
-					key = FPopp(interpreter, frame);  // method name
-					obj = FPopp(interpreter, frame);  // 'this' object
+					key = FPopp(interpreter, frame);		  // method name
+					obj = FPeekAt(interpreter, frame, argc);  // 'this' object
 					res = DoCallMethod(interpreter, frame, obj, key, argc);
 					if (ValueIsError(res)) {
 						// Raise

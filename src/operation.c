@@ -1,6 +1,12 @@
 
 #include "./operation.h"
 
+#include "global.h"
+
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 
 #define FreeTempBf(interpreter, bf, val)                                       \
 	do {                                                                       \
@@ -66,6 +72,16 @@ extern Value* FPopp(Interpreter* interpreter, CallFrame* frame);
  * @origin src/interpreter.c
  */
 extern void FPopN(Interpreter* interpreter, CallFrame* frame, int n);
+
+/**
+ * @brief Peeks at the top operand from frame without popping it.
+ * @param interpreter VM context (unused by the implementation, kept for API
+ * consistency).
+ * @param frame Target frame to peek from.
+ * @return Value at frame->Operand[frame->OperandC - 1].
+ * @origin src/interpreter.c
+ */
+extern Value* FPeek(Interpreter* interpreter, CallFrame* frame);
 
 static int _GetConstantOffset(Interpreter* interpreter, Value* value) {
 	if (value == NULL) {
@@ -186,18 +202,9 @@ bool IsMethodOfObject(Interpreter* interpreter, Value* obj, Value* method) {
 			cls = CoerceToUserClass(cls->Base);
 		}
 	} else if (ValueIsClass(obj)) {
-		// Handle Class static functions or attributes
-		Class* cls = CoerceToUserClass(obj);
-
-		while (cls != NULL) {
-			if (ClassHasMember(cls, key, false, true)) {
-				free(key);
-				return true;
-			}
-			if (cls->Base == NULL)
-				break;
-			cls = CoerceToUserClass(cls->Base);
-		}
+		// Class has no method!
+		free(key);
+		return false;
 	} else if (ValueIsClassInstance(obj)) {
 		// Handle class instance methods or attributes
 		ClassInstance* instance = CoerceToClassInstance(obj);
@@ -303,6 +310,12 @@ Value* GenericGetAttribute(Interpreter* interpreter,
 		Class* cls = CoerceToUserClass(obj);
 
 		while (cls != NULL) {
+			// This allows 'base.method(this)'
+			if (ClassHasMember(cls, key, false, forMethodCall)) {
+				Value* member = ClassGetMember(cls, key, false);
+				free(key);
+				return member;
+			}
 			if (ClassHasMember(cls, key, true, forMethodCall)) {
 				Value* member = ClassGetMember(cls, key, true);
 				free(key);
@@ -672,6 +685,37 @@ Value* DoGetIndex(Interpreter* interpreter, Value* obj, Value* index) {
 	return GenericGetAttribute(interpreter, obj, index, false);
 }
 
+static void RotateN(int narg, CallFrame* frame) {
+	// Rotate the top N operands once:
+	// [ ..., A, B, C ] -> [ ..., C, A, B ] for narg=3.
+	if (frame == NULL || narg <= 1 || narg > frame->OperandC) {
+		return;
+	}
+
+	int	   top	= frame->OperandC - 1;
+	Value* last = frame->Operand[top];
+	for (int i = 0; i < narg - 1; i++) {
+		frame->Operand[top - i] = frame->Operand[top - i - 1];
+	}
+	frame->Operand[top - (narg - 1)] = last;
+}
+
+static void RotateNLeft(int narg, CallFrame* frame) {
+	// Rotate the top N operands to the left:
+	// [ ..., A, B, C ] -> [ ..., B, C, A ] for narg=3.
+	if (frame == NULL || narg <= 1 || narg > frame->OperandC) {
+		return;
+	}
+
+	int	   top	 = frame->OperandC - 1;
+	int	   base	 = top - (narg - 1);
+	Value* first = frame->Operand[base];
+	for (int i = base; i < top; i++) {
+		frame->Operand[i] = frame->Operand[i + 1];
+	}
+	frame->Operand[top] = first;
+}
+
 Value* DoCallCtor(Interpreter* interpreter,
 				  CallFrame*   frame,
 				  Value*	   clsValue,
@@ -723,6 +767,8 @@ Value* DoCallCtor(Interpreter* interpreter,
 
 	FPush(interpreter, frame, instanceValue);
 
+	RotateN(argc + 1, frame);  //  add 1 for 'this'
+
 	Value* constructor = ClassGetMember(cls, CONSTRUCTOR_NAME, false);
 
 	Value* result = DoCall(interpreter, frame, constructor, ++argc, true);
@@ -744,11 +790,12 @@ Value* DoCallMethod(Interpreter* interpreter,
 					int			 argc) {
 	bool withThis = IsMethodOfObject(interpreter, obj, methodName);
 	if (!withThis) {
+		RotateNLeft(argc, frame);
 		argc--;
 		FPopp(interpreter, frame);	// pop 'this'
 	}
 
-	Value* method = GenericGetAttribute(interpreter, obj, methodName, true);
+	Value* method = GenericGetAttribute(interpreter, obj, methodName, withThis);
 
 	if (ValueIsNull(method)) {
 		FPopN(interpreter, frame, argc);
@@ -794,6 +841,38 @@ Value* DoCall(Interpreter* interpreter,
 			  Value*	   fn,
 			  int		   argc,
 			  bool		   withThis) {
+	if (ValueIsClass(fn)) {
+		// If calling a base class, user must supply 'this' manually
+		if (argc < 1) {
+			return NewErrorFValue(interpreter,
+								  "%s: thisArg is required",
+								  ARGUMENT_ERROR);
+		}
+		// Extract 'init' from this class
+		Class* cls = CoerceToUserClass(fn);
+
+		Value* instance = FPeek(interpreter, frame);
+
+		if (!ClassHasMember(cls, CONSTRUCTOR_NAME, false, true)) {
+			// Do nothing, init is not defined
+			FPopN(interpreter, frame, argc);
+			FPush(interpreter, frame, instance);
+			return interpreter->Null;
+		}
+
+		Value* constructor = ClassGetMember(cls, CONSTRUCTOR_NAME, false);
+		Value* result = DoCall(interpreter, frame, constructor, argc, false);
+
+		if (ValueIsNull(result)) {
+			FPopp(interpreter, frame);	// Pop constructor return value
+			FPush(interpreter,
+				  frame,
+				  instance);  // Push instance as return value to allow chaining
+		}
+
+		return result;
+	}
+
 	if (!ValueIsCallable(fn)) {
 		FPopN(interpreter, frame, argc);
 		return NewErrorFValue(interpreter,
@@ -829,7 +908,10 @@ Value* DoCall(Interpreter* interpreter,
 			args[0] = NULL;
 		}
 
-		for (int i = 0; i < argc; i++) {
+		for (int i = argc - 1; i >= 0; i--) {
+			// Caller stack top holds the last evaluated argument.
+			// Reverse while popping so native functions receive
+			// arguments in source order (arg0..argN).
 			args[i] = FPopp(interpreter, frame);
 			// printf("ARG[%d]: %s\n", i,
 			// ValueToString(args[i]));
@@ -873,19 +955,27 @@ Value* DoCall(Interpreter* interpreter,
 	// Move call arguments from caller stack into callee stack so
 	// function prologue OP_STORE_LOCAL opcodes bind parameters safely.
 	if (argc > 0) {
+		// Becomes left-to-right order of arguments.
+		// Exampl:
+		// fn(a, b, c) -> BOT<- [a, b, c] ->TOP
 		Value** callArgs = Allocate(sizeof(Value*) * argc);
 		for (int i = 0; i < argc; i++) {
 			callArgs[i] = FPopp(interpreter, frame);
 		}
-		for (int i = argc - 1; i >= 0; i--) {
+
+		// Push arguments to the new frame.
+		for (int i = 0; i < argc; i++) {
 			FPush(interpreter, newFrame, callArgs[i]);
 		}
+
 		free(callArgs);
 	}
 
 	// 2. Run the function
 	Run(interpreter, newFrame, NULL);
+
 	SetCurrentFrame(interpreter, frame);
+
 	ReleaseFrame(interpreter, newFrame);
 
 	PopTrace(interpreter);

@@ -8,3 +8,4 @@
 [submodule "thirdparty/crypto/RHash"]
 	path = thirdparty/crypto/RHash
 	url = https://github.com/rhash/RHash.git
+	ignore = dirty
