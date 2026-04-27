@@ -33,7 +33,9 @@ static bool _LoadMysqlApi(void) {
 	if (_mysql_api.Handle)
 		return true;
 
-	const char* candidates[] = { "libmariadb.so",
+	const char* candidates[] = { "mariadb-connector-c.dll",
+								 "libmariadb.dll",
+								 "libmariadb.so",
 								 "libmariadb.so.3",
 								 "libmysqlclient.so",
 								 "libmysqlclient.so.21",
