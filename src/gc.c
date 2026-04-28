@@ -1,6 +1,8 @@
 
 #include "./gc.h"
 
+#include "global.h"
+
 /**
  * @brief Builds a fresh NUL-terminated C string describing value so GC/debug
  * paths can log or compare keys.
@@ -121,8 +123,8 @@ static void _Free(Interpreter* interp, Value* value) {
 			}
 		case VLT_PROMISE:
 			{
-				StateMachine* sm = CoerceToStateMachine(value);
-				FreeStateMachine(sm);
+				Promise* promise = CoerceToPromise(value);
+				FreePromise(promise);
 				value->Value.Opaque = NULL;
 				break;
 			}
@@ -261,16 +263,23 @@ void Mark(Value* value) {
 			}
 		case VLT_PROMISE:
 			{
-				StateMachine* sm = CoerceToStateMachine(value);
-				if (sm != NULL) {
-					Mark(sm->WaitFor);
-					Mark(sm->Value);
-					Mark(sm->Callback);
-					Mark(sm->GlobalEnv);
-					_MarkCallFrame(sm->Frame);
+				Promise* promise = CoerceToPromise(value);
+				if (promise != NULL) {
+					Mark(promise->Parent);
+					Mark(promise->Result);
+					Mark(promise->Callback);
+					Mark(promise->Globals);
+					_MarkCallFrame(promise->SuspendedCallFrame);
 
-					for (int i = 0; i < sm->WaitListC; i++) {
-						Mark(sm->WaitList[i]);
+					ListStateMachineNode* node = promise->FullfillReactions;
+					while (node != NULL) {
+						Mark(node->Promise);
+						node = node->Next;
+					}
+					node = promise->RejectReactions;
+					while (node != NULL) {
+						Mark(node->Promise);
+						node = node->Next;
 					}
 				}
 				break;

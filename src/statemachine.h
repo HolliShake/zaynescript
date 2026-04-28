@@ -32,58 +32,25 @@
  * @return Pointer to a newly allocated StateMachine, or NULL on
  * allocation failure.
  */
-StateMachine* CreateStateMachine(StateMachineState initial,
-								 bool			   isCallback,
-								 Value*			   waitFor,
-								 Value*			   function);
+Promise* CreatePromise(PromiseState initial,
+					   CallFrame*	suspendedCallFrame,
+					   Value*		parent,
+					   Value*		globals,
+					   Value*		callback);
 
 /**
- * @brief Sets the state and related information of a
- * StateMachine.
+ * @brief Adds a reaction to the Promise.
  *
- * This function updates the state of the StateMachine along with
- * its instruction pointer, environment, waitFor value, and
- * associated function. It is typically called when transitioning
- * the state machine to a new state (e.g., from pending to
- * fulfilled or rejected).
+ * This function adds a reaction to the Promise, which is used to
+ * track the reactions to the Promise.
  *
- * @param stateMachine Pointer to the StateMachine instance to
- * update.
- * @param newState The new state to set for the StateMachine.
- * @param ip The instruction pointer to set for the StateMachine.
- * @param env The environment value to associate with the
- * StateMachine.
- * @param waitFor The value that the StateMachine is waiting for
- * (e.g., a promise).
- * @param value The value to set on the StateMachine (e.g.,
- * resolved value or rejection reason).
+ * @param promise Pointer to the Promise instance.
+ * @param promiseValue The value to add to the reaction.
  */
-void StateMachineSet(StateMachine*	   stateMachine,
-					 StateMachineState newState,
-					 Value*			   waitFor,
-					 Value*			   value);
+void PromiseAddReaction(Promise* promise, Value* promiseValue);
 
 /**
- * @brief Updates the state and value of a StateMachine.
- *
- * This function is a simplified version of StateMachineSet that
- * only updates the state and value of the StateMachine, without
- * modifying the instruction pointer, environment, or waitFor
- * fields. It is useful for quickly transitioning the state
- * machine to a new state with an associated value.
- *
- * @param stateMachine Pointer to the StateMachine instance to
- * update.
- * @param newState The new state to set for the StateMachine.
- * @param value The value to set on the StateMachine (e.g.,
- * resolved value or rejection reason).
- */
-void StateMachineUpdate(StateMachine*	  stateMachine,
-						StateMachineState newState,
-						Value*			  value);
-
-/**
- * @brief Sets the StateMachine to an awaiting state with a
+ * @brief Sets the Promise to an awaiting state with a
  * specified waitFor value.
  *
  * This function transitions the StateMachine to a new state
@@ -98,7 +65,7 @@ void StateMachineUpdate(StateMachine*	  stateMachine,
  * @param value The value that the StateMachine is waiting for
  * (e.g., a promise).
  */
-void StateMachineAwait(StateMachine* stateMachine, Value* value);
+void PromiseAwait(Promise* promise, Value* promiseValue);
 
 /**
  * @brief Transitions the StateMachine to a fulfilled state with
@@ -115,7 +82,7 @@ void StateMachineAwait(StateMachine* stateMachine, Value* value);
  * @param value The value to set on the StateMachine (e.g.,
  * resolved value).
  */
-void StateMachineFulfill(StateMachine* stateMachine, Value* value);
+void PromiseFulfill(Promise* promise, Value* value);
 
 /**
  * @brief Transitions the StateMachine to a rejected state with a
@@ -131,22 +98,7 @@ void StateMachineFulfill(StateMachine* stateMachine, Value* value);
  * @param value The rejection reason value (e.g., an error
  * Value).
  */
-void StateMachineReject(StateMachine* stateMachine, Value* value);
-
-/**
- * @brief Adds a value to the StateMachine's wait list.
- *
- * This function appends a value to the StateMachine's wait list,
- * which is used to track promises or other asynchronous
- * operations that are waiting for the state machine to resolve.
- * The wait list will be processed when the state machine
- * transitions to a fulfilled or rejected state.
- *
- * @param stateMachine Pointer to the StateMachine instance.
- * @param value The value to add to the wait list (e.g., a
- * promise).
- */
-void StateMachineAddWaitList(StateMachine* stateMachine, Value* value);
+void PromiseReject(Promise* promise, Value* value);
 
 /**
  * @brief Frees a StateMachine and its resources.
@@ -157,6 +109,6 @@ void StateMachineAddWaitList(StateMachine* stateMachine, Value* value);
  *
  * @param sm Pointer to the StateMachine to free.
  */
-void FreeStateMachine(StateMachine* sm);
+void FreePromise(Promise* promise);
 
 #endif

@@ -958,20 +958,49 @@ typedef struct callframe_struct {
 	Value* Fn;
 	size_t Ip;
 	int	   RefCount;
+	int	   TryHandler[256];
+	int	   TryHandlerC;
+	bool   Suspend;
 } CallFrame;
 
-static inline void InitCallFrame(CallFrame* frame,
-								 CallFrame* parent,
-								 Value*		global,
-								 Value*		env,
-								 Value*		fn) {
-	frame->Parent	 = parent;
-	frame->OperandC	 = 0;
-	frame->GlobalEnv = global;
-	frame->Env		 = env;
-	frame->Fn		 = fn;
-	frame->Ip		 = 0;
-	frame->RefCount	 = 1;
+void* _Allocate(String file, int line, size_t size);
+
+static inline CallFrame*
+InitCallFrame(CallFrame* parent, Value* global, Value* env, Value* fn) {
+	CallFrame* frame   = _Allocate(__FILE__, __LINE__, sizeof(CallFrame));
+	frame->Parent	   = parent;
+	frame->OperandC	   = 0;
+	frame->GlobalEnv   = global;
+	frame->Env		   = env;
+	frame->Fn		   = fn;
+	frame->Ip		   = 0;
+	frame->RefCount	   = 1;
+	frame->TryHandlerC = 0;
+	frame->Suspend	   = false;
+
+	if (parent != NULL) {}
+
+	return frame;
+}
+
+static inline void SuspendFrame(CallFrame* frame) {
+	frame->Suspend = true;
+}
+
+static inline void PushTry(CallFrame* frame, int jmp) {
+	frame->TryHandler[frame->TryHandlerC++] = jmp;
+}
+
+static inline void PopNTry(CallFrame* frame, int n) {
+	frame->TryHandlerC -= n;
+}
+
+static inline void PoppTry(CallFrame* frame) {
+	PopNTry(frame, 1);
+}
+
+static inline int PeekTry(CallFrame* frame) {
+	return frame->TryHandler[frame->TryHandlerC - 1];
 }
 
 /**
@@ -1045,91 +1074,35 @@ typedef struct compiler_struct {
 } Compiler;
 
 /**
- * @enum StateMachineState
- * @brief Enumeration representing the possible states of a state
- * machine.
- *
- * @var PENDING
- *      State indicating that the operation is still in progress.
- * @var FULFILLED
- *      State indicating that the operation has completed
- * successfully.
- * @var REJECTED
- *      State indicating that the operation has failed or been
- * rejected.
+ * @struct list_satatemachine_node_struct
+ * @brief Node of the list of state machines
  */
-typedef enum state_machine_state_enum {
+typedef struct list_satatemachine_node_struct ListStateMachineNode;
+
+typedef struct list_satatemachine_node_struct {
+	Value*				  Promise;
+	ListStateMachineNode* Next;
+} ListStateMachineNode;
+
+typedef enum promise_state_enum {
 	PENDING,
 	FULFILLED,
 	REJECTED,
-} StateMachineState;
+} PromiseState;
 
-/**
- * @struct StateMachine
- * @brief Represents a state machine for managing asynchronous
- * operations.
- *
- * @var StateMachine::State
- *      The current state of the state machine (PENDING,
- * FULFILLED, or REJECTED).
- * @var StateMachine::StackTop
- *      The current top index of the execution stack for this
- * state machine.
- * @var StateMachine::StackBot
- *      The base index of the execution stack for this state
- * machine.
- * @var StateMachine::IsCallback
- *      True if this state machine is a callback (e.g. then/catch
- * handler).
- * @var StateMachine::CallEnv
- *      The execution environment active when the state machine
- * was created.
- * @var StateMachine::WaitFor
- *      Pointer to a value that the state machine is waiting on
- * (e.g. a promise).
- * @var StateMachine::Value
- *      Pointer to the resulting value produced by the state
- * machine operation.
- * @var StateMachine::Function
- *      Pointer to the primary function or operation being
- * executed by the state machine.
- * @var StateMachine::Ip
- *      Instruction pointer; tracks the execution position within
- * the state machine.
- * @var StateMachine::Line
- *      Line information for debugging.
- * @var StateMachine::Stacks
- *      Saved execution stack for this state machine's context.
- * @var StateMachine::WaitList
- *      Array of values (promises) that this state machine is
- * waiting on.
- * @var StateMachine::WaitListC
- *      Count of items in the WaitList.
- * @var StateMachine::EnvStack
- *      Saved environment stack for this state machine's context.
- * @var StateMachine::EnvTop
- *      Top index of the saved environment stack.
- * @var StateMachine::EnvBot
- *      Base index of the saved environment stack.
- */
-typedef struct state_machine_struct {
-	StateMachineState State; /**< Current state (PENDING,
-								FULFILLED, or REJECTED) */
-	CallFrame* Frame;		 /**< Current call frame for this state machine */
-	bool	   IsCallback;	 /**< True if this is a callback state
-								machine */
-	Value* GlobalEnv;	/**< Global environment captured for callback/task frame
-						   initialization */
-	Value* Callback;	/*< Pointer to the callback function (if IsCallback is
-						   true) */
-	Value* WaitFor;		/**< Value being awaited (e.g. a promise) */
-	Value* Value;		/**< Resulting value of the operation */
-	bool   IsCatched;	/**< True if this state machine has been
-						   caught by a catch	 handler */
-	LineInfo Line;		/**< Line information for debugging */
-	Value**	 WaitList;	/**< Array of awaited values */
-	size_t	 WaitListC; /**< Count of items in WaitList */
-} StateMachine;
+typedef struct promise_struct {
+	PromiseState State;						  /**< Current state (PENDING,
+														 FULFILLED, or REJECTED) */
+	CallFrame*			  SuspendedCallFrame; /**< Frame that is suspended */
+	Value*				  Globals;			  /**< Global environment */
+	Value*				  Parent;			  /**< Parent promise */
+	Value*				  Callback;			  /**< Callback function */
+	Value*				  Result;			  /**< Result of the operation */
+	ListStateMachineNode* FullfillReactions; /**< List of reactions to be called
+											   when the promise is fulfilled */
+	ListStateMachineNode* RejectReactions;	 /**< List of reactions to be called
+												when the promise is rejected */
+} Promise;
 
 // -----------------------------------------------------------------------------
 // Memory Allocation & Utilities
@@ -1405,16 +1378,15 @@ Class* CoerceToUserClass(Value* value);
 ClassInstance* CoerceToClassInstance(Value* value);
 
 /**
- * @brief Coerces a value to a StateMachine.
+ * @brief Coerces a value to a Promise.
  *
- * Extracts the StateMachine pointer from a value. The value must
- * be of type VLT_CLASS_INSTANCE and its prototype must be the
- * built-in StateMachine class.
+ * Extracts the Promise pointer from a value. The value must
+ * be of type VLT_PROMISE.
  *
  * @param value The value to coerce.
- * @return Pointer to the StateMachine.
+ * @return Pointer to the Promise.
  */
-StateMachine* CoerceToStateMachine(Value* value);
+Promise* CoerceToPromise(Value* value);
 
 /**
  * @brief Coerces a value to a Blob.

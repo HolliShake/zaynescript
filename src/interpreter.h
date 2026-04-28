@@ -69,6 +69,15 @@ void SetCurrentFrame(Interpreter* interpreter, CallFrame* frame);
 void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/);
 
 /**
+ * @brief Panics the interpreter and exits the program.
+ *
+ * This function is used to panic the interpreter and exit the program.
+ *
+ * @param interpreter Pointer to the interpreter instance.
+ */
+void InterpreterPanicExit(Interpreter* interpreter);
+
+/**
  * @brief Frees the interpreter and all associated memory.
  *
  * Deallocates the interpreter instance and releases all

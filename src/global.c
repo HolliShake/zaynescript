@@ -297,13 +297,13 @@ ClassInstance* CoerceToClassInstance(Value* value) {
 	Panic("Value is not a ClassInstance");
 }
 
-StateMachine* CoerceToStateMachine(Value* value) {
+Promise* CoerceToPromise(Value* value) {
 	if (value == NULL)
 		return NULL;
 	if (value->Type == VLT_PROMISE) {
-		return (StateMachine*) value->Value.Opaque;
+		return (Promise*) value->Value.Opaque;
 	}
-	Panic("Value is not a Promise/StateMachine");
+	Panic("Value is not a Promise");
 }
 
 Blob* CoerceToBlob(Value* value) {

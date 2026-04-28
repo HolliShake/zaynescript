@@ -1,66 +1,71 @@
 
 #include "./statemachine.h"
 
-StateMachine* CreateStateMachine(StateMachineState initial,
-								 bool			   isCallback,
-								 Value*			   promise,
-								 Value*			   function) {
-	StateMachine* sm = Allocate(sizeof(StateMachine));
-	sm->State		 = initial;
-	sm->Frame		 = NULL;
-	sm->IsCallback	 = isCallback;
-	sm->GlobalEnv	 = NULL;
-	sm->Callback	 = function;
-	sm->WaitFor		 = promise;
-	sm->Value		 = NULL;
-	sm->IsCatched	 = false;
-	sm->WaitList = Allocate(sizeof(Value*)), sm->WaitList[0] = NULL;
-	sm->WaitListC = 0;
-	return sm;
+Promise* CreatePromise(PromiseState initial,
+					   CallFrame*	suspendedCallFrame,
+					   Value*		parent,
+					   Value*		globals,
+					   Value*		callback) {
+	Promise* p			  = Allocate(sizeof(Promise));
+	p->State			  = initial;
+	p->SuspendedCallFrame = suspendedCallFrame;
+	p->Callback			  = callback;
+	p->Parent			  = parent;
+	p->Globals			  = globals;
+	p->Result			  = NULL;
+	p->FullfillReactions  = NULL;
+	p->RejectReactions	  = NULL;
+	return p;
 }
 
-void StateMachineSet(StateMachine*	   stateMachine,
-					 StateMachineState newState,
-					 Value*			   waitFor,
-					 Value*			   value) {
-	stateMachine->State	  = newState;
-	stateMachine->WaitFor = waitFor;
-	stateMachine->Value	  = value;
+static void _PushReactions(Promise* promise, Value* promiseValue) {
+	ListStateMachineNode* node = Allocate(sizeof(ListStateMachineNode));
+	node->Promise			   = promiseValue;
+	node->Next				   = NULL;
+
+	// Add to the end of the FullfillReactions list
+	if (promise->FullfillReactions == NULL) {
+		promise->FullfillReactions = node;
+	} else {
+		ListStateMachineNode* ftail = promise->FullfillReactions;
+		while (ftail->Next != NULL) {
+			ftail = ftail->Next;
+		}
+		ftail->Next = node;
+	}
+
+	// Add to the end of the RejectReactions list
+	if (promise->RejectReactions == NULL) {
+		promise->RejectReactions = node;
+	} else {
+		ListStateMachineNode* rtail = promise->RejectReactions;
+		while (rtail->Next != NULL) {
+			rtail = rtail->Next;
+		}
+		rtail->Next = node;
+	}
 }
 
-void StateMachineUpdate(StateMachine*	  stateMachine,
-						StateMachineState newState,
-						Value*			  value) {
-	stateMachine->State = newState;
-	stateMachine->Value = value;
+void PromiseAddReaction(Promise* promise, Value* promiseValue) {
+	_PushReactions(promise, promiseValue);
 }
 
-void StateMachineAwait(StateMachine* stateMachine, Value* promise) {
-	stateMachine->State	  = PENDING;
-	stateMachine->WaitFor = promise;
+void PromiseAwait(Promise* promise, Value* promiseValue) {
+	promise->State	= PENDING;
+	promise->Parent = promiseValue;
+	_PushReactions(promise, promiseValue);
 }
 
-void StateMachineFulfill(StateMachine* stateMachine, Value* value) {
-	stateMachine->State = FULFILLED;
-	stateMachine->Value = value;
+void PromiseFulfill(Promise* promise, Value* value) {
+	promise->State	= FULFILLED;
+	promise->Result = value;
 }
 
-void StateMachineReject(StateMachine* stateMachine, Value* value) {
-	stateMachine->State = REJECTED;
-	stateMachine->Value = value;
+void PromiseReject(Promise* promise, Value* value) {
+	promise->State	= REJECTED;
+	promise->Result = value;
 }
 
-void StateMachineAddWaitList(StateMachine* stateMachine, Value* value) {
-	stateMachine->WaitList[stateMachine->WaitListC++] = value;
-	stateMachine->WaitList =
-		Reallocate(stateMachine->WaitList,
-				   sizeof(Value*) * (stateMachine->WaitListC + 1));
-	stateMachine->WaitList[stateMachine->WaitListC] =
-		NULL;  // keep NULL-terminated
-}
-
-void FreeStateMachine(StateMachine* sm) {
-	if (sm->WaitList != NULL)
-		free(sm->WaitList);
-	free(sm);
+void FreePromise(Promise* promise) {
+	free(promise);
 }

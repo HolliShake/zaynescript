@@ -207,6 +207,8 @@
           <ul>
             <li><a href="#bigint">BigInt Literals</a></li>
             <li><a href="#bitwise-not">Bitwise NOT (<code>~</code>)</a></li>
+            <li><a href="#arithmetic-types">Arithmetic type rules</a></li>
+            <li><a href="#unary-types">Unary type rules</a></li>
             <li><a href="#operators">Operators</a></li>
             <li><a href="#spread">Spread Operator</a></li>
             <li><a href="#ternary">Ternary Expressions</a></li>
@@ -391,6 +393,7 @@ fn example() {
             <tr>
               <th>Category</th>
               <th>Operators</th>
+              <th>Valid operand types</th>
             </tr>
           </thead>
           <tbody>
@@ -400,12 +403,19 @@ fn example() {
                 <code>+</code> <code>-</code> <code>*</code> <code>/</code>
                 <code>%</code>
               </td>
+              <td>
+                <code>Int</code>, <code>Number</code>, <code>BigInt</code>, <code>BigNum</code>;
+                <code>String + String</code> (concatenation, <code>+</code> only)
+              </td>
             </tr>
             <tr>
               <td>Bitwise</td>
               <td>
                 <code>~</code> <code>&amp;</code> <code>|</code> <code>^</code>
                 <code>&lt;&lt;</code> <code>&gt;&gt;</code>
+              </td>
+              <td>
+                <code>Int</code>, <code>Number</code>, <code>BigInt</code>, <code>BigNum</code>
               </td>
             </tr>
             <tr>
@@ -414,17 +424,26 @@ fn example() {
                 <code>typeof</code> (unary; see
                 <a href="#typeof-op">below</a>)
               </td>
+              <td>any</td>
             </tr>
             <tr>
               <td>Logical</td>
               <td><code>&amp;&amp;</code> <code>||</code> <code>!</code></td>
+              <td>any (coerces to <code>Bool</code>)</td>
             </tr>
             <tr>
-              <td>Comparison</td>
+              <td>Equality</td>
+              <td><code>==</code> <code>!=</code></td>
+              <td>any type pair</td>
+            </tr>
+            <tr>
+              <td>Ordering</td>
               <td>
-                <code>==</code> <code>!=</code> <code>&lt;</code>
-                <code>&lt;=</code> <code>&gt;</code>
+                <code>&lt;</code> <code>&lt;=</code> <code>&gt;</code>
                 <code>&gt;=</code>
+              </td>
+              <td>
+                <code>Int</code>, <code>Number</code>, <code>BigInt</code>, <code>BigNum</code> only
               </td>
             </tr>
             <tr>
@@ -435,18 +454,22 @@ fn example() {
                 <code>^=</code> <code>&lt;&lt;=</code>
                 <code>&gt;&gt;=</code>
               </td>
+              <td>same as the underlying operator</td>
             </tr>
             <tr>
               <td>Increment / Decrement</td>
               <td><code>++</code> <code>--</code> (prefix and postfix)</td>
+              <td><code>Int</code>, <code>Number</code>, <code>BigInt</code>, <code>BigNum</code></td>
             </tr>
             <tr>
               <td>Spread</td>
               <td><code>...</code> (in array and object literals)</td>
+              <td><code>Array</code>, <code>Object</code></td>
             </tr>
             <tr>
-              <td>Exponentiation (BigInt)</td>
+              <td>Exponentiation</td>
               <td><code>**</code></td>
+              <td><code>BigInt</code>, <code>BigNum</code></td>
             </tr>
           </tbody>
         </table>
@@ -517,6 +540,176 @@ println(typeof (1 + 1));</code></pre>
         </ul>
         <pre><code class="language-javascript">println(~0);    // -1
 println(~4);    // -5</code></pre>
+
+        <!-- ============================================================
+         Arithmetic operator type rules
+         ============================================================ -->
+        <h3 id="arithmetic-types">Arithmetic operator type rules</h3>
+        <p>
+          Each binary arithmetic operator dispatches on the <em>types</em> of
+          both operands. The table below shows which type combinations are
+          accepted. All other combinations produce a <code>TypeError</code>.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Operator</th>
+              <th><code>Int</code></th>
+              <th><code>Number</code></th>
+              <th><code>BigInt</code> / <code>BigNum</code></th>
+              <th><code>String</code></th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>+</code></td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td><code>String + String</code> → concatenation</td>
+            </tr>
+            <tr>
+              <td><code>-</code></td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✗</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td><code>*</code></td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✗</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td><code>/</code></td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✗</td>
+              <td>right operand = 0 → <code>ZeroDivisionError</code></td>
+            </tr>
+            <tr>
+              <td><code>%</code></td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✗</td>
+              <td>right operand = 0 → <code>ZeroDivisionError</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="note">
+          <strong>Mixed-width numerics:</strong>
+          <ul style="margin: 0.5rem 0 0 1.25rem">
+            <li>
+              <code>Int op Number</code> (or vice-versa) is handled by the
+              <code>Number</code> path — both operands are widened to
+              <code>double</code>.
+            </li>
+            <li>
+              Any combination involving a <code>BigInt</code> or
+              <code>BigNum</code> operand (including <code>Int op BigInt</code>
+              or <code>Number op BigNum</code>) is routed through the
+              arbitrary-precision <strong>libbf</strong> path. <code>BigInt op
+              BigInt</code> stays <code>BigInt</code>; any <code>BigNum</code>
+              participant yields <code>BigNum</code>.
+            </li>
+          </ul>
+        </div>
+
+        <!-- ============================================================
+         Unary operator type rules
+         ============================================================ -->
+        <h3 id="unary-types">Unary operator type rules</h3>
+        <p>
+          The table below lists which types each unary operator accepts.
+          Non-numeric operands that are not explicitly supported produce a
+          <code>TypeError</code>.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Operator</th>
+              <th><code>Int</code></th>
+              <th><code>Number</code></th>
+              <th><code>BigInt</code> / <code>BigNum</code></th>
+              <th>Other</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>+</code> (unary plus)</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>TypeError</td>
+              <td>returns value unchanged</td>
+            </tr>
+            <tr>
+              <td><code>-</code> (unary minus)</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>TypeError</td>
+              <td>negates the value</td>
+            </tr>
+            <tr>
+              <td><code>~</code> (bitwise NOT)</td>
+              <td>✓</td>
+              <td>✓ (coerced to <code>long</code>)</td>
+              <td>✓</td>
+              <td>TypeError</td>
+              <td>two's-complement inversion; <code>BigInt</code>/<code>BigNum</code> uses <code>−n − 1</code></td>
+            </tr>
+            <tr>
+              <td><code>!</code> (logical NOT)</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>any type — coerces to <code>Bool</code> first</td>
+            </tr>
+            <tr>
+              <td><code>++</code> (increment)</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>TypeError</td>
+              <td>prefix and postfix forms</td>
+            </tr>
+            <tr>
+              <td><code>--</code> (decrement)</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>TypeError</td>
+              <td>prefix and postfix forms</td>
+            </tr>
+            <tr>
+              <td><code>typeof</code></td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>any type — returns a <code>String</code> tag</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre><code class="language-javascript">println(+5);      // 5     (Int)
+println(-3.14);   // -3.14 (Number)
+println(-2n);     // -2n   (BigInt)
+
+println(!0);      // true  (any type accepted)
+println(!null);   // true
+
+println(++x);     // increments x; TypeError if x is not numeric</code></pre>
 
         <!-- ============================================================
          Ternary

@@ -147,6 +147,9 @@ void RestoreNthEnvAndSync(Interpreter* interpreter, int n) {
 }
 
 bool IsMethodOfObject(Interpreter* interpreter, Value* obj, Value* method) {
+	if (obj == NULL || method == NULL) {
+		return false;
+	}
 	String key = ValueToString(method);
 	if (ValueIsPromise(obj)) {
 		// Handle Promise methods or attributes
@@ -224,6 +227,9 @@ Value* GenericGetAttribute(Interpreter* interpreter,
 						   Value*		obj,
 						   Value*		index,
 						   bool			forMethodCall) {
+	if (obj == NULL || index == NULL) {
+		return interpreter->Null;
+	}
 	String key = ValueToString(index);
 	if (ValueIsPromise(obj)) {
 		// Handle Promise methods or attributes
@@ -600,8 +606,7 @@ static Value* DoImportFileOrLib(Interpreter* interpreter,
 	Value* global =
 		NewEnvironmentValue(interpreter, CreateEnvironment(NULL, uf->LocalC));
 
-	CallFrame* frame = Allocate(sizeof(CallFrame));
-	InitCallFrame(frame, NULL, global, global, compiled);
+	CallFrame* frame = InitCallFrame(NULL, global, global, compiled);
 
 	Run(interpreter, frame, NULL);
 	Value* result = FPopp(interpreter, frame);
@@ -937,13 +942,12 @@ Value* DoCall(Interpreter* interpreter,
 
 	PushTrace(interpreter, uf->Lines[0], fn);
 
-	CallFrame* newFrame = Allocate(sizeof(CallFrame));
-	InitCallFrame(newFrame,
-				  frame,
-				  frame->GlobalEnv,
-				  NewEnvironmentValue(interpreter,
-									  CreateEnvironment(uf->Scope, uf->LocalC)),
-				  fn);
+	CallFrame* newFrame = InitCallFrame(
+		frame,
+		frame->GlobalEnv,
+		NewEnvironmentValue(interpreter,
+							CreateEnvironment(uf->Scope, uf->LocalC)),
+		fn);
 
 	// Move call arguments from caller stack into callee stack so
 	// function prologue OP_STORE_LOCAL opcodes bind parameters safely.

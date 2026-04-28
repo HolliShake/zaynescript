@@ -1,6 +1,8 @@
 
 #include "./promise.h"
 
+#include <sched.h>
+
 
 /**
  * @brief Appends task to the ring buffer TaskQueue[(head + count) % STACK_SIZE]
@@ -50,22 +52,46 @@ _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
 			ARGUMENT_ERROR);
 	}
 
-	StateMachine* originalSM = CoerceToStateMachine(thisArg);
+	int locals = ValueIsNativeFunction(thenCallback)
+					 ? 1
+					 : CoerceToUserFunction(thenCallback)->LocalC;
 
-	StateMachine* sm = CreateStateMachine(PENDING, true, thisArg, thenCallback);
-	sm->GlobalEnv	 = originalSM->GlobalEnv;
+	Promise* parentPromise = CoerceToPromise(thisArg);
 
-	sm->Line = originalSM->Line;
+	Value* promiseValue = NewPromiseValue(
+		interpreter,
+		CreatePromise(
+			PENDING,
+			InitCallFrame(NULL,
+						  parentPromise->Globals,
+						  NewEnvironmentValue(interpreter,
+											  CreateEnvironment(NULL, locals)),
+						  thenCallback),
+			thisArg,
+			parentPromise->Globals,
+			thenCallback));
 
-	Value* newPromise = NewPromiseValue(interpreter, sm);
+	Promise* promise = CoerceToPromise(promiseValue);
 
-	if (originalSM->State == PENDING) {
-		StateMachineAddWaitList(originalSM, newPromise);
+	if (parentPromise->State == PENDING) {
+		PromiseAddReaction(parentPromise, promiseValue);
+	} else if (parentPromise->State == REJECTED) {
+		ListStateMachineNode* node = parentPromise->RejectReactions;
+		while (node != NULL) {
+			EnqueueTask(interpreter, node->Promise);
+			node = node->Next;
+		}
 	} else {
-		EnqueueTask(interpreter, newPromise);
+		printf("FULLFILLED, executing ::then()\n");
+		PromiseAddReaction(parentPromise, promiseValue);
+		ListStateMachineNode* node = parentPromise->FullfillReactions;
+		while (node != NULL) {
+			EnqueueTask(interpreter, node->Promise);
+			node = node->Next;
+		}
 	}
 
-	return newPromise;
+	return promiseValue;
 }
 
 static Value*
@@ -105,25 +131,45 @@ _PromiseError(Interpreter* interpreter, int argc, Value** arguments) {
 			ARGUMENT_ERROR);
 	}
 
-	StateMachine* originalSM = CoerceToStateMachine(thisArg);
-	originalSM->IsCatched	 = true;
+	int locals = ValueIsNativeFunction(catchCallback)
+					 ? 1
+					 : CoerceToUserFunction(catchCallback)->LocalC;
 
-	StateMachine* sm =
-		CreateStateMachine(PENDING, true, thisArg, catchCallback);
-	sm->GlobalEnv = originalSM->GlobalEnv;
+	Promise* parentPromise = CoerceToPromise(thisArg);
 
-	sm->Line = originalSM->Line;
+	Value* promiseValue = NewPromiseValue(
+		interpreter,
+		CreatePromise(
+			PENDING,
+			InitCallFrame(NULL,
+						  parentPromise->Globals,
+						  NewEnvironmentValue(interpreter,
+											  CreateEnvironment(NULL, locals)),
+						  catchCallback),
+			thisArg,
+			parentPromise->Globals,
+			catchCallback));
 
-	Value* newPromise = NewPromiseValue(interpreter, sm);
+	Promise* promise = CoerceToPromise(promiseValue);
 
-	if (originalSM->State == PENDING) {
-		// Queue the catch callback to run as soon as possible
-		StateMachineAddWaitList(originalSM, newPromise);
-	} else if (originalSM->State == REJECTED) {
-		EnqueueTask(interpreter, newPromise);
+	if (parentPromise->State == PENDING) {
+		PromiseAddReaction(parentPromise, promiseValue);
+	} else if (parentPromise->State == REJECTED) {
+		PromiseAddReaction(parentPromise, promiseValue);
+		ListStateMachineNode* node = parentPromise->RejectReactions;
+		while (node != NULL) {
+			EnqueueTask(interpreter, node->Promise);
+			node = node->Next;
+		}
+	} else {
+		ListStateMachineNode* node = parentPromise->FullfillReactions;
+		while (node != NULL) {
+			EnqueueTask(interpreter, node->Promise);
+			node = node->Next;
+		}
 	}
 
-	return newPromise;
+	return promiseValue;
 }
 
 static ModuleFunction _PromiseClassMethods[] = {

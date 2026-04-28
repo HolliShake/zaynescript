@@ -124,12 +124,11 @@ Value* NewNullValue(Interpreter* interpreter);
  * @brief Creates a new promise value
  *
  * @param interpreter Pointer to the interpreter instance
- * @param stateMachine Pointer to the StateMachine structure
- * representing the promise's execution state
+ * @param promise Pointer to the Promise structure
  * @return Pointer to newly allocated Value structure
  * representing a promise
  */
-Value* NewPromiseValue(Interpreter* interpreter, StateMachine* stateMachine);
+Value* NewPromiseValue(Interpreter* interpreter, Promise* promise);
 
 /**
  * @brief Creates a new user function value

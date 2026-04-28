@@ -1,5 +1,9 @@
-
 #include "./interpreter.h"
+
+#include "global.h"
+
+#include <sched.h>
+#include <stdio.h>
 
 static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
 	// libbf uses size == 0 to signal a free() operation
@@ -89,26 +93,6 @@ Interpreter* CreateInterpreter(String execPath) {
 		fprintf(stderr, "Program exited with panic.\n");                       \
 		exit(EXIT_FAILURE);                                                    \
 	} while (0)
-
-#define HandleError(messageFormat, ...)                                        \
-	{                                                                          \
-		int size =                                                             \
-			snprintf(NULL, 0, (String) messageFormat, ##__VA_ARGS__) + 1;      \
-		String message = (String) Allocate(size);                              \
-		snprintf(message, size, (String) messageFormat, ##__VA_ARGS__);        \
-		if (catched) {                                                         \
-			JmpFrwd(PeekEH());                                                 \
-			PoppEH();                                                          \
-			FPush(interpreter,                                                 \
-				  interpreter->CurrentFrame,                                   \
-				  NewErrorValue(interpreter, message));                        \
-			free(message);                                                     \
-			break;                                                             \
-		}                                                                      \
-		InterpreterPanic(message);                                             \
-		free(message);                                                         \
-		break;                                                                 \
-	}
 
 void SetActiveTask(Interpreter* interpreter, Value* task) {
 	interpreter->ActiveTask = task;
@@ -236,31 +220,9 @@ static int _GetArg2(Interpreter* interp, Value* obj, Value* methodName) {
 	return _GetArgc(method);
 }
 
-static void _PushTry(Interpreter* interpreter, int jmp, size_t* pausedAddress) {
-	interpreter->ExceptionHandlerStacks[interpreter->ExceptionHandlerStackC++] =
-		(ExceptionHandler){
-			.JumpAddress   = jmp,
-			.PausedAddress = pausedAddress,
-		};
-}
-
-static void _PopNTry(Interpreter* interpreter, int n) {
-	interpreter
-		->ExceptionHandlerStacks[interpreter->ExceptionHandlerStackC -= (n)];
-}
-
-static void _PoppTry(Interpreter* interpreter) {
-	_PopNTry(interpreter, 1);
-}
-
-static ExceptionHandler _PeekTry(Interpreter* interpreter) {
-	return interpreter
-		->ExceptionHandlerStacks[interpreter->ExceptionHandlerStackC - 1];
-}
-
 #define isCatched() (interpreter->ExceptionHandlerStackC != 0)
 
-#define JumpToError(ip, addr) (*ip = addr)
+#define JumpToError(ip, addr) (ip = addr)
 
 #define DumpTraceBack(uf, ip)                                                  \
 	do {                                                                       \
@@ -306,67 +268,90 @@ BAD:;
 	};
 }
 
-static void _RaiseError(Interpreter* interpreter,
-						Value*		 fn,
-						Value*		 error,
-						size_t*		 ip,
-						bool		 catchable) {
-	UserFunction* uf = CoerceToUserFunction(fn);
-	if (interpreter->ActiveTask != NULL
-		&& ValueIsPromise(interpreter->ActiveTask) && catchable) {
-		StateMachine* activeTask =
-			CoerceToStateMachine(interpreter->ActiveTask);
-		StateMachineReject(activeTask, error);
-		FPush(interpreter, interpreter->CurrentFrame, interpreter->ActiveTask);
-		JumpToError(ip, uf->CodeC);
-		return;
-	}
+static void
+_DumpTraceback(Interpreter* interpreter, CallFrame* frame, String message) {
+	UserFunction* uf   = CoerceToUserFunction(frame->Fn);
+	LineInfo	  line = _GetLineFromPc(uf, frame->Ip);
+	frame			   = frame->Parent;
 
-	if (isCatched() && catchable) {
-		ExceptionHandler handler = _PeekTry(interpreter);
-		CallFrame*		 target	 = interpreter->CurrentFrame;
-		while (target != NULL && &target->Ip != handler.PausedAddress) {
+	String path = ValueToString(line.Path);
+	printf("[%s:%d]::%s\n", path, line.Line, message);
+	free(path);
+	while (frame != NULL) {
+		UserFunction* currentUf = CoerceToUserFunction(frame->Fn);
+		line					= _GetLineFromPc(currentUf, frame->Ip);
+		path					= ValueToString(line.Path);
+		printf("  |> [%s:%d]\n", path, line.Line);
+		free(path);
+		frame = frame->Parent;
+	}
+	printf("  ;\n");
+}
+
+static void _RaiseError(Interpreter* interpreter,
+						CallFrame*	 frame,
+						Value*		 error,
+						bool		 catchable) {
+	UserFunction* uf   = CoerceToUserFunction(frame->Fn);
+	LineInfo	  line = _GetLineFromPc(uf, frame->Ip);
+
+	/* Check local try/catch FIRST so that raise inside an async function
+	 * is caught by the nearest enclosing try/catch rather than always
+	 * rejecting the ambient task promise. */
+
+	if (catchable) {
+		CallFrame* target = frame;
+		while (target != NULL) {
+			if (target->TryHandlerC > 0) {
+				break;
+			}
 			target = target->Parent;
 		}
-		if (target == NULL) {
-			target = interpreter->CurrentFrame;
+
+		bool caught = false;
+		if (target != NULL && target->TryHandlerC > 0) {
+			caught = true;
 		}
-		/* Caught: preserve the original error value as-is for
-		 * the catch handler
-		 */
-		// Jump the current function to end
-		JumpToError(ip, uf->CodeC);
-		// Jump the main function to the handle
-		JumpToError(handler.PausedAddress, handler.JumpAddress);
-		FPush(interpreter, target, error);
+
+		if (caught) {
+			/* Caught: preserve the original error value as-is for
+			 * the catch handler
+			 */
+			// Jump the current function to its end
+			JumpToError(frame->Ip, uf->CodeC);
+			SuspendFrame(frame);
+
+			// Jump the main function to the handle
+			JumpToError(target->Ip, PeekTry(target));
+
+			// Push the error to the catch handler
+			FPush(interpreter, target, error);
+			return;
+		}
+	}
+
+	/* No local handler: if there is an ambient async task, reject it. */
+	if (interpreter->ActiveTask != NULL
+		&& ValueIsPromise(interpreter->ActiveTask) && catchable) {
+		// Jump the current function to its end
+		JumpToError(frame->Ip, uf->CodeC);
+
+		Promise* activeTask = CoerceToPromise(interpreter->ActiveTask);
+
+		// We let the OP_GET_AWAITED_VALUE handle the error
+		PromiseReject(activeTask, error);
+
+		// Push the rejected promise to the caller
+		FPush(interpreter, frame->Parent, interpreter->ActiveTask);
 		return;
 	}
+
 	/* Uncaught: format for display only, no new error Value is
 	 * created */
-	LineInfo line	= _GetLineFromPc(uf, *ip);
-	String	 errStr = ValueToString(error);
-	String	 path	= ValueToString(line.Path);
-	String	 buf	= FormatString("[%s:%d]::%s\n", path, line.Line, errStr);
-	free(path);
+	String errStr = ValueToString(error);
+	_DumpTraceback(interpreter, frame, errStr);
 	free(errStr);
-
-	for (int i = interpreter->CallStackC - 1; i >= 0; i--) {
-		StackTrace trace = interpreter->CallStack[i];
-		String	   path	 = ValueToString(trace.line.Path);
-		String frame = FormatString("  |> [%s:%d]\n", path, trace.line.Line);
-		String tmp	 = FormatString("%s%s", buf, frame);
-		free(path);
-		free(frame);
-		free(buf);
-		buf = tmp;
-	}
-
-	fprintf(stderr, "%s", buf);
-	free(buf);
-	ForceGarbageCollect(interpreter);
-	FreeInterpreter(interpreter);
-	fprintf(stderr, "Program exited with panic.\n");
-	exit(EXIT_FAILURE);
+	InterpreterPanicExit(interpreter);
 }
 
 static Value*
@@ -413,7 +398,7 @@ void MarkCallFrame(CallFrame* frame) {
 
 void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 	Value*		  fn			 = frame->Fn;
-	StateMachine* sm			 = NULL;
+	Promise*	  p				 = NULL;
 	UserFunction* uf			 = CoerceToUserFunction(frame->Fn);
 	uint8_t		  opcode		 = 0;
 	Value*		  lhs			 = NULL;
@@ -436,16 +421,17 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 	bool		  catched		 = false;
 	bool		  localhandler	 = false;
 	bool		  ownsActiveTask = false;
+	bool		  createdPromise = false;
 	String		  str			 = NULL;
 	Value*		  prevActiveTask = interpreter->ActiveTask;
 
 	if (uf->Async && promise == NULL) {
-		sm			  = CreateStateMachine(PENDING, false, NULL, frame->Fn);
-		sm->Frame	  = frame;
-		sm->GlobalEnv = frame->GlobalEnv;
-		promise		  = NewPromiseValue(interpreter, sm);
+		promise = NewPromiseValue(
+			interpreter,
+			CreatePromise(PENDING, frame, NULL, frame->GlobalEnv, frame->Fn));
+		p = CoerceToPromise(promise);
 	} else {
-		sm = CoerceToStateMachine(promise);
+		p = CoerceToPromise(promise);
 	}
 
 	if (uf->Async && promise != NULL && interpreter->ActiveTask == NULL) {
@@ -459,12 +445,13 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 		InterpreterPanic("Attempted to run a non-function value of type %s",
 						 ValueTypeOf(frame->Fn));
 
-#define ip					   frame->Ip
+#define ip					   (frame->Ip)
+#define Running				   (frame->Ip < uf->CodeC && !frame->Suspend)
 #define Forward(size)		   (frame->Ip += size)
 #define JmpFrwd(addr)		   (frame->Ip = addr)
 #define SetLocalHandler(value) (localhandler = value)
 
-	while (frame->Ip != uf->CodeC) {
+	while (Running) {
 		if (interpreter->Allocated >= interpreter->GcThreshold) {
 			MarkCallFrame(frame);
 			GarbageCollect(interpreter);
@@ -481,7 +468,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					if (ValueIsError(res)) {
 						free(str);
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, false);
+						_RaiseError(interpreter, frame, res, false);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -496,7 +483,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					if (ValueIsError(res)) {
 						free(str);
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, false);
+						_RaiseError(interpreter, frame, res, false);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -511,7 +498,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					if (ValueIsError(res)) {
 						free(str);
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, false);
+						_RaiseError(interpreter, frame, res, false);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -529,7 +516,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 							REFERENCE_ERROR,
 							"variable is referenced before initialization");
 						// Raise
-						_RaiseError(interpreter, fn, err, &ip, false);
+						_RaiseError(interpreter, frame, err, false);
 						break;
 					}
 					FPush(interpreter, frame, val);
@@ -546,7 +533,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 							REFERENCE_ERROR,
 							"variable is referenced before initialization");
 						// Raise
-						_RaiseError(interpreter, fn, err, &ip, false);
+						_RaiseError(interpreter, frame, err, false);
 						break;
 					}
 					FPush(interpreter, frame, val);
@@ -563,7 +550,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 							REFERENCE_ERROR,
 							"variable is referenced before initialization");
 						// Raise
-						_RaiseError(interpreter, fn, err, &ip, false);
+						_RaiseError(interpreter, frame, err, false);
 						break;
 					}
 					FPush(interpreter, frame, val);
@@ -620,7 +607,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 										 "be an array, got %s",
 										 ValueTypeOf(ext)));
 						// Raise
-						_RaiseError(interpreter, fn, err, &ip, true);
+						_RaiseError(interpreter, frame, err, true);
 						break;
 					}
 					ArrayExtend(CoerceToArray(arr), CoerceToArray(ext));
@@ -640,7 +627,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 													  "to be an array, got %s",
 													  ValueTypeOf(ext)));
 						// Raise
-						_RaiseError(interpreter, fn, err, &ip, true);
+						_RaiseError(interpreter, frame, err, true);
 						break;
 					}
 					ArrayPush(CoerceToArray(arr), val);
@@ -674,7 +661,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 										 "be an object, got %s",
 										 ValueTypeOf(ext)));
 						// Raise
-						_RaiseError(interpreter, fn, err, &ip, true);
+						_RaiseError(interpreter, frame, err, true);
 						break;
 					}
 					HashMapExtend(CoerceToHashMap(obj), CoerceToHashMap(ext));
@@ -723,7 +710,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 										 "be a class, got %s",
 										 ValueTypeOf(ext)));
 						// Raise
-						_RaiseError(interpreter, fn, err, &ip, false);
+						_RaiseError(interpreter, frame, err, false);
 						break;
 					}
 					ClassExtend(CoerceToUserClass(cls), ext);
@@ -779,7 +766,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 						//  Pop the duplicated value
 						FPopp(interpreter, frame);
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					break;
@@ -791,7 +778,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoGetIndex(interpreter, obj, key);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -817,7 +804,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoCallCtor(interpreter, frame, cls, argc);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					break;
@@ -830,7 +817,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoCall(interpreter, frame, obj, argc, false);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					break;
@@ -839,12 +826,13 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 				{
 					argc = ReadInt32(uf->Codes, ip);
 					Forward(4);
-					key = FPopp(interpreter, frame);		  // method name
-					obj = FPeekAt(interpreter, frame, argc);  // 'this' object
+					key = FPopp(interpreter, frame);		// method name
+					obj =
+						FPeekAt(interpreter, frame, argc);	// receiver ('this')
 					res = DoCallMethod(interpreter, frame, obj, key, argc);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					break;
@@ -855,7 +843,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoNot(interpreter, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -867,7 +855,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoBitNot(interpreter, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -879,7 +867,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoPos(interpreter, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -891,7 +879,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoNeg(interpreter, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -900,43 +888,60 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 			case OP_AWAIT:
 				{
 					val = FPeek(interpreter, frame);
-					if (!ValueIsPromise(val))
-						Panic("Expected a promise got %s", ValueTypeOf(val));
+					if (!ValueIsPromise(val)) {
+						LineInfo line	= _GetLineFromPc(uf, ip);
+						String	 valStr = ValueToString(val);
+						Panic("[%s:%d] Expected a promise got  %s (%s)",
+							  ValueToString(line.Path),
+							  line.Line,
+							  valStr,
+							  ValueTypeOf(val));
+						free(valStr);
+					}
 
 					RetainFrame(interpreter, frame);
 
-					val						= FPopp(interpreter, frame);
-					StateMachine* awaitedSM = CoerceToStateMachine(val);
-
-					if (awaitedSM->State == FULFILLED) {
-						EnqueueTask(interpreter, promise);
-					} else {
-						StateMachineAddWaitList(awaitedSM, promise);
-					}
+					val					   = FPopp(interpreter, frame);
+					Promise* promiseToWait = CoerceToPromise(val);
 
 					// Wait
-					StateMachineAwait(sm, val);
-					sm->Line = _GetLineFromPc(uf, ip);
+					PromiseAwait(p, val);
+
+					/* If already settled (fulfilled OR rejected) resume
+					 * immediately; otherwise wait on the promise. */
+					if (promiseToWait->State == FULFILLED
+						|| promiseToWait->State == REJECTED) {
+						break;
+					} else {
+						PromiseAddReaction(p, val);
+					}
 
 					// Push the promise
 					FPush(interpreter, frame->Parent, promise);
-					if (ownsActiveTask) {
-						SetActiveTask(interpreter, prevActiveTask);
-					}
 					return;
 				}
 			case OP_GET_AWAITED_VALUE:
 				{
-					if (sm == NULL) {
+					if (p == NULL) {
 						Panic("Invalid state machine: not currently in an "
 							  "async function");
 						break;
 					}
-					StateMachine* wait = CoerceToStateMachine(sm->WaitFor);
-					if (wait->Value == NULL)
+
+					Promise* waited = CoerceToPromise(p->Parent);
+
+					if (waited->Result == NULL)
 						Panic("Invalid state machine: WaitFor "
 							  "is NULL");
-					FPush(interpreter, frame, wait->Value);
+
+					/* If the awaited promise was rejected, raise its
+					 * error so an enclosing try/catch can handle it. */
+
+					if (waited->State == REJECTED) {
+						_RaiseError(interpreter, frame, waited->Result, true);
+					} else {
+						FPush(interpreter, frame, waited->Result);
+					}
 					break;
 				}
 			case OP_GETTYPE:
@@ -953,7 +958,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoMul(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -966,7 +971,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoDiv(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -979,7 +984,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoMod(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -992,7 +997,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoInc(interpreter, lhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -1005,7 +1010,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoInc(interpreter, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -1018,7 +1023,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoAdd(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -1031,7 +1036,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoDec(interpreter, lhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -1044,7 +1049,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoDec(interpreter, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -1057,7 +1062,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoSub(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -1070,7 +1075,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoLShift(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -1083,7 +1088,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoRShift(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -1096,7 +1101,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoLT(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -1109,7 +1114,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoLTE(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -1122,7 +1127,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoGT(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -1135,7 +1140,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoGTE(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -1148,7 +1153,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoEQ(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -1161,7 +1166,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoNE(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -1174,7 +1179,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoAnd(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -1187,7 +1192,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoOr(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -1200,7 +1205,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					res = DoXor(interpreter, lhs, rhs);
 					if (ValueIsError(res)) {
 						// Raise
-						_RaiseError(interpreter, fn, res, &ip, true);
+						_RaiseError(interpreter, frame, res, true);
 						break;
 					}
 					FPush(interpreter, frame, res);
@@ -1289,20 +1294,20 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 				{
 					SetLocalHandler(true);
 					offset = ReadInt32(uf->Codes, ip);
-					_PushTry(interpreter, offset, &ip);
+					PushTry(frame, offset);
 					Forward(4);
 					break;
 				}
 			case OP_POP_TRY:
 				{
 					SetLocalHandler(false);
-					_PoppTry(interpreter);
+					PoppTry(frame);
 					break;
 				}
 			case OP_POPN_TRY:
 				{
 					size = ReadInt32(uf->Codes, ip);
-					_PopNTry(interpreter, size);
+					PopNTry(frame, size);
 					Forward(4);
 					break;
 				}
@@ -1367,9 +1372,8 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 			case OP_RAISE:
 				{
 					_RaiseError(interpreter,
-								fn,
+								frame,
 								FPopp(interpreter, frame),
-								&ip,
 								true);
 					break;
 				}
@@ -1380,38 +1384,23 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					CallFrame* deadFrame   = frame;
 
 					if (uf->Async) {
-						// Return resolved promise
-						if (parentFrame != NULL) {
-							FPush(interpreter, parentFrame, promise);
+						PromiseFulfill(p, val);
+
+						// Notify listeners
+						ListStateMachineNode* current = p->FullfillReactions;
+
+						while (current != NULL) {
+							EnqueueTask(interpreter, current->Promise);
+							current = current->Next;
 						}
 
-						StateMachineFulfill(sm, val);
-						sm->Frame = NULL;
-
-						for (int i = 0; i < sm->WaitListC; i++) {
-							// Queue all listeners waiting on
-							// this state machine to be resumed
-							EnqueueTask(interpreter, sm->WaitList[i]);
-						}
+						FPush(interpreter, parentFrame, promise);
 					} else {
 						// Synchronous call
-						if (parentFrame != NULL) {
+						if (parentFrame != NULL)
 							FPush(interpreter, parentFrame, val);
-						} else if (promise != NULL) {
-							// Promise callback running without a caller frame.
-							StateMachineFulfill(sm, val);
-						} else {
-							// Top-level/module execution path: preserve the
-							// return value on this frame for callers that run
-							// Run() directly.
-							FPush(interpreter, frame, val);
-						}
 					}
 
-					SetCurrentFrame(interpreter, parentFrame);
-					if (ownsActiveTask) {
-						SetActiveTask(interpreter, prevActiveTask);
-					}
 					return;
 				}
 			default:
@@ -1428,34 +1417,6 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 				}
 		}
 	}
-
-	SetCurrentFrame(interpreter, frame->Parent);
-	CallFrame* parentFrame = frame->Parent;
-
-	// Handle implicit fallthrough when execution reaches uf->CodeC
-	// without hitting OP_RETURN (e.g. jump-to-end from errors).
-	if (uf->Async) {
-		if (parentFrame != NULL) {
-			FPush(interpreter, parentFrame, promise);
-		}
-		if (sm->State == PENDING) {
-			StateMachineFulfill(sm, interpreter->Null);
-		}
-		sm->Frame = NULL;
-		for (int i = 0; i < sm->WaitListC; i++) {
-			EnqueueTask(interpreter, sm->WaitList[i]);
-		}
-	} else if (parentFrame != NULL) {
-		FPush(interpreter, parentFrame, interpreter->Null);
-	} else if (promise != NULL && sm->State == PENDING) {
-		StateMachineFulfill(sm, interpreter->Null);
-	} else if (parentFrame == NULL) {
-		FPush(interpreter, frame, interpreter->Null);
-	}
-
-	if (ownsActiveTask) {
-		SetActiveTask(interpreter, prevActiveTask);
-	}
 }
 
 void _RunProgram(Interpreter* interpreter, Value* fn) {
@@ -1465,8 +1426,7 @@ void _RunProgram(Interpreter* interpreter, Value* fn) {
 
 	interpreter->ModulePath = uf->Name;
 
-	CallFrame* gFrame = Allocate(sizeof(CallFrame));
-	InitCallFrame(gFrame, NULL, env, env, fn);
+	CallFrame* gFrame = InitCallFrame(NULL, env, env, fn);
 
 	Run(interpreter, gFrame, NULL);
 
@@ -1499,92 +1459,28 @@ void _RunProgram(Interpreter* interpreter, Value* fn) {
 		SetActiveTask(interpreter, task);
 
 		// Awaited
-		StateMachine* sm	= CoerceToStateMachine(task);
-		CallFrame*	  frame = sm->Frame;
+		// printf("AWAITED: %s\n", ValueToString(task));
+		Promise*   promise = CoerceToPromise(task);
+		CallFrame* frame   = promise->SuspendedCallFrame;
 
-		if (!sm->IsCallback) {
-			// Continue
-			Run(interpreter, frame, task);
-			if (sm->State != PENDING) {
-				sm->Frame = NULL;
-			}
-			ReleaseFrame(interpreter, frame);
-		} else {
-			// Callback
-			StateMachine* parentSM	  = CoerceToStateMachine(sm->WaitFor);
-			CallFrame*	  parentFrame = parentSM->Frame;
+		if (promise->Parent != NULL) {
+			Promise* parent = CoerceToPromise(promise->Parent);
+			printf(">> %d\n", parent->State);
 
-			if (parentSM->Value == NULL && parentSM->State == PENDING) {
-				// Parent promise not settled yet; try again on a later tick.
-				EnqueueTask(interpreter, task);
-				SetActiveTask(interpreter, NULL);
-				continue;
-			}
+			if (parent->State == PENDING)
+				Panic("task enqueued before parent settled");
 
-			bool isParentRejected =
-				parentSM->State == REJECTED
-				|| (parentSM->Value != NULL && ValueIsError(parentSM->Value));
-
-			if (isParentRejected && !sm->IsCatched) {
-				StateMachineReject(sm, parentSM->Value);
-				goto ENQUEUE_TASKS;
-			} else if (!isParentRejected && sm->IsCatched) {
-				StateMachineFulfill(sm, parentSM->Value);
-				goto ENQUEUE_TASKS;
-			}
-
-			if (ValueIsNativeFunction(sm->Callback)) {
-				Value*			arg		= parentSM->Value;
-				Value*			args[1] = { arg };
-				NativeFunction* nFMeta	= CoerceToNativeFunction(sm->Callback);
-				Value* nativeResult		= nFMeta->FuncPtr(interpreter, 1, args);
-
-				if (ValueIsError(nativeResult)) {
-					StateMachineReject(sm, nativeResult);
-				} else {
-					StateMachineFulfill(sm, nativeResult);
-				}
-				goto ENQUEUE_TASKS;
-			}
-
-			if (frame == NULL) {
-				UserFunction* cb = CoerceToUserFunction(sm->Callback);
-
-				frame = Allocate(sizeof(CallFrame));
-				InitCallFrame(frame,
-							  NULL,
-							  parentSM->GlobalEnv,
-							  NewEnvironmentValue(
-								  interpreter,
-								  CreateEnvironment(cb->Scope, cb->LocalC)),
-							  sm->Callback);
-				sm->Frame = frame;
-			}
-
-			FPush(interpreter, frame, parentSM->Value);
-
-			// Run the callback
-			Run(interpreter, frame, task);
-
-			Value* result = sm->Value;
-			if (result == NULL) {
-				result = interpreter->Null;
-			}
-
-			if (ValueIsError(result)) {
-				StateMachineReject(sm, result);
+			if (parent->State == REJECTED) {
+				// raise into the coroutine, try/catch will handle it
+				_RaiseError(interpreter, frame, parent->Result, true);
 			} else {
-				StateMachineFulfill(sm, result);
-			}
-
-			sm->Frame = NULL;
-			ReleaseFrame(interpreter, frame);
-
-		ENQUEUE_TASKS:;
-			for (size_t i = 0; i < sm->WaitListC; i++) {
-				EnqueueTask(interpreter, sm->WaitList[i]);
+				// push fulfilled value as result of await expression
+				FPush(interpreter, frame, parent->Result);
 			}
 		}
+
+		Run(interpreter, frame, task);
+
 
 		SetActiveTask(interpreter, NULL);
 	}
@@ -1610,6 +1506,13 @@ void FreeInterpreter(Interpreter* interpreter) {
 	free(interpreter->Constants);
 	free(interpreter->Functions);
 	free(interpreter);
+}
+
+void InterpreterPanicExit(Interpreter* interpreter) {
+	ForceGarbageCollect(interpreter);
+	FreeInterpreter(interpreter);
+	fprintf(stderr, "Program exited with panic.\n");
+	exit(EXIT_FAILURE);
 }
 
 #undef SetVar

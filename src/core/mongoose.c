@@ -1129,12 +1129,12 @@ static void _EvHandler(struct mg_connection* c, int ev, void* ev_data) {
 		Value* result = FPopp(interp, interp->CurrentFrame);
 
 		if ((ValueIsPromise(result)
-			 && CoerceToStateMachine(result)->State == REJECTED)) {
-			StateMachine* sm	  = CoerceToStateMachine(result);
-			String		  errMsg  = ValueToString(sm->Value);
-			String		  escaped = _JsonEscape(errMsg);
-			size_t		  wlen	  = strlen(escaped) + 128;
-			String		  wrapped = (String) Allocate(wlen);
+			 && CoerceToPromise(result)->State == REJECTED)) {
+			Promise* promise = CoerceToPromise(result);
+			String	 errMsg	 = ValueToString(promise->Result);
+			String	 escaped = _JsonEscape(errMsg);
+			size_t	 wlen	 = strlen(escaped) + 128;
+			String	 wrapped = (String) Allocate(wlen);
 			snprintf(wrapped,
 					 wlen,
 					 "{\"status\":500,\"statusText\":\"internal server error\","
@@ -1486,10 +1486,13 @@ static void _FetchEvHandler(struct mg_connection* c, int ev, void* ev_data) {
 		}
 
 		/* Fulfill the promise */
-		StateMachine* sm = CoerceToStateMachine(ctx->promise);
-		StateMachineFulfill(sm, obj);
-		for (size_t i = 0; i < sm->WaitListC; i++)
-			EnqueueTask(interp, sm->WaitList[i]);
+		Promise* promise = CoerceToPromise(ctx->promise);
+		PromiseFulfill(promise, obj);
+		ListStateMachineNode* node = promise->FullfillReactions;
+		while (node != NULL) {
+			EnqueueTask(interp, node->Promise);
+			node = node->Next;
+		}
 
 		c->is_closing = 1;
 		free(ctx->host);
@@ -1510,10 +1513,13 @@ static void _FetchEvHandler(struct mg_connection* c, int ev, void* ev_data) {
 											 RUNTIME_ERROR,
 											 msg ? msg : "request failed");
 
-		StateMachine* sm = CoerceToStateMachine(ctx->promise);
-		StateMachineReject(sm, err);
-		for (size_t i = 0; i < sm->WaitListC; i++)
-			EnqueueTask(interp, sm->WaitList[i]);
+		Promise* promise = CoerceToPromise(ctx->promise);
+		PromiseReject(promise, err);
+		ListStateMachineNode* node = promise->RejectReactions;
+		while (node != NULL) {
+			EnqueueTask(interp, node->Promise);
+			node = node->Next;
+		}
 
 		c->is_closing = 1;
 		free(ctx->host);
@@ -1613,13 +1619,13 @@ static Value* _Request(Interpreter* interp, int argc, Value** args) {
 	char* uri		  = strdup(mg_url_uri(url));
 
 	/* Create a pending promise */
-	StateMachine* sm	  = CreateStateMachine(PENDING, false, NULL, NULL);
-	Value*		  promise = NewPromiseValue(interp, sm);
+	Promise* promise	  = CreatePromise(PENDING, NULL, NULL, NULL, NULL);
+	Value*	 promiseValue = NewPromiseValue(interp, promise);
 
 	/* Allocate context for the event handler callback */
 	FetchCtx* ctx = (FetchCtx*) Allocate(sizeof(FetchCtx));
 	ctx->interp	  = interp;
-	ctx->promise  = promise;
+	ctx->promise  = promiseValue;
 	ctx->host	  = host;
 	ctx->uri	  = uri;
 	ctx->method	  = method;
@@ -1633,10 +1639,10 @@ static Value* _Request(Interpreter* interp, int argc, Value** args) {
 	free(url);
 
 	if (c == NULL) {
-		StateMachineReject(sm,
-						   NewErrorFValue(interp,
-										  "%s: request(): failed to connect",
-										  RUNTIME_ERROR));
+		PromiseReject(promise,
+					  NewErrorFValue(interp,
+									 "%s: request(): failed to connect",
+									 RUNTIME_ERROR));
 		free(ctx->host);
 		free(ctx->uri);
 		free(ctx->method);
@@ -1645,7 +1651,7 @@ static Value* _Request(Interpreter* interp, int argc, Value** args) {
 		free(ctx);
 	}
 
-	return promise;
+	return promiseValue;
 }
 
 /* -----------------------------------------------------------------------

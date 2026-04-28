@@ -1,38 +1,19 @@
 import { println } from "core:io";
-import { Object } from "core:object";
-import { Array } from "core:array";
-import { stringify,  parse } from "core:json";
 
-class BaseClass {
-    fn init(a) {
-        this.Type = typeof(this);
-        println("From BaseClass!", this.Type);
-    }
 
-    fn greet() {
-        println("greet::From BaseClass!");
-    }
+fn inner() async {
+  raise ('Mother foccer');
 }
 
-class DerivedClass (BaseClass) {
-    fn init() {
-        base(this, 2);
-        println( typeof base, typeof this);
-        println("From DerivedClass!");
-        println(base.greet(this), this.greet(), DerivedClass);
-    }
-
-    fn greet() {
-        println("greet::From DerivedClass!");
-    }
+fn outer() async {
+  await inner()
+  println("outer::ok!");
 }
 
-new DerivedClass();
-
-fn test(a, b) {
-    println(a, b);
+fn handler() async {
+  await outer();
+  println("handler::ok!");
 }
 
-test("A", "B");
-
-println(parse(stringify({ A: 65 })));
+handler();
+println("Done!");

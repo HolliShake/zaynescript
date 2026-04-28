@@ -87,9 +87,9 @@ Value* NewNullValue(Interpreter* interpreter) {
 	return v;
 }
 
-Value* NewPromiseValue(Interpreter* interpreter, StateMachine* stateMachine) {
+Value* NewPromiseValue(Interpreter* interpreter, Promise* promise) {
 	Value* v		= _CreateValue(interpreter, VLT_PROMISE);
-	v->Value.Opaque = stateMachine;
+	v->Value.Opaque = promise;
 	return v;
 }
 
@@ -232,13 +232,13 @@ String ValueToString(Value* value) {
 			return NativeFunctionMetaToString(CoerceToNativeFunction(value));
 		case VLT_PROMISE:
 			{
-				StateMachine* sm = CoerceToStateMachine(value);
-				switch (sm->State) {
+				Promise* promise = CoerceToPromise(value);
+				switch (promise->State) {
 					case PENDING:
 						return AllocateString("<Promise.PENDING />");
 					case FULFILLED:
 						{
-							String inner = ValueToString(sm->Value);
+							String inner = ValueToString(promise->Result);
 							String result =
 								FormatString("<Promise.FULFILLED {%s} />",
 											 inner);
@@ -247,7 +247,7 @@ String ValueToString(Value* value) {
 						}
 					case REJECTED:
 						{
-							String inner = ValueToString(sm->Value);
+							String inner = ValueToString(promise->Result);
 							String result =
 								FormatString("<Promise.REJECTED {%s} />",
 											 inner);
