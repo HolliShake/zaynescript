@@ -1,122 +1,93 @@
 /**
  * @file array.h
- * @brief Generic dynamic array (resizable array) interface.
- *
- * Provides a dynamically resizable array that stores generic
- * void pointers. Supports standard operations: push, pop, peek,
- * indexed get/set, extend, and string conversion.
+ * @brief Dynamic array implementation for managing sequences of loosely-typed generic pointer values within the interpreter.
  */
 
 #include "./global.h"
 
 #ifndef ARRAY_H
-#	define ARRAY_H
+#define ARRAY_H
 
 /**
- * @brief Creates a new empty dynamic array.
+ * @brief Allocates an empty array backed by an internal buffer initialized to
+ *        capacity 4. Memory is allocated via Allocate() which aborts on failure.
  *
- * Allocates and initializes an Array structure with zero items
- * and a default initial capacity.
- *
- * @return Pointer to the newly created Array structure, or NULL
- * on allocation failure.
+ * @return Newly constructed array with 0 items. 
  */
 Array* CreateArray();
 
 /**
- * @brief Appends a value to the end of the array.
+ * @brief Inserts a value pointer at the end of the backing buffer, doubling
+ *        internal capacity (and triggering Reallocate) if the current limit
+ *        is reached. 
  *
- * Grows the array's internal buffer if necessary before
- * inserting the value.
- *
- * @param array Pointer to the Array structure.
- * @param value Pointer to the value to append (any pointer
- * type).
+ * @param array The target list whose capacity and items will be mutated.
+ * @param value The untyped heap payload or pointer being tracked. Kept as-is.
  */
 void ArrayPush(Array* array, void* value);
 
 /**
- * @brief Removes and returns the last value in the array.
+ * @brief Decrements the bounds of the array, returning the most recently
+ *        pushed pointer. 
  *
- * Decrements the item count and returns the value that was at
- * the end. Does not shrink the underlying buffer.
- *
- * @param array Pointer to the Array structure.
- * @return Pointer to the removed value, or NULL if the array is
- * empty.
+ * @param array The sequence to shorten. Buffer size does not shrink; only the active view reduces.
+ * @return The unlinked tail value, or NULL if the array has no items left.
  */
 void* ArrayPop(Array* array);
 
 /**
- * @brief Returns the last value in the array without removing
- * it.
+ * @brief Looks at the final pushed element in the active sequence bounds.
  *
- * Provides read access to the top-of-stack element without
- * modifying the array.
- *
- * @param array Pointer to the Array structure.
- * @return Pointer to the last value, or NULL if the array is
- * empty.
+ * @param array The sequence structure to read from.
+ * @return The final value in the current items slice, or NULL if bounds are size 0.
  */
 void* ArrayPeek(Array* array);
 
 /**
- * @brief Overwrites the value at a specific index in the array.
+ * @brief Replaces an existing slot within current sequence limits. Does not perform
+ *        any capacity adjustments.
  *
- * Sets the element at the given index to the provided value. The
- * index must be within the current bounds of the array.
- *
- * @param array Pointer to the Array structure.
- * @param index Zero-based index of the element to overwrite.
- * @param value Pointer to the new value to store at the index.
- * @return Pointer to the newly stored value.
+ * @param array The mutated target array structure.
+ * @param index The exact numerical offset to target, must strictly reflect an existing element (index < count).
+ * @param value The substituting pointer replacing the original item.
+ * @return The newly applied pointer payload, or NULL if bounds check fails.
  */
 void* ArraySet(Array* array, size_t index, void* value);
 
 /**
- * @brief Retrieves the value at a specific index in the array.
+ * @brief Locates a stored pointer by offset within the active array view limits.
  *
- * Performs a bounds-checked lookup and returns the element
- * pointer stored at the given index.
- *
- * @param array Pointer to the Array structure.
- * @param index Zero-based index of the element to retrieve.
- * @return Pointer to the value at the specified index, or NULL
- * if the index is out of bounds.
+ * @param array Source sequence for lookup operations.
+ * @param index Numerical requested offset.
+ * @return The matching referenced item, or NULL if accessed past the recorded Count.
  */
 void* ArrayGet(Array* array, size_t index);
 
 /**
- * @brief Returns the number of elements currently in the array.
+ * @brief Exposes the number of active tracked items. Internal buffer bounds
+ *        (Capacity) are typically higher than this returned bound limit.
  *
- * @param array Pointer to the Array structure.
- * @return Current element count of the array.
+ * @param array Collection to measure.
+ * @return Count of actively set items.
  */
 size_t ArrayLength(Array* array);
 
 /**
- * @brief Appends all elements of another array to this array.
+ * @brief Concatenates another array onto the end, calculating the final combined bounds upfront
+ *        then iterating and copying element pointers sequentially.
  *
- * Iterates over the source array and pushes each element onto
- * the destination array in order.
- *
- * @param array Pointer to the destination Array structure to
- * extend.
- * @param other Pointer to the source Array structure whose
- * elements will be appended.
+ * @param array Receptacle appending sequence, potentially going through capacity growth.
+ * @param other Input slice. Read-only operation on its items buffer.
  */
 void ArrayExtend(Array* array, Array* other);
 
 /**
- * @brief Converts the array to a human-readable string
- * representation.
- *
- * Produces a formatted string listing the array's elements,
- * suitable for debugging or display.
- *
- * @param array Pointer to the Array structure.
- * @return Newly allocated string representation of the array.
- * The caller is responsible for freeing this string.
+ * @brief Deeply evaluates and combines each element via ValueToString(), encapsulating
+ *        the result in `[ ]` brackets and separating by commas. Elements referencing
+ *        their own parent array resolve safely to `[self]`.
+ * 
+ * @param array Collection list traversing to text representation.
+ * @return Pre-populated final C-string allocation ready for runtime passing. The sequence caller owns this pointer and must free() it.
  */
 String ArrayToString(Array* array);
 

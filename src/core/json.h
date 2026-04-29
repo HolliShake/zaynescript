@@ -1,3 +1,8 @@
+/**
+ * @file json.h
+ * @brief Definitions and interfaces for json.h.
+ */
+
 #include "../error.h"
 #include "../function.h"
 #include "../global.h"

@@ -1,12 +1,4 @@
 
-/**
- * @file promise.c
- * @brief Implements the built-in Promise class and its chaining helpers.
- *
- * The native methods in this module bridge script-level `.then()` and
- * `.error()` calls onto the interpreter's internal Promise/task queue without
- * exposing the low-level state-machine details to user code.
- */
 
 #include "./promise.h"
 
@@ -24,24 +16,6 @@
  */
 extern void EnqueueTask(Interpreter* interpreter, Value* task);
 
-/**
- * @brief Creates the promise returned by `.then()` and wires it to the parent
- *        promise's fulfillment path.
- *
- * The handler is validated to take one argument. Pending parents receive a
- * fulfill-only reaction, fulfilled parents enqueue the continuation
- * immediately, and rejected parents skip the callback while propagating the
- * rejection into the returned promise.
- *
- * @param interpreter Interpreter that owns the returned promise and any error
- *                    Values created for validation failures.
- * @param argc Number of arguments supplied by the method dispatcher; must be 2
- *             for `this` plus the callback.
- * @param arguments Method call arguments where `arguments[0]` is the parent
- *                  promise and `arguments[1]` is the continuation callback.
- * @return New chained Promise Value, or an Error Value if the receiver or
- *         callback is invalid.
- */
 static Value*
 _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 2) {
@@ -114,23 +88,6 @@ _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
 	return promiseValue;
 }
 
-/**
- * @brief Creates the promise returned by `.error()` and wires it to the parent
- *        promise's rejection path.
- *
- * Pending parents receive a reject-only reaction, rejected parents enqueue the
- * continuation immediately, and fulfilled parents skip the callback while
- * forwarding the settled value into the returned promise.
- *
- * @param interpreter Interpreter that owns the returned promise and any error
- *                    Values created for validation failures.
- * @param argc Number of arguments supplied by the method dispatcher; must be 2
- *             for `this` plus the callback.
- * @param arguments Method call arguments where `arguments[0]` is the parent
- *                  promise and `arguments[1]` is the rejection callback.
- * @return New chained Promise Value, or an Error Value if the receiver or
- *         callback is invalid.
- */
 static Value*
 _PromiseError(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 2) {
@@ -196,9 +153,6 @@ _PromiseError(Interpreter* interpreter, int argc, Value** arguments) {
 	return promiseValue;
 }
 
-/**
- * @brief Describes the native methods installed on the built-in Promise class.
- */
 static ModuleFunction _PromiseClassMethods[] = {
 	// Promise class
 	{ .Name		 = "then",
@@ -213,14 +167,6 @@ static ModuleFunction _PromiseClassMethods[] = {
 	{ .Name = NULL }
 };
 
-/**
- * @brief Allocates the script-visible Promise class and installs its native
- *        chaining methods.
- *
- * @param interpreter Interpreter that owns the class object and native method
- *                    metadata.
- * @return Class Value used as the singleton Promise constructor.
- */
 Value* CreatePromiseClass(Interpreter* interpreter) {
 	Value* promiseClass =
 		NewClassValue(interpreter,
@@ -246,13 +192,6 @@ Value* CreatePromiseClass(Interpreter* interpreter) {
 	return promiseClass;
 }
 
-/**
- * @brief Creates the module object that exposes the Promise class to importers.
- *
- * @param interpreter Interpreter whose cached Promise singleton should be
- *                    exported.
- * @return Object Value containing the `Promise` binding.
- */
 Value* LoadCorePromise(Interpreter* interpreter) {
 	Value* val = (interpreter->Promise != NULL)
 					 ? interpreter->Promise
