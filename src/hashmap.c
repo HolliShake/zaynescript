@@ -367,3 +367,5 @@ void FreeHashMap(HashMap* hashmap) {
 	free(hashmap->Buckets);
 	free(hashmap);
 }
+
+#undef LOAD_FACTOR_THRESHOLD

@@ -1,10 +1,13 @@
+#ifndef CORE_PROMISE_H
+#define CORE_PROMISE_H
+
 /**
  * @file promise.h
- * @brief Core Promise module interface.
+ * @brief Declares the built-in Promise class loader used by core modules.
  *
- * Defines the interface for creating the built-in Promise class
- * and loading the core Promise module, which provides
- * asynchronous operation support within the interpreter.
+ * This module wires the script-visible Promise methods into the interpreter's
+ * class system and exposes the loader used by `import core.promise` style
+ * bootstrap paths.
  */
 
 #include "../class.h"
@@ -15,34 +18,29 @@
 #include "../statemachine.h"
 #include "../value.h"
 
-
-#ifndef CORE_PROMISE_H
-#	define CORE_PROMISE_H
-
 /**
- * @brief Creates the Promise class
+ * @brief Builds the interpreter's singleton `Promise` class object.
  *
- * This function initializes the Promise class with its methods
- * and properties. It is called during the loading of the core
- * Promise module.
+ * Registers the native `.then()` and `.error()` methods against a fresh class
+ * whose base is the built-in `Object` class. The returned Value is usually
+ * cached on `interpreter->Promise` and reused across the lifetime of the VM.
  *
- * @param interpreter The interpreter instance to create the
- * Promise class in
- * @return Pointer to the created Promise class, or NULL on
- * failure
+ * @param interpreter Interpreter that owns the class object, method metadata,
+ *                    and any allocations performed while creating it.
+ * @return Heap-managed class Value ready to store in the core module table.
  */
 Value* CreatePromiseClass(Interpreter* interpreter);
 
 /**
- * @brief Loads the core Promise module
+ * @brief Returns the core module object that exports the Promise class.
  *
- * This function initializes and loads the core Promise module,
- * which provides promise functionalities for the interpreter.
+ * Ensures the interpreter has a Promise singleton, creates a plain object
+ * module wrapper, and binds that singleton under the `Promise` property for
+ * importers.
  *
- * @param interpreter The interpreter instance to load the
- * Promise module into
- * @return Pointer to the loaded core Promise module, or NULL on
- * failure
+ * @param interpreter Interpreter whose cached Promise class should be exposed
+ *                    through a module object.
+ * @return Object Value containing the `Promise` export.
  */
 Value* LoadCorePromise(Interpreter* interpreter);
 

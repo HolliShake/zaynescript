@@ -957,3 +957,8 @@ Value* LoadCoreIo(Interpreter* interpreter) {
 
 	return ioModule;
 }
+
+#undef PROP_FILE_PTR
+#undef PROP_FILE_READABLE
+#undef PROP_FILE_WRITABLE
+#undef PROP_FILE_BINARY

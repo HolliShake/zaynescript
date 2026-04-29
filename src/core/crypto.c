@@ -1846,3 +1846,5 @@ Value* LoadCoreCrypto(Interpreter* interpreter) {
 
 	return module;
 }
+
+#undef LX_ENC_TAG

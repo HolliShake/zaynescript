@@ -1,15 +1,15 @@
 /**
  * @file operation.h
- * @brief Core runtime operation declarations used by the
- * interpreter.
+ * @brief Declares the runtime helpers that implement bytecode-level object,
+ *        import, call, and operator semantics.
  *
- * Provides function declarations for environment management,
- * attribute access, index get/set, constructor calls, method
- * dispatch, function calls, all arithmetic and bitwise
- * operators, comparison operators, and module import. These
- * operations form the building blocks of the interpreter's
- * dispatch loop.
+ * The interpreter's dispatch loop delegates most nontrivial behavior to these
+ * helpers so that imports, attribute resolution, constructor calls, and unary /
+ * binary operators stay centralized and reusable across opcodes.
  */
+
+#ifndef OPERATION_H
+#define OPERATION_H
 
 #include "./core/loader.h"
 #include "./environment.h"
@@ -19,72 +19,81 @@
 #include "./import.h"
 #include "./value.h"
 
-
-#ifndef OPERATION_H
-#	define OPERATION_H
-
 /**
- * @brief Saves an environment as the root environment on the
- * interpreter's environment stack.
+ * @brief Placeholder hook for root-environment stack management.
  *
- * @param interp The interpreter instance
- * @param env    The environment value to save as root
+ * The current implementation is intentionally inert: legacy environment-stack
+ * bookkeeping has been commented out, so calling this function has no effect.
+ *
+ * @param interp Interpreter whose environment stack would be updated in a
+ *               fuller implementation.
+ * @param env Environment Value that would become the saved root.
  */
 void SaveRootEnv(Interpreter* interp, Value* env);
 
 /**
- * @brief Pushes the current environment onto the interpreter's
- * environment stack.
+ * @brief Placeholder hook for saving the current environment.
  *
- * @param interp   The interpreter instance
- * @param envObj   The environment value to save
+ * This currently performs no mutation; it exists so older call sites can keep
+ * compiling while the runtime uses direct frame environments instead.
+ *
+ * @param interp Interpreter whose environment stack would be extended.
+ * @param envObj Environment Value that would be pushed.
  */
 void SaveEnv(Interpreter* interp, Value* envObj);
 
 /**
- * @brief Pops the current environment from the environment
- * stack.
+ * @brief Placeholder hook for restoring the most recently saved environment.
  *
- * @param interp The interpreter instance
+ * The implementation is currently a no-op.
+ *
+ * @param interp Interpreter whose environment stack would be popped.
  */
 void RestoreEnv(Interpreter* interp);
 
 /**
- * @brief Restores the nth environment from the environment stack
- * and synchronizes it with the current CallEnv.
+ * @brief Placeholder hook for restoring a non-top saved environment.
  *
- * @param interp The interpreter instance
- * @param n The index of the environment to restore (0-based)
+ * Older code expected this to resynchronize a previously saved lexical scope,
+ * but the current implementation leaves interpreter state unchanged.
+ *
+ * @param interp Interpreter whose environment stack would be adjusted.
+ * @param n Zero-based logical depth of the environment to restore.
  */
 void RestoreNthEnvAndSync(Interpreter* interp, int n);
 
 /**
- * @brief Checks if a method exists on an object.
- * Searches through arrays, objects, classes, and class instances
- * by checking their prototype chains.
+ * @brief Determines whether a call should keep the receiver as `this` when
+ *        dispatching a named member.
  *
- * @param interp      The interpreter instance
- * @param obj         The object to check
- * @param method      The method name to check for
+ * The implementation checks Promise, Array, and class-instance prototype
+ * chains for callable members. Plain objects currently do not expose a
+ * prototype chain here, so only direct type-specific method tables participate.
  *
- * @return true if the method exists, false otherwise
+ * @param interp Interpreter whose built-in prototype singletons are queried.
+ * @param obj Candidate receiver.
+ * @param method Member name Value to resolve.
+ * @return `true` when the lookup finds a method that should receive `this`.
  */
 bool IsMethodOfObject(Interpreter* interp, Value* obj, Value* method);
 
 /**
- * @brief Generic attribute retrieval function.
- * Handles arrays (by index or prototype), objects (by key or
- * prototype), classes (static members), and class instances
- * (instance members or prototype).
+ * @brief Resolves an index or attribute lookup across the runtime's supported
+ *        receiver types.
  *
- * @param interp        The interpreter instance
- * @param obj           The object to retrieve the attribute from
- * @param index         The attribute/key to retrieve
- * @param forMethodCall Whether the attribute is being retrieved
- * for a method call
+ * Arrays accept numeric indices and, for method calls, Array prototype members;
+ * plain objects read hash-map properties; classes search both instance and
+ * static members across the inheritance chain; class instances search their
+ * prototype then per-instance members; strings expose integer indexing as
+ * single-character strings; unresolved lookups return `interpreter->Null`.
  *
- * @return The retrieved attribute value, or Null value if not
- * found
+ * @param interp Interpreter that provides built-in prototype objects and Null.
+ * @param obj Receiver being indexed.
+ * @param index Property key or numeric index Value.
+ * @param forMethodCall When `true`, prototype method tables are considered for
+ *                      callable dispatch.
+ * @return Resolved member Value, an Error Value for invalid/out-of-range
+ *         indexing, or `interpreter->Null` when no attribute exists.
  */
 Value* GenericGetAttribute(Interpreter* interp,
 						   Value*		obj,
@@ -92,93 +101,112 @@ Value* GenericGetAttribute(Interpreter* interp,
 						   bool			forMethodCall);
 
 /**
- * @brief Performs import core operation.
- * Loads a core module by name using LoadCoreModule.
+ * @brief Loads a built-in core module and memoizes it in the interpreter's
+ *        import cache.
  *
- * @param interp      The interpreter instance
- * @param moduleName  The name of the module to import
+ * Repeated imports return the cached module object rather than rebuilding it.
  *
- * @return Module value, or error value if not found
+ * @param interp Interpreter whose import cache and core loader are consulted.
+ * @param moduleName Logical core-module name such as `math` or `promise`.
+ * @return Cached/built module Value, or an Error Value when the named core
+ *         module is unavailable.
  */
 Value* DoImportCore(Interpreter* interp, String moduleName);
 
 /**
- * @brief Performs import lib operation.
- * Loads a user library module by reading and compiling a .zs
- * file.
+ * @brief Imports a library module from the configured `lib/` search paths.
  *
- * @param interp      The interpreter instance
- * @param moduleName  The name/path of the module to import
- * (e.g., "request/app")
+ * The implementation resolves `<name>.zs`, performs cycle detection, compiles
+ * the file, executes it in a fresh module environment, and caches the result.
  *
- * @return Module value, or error value if not found
+ * @param interp Interpreter whose import graph and module cache are mutated.
+ * @param moduleName Library-relative module path without the `.zs` suffix.
+ * @return Module export Value on success, or an Error Value if resolution,
+ *         parsing, compilation, or execution fails.
  */
 Value* DoImportLib(Interpreter* interp, String moduleName);
 
 /**
- * @brief Performs import file operation.
- * Loads a module from a specified file path.
+ * @brief Imports a module from an explicit file path relative to the caller.
  *
- * @param interp    The interpreter instance
- * @param filePath  The file path of the module to import
+ * This follows the same lex/parse/compile/execute/cache path as `DoImportLib`,
+ * but resolves the target from the provided filesystem path stem instead of the
+ * library search path.
  *
- * @return Module value, or error value if not found
+ * @param interp Interpreter whose import graph and module cache are mutated.
+ * @param filePath File path stem without the `.zs` suffix.
+ * @return Module export Value on success, or an Error Value if the file cannot
+ *         be resolved or executed.
  */
 Value* DoImportFile(Interpreter* interp, String filePath);
 
 /**
- * @brief Sets an index on an object.
- * Supports arrays (by numeric index), objects (by key),
- * class instances (member), and classes (static member).
+ * @brief Stores `val` into an indexable receiver using the runtime's assignment
+ *        rules.
  *
- * @param interp The interpreter instance
- * @param obj    The object to set the index on
- * @param index  The index/key to set
- * @param val    The value to set
+ * Arrays require an in-range numeric index, objects reject writes when marked
+ * read-only, class instances write instance members, and classes write static
+ * members.
  *
- * @return Null value on success, or error value on failure
+ * @param interp Interpreter that owns the Null singleton and any Error Values.
+ * @param obj Receiver being mutated.
+ * @param index Numeric or string-like key used for the assignment.
+ * @param val Value to store.
+ * @return `interpreter->Null` on success, or an Error Value when the receiver
+ *         cannot be indexed or the index is invalid.
  */
 Value* DoSetIndex(Interpreter* interp, Value* obj, Value* index, Value* val);
 
 /**
- * @brief Retrieves an attribute from an object.
- * Delegates to GenericGetAttribute with forMethodCall=false.
+ * @brief Resolves a non-method index lookup.
  *
- * @param interp        The interpreter instance
- * @param obj           The object to retrieve the attribute from
- * @param index         The index/key to retrieve
+ * This is a thin wrapper over `GenericGetAttribute(..., false)` used by the
+ * `OP_GET_INDEX` opcode.
  *
- * @return The retrieved attribute value
+ * @param interp Interpreter that provides built-ins and Null.
+ * @param obj Receiver being indexed.
+ * @param index Property key or numeric index Value.
+ * @return Resolved member Value, Error Value, or `interpreter->Null` when the
+ *         lookup misses.
  */
 Value* DoGetIndex(Interpreter* interp, Value* obj, Value* index);
 
 /**
- * @brief Performs constructor call operation.
- * Creates a new class instance and calls the constructor if
- * present. If no constructor exists, expects 0 arguments.
+ * @brief Instantiates a class and, when present, invokes its `init`
+ *        constructor.
  *
- * @param interp      The interpreter instance
- * @param frame       The current call frame for environment context
- * @param clsValue    The class to instantiate
- * @param argc        Number of arguments
+ * Built-in `Object`, `Array`, and `Blob` classes allocate specialized backing
+ * Values; other classes produce a generic class-instance wrapper. When no
+ * constructor exists the function requires zero user arguments and returns the
+ * fresh instance directly.
  *
- * @return Null value on success, or error value on failure
+ * @param interp Interpreter that owns the new instance and any Error Values.
+ * @param frame Caller frame whose operand stack already contains constructor
+ *              arguments.
+ * @param clsValue Class Value to instantiate.
+ * @param argc Number of user-supplied constructor arguments currently on the
+ *             stack.
+ * @return Constructor result/Error sentinel exactly as expected by the caller:
+ *         `interpreter->Null` for normal completion paths or an Error Value on
+ *         invalid class/arity conditions.
  */
 Value*
 DoCallCtor(Interpreter* interp, CallFrame* frame, Value* clsValue, int argc);
 
 /**
- * @brief Performs method call operation.
- * Retrieves the method from the object and calls it.
- * Automatically handles 'this' argument for method calls.
+ * @brief Resolves a named member call and normalizes whether the receiver stays
+ *        on the stack as `this`.
  *
- * @param interp      The interpreter instance
- * @param frame       The current call frame for environment context
- * @param obj         The object on which the method is called
- * @param methodName  The name of the method to call
- * @param argc        Number of arguments
+ * If the resolved member is not treated as a method, the helper rotates the
+ * operand stack so the receiver is discarded and only explicit call arguments
+ * remain.
  *
- * @return Null value on success, or error value on failure
+ * @param interp Interpreter that owns lookup helpers and any Error Values.
+ * @param frame Caller frame whose operand stack holds receiver plus arguments.
+ * @param obj Receiver Value used for member lookup.
+ * @param methodName Property key naming the method or callable member.
+ * @param argc Number of operands associated with the call.
+ * @return Result from `DoCall`, or an Error Value when the member is missing.
  */
 Value* DoCallMethod(Interpreter* interp,
 					CallFrame*	 frame,
@@ -212,308 +240,267 @@ Value* DoCall(Interpreter* interpreter,
 			  bool		   withThis);
 
 /**
- * @brief Performs logical NOT operation on a value.
- * Coerces the value to boolean and negates it.
+ * @brief Returns the boolean negation of `val` using the VM's truthiness rules.
  *
- * @param interp The interpreter instance
- * @param val    The value to perform the logical NOT operation
- * on
- *
- * @return Boolean value (True or False)
+ * @param interp Interpreter that owns the canonical `True` and `False`
+ *               singletons.
+ * @param val Value to coerce to boolean before negation.
+ * @return Either `interpreter->True` or `interpreter->False`.
  */
 Value* DoNot(Interpreter* interp, Value* val);
 
 /**
- * @brief Performs unary plus operation on a value.
- * Returns the value unchanged.
+ * @brief Applies unary `+` by copying numeric values into a fresh Value.
  *
- * @param interp The interpreter instance
- * @param val    The value to perform the unary plus operation on
+ * Small ints and doubles are duplicated directly; big-number operands are
+ * cloned through libbf so later mutations do not alias the original.
  *
- * @return The value unchanged
+ * @param interp Interpreter that owns the returned numeric Value.
+ * @param val Operand to normalize as a numeric value.
+ * @return Fresh numeric Value matching the operand, or an Error Value for
+ *         non-numeric input.
  */
 Value* DoPos(Interpreter* interp, Value* val);
 
 /**
- * @brief Performs unary minus operation on a value.
- * Negates numeric values.
+ * @brief Applies unary `-` to a numeric operand.
  *
- * @param interp The interpreter instance
- * @param val    The value to perform the unary minus operation
- * on
+ * Big-number operands are copied and sign-flipped through libbf so the original
+ * operand remains unchanged.
  *
- * @return Negated numeric value, or error value for invalid
- * operand
+ * @param interp Interpreter that owns the returned numeric Value.
+ * @param val Operand to negate.
+ * @return Negated numeric Value, or an Error Value for non-numeric input.
  */
 Value* DoNeg(Interpreter* interp, Value* val);
 
 /**
- * @brief Performs bitwise NOT (~) on a numeric value.
+ * @brief Applies bitwise complement to integer-like operands.
  *
- * @param interp The interpreter instance
- * @param val    The value to complement
+ * Big-number values use the two's-complement identity `~n == -n - 1` because
+ * libbf does not expose a direct unary-not helper.
  *
- * @return Bitwise-complemented value, or error for invalid operand
+ * @param interp Interpreter that owns the returned numeric Value.
+ * @param val Operand to complement.
+ * @return Complemented numeric Value, or an Error Value for non-numeric input.
  */
 Value* DoBitNot(Interpreter* interp, Value* val);
 
 /**
- * @brief Returns the type of a value as a string.
+ * @brief Materializes the runtime type tag of `val` as a script string.
  *
- * @param interpreter The interpreter instance
- * @param val         The value to get the type of
- *
- * @return String value representing the type of the value
+ * @param interpreter Interpreter that owns the returned string Value.
+ * @param val Value whose type name should be exposed.
+ * @return New string Value containing the result of `ValueTypeOf(val)`.
  */
 Value* DoGetType(Interpreter* interpreter, Value* val);
 
 /**
- * @brief Performs multiplication operation on two values.
- * Supports integer and numeric operands.
- * Returns int if result fits in int range, otherwise returns
- * num.
+ * @brief Multiplies two numeric operands while preserving small-int results
+ *        when possible.
  *
- * @param interp The interpreter instance
- * @param lhs    Left-hand side value
- * @param rhs    Right-hand side value
- *
- * @return Resulting value of the multiplication, or error value
- * for invalid operands
+ * @param interp Interpreter that owns the returned numeric Value.
+ * @param lhs Left operand.
+ * @param rhs Right operand.
+ * @return Numeric product, or an Error Value when either operand is not
+ *         numeric.
  */
 Value* DoMul(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * @brief Performs division operation on two values.
- * Supports integer and numeric operands.
- * Returns error for division by zero.
+ * @brief Divides one numeric operand by another.
  *
- * @param interp The interpreter instance
- * @param lhs    Left-hand side value
- * @param rhs    Right-hand side value
+ * The implementation rejects division by zero and promotes to wider numeric
+ * representations as needed.
  *
- * @return Resulting value of the division, or error value
+ * @param interp Interpreter that owns the returned numeric Value.
+ * @param lhs Dividend.
+ * @param rhs Divisor.
+ * @return Quotient Value, or an Error Value for non-numeric operands or zero
+ *         divisors.
  */
 Value* DoDiv(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * @brief Performs modulo operation on two values.
- * Supports integer and numeric operands.
- * Returns error for modulo by zero.
+ * @brief Computes the remainder of one numeric operand divided by another.
  *
- * @param interp The interpreter instance
- * @param lhs    Left-hand side value
- * @param rhs    Right-hand side value
- *
- * @return Resulting value of the modulo operation, or error
- * value
+ * @param interp Interpreter that owns the returned numeric Value.
+ * @param lhs Dividend.
+ * @param rhs Divisor.
+ * @return Remainder Value, or an Error Value for non-numeric operands or zero
+ *         divisors.
  */
 Value* DoMod(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * @brief Performs increment operation on a value.
- * Supports integer and numeric operands.
+ * @brief Returns `val + 1` for numeric operands.
  *
- * @param interp The interpreter instance
- * @param val    The value to increment
- *
- * @return Resulting value of the increment operation, or error
- * value for invalid operand
+ * @param interp Interpreter that owns the returned numeric Value.
+ * @param val Operand to increment.
+ * @return Incremented numeric Value, or an Error Value for non-numeric input.
  */
 Value* DoInc(Interpreter* interp, Value* val);
 
 /**
- * @brief Performs addition operation on two values.
- * Supports integer, numeric, and string operands.
- * String operands are concatenated.
+ * @brief Adds two operands using LanguageX's numeric and string concatenation
+ *        rules.
  *
- * @param interp The interpreter instance
- * @param lhs    Left-hand side value
- * @param rhs    Right-hand side value
+ * Numeric pairs are summed arithmetically; if either operand is a string the
+ * runtime concatenates their string forms instead.
  *
- * @return Resulting value of the addition, or error value for
- * invalid operands
+ * @param interp Interpreter that owns the returned Value.
+ * @param lhs Left operand.
+ * @param rhs Right operand.
+ * @return Sum/concatenation result, or an Error Value for unsupported operand
+ *         combinations.
  */
 Value* DoAdd(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * @brief Performs decrement operation on a value.
- * Supports integer and numeric operands.
+ * @brief Returns `val - 1` for numeric operands.
  *
- * @param interp The interpreter instance
- * @param val    The value to decrement
- *
- * @return Resulting value of the decrement operation, or error
- * value for invalid operand
+ * @param interp Interpreter that owns the returned numeric Value.
+ * @param val Operand to decrement.
+ * @return Decremented numeric Value, or an Error Value for non-numeric input.
  */
 Value* DoDec(Interpreter* interp, Value* val);
 
 /**
- * @brief Performs subtraction operation on two values.
- * Supports integer and numeric operands.
+ * @brief Subtracts one numeric operand from another.
  *
- * @param interp The interpreter instance
- * @param lhs    Left-hand side value
- * @param rhs    Right-hand side value
- *
- * @return Resulting value of the subtraction, or error value for
- * invalid operands
+ * @param interp Interpreter that owns the returned numeric Value.
+ * @param lhs Minuend.
+ * @param rhs Subtrahend.
+ * @return Difference Value, or an Error Value for non-numeric operands.
  */
 Value* DoSub(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * @brief Performs left shift operation on two values.
- * Supports numeric operands (coerced to integers).
+ * @brief Applies bitwise left shift after coercing both operands to integer
+ *        form.
  *
- * @param interp The interpreter instance
- * @param lhs    Left-hand side value
- * @param rhs    Right-hand side value
- *
- * @return Resulting value of the left shift operation, or error
- * value for invalid operands
+ * @param interp Interpreter that owns the returned numeric Value.
+ * @param lhs Value supplying the bits to shift.
+ * @param rhs Shift distance.
+ * @return Shifted numeric Value, or an Error Value for non-numeric operands.
  */
 Value* DoLShift(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * @brief Performs right shift operation on two values.
- * Supports numeric operands (coerced to integers).
+ * @brief Applies bitwise right shift after coercing both operands to integer
+ *        form.
  *
- * @param interp The interpreter instance
- * @param lhs    Left-hand side value
- * @param rhs    Right-hand side value
- *
- * @return Resulting value of the right shift operation, or error
- * value for invalid operands
+ * @param interp Interpreter that owns the returned numeric Value.
+ * @param lhs Value supplying the bits to shift.
+ * @param rhs Shift distance.
+ * @return Shifted numeric Value, or an Error Value for non-numeric operands.
  */
 Value* DoRShift(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * @brief Performs less than comparison on two values.
- * Supports numeric operands.
+ * @brief Compares two numeric operands with `<`.
  *
- * @param interp The interpreter instance
- * @param lhs    Left-hand side value
- * @param rhs    Right-hand side value
- *
- * @return Boolean value (True or False), or error value for
- * invalid operands
+ * @param interp Interpreter that owns the canonical boolean singletons.
+ * @param lhs Left operand.
+ * @param rhs Right operand.
+ * @return `True`/`False` on success, or an Error Value for non-numeric input.
  */
 Value* DoLT(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * @brief Performs less than or equal to comparison on two
- * values. Supports numeric operands.
+ * @brief Compares two numeric operands with `<=`.
  *
- * @param interp The interpreter instance
- * @param lhs    Left-hand side value
- * @param rhs    Right-hand side value
- *
- * @return Boolean value (True or False), or error value for
- * invalid operands
+ * @param interp Interpreter that owns the canonical boolean singletons.
+ * @param lhs Left operand.
+ * @param rhs Right operand.
+ * @return `True`/`False` on success, or an Error Value for non-numeric input.
  */
 Value* DoLTE(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * @brief Performs greater than comparison on two values.
- * Supports numeric operands.
+ * @brief Compares two numeric operands with `>`.
  *
- * @param interp The interpreter instance
- * @param lhs    Left-hand side value
- * @param rhs    Right-hand side value
- *
- * @return Boolean value (True or False), or error value for
- * invalid operands
+ * @param interp Interpreter that owns the canonical boolean singletons.
+ * @param lhs Left operand.
+ * @param rhs Right operand.
+ * @return `True`/`False` on success, or an Error Value for non-numeric input.
  */
 Value* DoGT(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * @brief Performs greater than or equal to comparison on two
- * values. Supports numeric operands.
+ * @brief Compares two numeric operands with `>=`.
  *
- * @param interp The interpreter instance
- * @param lhs    Left-hand side value
- * @param rhs    Right-hand side value
- *
- * @return Boolean value (True or False), or error value for
- * invalid operands
+ * @param interp Interpreter that owns the canonical boolean singletons.
+ * @param lhs Left operand.
+ * @param rhs Right operand.
+ * @return `True`/`False` on success, or an Error Value for non-numeric input.
  */
 Value* DoGTE(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * @brief Performs equality comparison on two values.
- * Uses ValueIsEqual for comparison.
+ * @brief Compares two Values using the runtime's equality semantics.
  *
- * @param interp The interpreter instance
- * @param lhs    Left-hand side value
- * @param rhs    Right-hand side value
- *
- * @return Boolean value (True or False)
+ * @param interp Interpreter that owns the canonical boolean singletons.
+ * @param lhs Left operand.
+ * @param rhs Right operand.
+ * @return `True` when `ValueIsEqual(lhs, rhs)` succeeds, otherwise `False`.
  */
 Value* DoEQ(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * @brief Performs inequality comparison on two values.
- * Uses ValueIsEqual for comparison and negates the result.
+ * @brief Negates the runtime equality comparison between two operands.
  *
- * @param interp The interpreter instance
- * @param lhs    Left-hand side value
- * @param rhs    Right-hand side value
- *
- * @return Boolean value (True or False)
+ * @param interp Interpreter that owns the canonical boolean singletons.
+ * @param lhs Left operand.
+ * @param rhs Right operand.
+ * @return `True` when the operands are not equal under `ValueIsEqual`.
  */
 Value* DoNE(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * @brief Performs bitwise AND operation on two values.
- * Supports integer and numeric operands (coerced to integers).
+ * @brief Applies bitwise AND after coercing operands to integer form.
  *
- * @param interp The interpreter instance
- * @param lhs    Left-hand side value
- * @param rhs    Right-hand side value
- *
- * @return Resulting value of the bitwise AND operation, or error
- * value for invalid operands
+ * @param interp Interpreter that owns the returned numeric Value.
+ * @param lhs Left operand.
+ * @param rhs Right operand.
+ * @return Bitwise-AND result, or an Error Value for non-numeric operands.
  */
 Value* DoAnd(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * @brief Performs bitwise OR operation on two values.
- * Supports integer and numeric operands (coerced to integers).
+ * @brief Applies bitwise OR after coercing operands to integer form.
  *
- * @param interp The interpreter instance
- * @param lhs    Left-hand side value
- * @param rhs    Right-hand side value
- *
- * @return Resulting value of the bitwise OR operation, or error
- * value for invalid operands
+ * @param interp Interpreter that owns the returned numeric Value.
+ * @param lhs Left operand.
+ * @param rhs Right operand.
+ * @return Bitwise-OR result, or an Error Value for non-numeric operands.
  */
 Value* DoOr(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * @brief Performs bitwise XOR operation on two values.
- * Supports integer and numeric operands (coerced to integers).
+ * @brief Applies bitwise XOR after coercing operands to integer form.
  *
- * @param interp The interpreter instance
- * @param lhs    Left-hand side value
- * @param rhs    Right-hand side value
- *
- * @return Resulting value of the bitwise XOR operation, or error
- * value for invalid operands
+ * @param interp Interpreter that owns the returned numeric Value.
+ * @param lhs Left operand.
+ * @param rhs Right operand.
+ * @return Bitwise-XOR result, or an Error Value for non-numeric operands.
  */
 Value* DoXor(Interpreter* interp, Value* lhs, Value* rhs);
 
 /**
- * @brief Loads a function from the interpreter's functions
- * array. If closure is true, clones the function. Sets up
- * captures from root and local environments.
+ * @brief Materializes a function Value from the interpreter's compiled-function
+ *        table.
  *
- * @param interp     The interpreter instance
- * @param frame      The current call frame (for local env)
- * @param offset     The offset of the function in the functions
- * array
- * @param closure    Whether to create a closure (clone) of the
- * function
+ * When `closure` is true the helper clones the function metadata and captures
+ * the current lexical environment so later calls see the correct closed-over
+ * values.
  *
- * @return The loaded function value
+ * @param interp Interpreter whose function registry is being indexed.
+ * @param frame Current frame supplying local environment cells for captures.
+ * @param offset Index into `interpreter->Functions`.
+ * @param closure Whether to clone the function into a closure instead of
+ *                returning the shared compiled definition directly.
+ * @return Callable Value ready to push onto the operand stack.
  */
 Value*
 DoLoadFunction(Interpreter* interp, CallFrame* frame, int offset, bool closure);

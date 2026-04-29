@@ -368,3 +368,5 @@ Value* LoadCoreMysql(Interpreter* interp) {
 	HashMapSet(map, "Database", classVal);
 	return module;
 }
+
+#undef PROP_DB_PTR

@@ -704,3 +704,5 @@ Value* LoadCoreRegex(Interpreter* interpreter) {
 
 	return module;
 }
+
+#undef LRE_BLOB_KEY

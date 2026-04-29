@@ -1,12 +1,11 @@
 /**
  * @file astnode.h
- * @brief Abstract Syntax Tree (AST) node creation and management
- * interface
+ * @brief Declares constructors and teardown helpers for the parser's abstract
+ *        syntax tree nodes.
  *
- * This header defines the interface for creating and managing
- * AST nodes that represent the syntactic structure of parsed
- * source code. Each function creates a specific type of AST node
- * for different language constructs.
+ * Each factory function creates one concrete `AstType` shape while preserving
+ * source positions so later compiler and runtime diagnostics can point back to
+ * the original program text.
  */
 
 #include "./global.h"
@@ -657,12 +656,13 @@ Ast* AstBlock(Ast* statements, Position position);
 Ast* AstProgram(Ast* children, Position position);
 
 /**
- * @brief Frees an AST node and all its children.
+ * @brief Recursively frees an AST subtree and every owned string or child node
+ *        reachable from it.
  *
- * Recursively deallocates memory for an AST node and all of its
- * child nodes, preventing memory leaks.
+ * This is the parser/compiler teardown path used after a module has either been
+ * compiled or discarded.
  *
- * @param ast Pointer to the AST node to free.
+ * @param ast Root AST node to release. Passing `NULL` is safe.
  */
 void FreeAst(Ast* ast);
 

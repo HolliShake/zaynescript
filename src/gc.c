@@ -124,6 +124,35 @@ static void _Free(Interpreter* interp, Value* value) {
 		case VLT_PROMISE:
 			{
 				Promise* promise = CoerceToPromise(value);
+				/* NOTE: SuspendedCallFrame is NOT freed here.
+				 *
+				 * Async-coroutine frames (created by DoCall) are
+				 * RefCount-managed: DoCall releases them after Run
+				 * returns, and OP_RETURN / _RaiseError clears the
+				 * promise's pointer before that happens.
+				 *
+				 * Callback frames (created by _PromiseThen /
+				 * _PromiseError, Parent==NULL) would ideally be freed
+				 * here, but by the time the GC sweeps this promise the
+				 * frame pointer may already have been freed by DoCall
+				 * in an error-unwind path — making it unsafe to
+				 * dereference.  Those frames are a known correctness-
+				 * neutral leak (they never cause incorrect behaviour). */
+
+				/* Free the linked-list nodes for both reaction lists.
+				 * The node->Promise Values themselves are GC-managed. */
+				ListStateMachineNode* rnode = promise->FullfillReactions;
+				while (rnode != NULL) {
+					ListStateMachineNode* rnext = rnode->Next;
+					free(rnode);
+					rnode = rnext;
+				}
+				rnode = promise->RejectReactions;
+				while (rnode != NULL) {
+					ListStateMachineNode* rnext = rnode->Next;
+					free(rnode);
+					rnode = rnext;
+				}
 				FreePromise(promise);
 				value->Value.Opaque = NULL;
 				break;

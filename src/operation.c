@@ -1774,5 +1774,6 @@ Value* DoLoadFunction(Interpreter* interpreter,
 	return fn;
 }
 
+#undef FreeTempBf
 #undef PushArray
 #undef GetOffset

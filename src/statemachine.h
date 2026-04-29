@@ -1,36 +1,38 @@
+#ifndef STATEMACHINE_H
+#define STATEMACHINE_H
+
 /**
  * @file statemachine.h
- * @brief State machine implementation for handling asynchronous
- * operations (e.g., promises).
+ * @brief Declares the Promise state container used by async functions and
+ *        chained callbacks.
  *
- * This header defines the StateMachine structure and related
- * functions for managing the state of asynchronous operations,
- * including pending, fulfilled, and rejected states.
+ * Promise objects in LanguageX double as coroutine resumption records: they
+ * track settlement state, queued reactions, and any suspended call frame that
+ * must be resumed by the event loop.
  */
 
 #include "./global.h"
 
-#ifndef STATEMACHINE_H
-#	define STATEMACHINE_H
-
 /**
- * @brief Creates a new StateMachine instance.
+ * @brief Allocates a Promise record for either an async coroutine or a chained
+ *        reaction callback.
  *
- * Allocates and initializes a StateMachine with the given
- * initial state and execution context. The state machine is used
- * to track the lifecycle of asynchronous operations such as
- * promises.
+ * The promise stores settlement state plus enough execution context for the
+ * event loop to resume suspended code or invoke a registered `.then()` or
+ * `.error()` callback later.
  *
- * @param initial    The initial state of the state machine
- * (e.g., PENDING).
- * @param isCallback Whether this state machine is a callback
- * (e.g., then/catch handler).
- * @param waitFor    The value this state machine is waiting on
- * (e.g., a promise), or NULL.
- * @param function   The function being executed by this state
- * machine.
- * @return Pointer to a newly allocated StateMachine, or NULL on
- * allocation failure.
+ * @param initial Initial settlement state; new promises are typically created
+ *                as `PENDING`.
+ * @param suspendedCallFrame Frame to resume when this promise is dispatched,
+ *                           or `NULL` for callbacks whose frame will be built
+ *                           lazily at run time.
+ * @param parent Settled or awaited parent promise linked to this promise, or
+ *               `NULL` for root async tasks.
+ * @param globals Global environment visible to the resumed callback/coroutine.
+ * @param callback Function Value to execute when this promise is dispatched.
+ *                 May be the async function itself or a `.then()`/`.error()`
+ *                 handler.
+ * @return Newly allocated Promise owned by a GC-managed Value wrapper.
  */
 Promise* CreatePromise(PromiseState initial,
 					   CallFrame*	suspendedCallFrame,
@@ -39,75 +41,78 @@ Promise* CreatePromise(PromiseState initial,
 					   Value*		callback);
 
 /**
- * @brief Adds a reaction to the Promise.
+ * @brief Registers a listener that should run on either fulfillment or
+ *        rejection.
  *
- * This function adds a reaction to the Promise, which is used to
- * track the reactions to the Promise.
+ * This is the await path: the suspended coroutine must resume regardless of
+ * whether the awaited promise resolves or rejects.
  *
- * @param promise Pointer to the Promise instance.
- * @param promiseValue The value to add to the reaction.
+ * @param promise Promise being observed.
+ * @param promiseValue Promise Value representing the suspended continuation to
+ *                     enqueue when `promise` settles.
  */
 void PromiseAddReaction(Promise* promise, Value* promiseValue);
 
 /**
- * @brief Sets the Promise to an awaiting state with a
- * specified waitFor value.
+ * @brief Registers a continuation that should run only after fulfillment.
  *
- * This function transitions the StateMachine to a new state
- * (e.g., pending) and sets the waitFor field to indicate that
- * the state machine is now waiting on a specific value (e.g., a
- * promise). This is typically called when an asynchronous
- * operation is initiated and the state machine needs to wait for
- * its completion.
+ * Used by `.then()` so rejected parents skip this callback entirely.
  *
- * @param stateMachine Pointer to the StateMachine instance to
- * update.
- * @param value The value that the StateMachine is waiting for
- * (e.g., a promise).
+ * @param promise Promise whose fulfillment should schedule the continuation.
+ * @param promiseValue Promise Value representing the chained `.then()` task.
+ */
+void PromiseFulfillReactionAdd(Promise* promise, Value* promiseValue);
+
+/**
+ * @brief Registers a continuation that should run only after rejection.
+ *
+ * Used by `.error()` and by skipped `.then()` chains that need downstream
+ * handlers to observe the propagated rejection.
+ *
+ * @param promise Promise whose rejection should schedule the continuation.
+ * @param promiseValue Promise Value representing the chained rejection task.
+ */
+void PromiseRejectReactionAdd(Promise* promise, Value* promiseValue);
+
+/**
+ * @brief Records which promise an async coroutine is currently awaiting.
+ *
+ * The opcode handler uses this parent link so `OP_GET_AWAITED_VALUE` can read
+ * the settled result or rejection reason when the coroutine resumes.
+ *
+ * @param promise Suspended coroutine promise whose await parent is being set.
+ * @param promiseValue Promise currently being awaited.
  */
 void PromiseAwait(Promise* promise, Value* promiseValue);
 
 /**
- * @brief Transitions the StateMachine to a fulfilled state with
- * a specified value.
+ * @brief Marks a promise as fulfilled and stores the resolved value.
  *
- * This function updates the StateMachine's state to fulfilled
- * and sets the associated value (e.g., the resolved value of a
- * promise). It is typically called when an asynchronous
- * operation completes successfully and the state machine needs
- * to transition to a fulfilled state.
+ * Reaction queues are not drained here; callers settle first and then decide
+ * whether to enqueue chained tasks.
  *
- * @param stateMachine Pointer to the StateMachine instance to
- * update.
- * @param value The value to set on the StateMachine (e.g.,
- * resolved value).
+ * @param promise Promise whose state should become `FULFILLED`.
+ * @param value Value delivered to awaiters and `.then()` callbacks.
  */
 void PromiseFulfill(Promise* promise, Value* value);
 
 /**
- * @brief Transitions the StateMachine to a rejected state with a
- * reason value.
+ * @brief Marks a promise as rejected and stores the rejection reason.
  *
- * Updates the StateMachine's state to rejected and records the
- * given value as the rejection reason (e.g., an error or
- * exception). Callbacks registered via catch handlers will be
- * scheduled to receive this value.
+ * The caller remains responsible for scheduling reject reactions or unhandled
+ * rejection reporting after settlement.
  *
- * @param stateMachine Pointer to the StateMachine instance to
- * update.
- * @param value The rejection reason value (e.g., an error
- * Value).
+ * @param promise Promise whose state should become `REJECTED`.
+ * @param value Error or rejection payload to expose to downstream handlers.
  */
 void PromiseReject(Promise* promise, Value* value);
 
 /**
- * @brief Frees a StateMachine and its resources.
+ * @brief Releases the raw Promise allocation after GC has detached its linked
+ *        reaction nodes.
  *
- * This function deallocates the memory used by a StateMachine
- * instance, including its wait list. It should be called when
- * the StateMachine is no longer needed to prevent memory leaks.
- *
- * @param sm Pointer to the StateMachine to free.
+ * @param promise Promise struct to free. Its callback/result Values remain
+ *                owned by the garbage collector.
  */
 void FreePromise(Promise* promise);
 

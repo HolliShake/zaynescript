@@ -1,11 +1,10 @@
 /**
  * @file compiler.h
- * @brief Compiler interface for converting parsed AST into
- * bytecode
+ * @brief Declares the bytecode compiler that lowers LanguageX AST nodes into
+ *        executable `UserFunction` Values.
  *
- * This header defines the compiler interface that transforms
- * abstract syntax trees (AST) produced by the parser into
- * executable bytecode instructions for the interpreter.
+ * The compiler writes into the interpreter's constant/function tables and uses
+ * parser metadata to preserve source locations for debugging and errors.
  */
 
 #include "./global.h"
@@ -20,58 +19,51 @@
 #	define COMPILER_H
 
 /**
- * @brief Creates a new compiler instance.
+ * @brief Allocates compiler state for one parser/interpreter pair.
  *
- * Allocates and initializes a new Compiler structure that will
- * be used to compile parsed source code into bytecode.
+ * The compiler starts with no module path cached; module initialization happens
+ * later when actual compilation begins.
  *
- * @param interpreter Pointer to the interpreter instance.
- * @param parser Pointer to the parser instance.
- * @return Pointer to the newly created Compiler structure, or
- * NULL on allocation failure.
+ * @param interpreter Interpreter whose constant/function tables receive emitted
+ *                    artifacts.
+ * @param parser Parser that owns the AST source metadata for this compile.
+ * @return Newly allocated compiler instance.
  */
 Compiler* CreateCompiler(Interpreter* interpreter, Parser* parser);
 
 /**
- * @brief Compiles the parsed AST into bytecode.
+ * @brief Parses the compiler's bound parser and lowers the resulting AST into a
+ *        compiled top-level function.
  *
- * Takes the abstract syntax tree from the parser and compiles it
- * into bytecode instructions that can be executed by the
- * interpreter. This function performs semantic analysis,
- * optimization, and code generation.
+ * Unlike `CompileAst()`, this helper owns the parse step and frees the AST
+ * after code generation completes.
  *
- * @param compiler Pointer to the compiler instance containing
- * the parser and interpreter.
- * @return Pointer to a Value containing the compiled
- * UserFunction on success, or NULL on compilation failure.
+ * @param compiler Compiler instance that owns parser/interpreter references.
+ * @return Compiled `VLT_USER_FUNCTION` Value representing the module body.
  */
 Value* Compile(Compiler* compiler);
 
 /**
- * @brief Compiles a given AST into bytecode without freeing the
- * AST.
+ * @brief Lowers an already-built AST into bytecode without taking ownership of
+ *        the tree.
  *
- * This function is similar to Compile(), but it does not free
- * the AST after compilation. It can be used when the caller
- * needs to retain access to the AST for further processing or
- * analysis after compilation.
+ * This is the path used by import helpers and any caller that wants to manage
+ * AST lifetime separately from code generation.
  *
- * @param compiler Pointer to the compiler instance containing
- * the parser and interpreter.
- * @param programAst Pointer to the root AST node to compile.
- * @return Pointer to a Value containing the compiled
- * UserFunction on success, or NULL on compilation failure.
+ * @param compiler Compiler instance that owns parser/interpreter references.
+ * @param programAst Root AST node to lower.
+ * @return Compiled `VLT_USER_FUNCTION` Value representing `programAst`.
  */
 Value* CompileAst(Compiler* compiler, Ast* programAst);
 
 
 /**
- * @brief Frees the compiler instance and any associated
- * resources.
+ * @brief Frees the compiler wrapper and its cached module path string.
  *
- * Cleans up memory allocated for the compiler and its internal
- * structures.
- * @param compiler Pointer to the compiler instance to free.
+ * The interpreter and parser supplied at construction remain owned by the
+ * caller.
+ *
+ * @param compiler Compiler returned by `CreateCompiler()`.
  */
 void FreeCompiler(Compiler* compiler);
 

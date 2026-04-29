@@ -842,3 +842,12 @@ Value* LoadCoreSqlite(Interpreter* interp) {
 	HashMapSet(map, "Statement", stmtClass);
 	return module;
 }
+
+#undef PROP_DB_PTR
+#undef PROP_STMT_PTR
+#undef PROP_STMT_DB
+#undef PROP_STMT_HEAD
+#undef PROP_STMT_NEXT
+#undef PROP_STMT_PLUCK
+#undef PROP_STMT_BOUND
+#undef PROP_STMT_CLASS

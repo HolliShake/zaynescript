@@ -1,10 +1,11 @@
 /**
  * @file global.h
- * @brief Global definitions, types, and macros for the language
- * interpreter.
+ * @brief Declares the shared runtime data structures, macros, and allocation
+ *        helpers used across the LanguageX compiler and interpreter.
  *
- * This file contains the core data structures, type definitions,
- * and constants used throughout the interpreter and compiler.
+ * This header is the central type hub for the VM: it defines Values, call
+ * frames, promises, compiler state, import-graph nodes, and the constants that
+ * let the rest of the runtime share one coherent ABI.
  */
 
 #ifndef GLOBAL_H
@@ -163,14 +164,14 @@ typedef pthread_t Thread;
 
 /**
  * @typedef String
- * @brief Type alias for C-style null-terminated character
- * strings.
+ * @brief Type alias for C-style null-terminated byte strings.
  */
 typedef char* String;
 
 /**
  * @typedef Rune
- * @brief Represents a Unicode code point (UTF-32 character).
+ * @brief Represents a Unicode code point stored in the project's UTF helper
+ *        format.
  */
 typedef int Rune;
 
@@ -180,25 +181,23 @@ typedef int Rune;
 
 /**
  * @struct array_struct
- * @brief Dynamic array structure for storing generic pointers.
+ * @brief Growable array of generic pointers used throughout the runtime.
  *
- * This structure provides a resizable array implementation that
- * can store pointers to any type of data. It maintains both the
- * current count of items and the allocated capacity.
+ * The array tracks a logical item count separately from the allocated backing
+ * capacity so callers can append without reallocating every push.
  */
 typedef struct array_struct {
-	void** Items;	 /**< Pointer to the array of items */
-	size_t Capacity; /**< Allocated capacity of the array */
-	size_t Count;	 /**< Current number of items in the array */
+	void** Items;	 /**< Pointer to the contiguous item buffer. */
+	size_t Capacity; /**< Number of item slots currently allocated. */
+	size_t Count;	 /**< Number of item slots currently in use. */
 } Array;
 
 /**
  * @struct blob_struct
- * @brief Represents binary data with an associated MIME type.
+ * @brief Heap-owned binary payload paired with a MIME type string.
  *
- * This structure is used to store raw binary data (e.g., file
- * contents, images) along with its size and MIME type for proper
- * handling in the interpreter.
+ * Blob values expose raw bytes to script code and native modules without
+ * forcing the runtime to interpret the contents.
  */
 typedef struct blob_struct {
 	uint8_t* Data;	   /**< Pointer to the binary data */
@@ -938,80 +937,129 @@ typedef struct exception_handler_struct {
 
 /**
  * @struct callframe_struct
- * @brief Represents a single call frame in the interpreter's
- * execution stack.
+ * @brief Execution record for one active or suspended function invocation.
  *
- * Stores the parent call frame, operands for the current function
- * call (arguments, captured variables, etc.), the current
- * environment, function being called, and instruction pointer for
- * resuming execution.
+ * Frames hold the operand stack consumed by the bytecode interpreter, the
+ * lexical and global environments visible to the function, async bookkeeping,
+ * and the try-handler stack needed for structured exception recovery.
  */
 typedef struct callframe_struct CallFrame;
 
 typedef struct callframe_struct {
-	CallFrame* Parent;		 /**< Parent call frame (caller) */
-	Value*	   Operand[256]; /**< Operands for the current function call
-						 (arguments,	 captured variables, etc.) */
-	int	   OperandC;		 /**< Count of operands */
-	Value* GlobalEnv;
-	Value* Env;
-	Value* Fn;
-	size_t Ip;
-	int	   RefCount;
-	int	   TryHandler[256];
-	int	   TryHandlerC;
-	bool   Suspend;
+	CallFrame* Parent;	 /**< Caller frame that should resume after this one
+					  returns, or NULL for the root frame. */
+	Value* Operand[256]; /**< Operand stack used by opcode dispatch for
+					  arguments, temporaries, and return values. */
+	int OperandC;		 /**< Number of live entries currently stored in
+					  Operand. */
+	Value* GlobalEnv;	 /**< Module/global environment captured for global-name
+					  loads and stores. */
+	Value* Env; /**< Lexical environment for locals and captured cells. */
+	Value* Fn;	/**< UserFunction or callable Value currently executing in
+				 this frame. */
+	Value* AsyncPromise; /**< The promise wrapping this async call frame,
+						  *   kept here so the GC can mark it. NULL for
+						  *   synchronous frames. */
+	size_t Ip;			 /**< Current bytecode instruction pointer within Fn. */
+	int	   RefCount;	 /**< Manual retain/release count used when async
+						  suspension lets a promise outlive the caller. */
+	int	 TryHandler[256]; /**< Catch-target addresses active for this frame. */
+	int	 TryHandlerC;	  /**< Number of live entries in TryHandler. */
+	bool Suspend; /**< Set when execution should unwind back to the caller
+					   without advancing to frame teardown yet. */
 } CallFrame;
 
 void* _Allocate(String file, int line, size_t size);
 
+/**
+ * @brief Allocates and initializes a fresh call frame for a function or
+ *        callback invocation.
+ *
+ * The frame starts with an empty operand stack, instruction pointer zero, one
+ * owning reference, and no active try handlers.
+ *
+ * @param parent Caller frame, or NULL for a root invocation.
+ * @param global Global environment visible to the new frame.
+ * @param env Lexical environment used for locals and captures.
+ * @param fn Callable Value that will execute in the frame.
+ * @return Newly allocated frame owned by the caller.
+ */
 static inline CallFrame*
 InitCallFrame(CallFrame* parent, Value* global, Value* env, Value* fn) {
-	CallFrame* frame   = _Allocate(__FILE__, __LINE__, sizeof(CallFrame));
-	frame->Parent	   = parent;
-	frame->OperandC	   = 0;
-	frame->GlobalEnv   = global;
-	frame->Env		   = env;
-	frame->Fn		   = fn;
-	frame->Ip		   = 0;
-	frame->RefCount	   = 1;
-	frame->TryHandlerC = 0;
-	frame->Suspend	   = false;
+	CallFrame* frame	= _Allocate(__FILE__, __LINE__, sizeof(CallFrame));
+	frame->Parent		= parent;
+	frame->OperandC		= 0;
+	frame->GlobalEnv	= global;
+	frame->Env			= env;
+	frame->Fn			= fn;
+	frame->AsyncPromise = NULL;
+	frame->Ip			= 0;
+	frame->RefCount		= 1;
+	frame->TryHandlerC	= 0;
+	frame->Suspend		= false;
 
 	if (parent != NULL) {}
 
 	return frame;
 }
 
+/**
+ * @brief Marks a frame as suspended so the main dispatch loop stops executing
+ *        it for the current turn.
+ *
+ * @param frame Frame to suspend.
+ */
 static inline void SuspendFrame(CallFrame* frame) {
 	frame->Suspend = true;
 }
 
+/**
+ * @brief Pushes a catch-target address onto the frame-local try stack.
+ *
+ * @param frame Frame whose try stack should be extended.
+ * @param jmp Bytecode address of the associated catch handler.
+ */
 static inline void PushTry(CallFrame* frame, int jmp) {
 	frame->TryHandler[frame->TryHandlerC++] = jmp;
 }
 
+/**
+ * @brief Removes the top `n` catch-target entries from a frame's try stack.
+ *
+ * @param frame Frame whose try stack should shrink.
+ * @param n Number of entries to remove.
+ */
 static inline void PopNTry(CallFrame* frame, int n) {
 	frame->TryHandlerC -= n;
 }
 
+/**
+ * @brief Removes the most recently installed catch target.
+ *
+ * @param frame Frame whose top try handler should be discarded.
+ */
 static inline void PoppTry(CallFrame* frame) {
 	PopNTry(frame, 1);
 }
 
+/**
+ * @brief Returns the catch-target address at the top of the frame's try stack.
+ *
+ * @param frame Frame whose current catch target is needed.
+ * @return Bytecode address of the most recently installed try handler.
+ */
 static inline int PeekTry(CallFrame* frame) {
 	return frame->TryHandler[frame->TryHandlerC - 1];
 }
 
 /**
  * @struct interpreter_struct
- * @brief Main interpreter state structure containing execution
- * context.
+ * @brief VM-wide runtime state shared by compilation, bytecode execution, GC,
+ *        imports, and async host integrations.
  *
- * The central runtime state including the execution stack,
- * garbage collector root, constant pool, function table, and
- * singleton values for true, false, and null. Also maintains
- * exception handler stack for try-catch blocks.
+ * One interpreter owns every live Value in a program, the module import cache,
+ * the async task queue, and the singleton built-in classes used during lookup
+ * and object construction.
  */
 struct interpreter_struct {
 	bf_context_t BfContext;	 /**< Context for the libbf library
@@ -1046,11 +1094,14 @@ struct interpreter_struct {
 	int ExceptionHandlerStackC;				/**< Exception handler stack
 											   pointer */
 	size_t GcThreshold; /**< Young-gen threshold → triggers minor GC */
-	Value* TaskQueue[STACK_SIZE]; /**< Queue for pending tasks
-									 (e.g. resolved promises) */
-	int TaskQueueHead;			  /**< Head index (next item to dequeue) */
-	int TaskQueueC;				  /**< Count of pending tasks in the task queue
-								   */
+	Value* TaskQueue[STACK_SIZE]; /**< Ring buffer of promise tasks waiting for
+								  a future event-loop turn. */
+	int	   TaskQueueHead;		  /**< Index of the next task to dequeue. */
+	int	   TaskQueueC;			  /**< Number of tasks currently queued. */
+	Value* UnhandledRejections[STACK_SIZE]; /**< Top-level rejected promises
+											 *   with no error handler */
+	int UnhandledRejectionC;		  /**< Number of tracked candidate unhandled
+								   rejections pending final inspection. */
 	StackTrace CallStack[STACK_SIZE]; /**< Call stack for debugging
 										 (stores line info and function
 										 for each call frame) */
@@ -1075,29 +1126,46 @@ typedef struct compiler_struct {
 
 /**
  * @struct list_satatemachine_node_struct
- * @brief Node of the list of state machines
+ * @brief Singly linked node used for promise fulfillment/rejection queues.
  */
 typedef struct list_satatemachine_node_struct ListStateMachineNode;
 
 typedef struct list_satatemachine_node_struct {
-	Value*				  Promise;
-	ListStateMachineNode* Next;
+	Value* Promise;				/**< Promise Value representing the continuation
+							to enqueue later. */
+	ListStateMachineNode* Next; /**< Next node in the reaction queue, or NULL at
+							   the tail. */
 } ListStateMachineNode;
 
+/**
+ * @enum promise_state_enum
+ * @brief Settlement state for runtime Promise objects.
+ */
 typedef enum promise_state_enum {
-	PENDING,
-	FULFILLED,
-	REJECTED,
+	PENDING,   /**< Promise has not settled yet. */
+	FULFILLED, /**< Promise resolved successfully and Result holds the value. */
+	REJECTED,  /**< Promise failed and Result holds the rejection reason. */
 } PromiseState;
 
+/**
+ * @struct promise_struct
+ * @brief Runtime record that ties together settlement state, continuation
+ *        queues, and any suspended frame for async execution.
+ */
 typedef struct promise_struct {
-	PromiseState State;						  /**< Current state (PENDING,
-														 FULFILLED, or REJECTED) */
-	CallFrame*			  SuspendedCallFrame; /**< Frame that is suspended */
-	Value*				  Globals;			  /**< Global environment */
-	Value*				  Parent;			  /**< Parent promise */
-	Value*				  Callback;			  /**< Callback function */
-	Value*				  Result;			  /**< Result of the operation */
+	PromiseState State;			   /**< Current state (PENDING,
+											  FULFILLED, or REJECTED) */
+	CallFrame* SuspendedCallFrame; /**< Suspended frame to resume when the
+						promise is dispatched, or NULL for
+						already-drained / lazily-built callbacks. */
+	Value* Parent;				   /**< Parent promise this one is
+									  waiting on (set by await) */
+	Value* Globals;				   /**< Global environment used when the
+					 callback/coroutine runs. */
+	Value* Callback;			   /**< Function Value invoked when the
+					 promise is dispatched. */
+	Value* Result;				   /**< Fulfillment value or rejection reason
+					 after settlement. */
 	ListStateMachineNode* FullfillReactions; /**< List of reactions to be called
 											   when the promise is fulfilled */
 	ListStateMachineNode* RejectReactions;	 /**< List of reactions to be called

@@ -1693,3 +1693,15 @@ Value* LoadCoreMongoose(Interpreter* interpreter) {
 										  (NativeFunctionCallback) _Request)));
 	return module;
 }
+
+#undef _MIME_TABLE_LEN
+#undef PROP_APP_PTR
+#undef PROP_MG_GC_ROOTS
+#undef PROP_RES_CTX
+#undef PROP_RES_STATUS
+#undef PROP_RES_HDRSTR
+#undef PROP_REQ_CLASS
+#undef PROP_RES_CLASS
+#undef MAX_MIDDLEWARE
+#undef ROUTE_GROW
+#undef DEFINE_ROUTE_METHOD

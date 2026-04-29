@@ -1,10 +1,14 @@
+#ifndef INTERPRETER_H
+#define INTERPRETER_H
+
 /**
  * @file interpreter.h
- * @brief Interpreter module for executing parsed programs
+ * @brief Declares the runtime entry points and frame helpers used to execute
+ *        compiled LanguageX bytecode.
  *
- * This module provides the core interpreter functionality for
- * executing parsed programs. It manages the interpreter state,
- * execution context, and provides the main interpretation loop.
+ * The interpreter owns the VM-wide singletons, frame stack, async task queue,
+ * and event-loop integration that drive both synchronous code and promise-
+ * based coroutines.
  */
 
 #include "./array.h"
@@ -20,78 +24,74 @@
 #include "./statemachine.h"
 #include "./value.h"
 
-#ifndef INTERPRETER_H
-#	define INTERPRETER_H
-
 /**
- * @brief Creates and initializes a new interpreter instance.
+ * @brief Allocates a fresh interpreter and installs all runtime singletons.
  *
- * Allocates and initializes a new interpreter with default
- * settings. The interpreter manages execution state, call stack,
- * and runtime environment for program execution.
+ * Initializes the libbf context, core classes, scalar singletons, import
+ * tracking, and the Mongoose event manager used by async-native modules.
  *
- * @param execPath Optional directory path of the executable,
- * used for resolving imports. Can be NULL.
- * @return Pointer to newly allocated Interpreter structure, or
- * NULL on failure.
- *
- * @note The caller is responsible for freeing the interpreter
- * using FreeInterpreter() when done.
- *
- * @see FreeInterpreter()
+ * @param execPath Executable path used as the base for resolving relative
+ *                 imports and locating the running binary.
+ * @return Fully initialized interpreter instance owned by the caller.
  */
 Interpreter* CreateInterpreter(String execPath);
 
+/**
+ * @brief Switches the interpreter's ambient async task pointer.
+ *
+ * Async error propagation consults this field to decide which promise should
+ * be rejected when execution raises out of a coroutine or queued callback.
+ *
+ * @param interpreter Interpreter whose current task is being updated.
+ * @param task Promise Value currently executing, or `NULL` outside task
+ *             dispatch.
+ */
 void SetActiveTask(Interpreter* interpreter, Value* task);
+
+/**
+ * @brief Updates the frame pointer used by native helpers that need stack
+ *        access outside the main dispatch loop.
+ *
+ * Event-loop callbacks and certain runtime helpers borrow this pointer to push
+ * temporary arguments onto the correct frame.
+ *
+ * @param interpreter Interpreter whose current frame should be exposed.
+ * @param frame Active call frame, or `NULL` when no bytecode frame is running.
+ */
 void SetCurrentFrame(Interpreter* interpreter, CallFrame* frame);
 
 /**
- * @brief Executes the parsed program using the given interpreter.
+ * @brief Executes a compiled top-level function and drains the async task
+ *        queue until the program is idle.
  *
- * Interprets and executes the user function contained in the
- * provided Value structure. This is the main entry point for
- * program execution.
+ * This is the public runtime entry point used by `main.c` after compilation.
+ * It runs the program, polls native I/O integrations, and reports unhandled
+ * promise rejections before returning.
  *
- * @param interpreter Pointer to the interpreter instance.
- * @param fnValue     Pointer to the Value containing the
- * UserFunction to execute.
- *
- * @pre interpreter must be a valid, non-NULL pointer to an
- * initialized Interpreter.
- * @pre fnValue must be a valid, non-NULL pointer to a Value
- * containing a UserFunction.
- *
- * @note This function may modify the interpreter's internal
- * state.
- *
- * @see CreateInterpreter()
+ * @param interpreter Interpreter that owns the program state and event loop.
+ * @param fnValue Value wrapping the compiled top-level `UserFunction`.
  */
 void Interpret(Interpreter* interpreter, Value* fnValue /*UserFunction*/);
 
 /**
- * @brief Panics the interpreter and exits the program.
+ * @brief Performs panic cleanup and terminates the process with failure.
  *
- * This function is used to panic the interpreter and exit the program.
+ * Used after fatal runtime errors once the caller has already emitted the
+ * relevant diagnostics.
  *
- * @param interpreter Pointer to the interpreter instance.
+ * @param interpreter Interpreter whose owned resources should be released
+ *                    before exiting.
  */
 void InterpreterPanicExit(Interpreter* interpreter);
 
 /**
- * @brief Frees the interpreter and all associated memory.
+ * @brief Releases interpreter-owned runtime infrastructure.
  *
- * Deallocates the interpreter instance and releases all
- * associated resources including execution stack, environment,
- * and any other dynamically allocated memory.
+ * Frees import tracking, singleton arrays, executable path strings, and the
+ * Mongoose/libbf contexts. GC-managed Values should already have been cleaned
+ * up before this is called.
  *
- * @param interpreter Pointer to the interpreter instance to
- * free.
- *
- * @note After calling this function, the interpreter pointer
- * becomes invalid and should not be used.
- * @note Passing NULL is safe and results in no operation.
- *
- * @see CreateInterpreter()
+ * @param interpreter Interpreter instance to destroy.
  */
 void FreeInterpreter(Interpreter* interpreter);
 

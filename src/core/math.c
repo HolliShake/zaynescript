@@ -177,3 +177,7 @@ Value* LoadCoreMath(Interpreter* interpreter) {
 
 	return module;
 }
+
+#undef MATH_FUNC_1
+#undef MATH_FUNC_2
+#undef _USE_MATH_DEFINES

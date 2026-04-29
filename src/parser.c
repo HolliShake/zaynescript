@@ -1917,3 +1917,9 @@ Ast* Parse(Parser* parser) {
 void FreeParser(Parser* parser) {
 	free(parser);
 }
+
+#undef CHECKTV
+#undef CHECKTT
+#undef ACCEPTV
+#undef ACCEPTV_FREE
+#undef ACCEPTT

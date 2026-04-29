@@ -43,6 +43,7 @@ Interpreter* CreateInterpreter(String execPath) {
 	interpreter->Functions[0]  = NULL;
 	interpreter->TaskQueueHead = 0;
 	interpreter->TaskQueueC	   = 0;
+	interpreter->UnhandledRejectionC = 0;
 	mg_mgr_init(&interpreter->MgMgr);
 	return interpreter;
 }
@@ -315,13 +316,24 @@ static void _RaiseError(Interpreter* interpreter,
 
 		if (caught) {
 			/* Caught: preserve the original error value as-is for
-			 * the catch handler
-			 */
-			// Jump the current function to its end
-			JumpToError(frame->Ip, uf->CodeC);
-			SuspendFrame(frame);
+			 * the catch handler.
+			 *
+			 * Cross-frame unwinding (frame != target): stop the
+			 * throwing frame immediately and let the outer frame
+			 * resume at the catch handler.
+			 *
+			 * Same-frame catch (frame == target): the catch block
+			 * lives in the SAME bytecode stream, so we must NOT
+			 * suspend the frame — we just redirect ip to the
+			 * handler and let the while loop continue naturally.
+			 * Suspending here would exit Run prematurely and leave
+			 * p->SuspendedCallFrame pointing to a freed frame. */
+			if (frame != target) {
+				JumpToError(frame->Ip, uf->CodeC);
+				SuspendFrame(frame);
+			}
 
-			// Jump the main function to the handle
+			// Jump the catch-owning frame to the handler
 			JumpToError(target->Ip, PeekTry(target));
 
 			// Push the error to the catch handler
@@ -338,11 +350,32 @@ static void _RaiseError(Interpreter* interpreter,
 
 		Promise* activeTask = CoerceToPromise(interpreter->ActiveTask);
 
-		// We let the OP_GET_AWAITED_VALUE handle the error
 		PromiseReject(activeTask, error);
+		activeTask->SuspendedCallFrame = NULL;
 
-		// Push the rejected promise to the caller
-		FPush(interpreter, frame->Parent, interpreter->ActiveTask);
+		/* Notify reject reactions so .error handlers downstream fire. */
+		ListStateMachineNode* current = activeTask->RejectReactions;
+		while (current != NULL) {
+			EnqueueTask(interpreter, current->Promise);
+			current = current->Next;
+		}
+
+		/* Track top-level unhandled rejections: those that escape to a
+		 * non-async caller (frame->Parent has no AsyncPromise).
+		 * We record the promise now; whether it is truly unhandled
+		 * (RejectReactions still NULL after the event loop drains) is
+		 * checked at the end of _RunProgram. */
+		if (frame->Parent == NULL || frame->Parent->AsyncPromise == NULL) {
+			if (interpreter->UnhandledRejectionC < STACK_SIZE) {
+				interpreter
+					->UnhandledRejections[interpreter->UnhandledRejectionC++] =
+					interpreter->ActiveTask;
+			}
+		}
+
+		/* Push the rejected promise to the caller frame if there is one. */
+		if (frame->Parent != NULL)
+			FPush(interpreter, frame->Parent, interpreter->ActiveTask);
 		return;
 	}
 
@@ -389,6 +422,7 @@ void MarkCallFrame(CallFrame* frame) {
 		Mark(current->Fn);
 		Mark(current->Env);
 		Mark(current->GlobalEnv);
+		Mark(current->AsyncPromise);
 		for (int i = 0; i < current->OperandC; i++) {
 			Mark(current->Operand[i]);
 		}
@@ -430,11 +464,18 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 			interpreter,
 			CreatePromise(PENDING, frame, NULL, frame->GlobalEnv, frame->Fn));
 		p = CoerceToPromise(promise);
+		/* Anchor the promise on the frame so GC can mark it while this
+		 * async call is executing. */
+		frame->AsyncPromise = promise;
 	} else {
-		p = CoerceToPromise(promise);
+		p					= CoerceToPromise(promise);
+		frame->AsyncPromise = promise;
 	}
 
-	if (uf->Async && promise != NULL && interpreter->ActiveTask == NULL) {
+	/* Every async invocation owns its own ActiveTask scope so that nested
+	 * async calls have properly scoped task context.  prevActiveTask is
+	 * restored at every exit point from Run. */
+	if (uf->Async) {
 		SetActiveTask(interpreter, promise);
 		ownsActiveTask = true;
 	}
@@ -899,25 +940,38 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 						free(valStr);
 					}
 
-					RetainFrame(interpreter, frame);
-
 					val					   = FPopp(interpreter, frame);
 					Promise* promiseToWait = CoerceToPromise(val);
 
-					// Wait
-					PromiseAwait(p, val);
+					/* Record which promise this coroutine is waiting on.
+					 * PromiseAwait sets p->Parent = val (used by
+					 * OP_GET_AWAITED_VALUE to read the result). */
+					p->Parent = val;
 
-					/* If already settled (fulfilled OR rejected) resume
-					 * immediately; otherwise wait on the promise. */
+					/* If already settled, OP_GET_AWAITED_VALUE will read
+					 * p->Parent immediately when execution continues.  No
+					 * suspension needed — do NOT retain the frame here,
+					 * because we are not suspending and DoCall's matching
+					 * ReleaseFrame would leave the refcount at 1 (leak). */
 					if (promiseToWait->State == FULFILLED
 						|| promiseToWait->State == REJECTED) {
 						break;
-					} else {
-						PromiseAddReaction(p, val);
 					}
 
-					// Push the promise
-					FPush(interpreter, frame->Parent, promise);
+					/* Not yet settled: retain the frame BEFORE suspending so
+					 * DoCall's ReleaseFrame (which runs immediately after Run
+					 * returns) does not free a frame the event loop still
+					 * needs to resume later. */
+					RetainFrame(interpreter, frame);
+
+					PromiseAddReaction(promiseToWait, promise);
+
+					/* Suspend: push our promise to the caller frame so the
+					 * caller can return it (e.g. for nested awaits). */
+					if (frame->Parent != NULL)
+						FPush(interpreter, frame->Parent, promise);
+					if (ownsActiveTask)
+						SetActiveTask(interpreter, prevActiveTask);
 					return;
 				}
 			case OP_GET_AWAITED_VALUE:
@@ -928,9 +982,12 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 						break;
 					}
 
+					if (p->Parent == NULL)
+						Panic("Invalid state machine: await parent is NULL");
+
 					Promise* waited = CoerceToPromise(p->Parent);
 
-					if (waited->Result == NULL)
+					if (waited->Result == NULL && waited->State != FULFILLED)
 						Panic("Invalid state machine: WaitFor "
 							  "is NULL");
 
@@ -1386,6 +1443,11 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 					if (uf->Async) {
 						PromiseFulfill(p, val);
 
+						/* Clear the suspended frame reference — the frame
+						 * is about to be released by the caller (DoCall)
+						 * and must not be accessed after that point. */
+						p->SuspendedCallFrame = NULL;
+
 						// Notify listeners
 						ListStateMachineNode* current = p->FullfillReactions;
 
@@ -1394,13 +1456,28 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 							current = current->Next;
 						}
 
-						FPush(interpreter, parentFrame, promise);
-					} else {
-						// Synchronous call
 						if (parentFrame != NULL)
-							FPush(interpreter, parentFrame, val);
+							FPush(interpreter, parentFrame, promise);
+					} else if (parentFrame != NULL) {
+						// Synchronous call
+						FPush(interpreter, parentFrame, val);
+					} else if (p != NULL) {
+						/* Non-async callback with no parent (e.g. a .then /
+						 * .error handler running via the event loop).
+						 * Fulfill this promise with the return value so that
+						 * chained reactions can be triggered. */
+						p->SuspendedCallFrame = NULL;
+						PromiseFulfill(p, val);
+
+						ListStateMachineNode* current = p->FullfillReactions;
+						while (current != NULL) {
+							EnqueueTask(interpreter, current->Promise);
+							current = current->Next;
+						}
 					}
 
+					if (ownsActiveTask)
+						SetActiveTask(interpreter, prevActiveTask);
 					return;
 				}
 			default:
@@ -1417,6 +1494,10 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 				}
 		}
 	}
+
+	/* Restore caller's active task on all normal/error loop exits. */
+	if (ownsActiveTask)
+		SetActiveTask(interpreter, prevActiveTask);
 }
 
 void _RunProgram(Interpreter* interpreter, Value* fn) {
@@ -1458,34 +1539,92 @@ void _RunProgram(Interpreter* interpreter, Value* fn) {
 
 		SetActiveTask(interpreter, task);
 
-		// Awaited
-		// printf("AWAITED: %s\n", ValueToString(task));
 		Promise*   promise = CoerceToPromise(task);
 		CallFrame* frame   = promise->SuspendedCallFrame;
 
-		if (promise->Parent != NULL) {
-			Promise* parent = CoerceToPromise(promise->Parent);
-			printf(">> %d\n", parent->State);
+		/* .then/.error callback promises are created without a preallocated
+		 * frame; allocate on first dispatch only if the callback will run. */
+		if (frame == NULL && promise->Callback != NULL
+			&& ValueIsCallable(promise->Callback)) {
+			int locals = ValueIsNativeFunction(promise->Callback)
+							 ? 1
+							 : CoerceToUserFunction(promise->Callback)->LocalC;
+			frame	   = InitCallFrame(
+				NULL,
+				promise->Globals,
+				NewEnvironmentValue(interpreter,
+									CreateEnvironment(NULL, locals)),
+				promise->Callback);
+			promise->SuspendedCallFrame = frame;
+		}
 
+		/* Dispatch the task.
+		 * - Non-async callback (.then/.error): push the parent's result as
+		 *   the first argument so the callback receives it directly.
+		 * - Async coroutine: OP_GET_AWAITED_VALUE reads p->Parent, so we
+		 *   must NOT push here to avoid a double push.
+		 */
+		bool isAsyncCoroutine = false;
+		if (promise->Callback != NULL
+			&& promise->Callback->Type == VLT_USER_FUNCTION) {
+			UserFunction* taskUf = CoerceToUserFunction(promise->Callback);
+			isAsyncCoroutine	 = taskUf->Async;
+		}
+
+		if (!isAsyncCoroutine && promise->Parent != NULL) {
+			Promise* parent = CoerceToPromise(promise->Parent);
 			if (parent->State == PENDING)
 				Panic("task enqueued before parent settled");
 
-			if (parent->State == REJECTED) {
-				// raise into the coroutine, try/catch will handle it
-				_RaiseError(interpreter, frame, parent->Result, true);
-			} else {
-				// push fulfilled value as result of await expression
-				FPush(interpreter, frame, parent->Result);
-			}
+			/* Always push the parent's settled result as the callback
+			 * argument.  Reaction registration (FullfillReactions vs
+			 * RejectReactions) already guarantees only the right callback
+			 * was enqueued, so we should never raise here — that would
+			 * prevent .error() callbacks from receiving the rejection
+			 * reason they are supposed to handle. */
+			FPush(interpreter, frame, parent->Result);
 		}
 
 		Run(interpreter, frame, task);
 
+		/* The frame was retained when it was stored as SuspendedCallFrame
+		 * (either by OP_AWAIT or by the promise constructor for .then
+		 * callbacks).  Release our reference now that execution has
+		 * returned. */
+		ReleaseFrame(interpreter, frame);
 
 		SetActiveTask(interpreter, NULL);
 	}
 
 	ReleaseFrame(interpreter, gFrame);
+
+	/* Report any top-level unhandled promise rejections, matching JS
+	 * UnhandledPromiseRejection semantics.  Check is deferred to here so
+	 * that chains like reject().then().error() that attach a handler
+	 * synchronously can mark the promise as handled before we inspect it. */
+	bool hadUnhandled = false;
+	for (int i = 0; i < interpreter->UnhandledRejectionC; i++) {
+		Promise* rej = CoerceToPromise(interpreter->UnhandledRejections[i]);
+		/* If any reject-reaction was attached by now the rejection is handled.
+		 */
+		if (rej->RejectReactions != NULL)
+			continue;
+		if (rej->State != REJECTED)
+			continue;
+		String msg = rej->Result ? ValueToString(rej->Result) : NULL;
+		fprintf(stderr,
+				"UnhandledPromiseRejection: %s\n",
+				msg ? msg : "(no message)");
+		if (msg)
+			free(msg);
+		hadUnhandled = true;
+	}
+	if (hadUnhandled) {
+		ForceGarbageCollect(interpreter);
+		FreeInterpreter(interpreter);
+		fprintf(stderr, "Program exited with panic.\n");
+		exit(EXIT_FAILURE);
+	}
 
 	ForceGarbageCollect(interpreter);
 }
@@ -1519,7 +1658,14 @@ void InterpreterPanicExit(Interpreter* interpreter) {
 #undef GetVar
 #undef SetCap
 #undef GetCap
-#undef DumpFrame
+#undef LockVar
 #undef DumpStack
 #undef InterpreterPanic
-#undef HandleError
+#undef isCatched
+#undef JumpToError
+#undef DumpTraceBack
+#undef ip
+#undef Running
+#undef Forward
+#undef JmpFrwd
+#undef SetLocalHandler

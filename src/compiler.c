@@ -3502,3 +3502,4 @@ void FreeCompiler(Compiler* compiler) {
 
 #undef PushArray
 #undef GetOffset
+#undef _CompileExpression
