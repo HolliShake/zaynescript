@@ -11,7 +11,6 @@ Parser* CreateParser(Lexer* lexer) {
 
 #define CHECKTT(t) _CheckTokenT(parser, t)
 
-#define ACCEPTV(v) _AcceptTokenV(parser, v)
 
 #define ACCEPTV_FREE(v)                                                        \
 	{                                                                          \
@@ -1920,6 +1919,5 @@ void FreeParser(Parser* parser) {
 
 #undef CHECKTV
 #undef CHECKTT
-#undef ACCEPTV
 #undef ACCEPTV_FREE
 #undef ACCEPTT

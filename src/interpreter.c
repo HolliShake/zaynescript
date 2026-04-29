@@ -1,9 +1,5 @@
 #include "./interpreter.h"
 
-#include "global.h"
-
-#include <sched.h>
-#include <stdio.h>
 
 static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
 	// libbf uses size == 0 to signal a free() operation
@@ -69,20 +65,6 @@ Interpreter* CreateInterpreter(String execPath) {
 		}                                                                      \
 	}
 
-#define DumpStack()                                                            \
-	do {                                                                       \
-		printf("Stack [%d items] Pointer(%zu): [ ",                            \
-			   interpreter->StckC,                                             \
-			   (size_t) interpreter->StckC);                                   \
-		for (int i = 0; i < interpreter->StckC; i++) {                         \
-			if (i > 0)                                                         \
-				printf(", ");                                                  \
-			String str = ValueToString(interpreter->Stacks[i]);                \
-			printf("%s", str);                                                 \
-			free(str);                                                         \
-		}                                                                      \
-		printf(" ]\n");                                                        \
-	} while (0)
 
 #define InterpreterPanic(message, ...)                                         \
 	do {                                                                       \
@@ -221,21 +203,9 @@ static int _GetArg2(Interpreter* interp, Value* obj, Value* methodName) {
 	return _GetArgc(method);
 }
 
-#define isCatched() (interpreter->ExceptionHandlerStackC != 0)
 
 #define JumpToError(ip, addr) (ip = addr)
 
-#define DumpTraceBack(uf, ip)                                                  \
-	do {                                                                       \
-		for (int i = 0; i < uf->LineC; i++) {                                  \
-			fprintf(stderr,                                                    \
-					"[%s:%d] == %d\n",                                         \
-					uf->Lines[i].Path,                                         \
-					uf->Lines[i].Line,                                         \
-					ip);                                                       \
-		}                                                                      \
-		fprintf(stderr, "\n");                                                 \
-	} while (0)
 
 static LineInfo _GetLineFromPc(UserFunction* uf, size_t pc) {
 	if (uf->LineC == 0) {
@@ -452,7 +422,6 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 	int			  argc			 = 0;
 	int			  flg			 = 0;
 	int			  size			 = 0;
-	bool		  catched		 = false;
 	bool		  localhandler	 = false;
 	bool		  ownsActiveTask = false;
 	bool		  createdPromise = false;
@@ -499,7 +468,6 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 		}
 
 		opcode	= uf->Codes[frame->Ip++];
-		catched = interpreter->ExceptionHandlerStackC != 0;
 
 		switch (opcode) {
 			case OP_IMPORT_CORE:
@@ -1659,11 +1627,8 @@ void InterpreterPanicExit(Interpreter* interpreter) {
 #undef SetCap
 #undef GetCap
 #undef LockVar
-#undef DumpStack
 #undef InterpreterPanic
-#undef isCatched
 #undef JumpToError
-#undef DumpTraceBack
 #undef ip
 #undef Running
 #undef Forward

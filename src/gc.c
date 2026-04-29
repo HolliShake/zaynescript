@@ -1,7 +1,6 @@
 
 #include "./gc.h"
 
-#include "global.h"
 
 /**
  * @brief Builds a fresh NUL-terminated C string describing value so GC/debug

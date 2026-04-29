@@ -77,7 +77,6 @@ static inline const char* dlerror(void) {
 #	include <pthread.h>
 #	include <unistd.h>
 typedef pthread_t Thread;
-#	define THREAD_RETURN void*
 #endif
 
 // Constants & Macros
@@ -1089,10 +1088,6 @@ struct interpreter_struct {
 	int		ConstantC;	   /**< Count of constants */
 	Value** Functions;	   /**< Array of function definitions */
 	int		FunctionC;	   /**< Count of functions */
-	ExceptionHandler
-		ExceptionHandlerStacks[STACK_SIZE]; /**< Stack for exception handlers */
-	int ExceptionHandlerStackC;				/**< Exception handler stack
-											   pointer */
 	size_t GcThreshold; /**< Young-gen threshold → triggers minor GC */
 	Value* TaskQueue[STACK_SIZE]; /**< Ring buffer of promise tasks waiting for
 								  a future event-loop turn. */

@@ -1,5 +1,4 @@
 
-#define _USE_MATH_DEFINES
 #include "./math.h"
 
 #ifndef M_PI
@@ -180,4 +179,3 @@ Value* LoadCoreMath(Interpreter* interpreter) {
 
 #undef MATH_FUNC_1
 #undef MATH_FUNC_2
-#undef _USE_MATH_DEFINES

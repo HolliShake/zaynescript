@@ -12,7 +12,24 @@ set "MARIADB_DLL=%DIST_DIR%\mariadb-connector-c.dll"
 set "THIRDPARTY_DIR=thirdparty"
 set "MARIADB_SRC=%THIRDPARTY_DIR%\mariadb-connector-c"
 set "MARIADB_BUILD=%MARIADB_SRC%\build-win"
-set "GOAL=%~1"
+set "GOAL="
+set "FORCE=0"
+
+:parse_args
+if "%~1"=="" goto :args_done
+if /i "%~1"=="--force" (
+    set "FORCE=1"
+) else if not defined GOAL (
+    set "GOAL=%~1"
+) else (
+    echo Unknown argument "%~1".
+    echo Usage: build.bat [debug^|release^|run^|clean^|all] [--force]
+    exit /b 1
+)
+shift
+goto :parse_args
+
+:args_done
 
 if "%CC%"=="" (
     where clang >nul 2>nul && set "CC=clang" || set "CC=gcc"
@@ -35,7 +52,7 @@ if /i "%GOAL%"=="all" goto :debug
 if "%GOAL%"=="" goto :debug
 
 echo Unknown target "%GOAL%".
-echo Usage: build.bat [debug^|release^|run^|clean^|all]
+echo Usage: build.bat [debug^|release^|run^|clean^|all] [--force]
 exit /b 1
 
 :prepare
@@ -46,6 +63,10 @@ goto :eof
 
 :sqlite
 call :prepare
+if "%FORCE%"=="0" if exist "%SQLITE_LIB%" (
+    echo Reusing existing SQLite shared library -^> %SQLITE_LIB% ^(use --force to rebuild^)
+    goto :eof
+)
 echo Building SQLite shared library...
 "%CC%" -fPIC -shared -O2 -o "%SQLITE_LIB%" "%THIRDPARTY_DIR%\sqlite\sqlite3.c"
 if errorlevel 1 (
@@ -56,6 +77,10 @@ goto :eof
 
 :mariadb
 call :prepare
+if "%FORCE%"=="0" if exist "%MARIADB_DLL%" (
+    echo Reusing existing MariaDB shared library -^> %MARIADB_DLL% ^(use --force to rebuild^)
+    goto :eof
+)
 echo Building MariaDB Connector/C shared library...
 if not exist "%MARIADB_SRC%\CMakeLists.txt" (
     echo Error: MariaDB source not found at %MARIADB_SRC%
