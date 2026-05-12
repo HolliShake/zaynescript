@@ -1,6 +1,5 @@
 #include "./interpreter.h"
 
-
 static void* interpreter_bf_realloc(void* opaque, void* ptr, size_t size) {
 	// libbf uses size == 0 to signal a free() operation
 	if (size == 0) {
@@ -203,9 +202,7 @@ static int _GetArg2(Interpreter* interp, Value* obj, Value* methodName) {
 	return _GetArgc(method);
 }
 
-
 #define JumpToError(ip, addr) (ip = addr)
-
 
 static LineInfo _GetLineFromPc(UserFunction* uf, size_t pc) {
 	if (uf->LineC == 0) {
@@ -467,7 +464,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 			GarbageCollect(interpreter);
 		}
 
-		opcode	= uf->Codes[frame->Ip++];
+		opcode = uf->Codes[frame->Ip++];
 
 		switch (opcode) {
 			case OP_IMPORT_CORE:
@@ -936,8 +933,10 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 
 					/* Suspend: push our promise to the caller frame so the
 					 * caller can return it (e.g. for nested awaits). */
-					if (frame->Parent != NULL)
+					if (frame->Parent != NULL && !frame->HasSuspended) {
 						FPush(interpreter, frame->Parent, promise);
+						frame->HasSuspended = true;
+					}
 					if (ownsActiveTask)
 						SetActiveTask(interpreter, prevActiveTask);
 					return;
@@ -1424,7 +1423,7 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 							current = current->Next;
 						}
 
-						if (parentFrame != NULL)
+						if (parentFrame != NULL && !frame->HasSuspended)
 							FPush(interpreter, parentFrame, promise);
 					} else if (parentFrame != NULL) {
 						// Synchronous call

@@ -966,6 +966,7 @@ typedef struct callframe_struct {
 	int	 TryHandlerC;	  /**< Number of live entries in TryHandler. */
 	bool Suspend; /**< Set when execution should unwind back to the caller
 					   without advancing to frame teardown yet. */
+	bool HasSuspended;
 } CallFrame;
 
 void* _Allocate(String file, int line, size_t size);
@@ -996,6 +997,7 @@ InitCallFrame(CallFrame* parent, Value* global, Value* env, Value* fn) {
 	frame->RefCount		= 1;
 	frame->TryHandlerC	= 0;
 	frame->Suspend		= false;
+	frame->HasSuspended = false;
 
 	if (parent != NULL) {}
 
@@ -1088,11 +1090,11 @@ struct interpreter_struct {
 	int		ConstantC;	   /**< Count of constants */
 	Value** Functions;	   /**< Array of function definitions */
 	int		FunctionC;	   /**< Count of functions */
-	size_t GcThreshold; /**< Young-gen threshold → triggers minor GC */
-	Value* TaskQueue[STACK_SIZE]; /**< Ring buffer of promise tasks waiting for
-								  a future event-loop turn. */
-	int	   TaskQueueHead;		  /**< Index of the next task to dequeue. */
-	int	   TaskQueueC;			  /**< Number of tasks currently queued. */
+	size_t	GcThreshold;   /**< Young-gen threshold → triggers minor GC */
+	Value*	TaskQueue[STACK_SIZE]; /**< Ring buffer of promise tasks waiting for
+								   a future event-loop turn. */
+	int	   TaskQueueHead;		   /**< Index of the next task to dequeue. */
+	int	   TaskQueueC;			   /**< Number of tasks currently queued. */
 	Value* UnhandledRejections[STACK_SIZE]; /**< Top-level rejected promises
 											 *   with no error handler */
 	int UnhandledRejectionC;		  /**< Number of tracked candidate unhandled
