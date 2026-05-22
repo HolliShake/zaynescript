@@ -18,7 +18,6 @@
 #include <limits.h>
 #include <math.h>
 #include <stdarg.h>
-#include <stdatomic.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -708,6 +707,7 @@ typedef struct user_function_struct {
 	CaptureMeta* CaptureMetas; /**< Array of capture metadata */
 	int			 CaptureC;	   /**< Count of captured variables */
 	EnvCell**	 Captures;	   /**< Array of captured environment cells */
+	bool IsTopLevel; /**< True if this function is the top-level script body */
 } UserFunction;
 
 /**

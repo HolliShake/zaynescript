@@ -1,6 +1,8 @@
 
 #include "./gc.h"
 
+#include "global.h"
+
 
 /**
  * @brief Builds a fresh NUL-terminated C string describing value so GC/debug
@@ -347,6 +349,17 @@ static void _MarkCallStack(Interpreter* interpreter) {
 	}
 }
 
+static void _MarkImports(Interpreter* interpreter) {
+	HashMap* imports = interpreter->Imports;
+	for (size_t i = 0; i < imports->Size; i++) {
+		HashNode* node = &imports->Buckets[i];
+		while (node != NULL) {
+			Mark(node->Val);
+			node = node->Next;
+		}
+	}
+}
+
 static size_t _Sweep(Interpreter* interpreter) {
 	size_t	survivors = 0;
 	Value** current	  = &interpreter->GcRoot;
@@ -378,6 +391,7 @@ void GarbageCollect(Interpreter* interpreter) {
 	_MarkFunctions(interpreter);
 	_MarkTaskQueue(interpreter);
 	_MarkCallStack(interpreter);
+	_MarkImports(interpreter);
 
 	size_t srv = _Sweep(interpreter);
 	size_t nxt = srv * GC_GROWTH_FACTOR;

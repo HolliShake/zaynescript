@@ -1,0 +1,23 @@
+
+
+
+Does not throw/raise/show error when
+
+synchronous function produces error and is called inside async
+
+example:
+
+fn error() {
+    const a = 2;
+    return a + "world"; // error cannot add number and str!!
+}
+
+fn asyncCallWrapper() {
+    error();
+}
+
+
+asyncCallWrapper()
+    .then(fn(d) {
+        println(d);
+    });

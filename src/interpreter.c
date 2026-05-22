@@ -1425,6 +1425,9 @@ void Run(Interpreter* interpreter, CallFrame* frame, Value* promise) {
 
 						if (parentFrame != NULL && !frame->HasSuspended)
 							FPush(interpreter, parentFrame, promise);
+					} else if (uf->IsTopLevel) {
+						// Push to the frame itself
+						FPush(interpreter, frame, val);
 					} else if (parentFrame != NULL) {
 						// Synchronous call
 						FPush(interpreter, parentFrame, val);
