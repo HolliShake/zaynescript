@@ -37,27 +37,16 @@ extern Value* FPopp(Interpreter* interpreter, CallFrame* frame);
  * or an Error Value on failure.
  * @origin src/operation.c
  */
-extern Value* DoCall(Interpreter* interpreter,
-					 CallFrame*	  frame,
-					 Value*		  fn,
-					 int		  argc,
-					 bool		  withThis);
+extern Value* DoCall(Interpreter* interpreter, CallFrame* frame, Value* fn, int argc, bool withThis);
 
-static Value*
-_ArrayInit(Interpreter* interpreter, int argc, Value** arguments) {
+static Value* _ArrayInit(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc < 1) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: Array constructor requires at least 1 argument",
-			ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter, "%s: Array constructor requires at least 1 argument", ARGUMENT_ERROR);
 	}
 
 	Value* thisArg = arguments[0];
 	if (!ValueIsArray(thisArg)) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: Array constructor requires an Array argument",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter, "%s: Array constructor requires an Array argument", TYPE_ERROR);
 	}
 
 	Array* array = CoerceToArray(thisArg);
@@ -69,35 +58,24 @@ _ArrayInit(Interpreter* interpreter, int argc, Value** arguments) {
 	return interpreter->Null;
 }
 
-static Value*
-_ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
+static Value* _ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
 	// Reserve 1 arg for thisArg"
 	if (argc != 2) {
-		return NewErrorFValue(interpreter,
-							  "%s: Array.each expects 1 argument",
-							  ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter, "%s: Array.each expects 1 argument", ARGUMENT_ERROR);
 	}
 
 	Value* thisArg	= arguments[0];
 	Value* callback = arguments[1];
 
 	if (!ValueIsArray(thisArg)) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: first argument to Array.each must be an array",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter, "%s: first argument to Array.each must be an array", TYPE_ERROR);
 	}
 
 	if (!ValueIsCallable(callback)) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: second argument to Array.each must be a function",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter, "%s: second argument to Array.each must be a function", TYPE_ERROR);
 	}
 
-	int argNeeded = ValueIsNativeFunction(callback)
-						? CoerceToNativeFunction(callback)->Argc
-						: CoerceToUserFunction(callback)->Argc;
+	int argNeeded = ValueIsNativeFunction(callback) ? CoerceToNativeFunction(callback)->Argc : CoerceToUserFunction(callback)->Argc;
 
 	if (argNeeded != 2 && argNeeded != VARARG) {
 		return NewErrorFValue(interpreter,
@@ -111,50 +89,39 @@ _ArrayEach(Interpreter* interpreter, int argc, Value** arguments) {
 
 	Value* arrayVal = NewArrayValue(interpreter);
 	Array* newArray = CoerceToArray(arrayVal);
-	FPush(interpreter, interpreter->CurrentFrame, arrayVal);
+	// FPush(interpreter, interpreter->CurrentFrame, arrayVal);
 
-	for (size_t i = 0; i < ArrayLength(array); i++) {
-		Value* item	 = ArrayGet(array, i);
-		Value* index = NewNumValue(interpreter, (int) i);
-		FPush(interpreter, interpreter->CurrentFrame, item);
-		FPush(interpreter, interpreter->CurrentFrame, index);
-		DoCall(interpreter, interpreter->CurrentFrame, callback, argc, false);
-		ArrayPush(newArray, FPopp(interpreter, interpreter->CurrentFrame));
-	}
+	// for (size_t i = 0; i < ArrayLength(array); i++) {
+	// 	Value* item	 = ArrayGet(array, i);
+	// 	Value* index = NewNumValue(interpreter, (int) i);
+	// 	FPush(interpreter, interpreter->CurrentFrame, item);
+	// 	FPush(interpreter, interpreter->CurrentFrame, index);
+	// 	DoCall(interpreter, interpreter->CurrentFrame, callback, argc, false);
+	// 	ArrayPush(newArray, FPopp(interpreter, interpreter->CurrentFrame));
+	// }
 
-	FPopp(interpreter, interpreter->CurrentFrame);
+	// FPopp(interpreter, interpreter->CurrentFrame);
 	return arrayVal;
 }
 
-static Value*
-_ArrayKeep(Interpreter* interpreter, int argc, Value** arguments) {
+static Value* _ArrayKeep(Interpreter* interpreter, int argc, Value** arguments) {
 	// Reserve 1 arg for thisArg"
 	if (argc != 2) {
-		return NewErrorFValue(interpreter,
-							  "%s: Array.keep expects 1 argument",
-							  ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter, "%s: Array.keep expects 1 argument", ARGUMENT_ERROR);
 	}
 
 	Value* thisArg	= arguments[0];
 	Value* callback = arguments[1];
 
 	if (!ValueIsArray(thisArg)) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: first argument to Array.keep must be an array",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter, "%s: first argument to Array.keep must be an array", TYPE_ERROR);
 	}
 
 	if (!ValueIsCallable(callback)) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: second argument to Array.keep must be a function",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter, "%s: second argument to Array.keep must be a function", TYPE_ERROR);
 	}
 
-	int argNeeded = ValueIsNativeFunction(callback)
-						? CoerceToNativeFunction(callback)->Argc
-						: CoerceToUserFunction(callback)->Argc;
+	int argNeeded = ValueIsNativeFunction(callback) ? CoerceToNativeFunction(callback)->Argc : CoerceToUserFunction(callback)->Argc;
 
 	if (argNeeded != 2 && argNeeded != VARARG) {
 		return NewErrorFValue(interpreter,
@@ -168,40 +135,34 @@ _ArrayKeep(Interpreter* interpreter, int argc, Value** arguments) {
 
 	Value* arrayVal = NewArrayValue(interpreter);
 	Array* newArray = CoerceToArray(arrayVal);
-	FPush(interpreter, interpreter->CurrentFrame, arrayVal);
+	// FPush(interpreter, interpreter->CurrentFrame, arrayVal);
 
-	for (size_t i = 0; i < ArrayLength(array); i++) {
-		Value* item	 = ArrayGet(array, i);
-		Value* index = NewNumValue(interpreter, (int) i);
-		FPush(interpreter, interpreter->CurrentFrame, item);
-		FPush(interpreter, interpreter->CurrentFrame, index);
-		DoCall(interpreter, interpreter->CurrentFrame, callback, argc, false);
-		if (CoerceToBool(FPopp(interpreter, interpreter->CurrentFrame))) {
-			ArrayPush(newArray, item);
-		}
-	}
+	// for (size_t i = 0; i < ArrayLength(array); i++) {
+	// 	Value* item	 = ArrayGet(array, i);
+	// 	Value* index = NewNumValue(interpreter, (int) i);
+	// 	FPush(interpreter, interpreter->CurrentFrame, item);
+	// 	FPush(interpreter, interpreter->CurrentFrame, index);
+	// 	DoCall(interpreter, interpreter->CurrentFrame, callback, argc, false);
+	// 	if (CoerceToBool(FPopp(interpreter, interpreter->CurrentFrame))) {
+	// 		ArrayPush(newArray, item);
+	// 	}
+	// }
 
-	FPopp(interpreter, interpreter->CurrentFrame);
+	// FPopp(interpreter, interpreter->CurrentFrame);
 	return arrayVal;
 }
 
-static Value*
-_ArrayPush(Interpreter* interpreter, int argc, Value** arguments) {
+static Value* _ArrayPush(Interpreter* interpreter, int argc, Value** arguments) {
 	// Reserve 1 arg for thisArg"
 	if (argc != 2) {
-		return NewErrorFValue(interpreter,
-							  "%s: Array.push expects 1 argument",
-							  ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter, "%s: Array.push expects 1 argument", ARGUMENT_ERROR);
 	}
 
 	Value* thisArg	  = arguments[0];
 	Value* itemToPush = arguments[1];
 
 	if (!ValueIsArray(thisArg)) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: first argument to Array.push must be an array",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter, "%s: first argument to Array.push must be an array", TYPE_ERROR);
 	}
 
 	Array* array = CoerceToArray(thisArg);
@@ -213,25 +174,18 @@ _ArrayPush(Interpreter* interpreter, int argc, Value** arguments) {
 static Value* _ArrayPop(Interpreter* interpreter, int argc, Value** arguments) {
 	// Reserve 1 arg for thisArg"
 	if (argc != 1) {
-		return NewErrorFValue(interpreter,
-							  "%s: Array.pop expects no arguments",
-							  ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter, "%s: Array.pop expects no arguments", ARGUMENT_ERROR);
 	}
 
 	Value* thisArg = arguments[0];
 
 	if (!ValueIsArray(thisArg)) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: first argument to Array.pop must be an array",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter, "%s: first argument to Array.pop must be an array", TYPE_ERROR);
 	}
 
 	Array* array = CoerceToArray(thisArg);
 	if (ArrayLength(array) == 0) {
-		return NewErrorFValue(interpreter,
-							  "%s: cannot pop from an empty array",
-							  INDEX_ERROR);
+		return NewErrorFValue(interpreter, "%s: cannot pop from an empty array", INDEX_ERROR);
 	}
 
 	void* poppedItem = ArrayGet(array, ArrayLength(array) - 1);
@@ -240,22 +194,16 @@ static Value* _ArrayPop(Interpreter* interpreter, int argc, Value** arguments) {
 	return poppedItem;
 }
 
-static Value*
-_ArrayLength(Interpreter* interpreter, int argc, Value** arguments) {
+static Value* _ArrayLength(Interpreter* interpreter, int argc, Value** arguments) {
 	// Reserve 1 arg for thisArg"
 	if (argc != 1) {
-		return NewErrorFValue(interpreter,
-							  "%s: Array.length expects no arguments",
-							  ARGUMENT_ERROR);
+		return NewErrorFValue(interpreter, "%s: Array.length expects no arguments", ARGUMENT_ERROR);
 	}
 
 	Value* thisArg = arguments[0];
 
 	if (!ValueIsArray(thisArg)) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: first argument to Array.length must be an array",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter, "%s: first argument to Array.length must be an array", TYPE_ERROR);
 	}
 
 	Array* array = CoerceToArray(thisArg);
@@ -264,39 +212,19 @@ _ArrayLength(Interpreter* interpreter, int argc, Value** arguments) {
 
 static ModuleFunction _ArrayClassMethods[] = {
 	// Array class
-	{ .Name		 = CONSTRUCTOR_NAME,
-	  .Argc		 = VARARG,
-	  .CFunction = (NativeFunctionCallback) _ArrayInit,
-	  .Value	 = NULL },
-	{ .Name		 = "each",
-	  .Argc		 = 2,
-	  .CFunction = (NativeFunctionCallback) _ArrayEach,
-	  .Value	 = NULL },
-	{ .Name		 = "keep",
-	  .Argc		 = 2,
-	  .CFunction = (NativeFunctionCallback) _ArrayKeep,
-	  .Value	 = NULL },
-	{ .Name		 = "push",
-	  .Argc		 = 2,
-	  .CFunction = (NativeFunctionCallback) _ArrayPush,
-	  .Value	 = NULL },
-	{ .Name		 = "pop",
-	  .Argc		 = 1,
-	  .CFunction = (NativeFunctionCallback) _ArrayPop,
-	  .Value	 = NULL },
-	{ .Name		 = "length",
-	  .Argc		 = 1,
-	  .CFunction = (NativeFunctionCallback) _ArrayLength,
-	  .Value	 = NULL },
+	{ .Name = CONSTRUCTOR_NAME, .Argc = VARARG, .CFunction = (NativeFunctionCallback) _ArrayInit, .Value = NULL },
+	{ .Name = "each", .Argc = 2, .CFunction = (NativeFunctionCallback) _ArrayEach, .Value = NULL },
+	{ .Name = "keep", .Argc = 2, .CFunction = (NativeFunctionCallback) _ArrayKeep, .Value = NULL },
+	{ .Name = "push", .Argc = 2, .CFunction = (NativeFunctionCallback) _ArrayPush, .Value = NULL },
+	{ .Name = "pop", .Argc = 1, .CFunction = (NativeFunctionCallback) _ArrayPop, .Value = NULL },
+	{ .Name = "length", .Argc = 1, .CFunction = (NativeFunctionCallback) _ArrayLength, .Value = NULL },
 	// end of module functions
 	{ .Name = NULL }
 };
 
 Value* CreateArrayClass(Interpreter* interpreter) {
-	Value* arrayClass =
-		NewClassValue(interpreter,
-					  CreateUserClass("Array", interpreter->Object));
-	Class* cls = CoerceToUserClass(arrayClass);
+	Value* arrayClass = NewClassValue(interpreter, CreateUserClass("Array", interpreter->Object));
+	Class* cls		  = CoerceToUserClass(arrayClass);
 
 	// Define Array methods here (e.g., push, pop, length, etc.)
 	for (int i = 0; _ArrayClassMethods[i].Name != NULL; i++) {
@@ -304,15 +232,7 @@ Value* CreateArrayClass(Interpreter* interpreter) {
 		String		   hKey = func.Name;
 
 		if (func.CFunction != NULL) {
-			ClassDefineMemberByString(
-				cls,
-				hKey,
-				NewNativeFunctionValue(
-					interpreter,
-					CreateNativeFunctionMeta((const String) hKey,
-											 func.Argc,
-											 func.CFunction)),
-				false);
+			ClassDefineMemberByString(cls, hKey, NewNativeFunctionValue(interpreter, CreateNativeFunctionMeta((const String) hKey, func.Argc, func.CFunction)), false);
 		}
 	}
 
@@ -320,9 +240,7 @@ Value* CreateArrayClass(Interpreter* interpreter) {
 }
 
 Value* LoadCoreArray(Interpreter* interpreter) {
-	Value* val = (interpreter->Array != NULL)
-					 ? interpreter->Array
-					 : (interpreter->Array = CreateArrayClass(interpreter));
+	Value* val = (interpreter->Array != NULL) ? interpreter->Array : (interpreter->Array = CreateArrayClass(interpreter));
 
 	Value*	 module = NewObjectValue(interpreter);
 	HashMap* map	= CoerceToHashMap(module);

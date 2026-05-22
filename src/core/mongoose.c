@@ -81,8 +81,7 @@ static const MimeEntry _MimeTable[] = {
 	{ "tar", "application/x-tar" },
 	{ "wasm", "application/wasm" },
 	{ "xls", "application/vnd.ms-excel" },
-	{ "xlsx",
-	  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+	{ "xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
 	{ "xhtml", "application/xhtml+xml" },
 	{ "zip", "application/zip" },
 	/* Fonts */
@@ -101,8 +100,8 @@ static const MimeEntry _MimeTable[] = {
  * ----------------------------------------------------------------------- */
 
 #define PROP_APP_PTR "__ptr"
-#define PROP_MG_GC_ROOTS                                                       \
-	"__mg_gc_roots" /**< Keeps route/middleware Values visible                 \
+#define PROP_MG_GC_ROOTS                                                              \
+	"__mg_gc_roots" /**< Keeps route/middleware Values visible                        \
 					   to the GC (see AppState). */
 #define PROP_RES_CTX	"__ctx"
 #define PROP_RES_STATUS "__status"
@@ -148,11 +147,8 @@ extern Value* FPopp(Interpreter* interpreter, CallFrame* frame);
  * or an Error Value on failure.
  * @origin src/operation.c
  */
-extern Value* DoCall(Interpreter* interpreter,
-					 CallFrame*	  frame,
-					 Value*		  fn,
-					 int		  argc,
-					 bool		  withThis);
+extern Value*
+DoCall(Interpreter* interpreter, CallFrame* frame, Value* fn, int argc, bool withThis);
 
 /**
  * @brief Appends task to the ring buffer TaskQueue[(head + count) % STACK_SIZE]
@@ -385,23 +381,23 @@ typedef struct {
 } Route;
 
 typedef struct {
-	Route* Routes;	 /**< Array of registered route handlers */
-	size_t Count;	 /**< Number of routes registered */
-	size_t Capacity; /**< Allocated capacity of the Routes array */
-	Value* Middleware[MAX_MIDDLEWARE]; /**< Array of middleware callbacks */
-	size_t MwCount;		 /**< Number of registered middleware callbacks */
-	Interpreter* Interp; /**< Interpreter instance owning this server */
+	Route*		 Routes;   /**< Array of registered route handlers */
+	size_t		 Count;	   /**< Number of routes registered */
+	size_t		 Capacity; /**< Allocated capacity of the Routes array */
+	Value*		 Middleware[MAX_MIDDLEWARE]; /**< Array of middleware callbacks */
+	size_t		 MwCount; /**< Number of registered middleware callbacks */
+	Interpreter* Interp;  /**< Interpreter instance owning this server */
 	struct mg_connection*
-		   Listener;	 /**< Mongoose listening connection on interp->MgMgr */
-	bool   Running;		 /**< True while the server event loop is active */
-	Value* ReqClass;	 /**< Built-in Request class Value */
-	Value* ResClass;	 /**< Built-in Response class Value */
+		   Listener;	  /**< Mongoose listening connection on interp->MgMgr */
+	bool   Running;		  /**< True while the server event loop is active */
+	Value* ReqClass;	  /**< Built-in Request class Value */
+	Value* ResClass;	  /**< Built-in Response class Value */
 } AppState;
 
 typedef struct {
-	struct mg_connection*	Conn; /**< Active Mongoose connection */
-	struct mg_http_message* Msg;  /**< Parsed HTTP request message */
-	bool Responded;				  /**< True once a response has been sent */
+	struct mg_connection*	Conn;	   /**< Active Mongoose connection */
+	struct mg_http_message* Msg;	   /**< Parsed HTTP request message */
+	bool					Responded; /**< True once a response has been sent */
 } ReqResCtx;
 
 static bool _HasNamedParams(String routePath) {
@@ -646,10 +642,9 @@ static Value* _ResStatus(Interpreter* interp, int argc, Value** args) {
 /* res.redirect(url) */
 static Value* _ResRedirect(Interpreter* interp, int argc, Value** args) {
 	if (argc < 2 || !ValueIsStr(args[1]))
-		return NewErrorFValue(
-			interp,
-			"%s: res.redirect() requires a URL string argument",
-			TYPE_ERROR);
+		return NewErrorFValue(interp,
+							  "%s: res.redirect() requires a URL string argument",
+							  TYPE_ERROR);
 	ClassInstance* cls = CoerceToClassInstance(args[0]);
 	ReqResCtx*	   ctx = _GetCtx(cls);
 	if (!ctx)
@@ -681,16 +676,15 @@ static Value* _ResRedirect(Interpreter* interp, int argc, Value** args) {
 /* res.setHeader(name, value) → this */
 static Value* _ResSetHeader(Interpreter* interp, int argc, Value** args) {
 	if (argc < 3 || !ValueIsStr(args[1]) || !ValueIsStr(args[2]))
-		return NewErrorFValue(
-			interp,
-			"%s: res.setHeader() requires (name, value) strings",
-			TYPE_ERROR);
+		return NewErrorFValue(interp,
+							  "%s: res.setHeader() requires (name, value) strings",
+							  TYPE_ERROR);
 	ClassInstance* cls	= CoerceToClassInstance(args[0]);
 	String		   name = ValueToString(args[1]);
 	String		   val	= ValueToString(args[2]);
 	Value*		   curV = (Value*) HashMapGet(cls->Members, PROP_RES_HDRSTR);
-	String cur = (curV && ValueIsStr(curV)) ? ValueToString(curV) : strdup("");
-	char   extra[512];
+	String		   cur = (curV && ValueIsStr(curV)) ? ValueToString(curV) : strdup("");
+	char		   extra[512];
 	snprintf(extra, sizeof(extra), "%s: %s\r\n", name, val);
 	size_t newlen = strlen(cur) + strlen(extra) + 1;
 	String merged = (String) Allocate(newlen);
@@ -743,13 +737,12 @@ static Value* _ReqInit(Interpreter* interp, int argc, Value** args) {
 						  RUNTIME_ERROR);
 }
 
-static ModuleFunction _ReqClassMethods[] = {
-	{ .Name		 = CONSTRUCTOR_NAME,
-	  .Argc		 = VARARG,
-	  .CFunction = (NativeFunctionCallback) _ReqInit,
-	  .Value	 = NULL },
-	{ .Name = NULL }
-};
+static ModuleFunction _ReqClassMethods[] = { { .Name = CONSTRUCTOR_NAME,
+											   .Argc = VARARG,
+											   .CFunction =
+												   (NativeFunctionCallback) _ReqInit,
+											   .Value = NULL },
+											 { .Name = NULL } };
 
 /* -----------------------------------------------------------------------
  * JSON body → Value* recursive converter using mongoose's JSON API
@@ -772,9 +765,7 @@ static Value* _JsonToValue(Interpreter* interp, struct mg_str tok) {
 			size_t kbuf_sz = key.len + 1;
 			String kbuf	   = (String) Allocate(kbuf_sz);
 			if (key.len >= 2 && key.buf[0] == '"') {
-				mg_json_unescape(mg_str_n(key.buf + 1, key.len - 2),
-								 kbuf,
-								 kbuf_sz);
+				mg_json_unescape(mg_str_n(key.buf + 1, key.len - 2), kbuf, kbuf_sz);
 			} else {
 				memcpy(kbuf, key.buf, key.len);
 				kbuf[key.len] = '\0';
@@ -825,9 +816,8 @@ static Value* _JsonToValue(Interpreter* interp, struct mg_str tok) {
 }
 
 /* Case-insensitive substring match inside an mg_str header value */
-static bool _HeaderContains(struct mg_http_message* hm,
-							const String			hdr,
-							const String			needle) {
+static bool
+_HeaderContains(struct mg_http_message* hm, const String hdr, const String needle) {
 	struct mg_str* ct = mg_http_get_header(hm, hdr);
 	if (!ct)
 		return false;
@@ -844,9 +834,7 @@ static bool _IsJsonContentType(struct mg_http_message* hm) {
 }
 
 static bool _IsFormContentType(struct mg_http_message* hm) {
-	return _HeaderContains(hm,
-						   "Content-Type",
-						   "application/x-www-form-urlencoded");
+	return _HeaderContains(hm, "Content-Type", "application/x-www-form-urlencoded");
 }
 
 static bool _IsMultipartContentType(struct mg_http_message* hm) {
@@ -874,11 +862,7 @@ static Value* _FormToObject(Interpreter* interp, struct mg_str body) {
 
 		if (eq) {
 			mg_url_decode(p, (size_t) (eq - p), keyBuf, sizeof(keyBuf), 1);
-			mg_url_decode(eq + 1,
-						  (size_t) (amp - eq - 1),
-						  valBuf,
-						  sizeof(valBuf),
-						  1);
+			mg_url_decode(eq + 1, (size_t) (amp - eq - 1), valBuf, sizeof(valBuf), 1);
 		} else {
 			mg_url_decode(p, (size_t) (amp - p), keyBuf, sizeof(keyBuf), 1);
 			valBuf[0] = '\0';
@@ -894,8 +878,7 @@ static Value* _FormToObject(Interpreter* interp, struct mg_str body) {
  * Regular text fields become string values.
  * File fields become objects: { filename, data, size }
  * where data is a Blob holding the raw binary content. */
-static Value* _MultipartToObject(Interpreter*			 interp,
-								 struct mg_http_message* hm) {
+static Value* _MultipartToObject(Interpreter* interp, struct mg_http_message* hm) {
 	Value*				obj = NewObjectValue(interp);
 	HashMap*			map = CoerceToHashMap(obj);
 	struct mg_http_part part;
@@ -916,9 +899,8 @@ static Value* _MultipartToObject(Interpreter*			 interp,
 			HashMap* fileMap = CoerceToHashMap(fileObj);
 
 			char   fname[512];
-			size_t flen = part.filename.len < sizeof(fname) - 1
-							  ? part.filename.len
-							  : sizeof(fname) - 1;
+			size_t flen = part.filename.len < sizeof(fname) - 1 ? part.filename.len
+																: sizeof(fname) - 1;
 			memcpy(fname, part.filename.buf, flen);
 			fname[flen] = '\0';
 			HashMapSet(fileMap, "filename", NewStrValue(interp, fname));
@@ -932,9 +914,7 @@ static Value* _MultipartToObject(Interpreter*			 interp,
 									(uint8_t*) part.body.buf,
 									part.body.len,
 									(String) mime));
-			HashMapSet(fileMap,
-					   "size",
-					   NewIntValue(interp, (int) part.body.len));
+			HashMapSet(fileMap, "size", NewIntValue(interp, (int) part.body.len));
 
 			HashMapSet(map, key, fileObj);
 		} else {
@@ -954,8 +934,7 @@ static Value* _MultipartToObject(Interpreter*			 interp,
  * Build req / res class instances per-request
  * ----------------------------------------------------------------------- */
 
-static Value*
-_BuildResInstance(Interpreter* interp, Value* resClass, ReqResCtx* ctx) {
+static Value* _BuildResInstance(Interpreter* interp, Value* resClass, ReqResCtx* ctx) {
 	ClassInstance* inst = CreateClassInstance(resClass);
 	HashMapSet(inst->Members, PROP_RES_CTX, NewOpquePtrValue(interp, ctx));
 	HashMapSet(inst->Members, PROP_RES_STATUS, NewIntValue(interp, 200));
@@ -963,17 +942,12 @@ _BuildResInstance(Interpreter* interp, Value* resClass, ReqResCtx* ctx) {
 	return NewClassInstanceValue(interp, inst);
 }
 
-static Value* _BuildReqInstance(Interpreter*			interp,
-								Value*					reqClass,
-								struct mg_http_message* hm) {
+static Value*
+_BuildReqInstance(Interpreter* interp, Value* reqClass, struct mg_http_message* hm) {
 	ClassInstance* inst = CreateClassInstance(reqClass);
 
 	char method[16];
-	snprintf(method,
-			 sizeof(method),
-			 "%.*s",
-			 (int) hm->method.len,
-			 hm->method.buf);
+	snprintf(method, sizeof(method), "%.*s", (int) hm->method.len, hm->method.buf);
 	HashMapSet(inst->Members, "method", NewStrValue(interp, method));
 
 	char path[1024];
@@ -983,11 +957,7 @@ static Value* _BuildReqInstance(Interpreter*			interp,
 
 	char query[2048] = "";
 	if (hm->query.len > 0)
-		snprintf(query,
-				 sizeof(query),
-				 "%.*s",
-				 (int) hm->query.len,
-				 hm->query.buf);
+		snprintf(query, sizeof(query), "%.*s", (int) hm->query.len, hm->query.buf);
 	HashMapSet(inst->Members, "query", NewStrValue(interp, query));
 
 	/* body: parse as JSON if application/json, as object if
@@ -1060,12 +1030,12 @@ static void _EvHandler(struct mg_connection* c, int ev, void* ev_data) {
 		Value* mw = app->Middleware[i];
 		if (!ValueIsCallable(mw))
 			continue;
-		if (interp->CurrentFrame == NULL)
-			continue;
-		FPush(interp, interp->CurrentFrame, reqVal);
-		FPush(interp, interp->CurrentFrame, resVal);
-		DoCall(interp, interp->CurrentFrame, mw, 2, false);
-		FPopp(interp, interp->CurrentFrame);
+		// if (interp->CurrentFrame == NULL)
+		// 	continue;
+		// FPush(interp, interp->CurrentFrame, reqVal);
+		// FPush(interp, interp->CurrentFrame, resVal);
+		// DoCall(interp, interp->CurrentFrame, mw, 2, false);
+		// FPopp(interp, interp->CurrentFrame);
 	}
 
 	if (ctx.Responded)
@@ -1094,8 +1064,7 @@ static void _EvHandler(struct mg_connection* c, int ev, void* ev_data) {
 		} else {
 			struct mg_str caps[4];
 			memset(caps, 0, sizeof(caps));
-			routeMatched =
-				mg_match(mg_str_n(uri, strlen(uri)), mg_str(r->Path), caps);
+			routeMatched = mg_match(mg_str_n(uri, strlen(uri)), mg_str(r->Path), caps);
 			if (routeMatched) {
 				for (int k = 0; k < 4; k++) {
 					if (caps[k].len == 0)
@@ -1121,43 +1090,36 @@ static void _EvHandler(struct mg_connection* c, int ev, void* ev_data) {
 		ClassInstance* reqInst = CoerceToClassInstance(reqVal);
 		HashMapSet(reqInst->Members, "params", paramsObj);
 
-		if (interp->CurrentFrame == NULL)
-			continue;
-		FPush(interp, interp->CurrentFrame, reqVal);
-		FPush(interp, interp->CurrentFrame, resVal);
-		DoCall(interp, interp->CurrentFrame, r->Handler, 2, false);
-		Value* result = FPopp(interp, interp->CurrentFrame);
+		// if (interp->CurrentFrame == NULL)
+		// 	continue;
+		// FPush(interp, interp->CurrentFrame, reqVal);
+		// FPush(interp, interp->CurrentFrame, resVal);
+		// DoCall(interp, interp->CurrentFrame, r->Handler, 2, false);
+		// Value* result = FPopp(interp, interp->CurrentFrame);
 
-		if ((ValueIsPromise(result)
-			 && CoerceToPromise(result)->State == REJECTED)) {
-			Promise* promise = CoerceToPromise(result);
-			String	 errMsg	 = ValueToString(promise->Result);
-			String	 escaped = _JsonEscape(errMsg);
-			size_t	 wlen	 = strlen(escaped) + 128;
-			String	 wrapped = (String) Allocate(wlen);
-			snprintf(wrapped,
-					 wlen,
-					 "{\"status\":500,\"statusText\":\"internal server error\","
-					 "\"data\":\"%s\"}",
-					 escaped);
-			mg_http_reply(c,
-						  500,
-						  "Content-Type: application/json\r\n",
-						  "%s",
-						  wrapped);
-			ctx.Responded = true;
-			free(errMsg);
-			free(escaped);
-			free(wrapped);
-		}
+		// if ((ValueIsPromise(result) && CoerceToPromise(result)->State == REJECTED))
+		// { 	Promise* promise = CoerceToPromise(result); 	String	 errMsg	 =
+		// ValueToString(promise->Result); 	String	 escaped = _JsonEscape(errMsg);
+		// 	size_t	 wlen	 = strlen(escaped) + 128;
+		// 	String	 wrapped = (String) Allocate(wlen);
+		// 	snprintf(wrapped,
+		// 			 wlen,
+		// 			 "{\"status\":500,\"statusText\":\"internal server error\","
+		// 			 "\"data\":\"%s\"}",
+		// 			 escaped);
+		// 	mg_http_reply(c, 500, "Content-Type: application/json\r\n", "%s", wrapped);
+		// 	ctx.Responded = true;
+		// 	free(errMsg);
+		// 	free(escaped);
+		// 	free(wrapped);
+		// }
 	}
 
 	if (!matched && !ctx.Responded)
-		mg_http_reply(
-			c,
-			404,
-			"Content-Type: application/json\r\n",
-			"{\"status\":404,\"statusText\":\"not found\",\"data\":\"\"}");
+		mg_http_reply(c,
+					  404,
+					  "Content-Type: application/json\r\n",
+					  "{\"status\":404,\"statusText\":\"not found\",\"data\":\"\"}");
 }
 
 /* -----------------------------------------------------------------------
@@ -1187,24 +1149,23 @@ static Value* _ServerInit(Interpreter* interp, int argc, Value** args) {
 	return interp->Null;
 }
 
-#define DEFINE_ROUTE_METHOD(ZsName, HttpMethod)                                \
-	static Value* _App##ZsName(Interpreter* interp, int argc, Value** args) {  \
-		if (argc != 3 || !ValueIsStr(args[1]) || !ValueIsCallable(args[2]))    \
-			return NewErrorFValue(interp,                                      \
-								  "%s: " #ZsName                               \
-								  "() requires (path, handler): "              \
-								  "path string and callable",                  \
-								  ARGUMENT_ERROR);                             \
-		ClassInstance* cls = CoerceToClassInstance(args[0]);                   \
-		AppState*	   app = _GetApp(cls);                                     \
-		if (!app)                                                              \
-			return NewErrorFValue(interp,                                      \
-								  "%s: " #ZsName "(): server not initialised", \
-								  RUNTIME_ERROR);                              \
-		String path = ValueToString(args[1]);                                  \
-		_AppAddRoute(cls, app, HttpMethod, path, args[2]);                     \
-		free(path);                                                            \
-		return args[0];                                                        \
+#define DEFINE_ROUTE_METHOD(ZsName, HttpMethod)                                       \
+	static Value* _App##ZsName(Interpreter* interp, int argc, Value** args) {         \
+		if (argc != 3 || !ValueIsStr(args[1]) || !ValueIsCallable(args[2]))           \
+			return NewErrorFValue(interp,                                             \
+								  "%s: " #ZsName "() requires (path, handler): "      \
+								  "path string and callable",                         \
+								  ARGUMENT_ERROR);                                    \
+		ClassInstance* cls = CoerceToClassInstance(args[0]);                          \
+		AppState*	   app = _GetApp(cls);                                            \
+		if (!app)                                                                     \
+			return NewErrorFValue(interp,                                             \
+								  "%s: " #ZsName "(): server not initialised",        \
+								  RUNTIME_ERROR);                                     \
+		String path = ValueToString(args[1]);                                         \
+		_AppAddRoute(cls, app, HttpMethod, path, args[2]);                            \
+		free(path);                                                                   \
+		return args[0];                                                               \
 	}
 
 DEFINE_ROUTE_METHOD(Get, "GET")
@@ -1254,8 +1215,7 @@ static Value* _AppListen(Interpreter* interp, int argc, Value** args) {
 
 	// Register the listener on the interpreter's shared mongoose
 	// manager. The interpreter event loop drives mg_mgr_poll().
-	struct mg_connection* lc =
-		mg_http_listen(&interp->MgMgr, url, _EvHandler, app);
+	struct mg_connection* lc = mg_http_listen(&interp->MgMgr, url, _EvHandler, app);
 	if (lc == NULL) {
 		_AppStateFree(app);
 		HashMapSet(cls->Members, PROP_APP_PTR, NewOpquePtrValue(interp, NULL));
@@ -1272,11 +1232,11 @@ static Value* _AppListen(Interpreter* interp, int argc, Value** args) {
 		String msg	  = FormatString("Server listening on port %d", port);
 		Value* msgVal = NewStrValue(interp, msg);
 		free(msg);
-		if (interp->CurrentFrame != NULL) {
-			FPush(interp, interp->CurrentFrame, msgVal);
-			DoCall(interp, interp->CurrentFrame, cb, 1, false);
-			FPopp(interp, interp->CurrentFrame);
-		}
+		// if (interp->CurrentFrame != NULL) {
+		// 	FPush(interp, interp->CurrentFrame, msgVal);
+		// 	DoCall(interp, interp->CurrentFrame, cb, 1, false);
+		// 	FPopp(interp, interp->CurrentFrame);
+		// }
 	}
 
 	return interp->Null;
@@ -1358,11 +1318,10 @@ _BuildClass(Interpreter* interp, const String name, ModuleFunction methods[]) {
 			ClassDefineMemberByString(
 				cls,
 				func->Name,
-				NewNativeFunctionValue(
-					interp,
-					CreateNativeFunctionMeta((String) func->Name,
-											 func->Argc,
-											 func->CFunction)),
+				NewNativeFunctionValue(interp,
+									   CreateNativeFunctionMeta((String) func->Name,
+																func->Argc,
+																func->CFunction)),
 				false);
 		}
 	}
@@ -1443,9 +1402,7 @@ static void _FetchEvHandler(struct mg_connection* c, int ev, void* ev_data) {
 		/* status (int) */
 		int code = mg_http_status(hm);
 		HashMapSet(map, "status", NewIntValue(interp, code));
-		HashMapSet(map,
-				   "statusText",
-				   NewStrValue(interp, (String) _StatusText(code)));
+		HashMapSet(map, "statusText", NewStrValue(interp, (String) _StatusText(code)));
 
 		/* headers (object) */
 		Value*	 hdrObj = NewObjectValue(interp);
@@ -1473,10 +1430,9 @@ static void _FetchEvHandler(struct mg_connection* c, int ev, void* ev_data) {
 		/* body — try to parse as JSON, fall back to string */
 		if (hm->body.len > 0
 			&& _HeaderContains(hm, "Content-Type", "application/json")) {
-			HashMapSet(
-				map,
-				"body",
-				_JsonToValue(interp, mg_str_n(hm->body.buf, hm->body.len)));
+			HashMapSet(map,
+					   "body",
+					   _JsonToValue(interp, mg_str_n(hm->body.buf, hm->body.len)));
 		} else {
 			char* body = (char*) Allocate(hm->body.len + 1);
 			memcpy(body, hm->body.buf, hm->body.len);
@@ -1487,7 +1443,7 @@ static void _FetchEvHandler(struct mg_connection* c, int ev, void* ev_data) {
 
 		/* Fulfill the promise */
 		Promise* promise = CoerceToPromise(ctx->promise);
-		PromiseFulfill(promise, obj);
+		PromiseFulfill(interp, promise, obj);
 		ListStateMachineNode* node = promise->FullfillReactions;
 		while (node != NULL) {
 			EnqueueTask(interp, node->Promise);
@@ -1514,7 +1470,7 @@ static void _FetchEvHandler(struct mg_connection* c, int ev, void* ev_data) {
 											 msg ? msg : "request failed");
 
 		Promise* promise = CoerceToPromise(ctx->promise);
-		PromiseReject(promise, err);
+		PromiseReject(interp, promise, err);
 		ListStateMachineNode* node = promise->RejectReactions;
 		while (node != NULL) {
 			EnqueueTask(interp, node->Promise);
@@ -1619,7 +1575,7 @@ static Value* _Request(Interpreter* interp, int argc, Value** args) {
 	char* uri		  = strdup(mg_url_uri(url));
 
 	/* Create a pending promise */
-	Promise* promise	  = CreatePromise(PENDING, NULL, NULL, NULL, NULL);
+	Promise* promise	  = CreatePromise(PENDING, NULL);
 	Value*	 promiseValue = NewPromiseValue(interp, promise);
 
 	/* Allocate context for the event handler callback */
@@ -1639,10 +1595,10 @@ static Value* _Request(Interpreter* interp, int argc, Value** args) {
 	free(url);
 
 	if (c == NULL) {
-		PromiseReject(promise,
-					  NewErrorFValue(interp,
-									 "%s: request(): failed to connect",
-									 RUNTIME_ERROR));
+		PromiseReject(
+			interp,
+			promise,
+			NewErrorFValue(interp, "%s: request(): failed to connect", RUNTIME_ERROR));
 		free(ctx->host);
 		free(ctx->uri);
 		free(ctx->method);
@@ -1663,10 +1619,9 @@ static Value* _Request(Interpreter* interp, int argc, Value** args) {
  * them alive.
  * ----------------------------------------------------------------------- */
 Value* LoadCoreMongoose(Interpreter* interpreter) {
-	Value* reqClass = _BuildClass(interpreter, "Request", _ReqClassMethods);
-	Value* resClass = _BuildClass(interpreter, "Response", _ResClassMethods);
-	Value* serverClass =
-		_BuildClass(interpreter, "Server", _ServerClassMethods);
+	Value* reqClass	   = _BuildClass(interpreter, "Request", _ReqClassMethods);
+	Value* resClass	   = _BuildClass(interpreter, "Response", _ResClassMethods);
+	Value* serverClass = _BuildClass(interpreter, "Server", _ServerClassMethods);
 
 	/* Root the sub-classes as static members of Server (same trick as
 	 * Database._StmtClass in sqlite.c) so the GC always traces them. */
@@ -1686,11 +1641,11 @@ Value* LoadCoreMongoose(Interpreter* interpreter) {
 	HashMapSet(map, "Response", resClass);
 	HashMapSet(map,
 			   "request",
-			   NewNativeFunctionValue(interpreter,
-									  CreateNativeFunctionMeta(
-										  "request",
-										  VARARG,
-										  (NativeFunctionCallback) _Request)));
+			   NewNativeFunctionValue(
+				   interpreter,
+				   CreateNativeFunctionMeta("request",
+											VARARG,
+											(NativeFunctionCallback) _Request)));
 	return module;
 }
 

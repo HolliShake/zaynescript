@@ -269,8 +269,7 @@ void Mark(Value* value) {
 				if (env != NULL) {
 					Mark(env->Parent);
 					for (int i = 0; i < env->LocalC; i++) {
-						if (env->Locals[i] != NULL
-							&& env->Locals[i]->Value != NULL) {
+						if (env->Locals[i] != NULL && env->Locals[i]->Value != NULL) {
 							Mark(env->Locals[i]->Value);
 						}
 					}
@@ -343,12 +342,6 @@ static void _MarkTaskQueue(Interpreter* interpreter) {
 	}
 }
 
-static void _MarkCallStack(Interpreter* interpreter) {
-	for (int i = 0; i < interpreter->CallStackC; i++) {
-		Mark(interpreter->CallStack[i].Function);
-	}
-}
-
 static void _MarkImports(Interpreter* interpreter) {
 	HashMap* imports = interpreter->Imports;
 	for (size_t i = 0; i < imports->Size; i++) {
@@ -386,11 +379,9 @@ void GarbageCollect(Interpreter* interpreter) {
 	Mark(interpreter->True);
 	Mark(interpreter->False);
 	Mark(interpreter->Null);
-	Mark(interpreter->ActiveTask);
 	_MarkConstants(interpreter);
 	_MarkFunctions(interpreter);
 	_MarkTaskQueue(interpreter);
-	_MarkCallStack(interpreter);
 	_MarkImports(interpreter);
 
 	size_t srv = _Sweep(interpreter);

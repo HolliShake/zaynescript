@@ -66,10 +66,7 @@ static inline int dlclose(void* handle) {
 static inline const char* dlerror(void) {
 	static char errbuf[64];
 	DWORD		code = GetLastError();
-	snprintf(errbuf,
-			 sizeof(errbuf),
-			 "win32 dl error %lu",
-			 (unsigned long) code);
+	snprintf(errbuf, sizeof(errbuf), "win32 dl error %lu", (unsigned long) code);
 	return errbuf;
 }
 #else
@@ -148,12 +145,12 @@ typedef pthread_t Thread;
  * @param message The error message format string.
  * @param ... Additional arguments for the format string.
  */
-#define Panic(message, ...)                                                    \
-	do {                                                                       \
-		fprintf(stderr, "[%s:%d]::Panic: ", __FILE__, __LINE__);               \
-		fprintf(stderr, message, ##__VA_ARGS__);                               \
-		fprintf(stderr, "\n");                                                 \
-		exit(EXIT_FAILURE);                                                    \
+#define Panic(message, ...)                                                           \
+	do {                                                                              \
+		fprintf(stderr, "[%s:%d]::Panic: ", __FILE__, __LINE__);                      \
+		fprintf(stderr, message, ##__VA_ARGS__);                                      \
+		fprintf(stderr, "\n");                                                        \
+		exit(EXIT_FAILURE);                                                           \
 	} while (0)
 
 // -----------------------------------------------------------------------------
@@ -535,27 +532,27 @@ struct value_struct {
  * comparison, control flow, and stack manipulation.
  */
 typedef enum opcode_enum {
-	OP_IMPORT_CORE,			   /**< Import core library */
-	OP_IMPORT_LIB,			   /**< Import user library */
-	OP_IMPORT_RELATIVE,		   /**< Import a relative module */
-	OP_LOAD_CAPTURE,		   /**< Load a captured variable */
-	OP_LOAD_NAME,			   /**< Load a variable by name */
-	OP_LOAD_LOCAL,			   /**< Load a local variable */
-	OP_LOAD_CONST,			   /**< Load a constant value (takes 4 byte arg)
-								*/
-	OP_LOAD_INT,			   /**< Load an integer value (takes 4 byte arg) */
-	OP_LOAD_BOOL,			   /**< Load a boolean value (takes 4 byte arg) */
-	OP_LOAD_NULL,			   /**< Load null value */
-	OP_LOAD_STRING,			   /**< Load a string literal */
-	OP_ARRAY_EXTEND,		   /**< Extend an array */
-	OP_ARRAY_PUSH,			   /**< Push to an array */
-	OP_ARRAY_MAKE,			   /**< Create a new array */
-	OP_OBJECT_EXTEND,		   /**< Extend an object */
-	OP_OBJECT_PLUCK_ATTRIBUTE, /**< Extract attribute from object
-								*/
-	OP_OBJECT_MAKE,			   /**< Create a new object */
-	OP_CLASS_EXTEND,		   /**< Extend a class */
-	OP_CLASS_MAKE,			   /**< Create a new class */
+	OP_IMPORT_CORE,					 /**< Import core library */
+	OP_IMPORT_LIB,					 /**< Import user library */
+	OP_IMPORT_RELATIVE,				 /**< Import a relative module */
+	OP_LOAD_CAPTURE,				 /**< Load a captured variable */
+	OP_LOAD_NAME,					 /**< Load a variable by name */
+	OP_LOAD_LOCAL,					 /**< Load a local variable */
+	OP_LOAD_CONST,					 /**< Load a constant value (takes 4 byte arg)
+									  */
+	OP_LOAD_INT,					 /**< Load an integer value (takes 4 byte arg) */
+	OP_LOAD_BOOL,					 /**< Load a boolean value (takes 4 byte arg) */
+	OP_LOAD_NULL,					 /**< Load null value */
+	OP_LOAD_STRING,					 /**< Load a string literal */
+	OP_ARRAY_EXTEND,				 /**< Extend an array */
+	OP_ARRAY_PUSH,					 /**< Push to an array */
+	OP_ARRAY_MAKE,					 /**< Create a new array */
+	OP_OBJECT_EXTEND,				 /**< Extend an object */
+	OP_OBJECT_PLUCK_ATTRIBUTE,		 /**< Extract attribute from object
+									  */
+	OP_OBJECT_MAKE,					 /**< Create a new object */
+	OP_CLASS_EXTEND,				 /**< Extend a class */
+	OP_CLASS_MAKE,					 /**< Create a new class */
 	OP_CLASS_DEFINE_STATIC_MEMBER,	 /**< Define a static class
 										member */
 	OP_CLASS_DEFINE_INSTANCE_MEMBER, /**< Define an instance
@@ -707,7 +704,7 @@ typedef struct user_function_struct {
 	CaptureMeta* CaptureMetas; /**< Array of capture metadata */
 	int			 CaptureC;	   /**< Count of captured variables */
 	EnvCell**	 Captures;	   /**< Array of captured environment cells */
-	bool IsTopLevel; /**< True if this function is the top-level script body */
+	bool		 IsTopLevel; /**< True if this function is the top-level script body */
 } UserFunction;
 
 /**
@@ -945,28 +942,28 @@ typedef struct exception_handler_struct {
 typedef struct callframe_struct CallFrame;
 
 typedef struct callframe_struct {
-	CallFrame* Parent;	 /**< Caller frame that should resume after this one
-					  returns, or NULL for the root frame. */
-	Value* Operand[256]; /**< Operand stack used by opcode dispatch for
-					  arguments, temporaries, and return values. */
-	int OperandC;		 /**< Number of live entries currently stored in
-					  Operand. */
-	Value* GlobalEnv;	 /**< Module/global environment captured for global-name
-					  loads and stores. */
-	Value* Env; /**< Lexical environment for locals and captured cells. */
-	Value* Fn;	/**< UserFunction or callable Value currently executing in
-				 this frame. */
-	Value* AsyncPromise; /**< The promise wrapping this async call frame,
-						  *   kept here so the GC can mark it. NULL for
-						  *   synchronous frames. */
-	size_t Ip;			 /**< Current bytecode instruction pointer within Fn. */
-	int	   RefCount;	 /**< Manual retain/release count used when async
-						  suspension lets a promise outlive the caller. */
+	CallFrame* Parent;	  /**< Caller frame that should resume after this one
+					   returns, or NULL for the root frame. */
+	Value* Operand[256];  /**< Operand stack used by opcode dispatch for
+					   arguments, temporaries, and return values. */
+	int OperandC;		  /**< Number of live entries currently stored in
+					   Operand. */
+	Value* GlobalEnv;	  /**< Module/global environment captured for global-name
+					   loads and stores. */
+	Value* Env;			  /**< Lexical environment for locals and captured cells. */
+	Value* Fn;			  /**< UserFunction or callable Value currently executing in
+						   this frame. */
+	size_t Ip;			  /**< Current bytecode instruction pointer within Fn. */
+	int	   RefCount;	  /**< Manual retain/release count used when async
+						   suspension lets a promise outlive the caller. */
 	int	 TryHandler[256]; /**< Catch-target addresses active for this frame. */
 	int	 TryHandlerC;	  /**< Number of live entries in TryHandler. */
-	bool Suspend; /**< Set when execution should unwind back to the caller
-					   without advancing to frame teardown yet. */
-	bool HasSuspended;
+	bool Suspend;		  /**< Set when execution should unwind back to the caller
+							   without advancing to frame teardown yet. */
+	Value* Error;	/**< Pending exception value when unwinding due to an error. */
+	Value* Promise; /**< If this frame is suspended on an await, the Promise it is
+					   waiting for. */
+	bool IsAsync;	/**< True if this frame is executing an async function. */
 } CallFrame;
 
 void* _Allocate(String file, int line, size_t size);
@@ -985,19 +982,20 @@ void* _Allocate(String file, int line, size_t size);
  * @return Newly allocated frame owned by the caller.
  */
 static inline CallFrame*
-InitCallFrame(CallFrame* parent, Value* global, Value* env, Value* fn) {
-	CallFrame* frame	= _Allocate(__FILE__, __LINE__, sizeof(CallFrame));
-	frame->Parent		= parent;
-	frame->OperandC		= 0;
-	frame->GlobalEnv	= global;
-	frame->Env			= env;
-	frame->Fn			= fn;
-	frame->AsyncPromise = NULL;
-	frame->Ip			= 0;
-	frame->RefCount		= 1;
-	frame->TryHandlerC	= 0;
-	frame->Suspend		= false;
-	frame->HasSuspended = false;
+InitCallFrame(CallFrame* parent, Value* global, Value* env, Value* fn, bool async) {
+	CallFrame* frame   = _Allocate(__FILE__, __LINE__, sizeof(CallFrame));
+	frame->Parent	   = parent;
+	frame->OperandC	   = 0;
+	frame->GlobalEnv   = global;
+	frame->Env		   = env;
+	frame->Fn		   = fn;
+	frame->Ip		   = 0;
+	frame->RefCount	   = 1;
+	frame->TryHandlerC = 0;
+	frame->Suspend	   = false;
+	frame->Error	   = NULL;
+	frame->Promise	   = NULL;
+	frame->IsAsync	   = async;
 
 	if (parent != NULL) {}
 
@@ -1063,46 +1061,34 @@ static inline int PeekTry(CallFrame* frame) {
  * and object construction.
  */
 struct interpreter_struct {
-	bf_context_t BfContext;	 /**< Context for the libbf library
-								(memory management, etc.) */
-	String ExecPath;		 /**< Directory path of the executable */
-	String ModulePath;		 /**< Directory path of the main module
-								(for resolving imports) */
+	bf_context_t
+		   BfContext; /**< Context for the libbf library(memory management, etc.) */
+	String ExecPath;  /**< Directory path of the executable */
+	String
+		ModulePath;	  /**< Directory path of the main module (for resolving imports) */
 	String		  ArgString; /**< Arguments passed when --run */
-	struct mg_mgr MgMgr; /**< Mongoose manager for handling HTTP requests (used
-						  * in native modules) */
-	ImportNode* ImportHead;	 /**< Head of the linked list of
-								imported modules */
-	HashMap*   Imports;		 /**< Imports map */
-	CallFrame* CurrentFrame; /**< Pointer to the current call frame */
-	Value*	   ActiveTask; /**< Pointer to the currently active task (for async
-								operations) */
-	Value*	Object;		   /**< Built-in Object class */
-	Value*	Array;		   /**< Built-in Array class */
-	Value*	Date;		   /**< Built-in Date class */
-	Value*	Promise;	   /**< Built-in Promise class */
-	Value*	True;		   /**< Singleton 'true' value */
-	Value*	False;		   /**< Singleton 'false' value */
-	Value*	Null;		   /**< Singleton 'null' value */
-	Value*	GcRoot;		   /**< Head of the allocation list */
-	size_t	Allocated;	   /**< Count of live young-generation values */
-	Value** Constants;	   /**< Array of constant values */
-	int		ConstantC;	   /**< Count of constants */
-	Value** Functions;	   /**< Array of function definitions */
-	int		FunctionC;	   /**< Count of functions */
-	size_t	GcThreshold;   /**< Young-gen threshold → triggers minor GC */
-	Value*	TaskQueue[STACK_SIZE]; /**< Ring buffer of promise tasks waiting for
-								   a future event-loop turn. */
-	int	   TaskQueueHead;		   /**< Index of the next task to dequeue. */
-	int	   TaskQueueC;			   /**< Number of tasks currently queued. */
-	Value* UnhandledRejections[STACK_SIZE]; /**< Top-level rejected promises
-											 *   with no error handler */
-	int UnhandledRejectionC;		  /**< Number of tracked candidate unhandled
-								   rejections pending final inspection. */
-	StackTrace CallStack[STACK_SIZE]; /**< Call stack for debugging
-										 (stores line info and function
-										 for each call frame) */
-	int CallStackC;					  /**< Call stack pointer/count */
+	struct mg_mgr MgMgr;	 /**< Mongoose manager for handling HTTP requests (used* in
+								native modules) */
+	ImportNode* ImportHead;	 /**< Head of the linked list ofimported modules */
+	HashMap*	Imports;	 /**< Imports map */
+	Value*		Object;		 /**< Built-in Object class */
+	Value*		Array;		 /**< Built-in Array class */
+	Value*		Date;		 /**< Built-in Date class */
+	Value*		Promise;	 /**< Built-in Promise class */
+	Value*		True;		 /**< Singleton 'true' value */
+	Value*		False;		 /**< Singleton 'false' value */
+	Value*		Null;		 /**< Singleton 'null' value */
+	Value*		GcRoot;		 /**< Head of the allocation list */
+	size_t		Allocated;	 /**< Count of live young-generation values */
+	Value**		Constants;	 /**< Array of constant values */
+	int			ConstantC;	 /**< Count of constants */
+	Value**		Functions;	 /**< Array of function definitions */
+	int			FunctionC;	 /**< Count of functions */
+	size_t		GcThreshold; /**< Young-gen threshold → triggers minor GC */
+	Value*		TaskQueue[STACK_SIZE]; /**< Ring buffer of promise tasks waiting for a
+										  future event-loop turn. */
+	int TaskQueueHead;				   /**< Index of the next task to dequeue. */
+	int TaskQueueC;					   /**< Number of tasks currently queued. */
 };
 
 /**
@@ -1150,19 +1136,19 @@ typedef enum promise_state_enum {
  *        queues, and any suspended frame for async execution.
  */
 typedef struct promise_struct {
-	PromiseState State;			   /**< Current state (PENDING,
-											  FULFILLED, or REJECTED) */
-	CallFrame* SuspendedCallFrame; /**< Suspended frame to resume when the
-						promise is dispatched, or NULL for
-						already-drained / lazily-built callbacks. */
-	Value* Parent;				   /**< Parent promise this one is
-									  waiting on (set by await) */
-	Value* Globals;				   /**< Global environment used when the
-					 callback/coroutine runs. */
-	Value* Callback;			   /**< Function Value invoked when the
-					 promise is dispatched. */
-	Value* Result;				   /**< Fulfillment value or rejection reason
-					 after settlement. */
+	PromiseState State;						 /**< Current state (PENDING,
+														FULFILLED, or REJECTED) */
+	CallFrame* SuspendedCallFrame;			 /**< Suspended frame to resume when the
+								  promise is dispatched, or NULL for
+								  already-drained / lazily-built callbacks. */
+	Value* Parent;							 /**< Parent promise this one is
+												waiting on (set by await) */
+	Value* Globals;							 /**< Global environment used when the
+							   callback/coroutine runs. */
+	Value* Callback;						 /**< Function Value invoked when the
+							   promise is dispatched. */
+	Value* Result;							 /**< Fulfillment value or rejection reason
+							   after settlement. */
 	ListStateMachineNode* FullfillReactions; /**< List of reactions to be called
 											   when the promise is fulfilled */
 	ListStateMachineNode* RejectReactions;	 /**< List of reactions to be called
@@ -1479,8 +1465,7 @@ Blob* CoerceToBlob(Value* value);
  * @param message Error message.
  * @return Formatted error string.
  */
-String
-GetErrorLine(String path, Rune* runes, Position position, String message);
+String GetErrorLine(String path, Rune* runes, Position position, String message);
 
 /**
  * @brief Throws a runtime error (prints and exits).

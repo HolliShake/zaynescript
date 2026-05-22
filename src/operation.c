@@ -1,19 +1,24 @@
 
 #include "./operation.h"
 
-#define FreeTempBf(interpreter, bf, val)                                       \
-	do {                                                                       \
-		if ((val)->Type == VLT_INT || (val)->Type == VLT_NUM) {                \
-			bf_delete(bf);                                                     \
-			free(bf);                                                          \
-		}                                                                      \
+#include "global.h"
+#include "statemachine.h"
+
+#include <stdio.h>
+
+#define FreeTempBf(interpreter, bf, val)                                              \
+	do {                                                                              \
+		if ((val)->Type == VLT_INT || (val)->Type == VLT_NUM) {                       \
+			bf_delete(bf);                                                            \
+			free(bf);                                                                 \
+		}                                                                             \
 	} while (0)
 
-#define PushArray(type, array, count, val, defaultValue)                        \
-	do {                                                                        \
-		(array)[(count)++] = val;                                               \
-		(array)			   = Reallocate((array), sizeof(type) * ((count) + 1)); \
-		(array)[(count)]   = (defaultValue);                                    \
+#define PushArray(type, array, count, val, defaultValue)                              \
+	do {                                                                              \
+		(array)[(count)++] = val;                                                     \
+		(array)			   = Reallocate((array), sizeof(type) * ((count) + 1));       \
+		(array)[(count)]   = (defaultValue);                                          \
 	} while (0)
 
 #define GetOffset() (interpreter->ConstantC)
@@ -109,7 +114,7 @@ BAD:;
  * run.
  * @origin src/interpreter.c
  */
-extern void Run(Interpreter* interpreter, CallFrame* frame, Value* promise);
+extern Value* Run(Interpreter* interpreter, CallFrame* frame, Value* promise);
 
 void SaveRootEnv(Interpreter* interpreter, Value* env) {
 	// interpreter->Envs[interpreter->EnvrC++] = interpreter->CallEnv;
@@ -254,10 +259,9 @@ Value* GenericGetAttribute(Interpreter* interpreter,
 			long idx = (long) CoerceToI64(index);
 			if (idx < 0 || idx >= array->Count) {
 				free(key);
-				String errMsg =
-					FormatString("%s: array index %ld out of bounds",
-								 INDEX_ERROR,
-								 idx);
+				String errMsg = FormatString("%s: array index %ld out of bounds",
+											 INDEX_ERROR,
+											 idx);
 				Value* errVal = NewErrorValue(interpreter, errMsg);
 				free(errMsg);
 				return errVal;
@@ -370,9 +374,8 @@ Value* GenericGetAttribute(Interpreter* interpreter,
 		long idx = CoerceToI64(index);
 		if (idx < 0 || idx >= ln) {
 			free(key);
-			String errMsg = FormatString("%s: string index %ld out of bounds",
-										 INDEX_ERROR,
-										 idx);
+			String errMsg =
+				FormatString("%s: string index %ld out of bounds", INDEX_ERROR, idx);
 			Value* errVal = NewErrorValue(interpreter, errMsg);
 			free(errMsg);
 			return errVal;
@@ -397,9 +400,8 @@ Value* DoImportCore(Interpreter* interpreter, String moduleName) {
 	result = LoadCoreModule(interpreter, moduleName);
 
 	if (result == NULL) {
-		String errMsg = FormatString("%s: core module '%s' not found",
-									 IMPORT_ERROR,
-									 moduleName);
+		String errMsg =
+			FormatString("%s: core module '%s' not found", IMPORT_ERROR, moduleName);
 		Value* errVal = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 		return errVal;
@@ -501,12 +503,10 @@ extern Value* CompileAst(Compiler* compiler, Ast* programAst);
  */
 extern void FreeCompiler(Compiler* compiler);
 
-static Value* DoImportFileOrLib(Interpreter* interpreter,
-								String		 moduleNameOrPath,
-								bool		 isLib) {
+static Value*
+DoImportFileOrLib(Interpreter* interpreter, String moduleNameOrPath, bool isLib) {
 	String		currentModuleName = interpreter->ModulePath;
-	ImportNode* currentModule =
-		CreateOrGetImportNode(interpreter, currentModuleName);
+	ImportNode* currentModule = CreateOrGetImportNode(interpreter, currentModuleName);
 
 	String filePath = NULL;
 	FILE*  file		= NULL;
@@ -517,8 +517,7 @@ static Value* DoImportFileOrLib(Interpreter* interpreter,
 #ifdef _WIN32
 		filePath = FormatString("%slib\\%s.zs", basePath, moduleNameOrPath);
 #else
-		filePath =
-			FormatString("/usr/local/lib/zscript/lib/%s.zs", moduleNameOrPath);
+		filePath = FormatString("/usr/local/lib/zscript/lib/%s.zs", moduleNameOrPath);
 #endif
 		file = fopen(filePath, "rb");
 
@@ -537,14 +536,12 @@ static Value* DoImportFileOrLib(Interpreter* interpreter,
 	if (!file) {
 		String errMsg;
 		if (isLib) {
-			errMsg =
-				FormatString("%s: lib module '%s' not found (searched '%s')",
-							 IMPORT_ERROR,
-							 moduleNameOrPath,
-							 filePath);
+			errMsg = FormatString("%s: lib module '%s' not found (searched '%s')",
+								  IMPORT_ERROR,
+								  moduleNameOrPath,
+								  filePath);
 		} else {
-			errMsg =
-				FormatString("%s: file '%s' not found", IMPORT_ERROR, filePath);
+			errMsg = FormatString("%s: file '%s' not found", IMPORT_ERROR, filePath);
 		}
 		Value* errVal = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
@@ -606,11 +603,11 @@ static Value* DoImportFileOrLib(Interpreter* interpreter,
 	Value* global =
 		NewEnvironmentValue(interpreter, CreateEnvironment(NULL, uf->LocalC));
 
-	CallFrame* frame = InitCallFrame(NULL, global, global, compiled);
+	CallFrame* frame = InitCallFrame(NULL, global, global, compiled, uf->Async);
 
 	Run(interpreter, frame, NULL);
 	Value* result = FPopp(interpreter, frame);
-	ReleaseFrame(interpreter, frame);
+	// ReleaseFrame(interpreter, frame);
 
 	interpreter->ModulePath = currentModuleName;
 
@@ -636,17 +633,15 @@ Value* DoImportFile(Interpreter* interpreter, String filePathNoExt) {
 	return DoImportFileOrLib(interpreter, filePathNoExt, false);
 }
 
-Value*
-DoSetIndex(Interpreter* interpreter, Value* obj, Value* index, Value* val) {
+Value* DoSetIndex(Interpreter* interpreter, Value* obj, Value* index, Value* val) {
 	String hashKey = ValueToString(index);
 	if (ValueIsArray(obj)) {
 		free(hashKey);
 		Array* array = CoerceToArray(obj);
 		long   idx	 = (long) CoerceToI64(index);
 		if (idx < 0 || idx >= array->Count) {
-			String errMsg = FormatString("%s: array index %ld out of bounds",
-										 INDEX_ERROR,
-										 idx);
+			String errMsg =
+				FormatString("%s: array index %ld out of bounds", INDEX_ERROR, idx);
 			Value* errVal = NewErrorValue(interpreter, errMsg);
 			free(errMsg);
 			return errVal;
@@ -714,10 +709,8 @@ static void RotateNLeft(int narg, CallFrame* frame) {
 	frame->Operand[top] = first;
 }
 
-Value* DoCallCtor(Interpreter* interpreter,
-				  CallFrame*   frame,
-				  Value*	   clsValue,
-				  int		   argc) {
+Value*
+DoCallCtor(Interpreter* interpreter, CallFrame* frame, Value* clsValue, int argc) {
 	if (clsValue == NULL)
 		Panic("Attempted to call constructor on a null value\n");
 
@@ -734,11 +727,10 @@ Value* DoCallCtor(Interpreter* interpreter,
 	if (!ClassHasMember(cls, CONSTRUCTOR_NAME, false, true)) {
 		if (argc != 0) {
 			FPopN(interpreter, frame, argc);
-			String errMsg =
-				FormatString("%s: argument count mismatch, expected "
-							 "0 arguments but got %d",
-							 ARGUMENT_ERROR,
-							 argc);
+			String errMsg = FormatString("%s: argument count mismatch, expected "
+										 "0 arguments but got %d",
+										 ARGUMENT_ERROR,
+										 argc);
 			Value* errVal = NewErrorValue(interpreter, errMsg);
 			free(errMsg);
 			return errVal;
@@ -773,9 +765,8 @@ Value* DoCallCtor(Interpreter* interpreter,
 
 	if (ValueIsNull(result)) {
 		FPopp(interpreter, frame);	// Pop constructor return value
-		FPush(interpreter,
-			  frame,
-			  instanceValue);  // Push instance as return value
+		FPush(interpreter, frame,
+			  instanceValue);		// Push instance as return value
 	}
 
 	return result;
@@ -798,11 +789,10 @@ Value* DoCallMethod(Interpreter* interpreter,
 	if (ValueIsNull(method)) {
 		FPopN(interpreter, frame, argc);
 		String method = ValueToString(methodName);
-		String errMsg =
-			FormatString("%s: method '%s' not found on object of type %s",
-						 ATTRIBUTE_ERROR,
-						 method,
-						 ValueTypeOf(obj));
+		String errMsg = FormatString("%s: method '%s' not found on object of type %s",
+									 ATTRIBUTE_ERROR,
+									 method,
+									 ValueTypeOf(obj));
 		Value* errVal = NewErrorValue(interpreter, errMsg);
 		free(method);
 		free(errMsg);
@@ -859,7 +849,7 @@ Value* DoCall(Interpreter* interpreter,
 		}
 
 		Value* constructor = ClassGetMember(cls, CONSTRUCTOR_NAME, false);
-		Value* result = DoCall(interpreter, frame, constructor, argc, false);
+		Value* result	   = DoCall(interpreter, frame, constructor, argc, false);
 
 		if (ValueIsNull(result)) {
 			FPopp(interpreter, frame);	// Pop constructor return value
@@ -886,12 +876,11 @@ Value* DoCall(Interpreter* interpreter,
 
 		if (nFMeta->Argc != VARARG && argc != nFMeta->Argc) {
 			FPopN(interpreter, frame, argc);
-			String errMsg =
-				FormatString("%s: argument count mismatch: expected "
-							 "%d arguments but got %d",
-							 ARGUMENT_ERROR,
-							 nFMeta->Argc,
-							 argc);
+			String errMsg = FormatString("%s: argument count mismatch: expected "
+										 "%d arguments but got %d",
+										 ARGUMENT_ERROR,
+										 nFMeta->Argc,
+										 argc);
 
 			Value* errVal = NewErrorValue(interpreter, errMsg);
 			free(errMsg);
@@ -917,10 +906,7 @@ Value* DoCall(Interpreter* interpreter,
 
 		Value* res = nativeFunc(interpreter, argc, args);
 
-		FPush(interpreter, frame, res);
-		free(args);
-
-		return ValueIsError(res) ? res : interpreter->Null;
+		return res;
 	}
 
 	UserFunction* uf = CoerceToUserFunction(fn);
@@ -940,14 +926,20 @@ Value* DoCall(Interpreter* interpreter,
 		return errVal;
 	}
 
-	PushTrace(interpreter, uf->Lines[0], fn);
+	// PushTrace(interpreter, uf->Lines[0], fn);
 
 	CallFrame* newFrame = InitCallFrame(
 		frame,
 		frame->GlobalEnv,
-		NewEnvironmentValue(interpreter,
-							CreateEnvironment(uf->Scope, uf->LocalC)),
-		fn);
+		NewEnvironmentValue(interpreter, CreateEnvironment(uf->Scope, uf->LocalC)),
+		fn,
+		uf->Async);
+
+	Value* promise = NULL;
+	if (uf->Async) {
+		newFrame->Promise = promise =
+			NewPromiseValue(interpreter, CreatePromise(PENDING, newFrame));
+	}
 
 	// Move call arguments from caller stack into callee stack so
 	// function prologue OP_STORE_LOCAL opcodes bind parameters safely.
@@ -969,15 +961,7 @@ Value* DoCall(Interpreter* interpreter,
 	}
 
 	// 2. Run the function
-	Run(interpreter, newFrame, NULL);
-
-	SetCurrentFrame(interpreter, frame);
-
-	ReleaseFrame(interpreter, newFrame);
-
-	PopTrace(interpreter);
-
-	return interpreter->Null;
+	return Run(interpreter, newFrame, promise);
 }
 
 Value* DoNot(Interpreter* interpreter, Value* val) {
@@ -1168,9 +1152,7 @@ Value* DoMod(Interpreter* interpreter, Value* lhs, Value* rhs) {
 	// Check for modulo by zero
 	if ((ValueIsInt(rhs) && CoerceToI64(rhs) == 0)
 		|| (ValueIsNum(rhs) && CoerceToNum(rhs) == 0.0)) {
-		return NewErrorFValue(interpreter,
-							  "%s: modulo by zero",
-							  ZERO_DIVISION_ERROR);
+		return NewErrorFValue(interpreter, "%s: modulo by zero", ZERO_DIVISION_ERROR);
 	}
 
 	if (ValueIsInt(lhs) && ValueIsInt(rhs)) {
@@ -1243,11 +1225,10 @@ Value* DoInc(Interpreter* interpreter, Value* val) {
 		return prec == PREC_INT ? NewBigIntValue(interpreter, resNum)
 								: NewBigNumValue(interpreter, resNum);
 	} else {
-		String errMsg =
-			FormatString("%s: invalid operand for operator (++): %s",
-						 TYPE_ERROR,
-						 ValueTypeOf(val));
-		result = NewErrorValue(interpreter, errMsg);
+		String errMsg = FormatString("%s: invalid operand for operator (++): %s",
+									 TYPE_ERROR,
+									 ValueTypeOf(val));
+		result		  = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 	}
 
@@ -1347,11 +1328,10 @@ Value* DoDec(Interpreter* interpreter, Value* val) {
 		return prec == PREC_INT ? NewBigIntValue(interpreter, resNum)
 								: NewBigNumValue(interpreter, resNum);
 	} else {
-		String errMsg =
-			FormatString("%s: invalid operand for operator (--): %s",
-						 TYPE_ERROR,
-						 ValueTypeOf(val));
-		result = NewErrorValue(interpreter, errMsg);
+		String errMsg = FormatString("%s: invalid operand for operator (--): %s",
+									 TYPE_ERROR,
+									 ValueTypeOf(val));
+		result		  = NewErrorValue(interpreter, errMsg);
 		free(errMsg);
 	}
 
@@ -1736,10 +1716,8 @@ Value* DoXor(Interpreter* interpreter, Value* lhs, Value* rhs) {
 	return result;
 }
 
-Value* DoLoadFunction(Interpreter* interpreter,
-					  CallFrame*   frame,
-					  int		   offset,
-					  bool		   closure) {
+Value*
+DoLoadFunction(Interpreter* interpreter, CallFrame* frame, int offset, bool closure) {
 	// For closure, clone the function
 	Value*		  fn = interpreter->Functions[offset];
 	UserFunction* uf = CoerceToUserFunction(fn);

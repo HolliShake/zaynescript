@@ -16,8 +16,7 @@
  */
 extern void EnqueueTask(Interpreter* interpreter, Value* task);
 
-static Value*
-_PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
+static Value* _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 2) {
 		return NewErrorFValue(interpreter,
 							  "%s: Promise.then expects 2 arguments",
@@ -28,68 +27,84 @@ _PromiseThen(Interpreter* interpreter, int argc, Value** arguments) {
 	Value* thenCallback = arguments[1];
 
 	if (!ValueIsPromise(thisArg)) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: first argument to Promise.then must be a promise",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: first argument to Promise.then must be a promise",
+							  TYPE_ERROR);
 	}
 
 	if (!ValueIsCallable(thenCallback)) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: second argument to Promise.then must be a function",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: second argument to Promise.then must be a function",
+							  TYPE_ERROR);
 	}
 
-	int argNeeded = ValueIsNativeFunction(thenCallback)
+	/* Validate arity using Argc (the declared parameter count),
+	 * then separately compute LocalC for environment allocation. */
+	int argcCheck = ValueIsNativeFunction(thenCallback)
 						? CoerceToNativeFunction(thenCallback)->Argc
 						: CoerceToUserFunction(thenCallback)->Argc;
 
-	if (argNeeded != 1 && argNeeded != VARARG) {
+	if (argcCheck != 1 && argcCheck != VARARG) {
 		return NewErrorFValue(
 			interpreter,
-			"%s: callback function for Promise.then must take exactly 1 "
-			"argument (value)",
+			"%s: callback for Promise.then must take exactly 1 argument (value)",
 			ARGUMENT_ERROR);
 	}
 
+	/* LocalC covers all locals including the argument slot.
+	 * Use it for the environment so every local has a cell. */
+	int envSize = ValueIsUserFunction(thenCallback)
+					  ? CoerceToUserFunction(thenCallback)->LocalC
+					  : 1;
+
 	Promise* parentPromise = CoerceToPromise(thisArg);
 
-	Value* promiseValue = NewPromiseValue(interpreter,
-										  CreatePromise(PENDING,
-														NULL,
-														thisArg,
-														parentPromise->Globals,
-														thenCallback));
+	/* Build a fresh call frame for the callback.  The resolved
+	 * value is injected into local slot 0 by the event loop
+	 * just before Run() is called — not here. */
+	CallFrame* callbackFrame = InitCallFrame(
+		NULL,
+		parentPromise->Globals,
+		NewEnvironmentValue(interpreter, CreateEnvironment(NULL, envSize)),
+		thenCallback,
+		false);
 
+	Value* promiseValue =
+		NewPromiseValue(interpreter, CreatePromise(PENDING, callbackFrame));
 	Promise* promise = CoerceToPromise(promiseValue);
+	promise->Globals = parentPromise->Globals;
 
 	if (parentPromise->State == PENDING) {
-		/* Parent not yet settled: register the new promise as a
-		 * fulfill-only reaction.  It will be enqueued when the parent
-		 * fulfills.  Rejection will be handled by a .error reaction if
-		 * one exists. */
+		/* Parent not yet settled — register as a fulfill reaction.
+		 * PromiseFulfill will enqueue this child when it fires. */
 		PromiseFulfillReactionAdd(parentPromise, promiseValue);
+
 	} else if (parentPromise->State == REJECTED) {
-		/* .then is skipped for rejected parents.  Propagate the rejection
-		 * through the new promise so downstream .error handlers can catch it.
-		 * Register the new promise as a reject-reaction of the parent so that
-		 * unhandled-rejection tracking treats the parent as "handled" — the
-		 * chain continuation (P_then) will be checked instead. */
+		/* .then() on a rejected promise is skipped (no callback).
+		 * Propagate the rejection through the chain asynchronously
+		 * so downstream .error() handlers can catch it.
+		 *
+		 * FIX: was calling PromiseReject() synchronously which
+		 * caused out-of-order execution vs other queued tasks. */
 		PromiseRejectReactionAdd(parentPromise, promiseValue);
-		PromiseReject(promise, parentPromise->Result);
-		/* P_then's own RejectReactions are empty now; .error() called next in
-		 * the chain will enqueue its handler directly on the settled P_then. */
+		promise->Result = parentPromise->Result;
+		promise->State	= REJECTED;
+		EnqueueTask(interpreter, promiseValue); /* async, not synchronous */
+
 	} else {
-		/* Parent already fulfilled: enqueue only this new promise. */
+		/* Parent already fulfilled — copy result now so the event
+		 * loop can pass it to the callback.
+		 *
+		 * FIX: was enqueuing without setting Result, so the
+		 * callback received NULL. */
+		promise->Result = parentPromise->Result;
 		EnqueueTask(interpreter, promiseValue);
 	}
 
-	return promiseValue;
+	return promiseValue; /* enables .then().then() chaining */
 }
 
-static Value*
-_PromiseError(Interpreter* interpreter, int argc, Value** arguments) {
+static Value* _PromiseError(Interpreter* interpreter, int argc, Value** arguments) {
 	if (argc != 2) {
 		return NewErrorFValue(interpreter,
 							  "%s: Promise.error expects 2 arguments",
@@ -100,10 +115,9 @@ _PromiseError(Interpreter* interpreter, int argc, Value** arguments) {
 	Value* catchCallback = arguments[1];
 
 	if (!ValueIsPromise(thisArg)) {
-		return NewErrorFValue(
-			interpreter,
-			"%s: first argument to Promise.error must be a promise",
-			TYPE_ERROR);
+		return NewErrorFValue(interpreter,
+							  "%s: first argument to Promise.error must be a promise",
+							  TYPE_ERROR);
 	}
 
 	if (!ValueIsCallable(catchCallback)) {
@@ -125,14 +139,22 @@ _PromiseError(Interpreter* interpreter, int argc, Value** arguments) {
 			ARGUMENT_ERROR);
 	}
 
+	int locals = argNeeded;
+	if (ValueIsUserFunction(catchCallback)) {
+		locals = CoerceToUserFunction(catchCallback)->LocalC;
+	}
+
 	Promise* parentPromise = CoerceToPromise(thisArg);
 
-	Value* promiseValue = NewPromiseValue(interpreter,
-										  CreatePromise(PENDING,
-														NULL,
-														thisArg,
-														parentPromise->Globals,
-														catchCallback));
+	CallFrame* callbackFrame = InitCallFrame(
+		NULL,
+		parentPromise->Globals,
+		NewEnvironmentValue(interpreter, CreateEnvironment(NULL, locals)),
+		catchCallback,
+		false);
+
+	Value* promiseValue =
+		NewPromiseValue(interpreter, CreatePromise(PENDING, callbackFrame));
 
 	Promise* promise = CoerceToPromise(promiseValue);
 
@@ -147,7 +169,7 @@ _PromiseError(Interpreter* interpreter, int argc, Value** arguments) {
 	} else {
 		/* .error is skipped for fulfilled parents.  Propagate the
 		 * fulfilled value so downstream .then handlers can receive it. */
-		PromiseFulfill(promise, parentPromise->Result);
+		PromiseFulfill(interpreter, promise, parentPromise->Result);
 	}
 
 	return promiseValue;
@@ -169,8 +191,7 @@ static ModuleFunction _PromiseClassMethods[] = {
 
 Value* CreatePromiseClass(Interpreter* interpreter) {
 	Value* promiseClass =
-		NewClassValue(interpreter,
-					  CreateUserClass("Promise", interpreter->Object));
+		NewClassValue(interpreter, CreateUserClass("Promise", interpreter->Object));
 	Class* cls = CoerceToUserClass(promiseClass);
 
 	for (int i = 0; _PromiseClassMethods[i].Name != NULL; i++) {

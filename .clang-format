@@ -14,7 +14,7 @@ BasedOnStyle: LLVM
 IndentWidth:                   4
 TabWidth:                      4
 UseTab:                        Always
-ColumnLimit:                   80
+ColumnLimit:                   87
 ContinuationIndentWidth:       4        # Wrapped lines indent by one level (not 2x)
 IndentPPDirectives:            AfterHash  # Nested macros show depth:  #  ifdef / #    if
 
